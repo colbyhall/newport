@@ -1,0 +1,13 @@
+[package]
+name = "nevada"
+version = "0.1.0"
+authors = ["Colby <me@cobeh.com>"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/colbyhall/nevada"
+
+[workspace]
+members = ["crates/*"]
+
+[dependencies]
+core = {path = "crates/core"}
