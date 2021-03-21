@@ -1,0 +1,8 @@
+[package]
+name = "gpu"
+version = "0.1.0"
+authors = ["Colby <me@cobeh.com>"]
+edition = "2018"
+
+[dependencies]
+ash  = { version = "0.32.0" }
