@@ -1,4 +1,4 @@
-use sys::window::{WindowBuilder, WindowEvent};
+use os::window::{WindowBuilder, WindowEvent};
 
 fn main() {
     let mut window = WindowBuilder::new()

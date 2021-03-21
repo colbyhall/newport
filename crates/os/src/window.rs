@@ -1,5 +1,6 @@
-use crate::*;
+use crate::win32::*;
 use crate::input::*;
+use crate::{MAKEINTRESOURCEA, GET_WHEEL_DELTA_WPARAM, HIWORD};
 
 use std::collections::VecDeque;
 use std::mem::size_of;
@@ -7,18 +8,20 @@ use std::ptr::{null_mut, null, NonNull};
 use std::ffi::CString;
 use std::num::Wrapping;
 
-#[derive(Debug)]
-pub enum WindowBuildError {
-    ClassRegisterFailed,
-    WindowCreateFailed,
-}
-
+/// Builder used to create `Window`s with set parameters
 pub struct WindowBuilder {
     size:  (u32, u32),
     title: String,
 }
 
 impl WindowBuilder {
+    /// Returns a `WindowBuilder` to start building off of
+    /// 
+    /// # Examples
+    /// ```
+    /// use os::window::WindowBuilder;
+    /// let builder = WindowBuilder::new();
+    /// ```
     pub const fn new() -> Self {
         Self{
             size: (1280, 720),
@@ -26,20 +29,63 @@ impl WindowBuilder {
         }
     }
 
+    /// Sets title in `WindowBuilder`. Consumes and returns a `WindowBuilder` to build off of. 
+    /// 
+    /// # Arguments
+    /// 
+    /// * `title` - A string that will be used as the title in the spawned window
+    /// 
+    /// # Examples
+    /// ```
+    /// use os::window::WindowBuilder;
+    /// let builder = WindowBuilder::new()
+    ///     .title("Hello, world!".to_string());
+    /// ```
     pub fn title(mut self, title: String) -> Self {
         self.title = title;
         self
     }
 
+    /// Sets size in `WindowBuilder`. Consumes and returns a `WindowBuilder` to build off of.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `size` - A tuple of `(u32, u32)` that is the width and height of the viewport in the spawned window
+    /// 
+    /// # Examples
+    /// ```
+    /// use os::window::WindowBuilder;
+    /// let builder = WindowBuilder::new()
+    ///     .size((1920, 1080));
+    /// ```
     pub fn size(mut self, size: (u32, u32)) -> Self {
         self.size = size;
         self
     }
 }
 
+/// Error reported in `WindowBuilder::spawn()`
+#[derive(Debug)]
+pub enum WindowSpawnError {
+    ClassRegisterFailed,
+    WindowCreateFailed,
+}
+
 #[cfg(target_os = "windows")]
 impl WindowBuilder {
-    pub fn spawn(self) -> Result<Window, WindowBuildError> {
+    /// Consumes a `WindowBuilder` and tries to create a `Window`. Returns a 
+    /// `Window` on success and a `WindowSpawnError` on fail.
+    /// 
+    /// # Examples
+    /// ```
+    /// use os::window::WindowBuilder;
+    /// let window = WindowBuilder::new()
+    ///     .title("Hello, world!".to_string())
+    ///     .size((1920, 1080))
+    ///     .spawn()
+    ///     .unwrap();
+    /// ```
+    pub fn spawn(self) -> Result<Window, WindowSpawnError> {
         unsafe {
             let class = WNDCLASSEXA{
                 cbSize:         size_of::<WNDCLASSEXA>() as UINT, 
@@ -57,7 +103,7 @@ impl WindowBuilder {
             };
 
             if RegisterClassExA(&class) == 0 {
-                return Err(WindowBuildError::ClassRegisterFailed);
+                return Err(WindowSpawnError::ClassRegisterFailed);
             }
 
             // Apparently on Windows 10 "A" suffix functions can take utf 8
@@ -89,7 +135,7 @@ impl WindowBuilder {
             );
 
             if handle == INVALID_HANDLE_VALUE {
-                return Err(WindowBuildError::WindowCreateFailed);
+                return Err(WindowSpawnError::WindowCreateFailed);
             }
 
             let mut window = Window{
@@ -106,8 +152,11 @@ impl WindowBuilder {
 }
 
 #[cfg(target_os = "windows")]
-use crate::HWND as WindowHandle;
+use HWND as WindowHandle;
 
+/// An os's shell window that can be drawn into
+/// 
+/// This can be used by different libraries for drawing and input
 pub struct Window {
     handle: WindowHandle,
     size: (u32, u32),
@@ -116,11 +165,13 @@ pub struct Window {
 
 #[cfg(target_os = "windows")]
 impl Window {
+    /// Sets a window to be visible
     pub fn set_visible(&mut self, visible: bool) -> bool {
         let visibility = if visible { SW_SHOW } else { SW_HIDE };
         unsafe{ ShowWindow(self.handle, visibility) == 1 }
     }
 
+    /// Centers a window in its current monitor
     pub fn center_in_window(&mut self) -> bool {
         unsafe {
             let monitor_width = GetSystemMetrics(SM_CXSCREEN);
@@ -133,6 +184,7 @@ impl Window {
         }
     }
 
+    /// Maximizes a window and updates the size
     pub fn maximize(&mut self) {
         unsafe { ShowWindow(self.handle, 3) };
         let mut viewport_size = RECT::default();
@@ -141,6 +193,24 @@ impl Window {
         self.size.1 = viewport_size.bottom - viewport_size.top;
     }
 
+    /// Polls os shell for window events and returns a `WindowEventIterator`
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use os::window::{WindowEvent, WindowBuilder};
+    /// 
+    /// let window = WindowBuilder::new().spawn().unwrap();
+    /// 
+    /// `run: loop {
+    ///     for event in window.poll_events() {
+    ///         match event {
+    ///             WindowEvent::Closed => break `run;
+    ///             _ => { }
+    ///         }
+    ///     }
+    /// } 
+    /// ```
     pub fn poll_events(&mut self) -> WindowEventIterator {
         unsafe {
             let mut result = WindowEventIterator{
@@ -181,6 +251,7 @@ impl Drop for Window {
     }
 }
 
+/// Different type of events that can occur to `Window`s
 pub enum WindowEvent {
     FocusGained,
     FocusLost,
@@ -194,6 +265,7 @@ pub enum WindowEvent {
     MouseMove(u32, u32)
 }
 
+/// Iterator containing `WindowEvent`s after being polled
 pub struct WindowEventIterator {
     queue:  VecDeque<WindowEvent>,
     window: NonNull<Window>,

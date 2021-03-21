@@ -1,3 +1,4 @@
+/// Variant enum for `Input` used to distinguish between input types
 #[derive(Copy, Clone, Debug)]
 pub enum InputType {
     Key{ code: u8, symbol: char },
@@ -5,6 +6,7 @@ pub enum InputType {
     MouseAxis
 }
 
+/// Static information about input sets
 #[derive(Copy, Clone, Debug)]
 pub struct Input {
     display_name: &'static str,
@@ -36,7 +38,22 @@ impl Input {
         }
     }
 
-    // SPEED: Eventually use an index table
+    /// Returns corresponding key `Input` based on a key code
+    /// 
+    /// # Arguments
+    /// 
+    /// * `in_code` - A u8 which is the unique key code
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use os::input::Input;
+    /// let a_key = Input::key_from_code(0x41);
+    /// ```
+    /// 
+    /// # Todo
+    /// 
+    /// * `(Speed)` - Use lookup table to speed up find.
     pub fn key_from_code(in_code: u8) -> Option<Self> {
         for input in ALL_INPUTS.iter() {
             match input.variant {
