@@ -10,5 +10,7 @@ repository = "https://github.com/colbyhall/nevada"
 members = ["crates/*"]
 
 [dependencies]
-core = { path = "crates/core" }
-os   = { path = "crates/os" }
+core  = { path = "crates/core" }
+os    = { path = "crates/os" }
+asset = { path = "crates/asset" }
+log   = { path = "crates/log" }

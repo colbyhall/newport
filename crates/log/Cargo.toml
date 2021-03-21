@@ -1,9 +1,8 @@
 [package]
-name = "asset"
+name = "log"
 version = "0.1.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
 
 [dependencies]
-core = { path = "../core" }
-log  = { path = "../log" }
+os = { path = "../os" }

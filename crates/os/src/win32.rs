@@ -356,17 +356,17 @@ type PSYSTEM_LOGICAL_PROCESSOR_INFORMATION = *mut SYSTEM_LOGICAL_PROCESSOR_INFOR
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
-struct SYSTEMTIME {
-    wYear:          WORD,
-    wMonth:         WORD,
-    wDayOfWeek:     WORD,
-    wDay:           WORD,
-    wHour:          WORD,
-    wMinute:        WORD,
-    wSecond:        WORD,
-    wMilliseconds:  WORD,
+pub struct SYSTEMTIME {
+    pub wYear:          WORD,
+    pub wMonth:         WORD,
+    pub wDayOfWeek:     WORD,
+    pub wDay:           WORD,
+    pub wHour:          WORD,
+    pub wMinute:        WORD,
+    pub wSecond:        WORD,
+    pub wMilliseconds:  WORD,
 }
-type LPSYSTEMTIME = *mut SYSTEMTIME;
+pub type LPSYSTEMTIME = *mut SYSTEMTIME;
 
 #[link(name = "kernel32")]
 extern "stdcall" {
@@ -387,7 +387,7 @@ extern "stdcall" {
 
     fn GetLastError() -> DWORD;
 
-    fn GetLocalTime(lpSystemTime: LPSYSTEMTIME);
+    pub fn GetLocalTime(lpSystemTime: LPSYSTEMTIME);
 
     fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T) -> LPVOID;
     fn HeapReAlloc(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID, dwBytes: SIZE_T) -> LPVOID;

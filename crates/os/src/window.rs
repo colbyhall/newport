@@ -1,6 +1,10 @@
+#[cfg(target_os = "windows")]
 use crate::win32::*;
-use crate::input::*;
+
+#[cfg(target_os = "windows")]
 use crate::{MAKEINTRESOURCEA, GET_WHEEL_DELTA_WPARAM, HIWORD};
+
+use crate::input::*;
 
 use std::collections::VecDeque;
 use std::mem::size_of;
