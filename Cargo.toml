@@ -11,3 +11,4 @@ members = ["crates/*"]
 
 [dependencies]
 core = {path = "crates/core"}
+sys = {path = "crates/sys"}

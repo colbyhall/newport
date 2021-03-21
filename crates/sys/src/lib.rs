@@ -4,3 +4,6 @@ mod internal;
 
 #[cfg(target_os = "windows")]
 pub use internal::*;
+
+pub mod window;
+pub mod input;
