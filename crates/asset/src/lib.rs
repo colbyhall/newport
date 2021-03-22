@@ -1,14 +1,15 @@
 #![feature(trait_alias)]
 #![feature(box_syntax)]
-//! This crate provides an asset manager which handles defining
-//! assets, loading assets, ref counting assets, and serialization 
+//! This crate provides a completely thread safe asset manager which 
+//! handles defining assets, loading assets, ref counting assets, and 
+//! serialization.
 
 use core::containers::{ Vec, Box, HashSet };
 use log::*;
 
 use std::any::{ TypeId, Any };
 use std::path::{ Path, PathBuf };
-use std::sync::{ Mutex, RwLock, Arc, RwLockReadGuard, RwLockWriteGuard  };
+use std::sync::{ RwLock, Arc, RwLockReadGuard, RwLockWriteGuard  };
 use std::time::SystemTime;
 use std::fs::{ create_dir, read_dir };
 use std::ffi::OsStr;
@@ -18,8 +19,10 @@ use std::fmt;
 
 static ASSET_CAT: log::Category = "Asset";
 
+/// Trait alis for what an `Asset` can be
 pub trait Asset = Any;
 
+/// Enum for asset load errors
 #[derive(Debug)]
 pub enum LoadError {
     FileNotFound
@@ -45,19 +48,37 @@ impl fmt::Debug for VariantRegister {
     }
 }
 
-/// List of information about an `Asset` variant. This includes `TypeId`, load/unload functions, and extensions
+/// List of information about an `Asset` variant. This includes `TypeId`, 
+/// load/unload functions, and extensions. Used on `AssetManager::init()`
 #[derive(Debug)]
 pub struct VariantRegistry {
     entries: Vec<VariantRegister>,
 }
 
 impl VariantRegistry {
+    /// Returns a new VariantRegistry for building a list of asset variants
     pub const fn new() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
+        Self { entries: Vec::new(), }
     }
 
+    /// Adds a type variant to a list to be registered on `AssetManager::init()`
+    /// 
+    /// # Arguments
+    /// 
+    /// * `path` - A `PathBuf` to be added to collection entries
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use asset::VariantRegistry;
+    /// 
+    /// let mut exts = HashSet::new();
+    /// exts.insert("test".to_string());
+    /// 
+    /// let mut variants = VariantRegistry::new();
+    /// variants
+    ///     .add(exts, |path| println!("Loading {:?}", path), |asset| println!("unLoading asset"));
+    /// ```
     pub fn add<'a, T, Load, Unload>(&'a mut self, extensions: HashSet<String>, load: Load, unload: Unload) -> &'a mut Self where 
         T:      Asset + Sized, 
         Load:   Fn(&Path) -> Result<T, LoadError> + Send + Sync + 'static, 
@@ -67,7 +88,7 @@ impl VariantRegistry {
             type_id:    TypeId::of::<T>(),
             extensions: extensions,
             
-            load:   box move |path| {
+            load: box move |path| {
                 let result = load(path);
                 if result.is_err() {
                     return None;
@@ -77,30 +98,48 @@ impl VariantRegistry {
 
                 Some(foo as Box<dyn Asset>)
             },
+
             unload: box move |asset| {
                 let actual = asset.downcast::<T>().unwrap();
-                unload(*actual); // Current unload does not have an error out. This could change!!!!!
+                unload(*actual); // Currently unload does not have an error out. This could change!!!!!
             },
         });
         self
     }
 }
 
-/// List of all collections. A `Collection` is defined by a path to a directory. The asset manager uses this 
-/// directory and all sub directories for finding assets.
+/// List of all collections. A `Collection` is defined by a path to a directory. The 
+/// asset manager uses this directory and all sub directories for finding assets.
+/// `AssetManager::init()`
 #[derive(Debug)]
 pub struct CollectionRegistry {
     entries: Vec<PathBuf>
 }
 
 impl CollectionRegistry {
+    /// Returns a new CollectionRegistry
     pub const fn new() -> Self {
         Self {
             entries: Vec::new(),
         }
     }
 
-    pub fn add(mut self, path: PathBuf) -> Self {
+    /// Adds a path to a list for collection registration on `AssetManager::init()`
+    /// 
+    /// # Arguments
+    /// 
+    /// * `path` - A `PathBuf` to be added to collection entries
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use asset::CollectionRegistry;
+    /// let mut collections = CollectionRegistry::new();
+    /// collections
+    ///     .add(PathBuf::from("assets/"))
+    ///     .add(PathBuf::from("plugin/assets"));
+    /// ```
+    pub fn add(&mut self, path: PathBuf) -> &mut Self {
         self.entries.push(path);
         self
     }
@@ -108,26 +147,38 @@ impl CollectionRegistry {
 
 #[derive(Debug)]
 struct AssetEntry {
-    // Static data that never changes after registration
-    path: PathBuf,
-    variant: usize, // Index into AssetManager::variants
+    path:       PathBuf,
+    variant:    usize, // Index into AssetManager::variants
+    write_time: SystemTime,
 
-    // Custom RWLock synchronized by atomics and AssetRef
-    asset:      Arc<RwLock<Option<Box<dyn Asset>>>>,
-    write_time: Mutex<SystemTime>,
+    // Arc which is used for asset ref counting. As long as there is more 
+    // than 1 reference the asset will be loaded
+    asset: Arc<RwLock<Option<Box<dyn Asset>>>>,
 }
 
+/// A thread-safe reference-counting `Asset` reference.
+/// 
+/// Essentially an `AssetRef<T: Asset>` is an `Arc<RwLock<T>>` to an asset. As long
+/// as an `Asset` has an `AssetRef` the `Asset` will be loaded. It can then be accessed 
+/// like a `RwLock` with its own custom read and write guards
+///
+/// # Todo
+///
+/// * `AssetWeak<T: Asset>` for asset weak ptrs
+#[derive(Clone)]
 pub struct AssetRef<T: Asset + Sized> {
     arc:     Arc<RwLock<Option<Box<dyn Asset>>>>,
     phantom: PhantomData<T>,
+    variant: usize, // Index into AssetManager::variants
 }
 
-impl<T: Asset + Sized + fmt::Debug> AssetRef<T> {
+impl<T: Asset + Sized> AssetRef<T> {
+    /// Returns a `Option<AssetRef>
     pub fn new<P: AsRef<Path>>(p: P) -> Option<Self> {
         let asset_manager = AssetManager::as_ref();
 
         let read_lock = asset_manager.assets.read().unwrap();
-        let entry = read_lock.iter().find(|it|it.path == p.as_ref())?;
+        let entry = read_lock.iter().find(|it| it.path == p.as_ref())?;
 
         // Assert if the type is incorrect
         let variant = &asset_manager.variants[entry.variant];
@@ -135,28 +186,52 @@ impl<T: Asset + Sized + fmt::Debug> AssetRef<T> {
         
         let result = Self { 
             arc:     entry.asset.clone(), // Increment ref count
-            phantom: PhantomData
+            phantom: PhantomData,
+            variant: entry.variant,
         };
 
-        // The entry always has a reference to the asset arc. So if
-        // we're the 2nd strong reference then we need to actually load this asset
-        if result.strong_count() == 2 {
+        // If we're the first reference the load the asset
+        if result.strong_count() == 1 {
             let mut lock = entry.asset.write().unwrap();
             *lock = (variant.load)(&entry.path);
-
-            println!("{:?}", lock.deref());
         }
 
         Some(result)
     }
 
-    pub fn write(&self) -> AssetWriteGuard<T> {
+    /// Returns an `AssetWriteGuard<T>` for RAII exclusive write access
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// struct Test {
+    ///     foo: i32,
+    /// }
+    ///
+    /// let mut asset_ref: AssetRef<T> = AssetRef::new("assets/test.test").unwrap();
+    /// let mut write_lock = asset_ref.write();
+    /// write_lock.foo = 45;
+    /// ```
+    pub fn write(&mut self) -> AssetWriteGuard<T> {
         AssetWriteGuard {
             lock:    self.arc.write().unwrap(),
             phantom: PhantomData,
         }
     }
 
+    /// Returns an `AssetReadGuard<T>` for RAII shared read access
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// struct Test {
+    ///     foo: i32,
+    /// }
+    ///
+    /// let asset_ref: AssetRef<T> = AssetRef::new("assets/test.test").unwrap();
+    /// let read_lock = asset_ref.read();
+    /// read_lock.foo = 45;
+    /// ```
     pub fn read(&self) -> AssetReadGuard<T> {
         AssetReadGuard {
             lock:    self.arc.read().unwrap(),
@@ -164,16 +239,20 @@ impl<T: Asset + Sized + fmt::Debug> AssetRef<T> {
         }
     }
 
+    /// Returns the number of references to `Asset`
     pub fn strong_count(&self) -> usize {
-        Arc::strong_count(&self.arc)
+        // We always have 1 reference to the asset and what we care about here is the 
+        // number of references to the asset
+        Arc::strong_count(&self.arc) - 1 
     }
 
+    /// Returns the number of weak references to `Asset`
     pub fn weak_count(&self) -> usize {
         Arc::weak_count(&self.arc)
     }
 }
 
-impl<T: Asset + Sized + fmt::Debug> fmt::Debug for  AssetRef<T> {
+impl<T: Asset + Sized + fmt::Debug> fmt::Debug for AssetRef<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let read_lock = self.read();
 
@@ -185,6 +264,21 @@ impl<T: Asset + Sized + fmt::Debug> fmt::Debug for  AssetRef<T> {
     }
 }
 
+impl<T: Asset + Sized> Drop for AssetRef<T> {
+    fn drop(&mut self) {
+        // If we're the last unload the asset
+        if self.strong_count() == 1 {
+            let asset_manager = AssetManager::as_ref();
+            let variant = &asset_manager.variants[self.variant];
+
+            let mut lock = self.arc.write().unwrap();
+            (variant.unload)(lock.take().unwrap());
+        }
+    }
+}
+
+/// RAII structure used to release the exclusive write access of an `AssetRef` when dropped.
+/// This structure is created by the `write` method on `AssetRef`
 pub struct AssetWriteGuard<'a, T: Asset + Sized> {
     lock:    RwLockWriteGuard<'a, Option<Box<dyn Asset>>>,
     phantom: PhantomData<T>
@@ -194,22 +288,18 @@ impl<'a, T: Asset + Sized> Deref for AssetWriteGuard<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        let asset_ptr = self.lock.deref().as_ref().unwrap() as *const dyn Asset;
-
-        // UNSAFE: Write guard ensures that asset is loaded and is safe to access
-        unsafe{ &*(asset_ptr as *const T) }
+        self.lock.as_ref().unwrap().downcast_ref::<T>().unwrap()
     }
 }
 
 impl<'a, T: Asset + Sized> DerefMut for AssetWriteGuard<'a, T> {
     fn deref_mut(&mut self) -> &mut T {
-        let asset_ptr = self.lock.deref_mut().as_mut().unwrap() as *mut dyn Asset;
-
-        // UNSAFE: Write guard ensures that asset is loaded and is safe to access
-        unsafe{ &mut *(asset_ptr as *mut T) }
+        self.lock.as_mut().unwrap().downcast_mut::<T>().unwrap()
     }
 }
 
+/// RAII structure used to release the shared read access of an `AssetRef` when dropped.
+/// This structure is created by the `read` method on `AssetRef`
 pub struct AssetReadGuard<'a, T: Asset + Sized> {
     lock:    RwLockReadGuard<'a, Option<Box<dyn Asset>>>,
     phantom: PhantomData<T>
@@ -219,19 +309,22 @@ impl<'a, T: Asset + Sized> Deref for AssetReadGuard<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        // UNSAFE: Read guard ensures that asset is loaded and is safe to access
-        let asset_ptr = self.lock.deref().as_ref().unwrap() as *const dyn Asset;
-        println!("{:?}", asset_ptr);
-        unsafe{ &*(asset_ptr as *const T) }
+        self.lock.as_ref().unwrap().downcast_ref::<T>().unwrap()
     }
 }
 
 /// Manager that handles assets across multiple threads. 
 #[derive(Debug)]
 pub struct AssetManager {
+    /// Variants and Collections are taken on initialized and do not change over the runtime of program
     variants:    Vec<VariantRegister>,
     collections: Vec<PathBuf>,
     
+    /// Assets are currently kept in a vector hidden behind a RwLock
+    /// 
+    /// # Todo
+    ///
+    /// * Faster asset lookup
     assets: RwLock<Vec<AssetEntry>>,
 }
 
@@ -264,6 +357,8 @@ impl AssetManager {
         }
 
         // Initialize the asset manager and grab a mutable ref
+        // UNSAFE: Grabbing a mut ref to the global state. Will be safe due to 
+        //      no assets being used before initialization
         let asset_manager: &mut AssetManager;
         unsafe {
             ASSET_MANAGER = Some(AssetManager{
@@ -274,24 +369,25 @@ impl AssetManager {
             asset_manager = ASSET_MANAGER.as_mut().unwrap()
         }
 
-        // Recusrive file directory lookup
-        fn discover(mut path: PathBuf, assets: &mut Vec<AssetEntry>) -> PathBuf {
+        // Recusrive file directory lookup. Sending members instead of AssetManager is due to RWLock on assets
+        fn discover(mut path: PathBuf, assets: &mut Vec<AssetEntry>, variants: &Vec<VariantRegister>) -> PathBuf {
+            // Iterate through every entry in a directory
             for entry in read_dir(path.as_path()).unwrap() {
                 let entry = entry.unwrap();
-                
                 let file_type = entry.file_type().unwrap();
+                
+                // If the entry is a directory then recurse through it
                 if file_type.is_dir() {
                     path.push(entry.file_name());
-                    path = discover(path, assets);
+                    path = discover(path, assets, variants);
                     path.pop();
                 } else {
                     let path = entry.path();
                     let ext = path.extension().unwrap_or(OsStr::new(""));
                     
-                    let variants = unsafe{ &ASSET_MANAGER.as_mut().unwrap().variants };
-                    
                     // Find variant from extension
-                    let v = variants.iter().enumerate().find(|v| v.1.extensions.get(ext.to_str().unwrap()).is_some());
+                    let v = variants.iter().enumerate()
+                        .find(|v| v.1.extensions.get(ext.to_str().unwrap()).is_some());
                     if v.is_none() { continue; }
                     let (v_index, _) = v.unwrap();
                     
@@ -302,7 +398,7 @@ impl AssetManager {
                         variant:    v_index,
                         
                         asset:      Arc::new(RwLock::new(None)),
-                        write_time: Mutex::new(write_time),
+                        write_time: write_time,
                     });
                 }
             }
@@ -314,10 +410,11 @@ impl AssetManager {
         let mut assets_lock = asset_manager.assets.write().unwrap();
         for it in asset_manager.collections.iter() { 
             log!(ASSET_CAT, "Discovering assets in {:?}", it);
-            discover(it.clone(), &mut *assets_lock); 
+            discover(it.clone(), &mut *assets_lock, &asset_manager.variants); 
         }
     }
 
+    /// Returns the global `AssetManager` as an immutable reference
     pub fn as_ref() -> &'static AssetManager {
         unsafe{ ASSET_MANAGER.as_ref().unwrap() }
     }
