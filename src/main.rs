@@ -1,10 +1,11 @@
 use os::window::{ WindowBuilder, WindowEvent };
-use asset::{ VariantRegistry, CollectionRegistry, AssetManager, AssetRef, Deserialize, from_str };
+use asset::{ VariantRegistry, CollectionRegistry, AssetManager, AssetRef, from_str };
 use log::*;
 use core::containers::HashSet;
 
 use std::path::PathBuf;
 use std::fs::read_to_string;
+use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 struct Test {

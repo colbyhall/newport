@@ -22,7 +22,6 @@ static ASSET_CAT: log::Category = "Asset";
 /// Trait alis for what an `Asset` can be
 pub trait Asset = Any;
 
-pub use serde::{ Serialize, Deserialize };
 pub use ron::de::from_str;
 pub use ron::ser::to_string;
 

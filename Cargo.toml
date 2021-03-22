@@ -15,4 +15,4 @@ os    = { path = "crates/os" }
 asset = { path = "crates/asset" }
 log   = { path = "crates/log" }
 
-serde = "*"
+serde = { version = "*", features = ["derive"] }
