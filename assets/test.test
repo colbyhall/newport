@@ -1,1 +1,6 @@
-hello world
+(
+    a: "Hello, world!",
+    b: 123,
+    c: 90.0,
+    d: [123, 534, 123]
+)

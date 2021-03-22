@@ -1,14 +1,17 @@
 use os::window::{ WindowBuilder, WindowEvent };
-use asset::{ VariantRegistry, CollectionRegistry, AssetManager, AssetRef };
+use asset::{ VariantRegistry, CollectionRegistry, AssetManager, AssetRef, Deserialize, from_str };
 use log::*;
 use core::containers::HashSet;
 
 use std::path::PathBuf;
 use std::fs::read_to_string;
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug)]
 struct Test {
-    data: String,
+    a: String,
+    b: i32,
+    c: f32,
+    d: Vec<u32>,
 }
 
 fn main() {
@@ -23,7 +26,9 @@ fn main() {
 
     let mut variants = VariantRegistry::new();
     variants
-        .add(exts, |path| Ok(Test { data: read_to_string(path).unwrap() }), |_| { });
+        .add(exts, |path|{
+            Ok(from_str(&read_to_string(path).unwrap()).unwrap())
+        }, |_: Test| { });
 
     AssetManager::init(variants, collections);
 

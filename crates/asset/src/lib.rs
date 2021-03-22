@@ -22,6 +22,10 @@ static ASSET_CAT: log::Category = "Asset";
 /// Trait alis for what an `Asset` can be
 pub trait Asset = Any;
 
+pub use serde::{ Serialize, Deserialize };
+pub use ron::de::from_str;
+pub use ron::ser::to_string;
+
 /// Enum for asset load errors
 #[derive(Debug)]
 pub enum LoadError {
@@ -119,9 +123,7 @@ pub struct CollectionRegistry {
 impl CollectionRegistry {
     /// Returns a new CollectionRegistry
     pub const fn new() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
+        Self { entries: Vec::new(), }
     }
 
     /// Adds a path to a list for collection registration on `AssetManager::init()`
@@ -335,7 +337,7 @@ impl AssetManager {
     ///
     /// # Arguments
     ///
-    /// * 'variants' - A `VariantRegistery` which contains all variants for the runtime of the program
+    /// * `variants` - A `VariantRegistery` which contains all variants for the runtime of the program
     /// * `collections` - A `CollectionRegistry` which containts a path to all collections
     ///
     /// # Examples

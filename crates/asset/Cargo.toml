@@ -7,3 +7,7 @@ edition = "2018"
 [dependencies]
 core = { path = "../core" }
 log  = { path = "../log" }
+
+# For auto generated serialization
+serde = { version = "1.0", features = ["derive"] }
+ron = "*" # RON format for assets
