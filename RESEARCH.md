@@ -1,4 +1,4 @@
-# Nevada Research Document
+# Newport Research Document
 As I've been working on this project I've realized that I need a space to throw a bunch of information regarding design patterns, API's, and system architecture. I can't retain all of this in my head and I've found some deep hidden blogs/research that have been extremely helpful. There will be "basic" information in this doc. I want a place where someone can start picking up on Game Engine Programming.
 
 ### API Selection
