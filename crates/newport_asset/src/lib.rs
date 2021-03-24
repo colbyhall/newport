@@ -9,7 +9,6 @@ use newport_engine::*;
 use newport_log::*;
 
 use std::any::{ TypeId, Any };
-use std::path::{ Path, PathBuf };
 use std::sync::{ RwLock, Arc, RwLockReadGuard, RwLockWriteGuard  };
 use std::time::SystemTime;
 use std::fs::{ create_dir, read_dir };
@@ -23,6 +22,8 @@ static ASSET_CAT: Category = "Asset";
 /// Trait alis for what an `Asset` can be
 pub trait Asset = Any;
 
+pub use std::path::{ Path, PathBuf };
+
 pub use ron::de::from_str;
 pub use ron::ser::to_string;
 
@@ -32,15 +33,15 @@ pub enum LoadError {
     FileNotFound
 }
 
-trait LoadAsset = Fn(&Path) -> Option<Box<dyn Asset>> + Send + Sync + 'static;
-trait UnloadAsset = Fn(Box<dyn Asset>) + Send + Sync + 'static;
+pub type LoadAsset = fn(&Path) -> Result<Box<dyn Asset>, LoadError>;
+pub type UnloadAsset = fn(Box<dyn Asset>);
 
 struct VariantRegister {
     type_id:    TypeId,
     extensions: HashSet<String>,
     
-    load:     Box<dyn LoadAsset>,
-    unload:   Box<dyn UnloadAsset>
+    load:     LoadAsset,
+    unload:   UnloadAsset
 }
 
 impl fmt::Debug for VariantRegister {
@@ -266,7 +267,7 @@ impl AssetManager {
     }
 
     /// TODO
-    pub fn find<'a, T: Asset, P: AsRef<Path>>(&'a self, p: P) -> Option<AssetRef<T>> {
+    pub fn find<'a, P: AsRef<Path> + fmt::Debug, T: Asset>(&'a self, p: P) -> Option<AssetRef<T>> {
         let read_lock = self.assets.read().unwrap();
         let entry = read_lock.iter().find(|it| it.path == p.as_ref())?;
 
@@ -284,60 +285,35 @@ impl AssetManager {
         // If we're the first reference the load the asset
         if result.strong_count() == 1 {
             let mut lock = entry.asset.write().unwrap();
-            *lock = (variant.load)(&entry.path);
+            let result = (variant.load)(&entry.path);
+            if result.is_err() {
+                let err = result.err().unwrap();
+                log_error!(ASSET_CAT, "Failed to load {:?} due to {:?}", p, err);
+            } else {
+                *lock = Some(result.unwrap());
+            }
         }
 
         Some(result)
     }
 
-    /// Adds a type variant to be used when discovering assets in [`discover`]
+    /// Adds a type variant to be used when discovering assets in [`AssetManager::discover`]
     /// 
     /// # Arguments
     /// 
     /// * `path` - A `PathBuf` to be added to collection entries
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use asset::AssetManager;
-    /// 
-    /// let mut asset_manager = AssetManager::new();
-    /// 
-    /// let mut exts = HashSet::new();
-    /// exts.insert("test".to_string());
-    /// 
-    /// asset_manager
-    ///     .register_variant(exts, |path| println!("Loading {:?}", path), |asset| println!("unLoading asset"));
-    /// ```
-    pub fn register_variant<'a, T, Load, Unload>(&'a mut self, extensions: HashSet<String>, load: Load, unload: Unload) -> &'a mut Self where 
-        T:      Asset + Sized, 
-        Load:   Fn(&Path) -> Result<T, LoadError> + Send + Sync + 'static, 
-        Unload: Fn(T) + Send + Sync + 'static
-    {
+    pub fn register_variant<'a, T: 'static>(&'a mut self, extensions: HashSet<String>, load: LoadAsset, unload: UnloadAsset) -> &'a mut Self {
         self.variants.push(VariantRegister{
             type_id:    TypeId::of::<T>(),
             extensions: extensions,
-            
-            load: box move |path| {
-                let result = load(path);
-                if result.is_err() {
-                    return None;
-                }
 
-                let foo = box result.unwrap();
-
-                Some(foo as Box<dyn Asset>)
-            },
-
-            unload: box move |asset| {
-                let actual = asset.downcast::<T>().unwrap();
-                unload(*actual); // Currently unload does not have an error out. This could change!!!!!
-            },
+            load:   load,
+            unload: unload,
         });
         self
     }
 
-    /// Adds a path to recursively search for assets in when doing [`discover`]
+    /// Adds a path to recursively search for assets in when doing [`AssetManager::discover`]
     /// 
     /// # Arguments
     /// 
@@ -346,7 +322,7 @@ impl AssetManager {
     /// # Examples
     /// 
     /// ```
-    /// use asset::AssetManager;
+    /// use newport_asset::AssetManager;
     /// 
     /// let mut asset_manager = AssetManager::new();
     /// 
@@ -371,7 +347,7 @@ impl ModuleCompileTime for AssetManager {
         })
     }
 
-    fn depends_on(builder: ModuleBuilder) -> ModuleBuilder {
+    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
             .module::<Logger>()
             .post_init(|engine| {

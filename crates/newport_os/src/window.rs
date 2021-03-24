@@ -19,11 +19,11 @@ pub struct WindowBuilder {
 }
 
 impl WindowBuilder {
-    /// Returns a `WindowBuilder` to start building off of
+    /// Returns a [`WindowBuilder`] to start building off of
     /// 
     /// # Examples
     /// ```
-    /// use os::window::WindowBuilder;
+    /// use newport_os::window::WindowBuilder;
     /// let builder = WindowBuilder::new();
     /// ```
     pub const fn new() -> Self {
@@ -41,7 +41,7 @@ impl WindowBuilder {
     /// 
     /// # Examples
     /// ```
-    /// use os::window::WindowBuilder;
+    /// use newport_os::window::WindowBuilder;
     /// let builder = WindowBuilder::new()
     ///     .title("Hello, world!".to_string());
     /// ```
@@ -58,7 +58,8 @@ impl WindowBuilder {
     /// 
     /// # Examples
     /// ```
-    /// use os::window::WindowBuilder;
+    /// use newport_os::window::WindowBuilder;
+    /// 
     /// let builder = WindowBuilder::new()
     ///     .size((1920, 1080));
     /// ```
@@ -82,7 +83,7 @@ impl WindowBuilder {
     /// 
     /// # Examples
     /// ```
-    /// use os::window::WindowBuilder;
+    /// use newport_os::window::WindowBuilder;
     /// let window = WindowBuilder::new()
     ///     .title("Hello, world!".to_string())
     ///     .size((1920, 1080))
@@ -202,7 +203,7 @@ impl Window {
     /// # Examples
     /// 
     /// ```
-    /// use os::window::{WindowEvent, WindowBuilder};
+    /// use newport_os::window::{ WindowEvent, WindowBuilder };
     /// 
     /// let window = WindowBuilder::new().spawn().unwrap();
     /// 

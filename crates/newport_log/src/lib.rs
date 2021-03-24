@@ -9,6 +9,7 @@ use std::fs::{
 };
 use std::path::{ Path, PathBuf };
 use std::io::Write;
+use std::ptr::null_mut;
 
 /// Global structure that contains the current log file
 pub struct Logger {
@@ -53,8 +54,8 @@ impl ModuleCompileTime for Logger {
 }
 
 impl ModuleRuntime for Logger {
-    fn post_init(&'static mut self, _: &'static mut Engine) {
-        unsafe { LOGGER = Some(self) };
+    fn post_init(&mut self, _: &mut Engine) {
+        unsafe { LOGGER = self };
     }
 
     fn as_any(&self) -> &dyn Any { self }
@@ -79,11 +80,11 @@ pub enum Verbosity {
 }
 
 static LOGS_PATH:   &str = "logs/";
-static mut LOGGER:  Option<&'static Logger> = None;
+static mut LOGGER:  *mut Logger = null_mut();
 
 impl Logger {
-    pub fn set_global(&'static self) {
-        unsafe{ LOGGER = Some(self) };
+    pub fn set_global(&mut self) {
+        unsafe{ LOGGER = self };
     }
 
     pub fn log(cat: Category, verb: Verbosity, message: &str) {
@@ -114,7 +115,7 @@ impl Logger {
         };
 
         unsafe {
-            if LOGGER.is_none() {
+            if LOGGER == null_mut() {
                 println!("{}", output); // UNSAFE: Not a thread safe print
             } else {
                 let logger = LOGGER.as_ref().unwrap();
