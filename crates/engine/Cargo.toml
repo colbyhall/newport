@@ -5,4 +5,7 @@ authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
 
 [dependencies]
-core = { path = "../core" }
+core  = { path = "../core" }
+os    = { path = "../os" }
+asset = { path = "../asset" }
+log   = { path = "../log" }

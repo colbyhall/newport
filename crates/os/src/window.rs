@@ -12,7 +12,7 @@ use std::ptr::{null_mut, null, NonNull};
 use std::ffi::CString;
 use std::num::Wrapping;
 
-/// Builder used to create `Window`s with set parameters
+/// Builder used to create [`Window`]s with set parameters
 pub struct WindowBuilder {
     size:  (u32, u32),
     title: String,
@@ -33,7 +33,7 @@ impl WindowBuilder {
         }
     }
 
-    /// Sets title in `WindowBuilder`. Consumes and returns a `WindowBuilder` to build off of. 
+    /// Sets title in [`WindowBuilder`]. Consumes and returns a [`WindowBuilder`] to build off of. 
     /// 
     /// # Arguments
     /// 
@@ -50,7 +50,7 @@ impl WindowBuilder {
         self
     }
 
-    /// Sets size in `WindowBuilder`. Consumes and returns a `WindowBuilder` to build off of.
+    /// Sets size in [`WindowBuilder`]. Consumes and returns a [`WindowBuilder`] to build off of.
     /// 
     /// # Arguments
     /// 
@@ -68,7 +68,7 @@ impl WindowBuilder {
     }
 }
 
-/// Error reported in `WindowBuilder::spawn()`
+/// Error reported in [`WindowBuilder::spawn()`]
 #[derive(Debug)]
 pub enum WindowSpawnError {
     ClassRegisterFailed,
@@ -77,8 +77,8 @@ pub enum WindowSpawnError {
 
 #[cfg(target_os = "windows")]
 impl WindowBuilder {
-    /// Consumes a `WindowBuilder` and tries to create a `Window`. Returns a 
-    /// `Window` on success and a `WindowSpawnError` on fail.
+    /// Consumes a [`WindowBuilder`] and tries to create a [`Window`]. Returns a 
+    /// [`Window`] on success and a [`WindowSpawnError`] on fail.
     /// 
     /// # Examples
     /// ```
@@ -197,7 +197,7 @@ impl Window {
         self.size.1 = viewport_size.bottom - viewport_size.top;
     }
 
-    /// Polls os shell for window events and returns a `WindowEventIterator`
+    /// Polls os shell for window events and returns a [`WindowEventIterator`]
     /// 
     /// # Examples
     /// 
@@ -245,6 +245,11 @@ impl Window {
             result
         }
     }
+
+    // Returns the title as a &str
+    pub fn title(&self) -> &str {
+        &self.title
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -255,7 +260,7 @@ impl Drop for Window {
     }
 }
 
-/// Different type of events that can occur to `Window`s
+/// Different type of events that can occur to [`Window`]s
 pub enum WindowEvent {
     FocusGained,
     FocusLost,
@@ -269,7 +274,7 @@ pub enum WindowEvent {
     MouseMove(u32, u32)
 }
 
-/// Iterator containing `WindowEvent`s after being polled
+/// Iterator containing [`WindowEvent`]s after being polled
 pub struct WindowEventIterator {
     queue:  VecDeque<WindowEvent>,
     window: NonNull<Window>,

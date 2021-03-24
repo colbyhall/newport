@@ -1,3 +1,4 @@
+#![feature(trait_alias)]
 //! This crate is the core library all of nevada is built on top of
 //! 
 //! # Goals
@@ -6,3 +7,4 @@
 //! * Containers using allocators
 
 pub mod containers;
+pub mod module;
