@@ -1,5 +1,5 @@
-use os::time::SystemDate;
-use core::module::*;
+use newport_os::time::SystemDate;
+use newport_engine::*;
 
 use std::any::Any;
 use std::sync::Mutex;
@@ -53,7 +53,7 @@ impl ModuleCompileTime for Logger {
 }
 
 impl ModuleRuntime for Logger {
-    fn post_init(&'static mut self) {
+    fn post_init(&'static mut self, _: &'static mut Engine) {
         unsafe { LOGGER = Some(self) };
     }
 

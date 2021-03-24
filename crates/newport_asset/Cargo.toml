@@ -1,12 +1,13 @@
 [package]
-name = "asset"
+name = "newport_asset"
 version = "0.1.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
 
 [dependencies]
-core   = { path = "../core" }
-log    = { path = "../log" }
+newport_core   = { path = "../newport_core" }
+newport_log    = { path = "../newport_log" }
+newport_engine = { path = "../newport_engine" }
 
 # For auto generated serialization
 serde = { version = "1.0", features = ["derive"] }

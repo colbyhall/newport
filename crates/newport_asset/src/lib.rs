@@ -1,12 +1,12 @@
-#![feature(trait_alias)]
 #![feature(box_syntax)]
+#![feature(trait_alias)]
 //! This crate provides a completely thread safe asset manager which 
 //! handles defining assets, loading assets, ref counting assets, and 
 //! serialization.
 
-use core::containers::{ Vec, Box, HashSet };
-use core::module::*;
-use log::*;
+use newport_core::containers::{ Vec, Box, HashSet };
+use newport_engine::*;
+use newport_log::*;
 
 use std::any::{ TypeId, Any };
 use std::path::{ Path, PathBuf };
@@ -18,7 +18,7 @@ use std::marker::PhantomData;
 use std::ops::{ Deref, DerefMut };
 use std::fmt;
 
-static ASSET_CAT: log::Category = "Asset";
+static ASSET_CAT: Category = "Asset";
 
 /// Trait alis for what an `Asset` can be
 pub trait Asset = Any;
@@ -52,101 +52,6 @@ impl fmt::Debug for VariantRegister {
     }
 }
 
-/// List of information about an `Asset` variant. This includes `TypeId`, 
-/// load/unload functions, and extensions. Used on `AssetManager::init()`
-#[derive(Debug)]
-pub struct VariantRegistry {
-    entries: Vec<VariantRegister>,
-}
-
-impl VariantRegistry {
-    /// Returns a new VariantRegistry for building a list of asset variants
-    pub const fn new() -> Self {
-        Self { entries: Vec::new(), }
-    }
-
-    /// Adds a type variant to a list to be registered on `AssetManager::init()`
-    /// 
-    /// # Arguments
-    /// 
-    /// * `path` - A `PathBuf` to be added to collection entries
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use asset::VariantRegistry;
-    /// 
-    /// let mut exts = HashSet::new();
-    /// exts.insert("test".to_string());
-    /// 
-    /// let mut variants = VariantRegistry::new();
-    /// variants
-    ///     .add(exts, |path| println!("Loading {:?}", path), |asset| println!("unLoading asset"));
-    /// ```
-    pub fn add<'a, T, Load, Unload>(&'a mut self, extensions: HashSet<String>, load: Load, unload: Unload) -> &'a mut Self where 
-        T:      Asset + Sized, 
-        Load:   Fn(&Path) -> Result<T, LoadError> + Send + Sync + 'static, 
-        Unload: Fn(T) + Send + Sync + 'static
-    {
-        self.entries.push(VariantRegister{
-            type_id:    TypeId::of::<T>(),
-            extensions: extensions,
-            
-            load: box move |path| {
-                let result = load(path);
-                if result.is_err() {
-                    return None;
-                }
-
-                let foo = box result.unwrap();
-
-                Some(foo as Box<dyn Asset>)
-            },
-
-            unload: box move |asset| {
-                let actual = asset.downcast::<T>().unwrap();
-                unload(*actual); // Currently unload does not have an error out. This could change!!!!!
-            },
-        });
-        self
-    }
-}
-
-/// List of all collections. A `Collection` is defined by a path to a directory. The 
-/// asset manager uses this directory and all sub directories for finding assets.
-/// `AssetManager::init()`
-#[derive(Debug)]
-pub struct CollectionRegistry {
-    entries: Vec<PathBuf>
-}
-
-impl CollectionRegistry {
-    /// Returns a new CollectionRegistry
-    pub const fn new() -> Self {
-        Self { entries: Vec::new(), }
-    }
-
-    /// Adds a path to a list for collection registration on `AssetManager::init()`
-    /// 
-    /// # Arguments
-    /// 
-    /// * `path` - A `PathBuf` to be added to collection entries
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use asset::CollectionRegistry;
-    /// let mut collections = CollectionRegistry::new();
-    /// collections
-    ///     .add(PathBuf::from("assets/"))
-    ///     .add(PathBuf::from("plugin/assets"));
-    /// ```
-    pub fn add(&mut self, path: PathBuf) -> &mut Self {
-        self.entries.push(path);
-        self
-    }
-}
-
 #[derive(Debug)]
 struct AssetEntry {
     path:       PathBuf,
@@ -168,14 +73,14 @@ struct AssetEntry {
 ///
 /// * `AssetWeak<T: Asset>` for asset weak ptrs
 #[derive(Clone)]
-pub struct AssetRef<T: Asset + Sized> {
+pub struct AssetRef<'a, T: Asset + Sized> {
     arc:     Arc<RwLock<Option<Box<dyn Asset>>>>,
     phantom: PhantomData<T>,
     variant: usize, // Index into AssetManager::variants
-    manager: &'static AssetManager, 
+    manager: &'a AssetManager, 
 }
 
-impl<T: Asset + Sized> AssetRef<T> {
+impl<'a, T: Asset + Sized> AssetRef<'a, T> {
     /// Returns an `AssetWriteGuard<T>` for RAII exclusive write access
     ///
     /// # Examples
@@ -229,7 +134,7 @@ impl<T: Asset + Sized> AssetRef<T> {
     }
 }
 
-impl<T: Asset + Sized + fmt::Debug> fmt::Debug for AssetRef<T> {
+impl<'a, T: Asset + Sized + fmt::Debug> fmt::Debug for AssetRef<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let read_lock = self.read();
 
@@ -241,7 +146,7 @@ impl<T: Asset + Sized + fmt::Debug> fmt::Debug for AssetRef<T> {
     }
 }
 
-impl<T: Asset + Sized> Drop for AssetRef<T> {
+impl<'a, T: Asset + Sized> Drop for AssetRef<'a, T> {
     fn drop(&mut self) {
         // If we're the last unload the asset
         if self.strong_count() == 1 {
@@ -305,42 +210,17 @@ pub struct AssetManager {
 }
 
 impl AssetManager {
-    /// Initializes the global asset manager and discovers all current assets
-    ///
-    /// # Arguments
-    ///
-    /// * `variants` - A `VariantRegistery` which contains all variants for the runtime of the program
-    /// * `collections` - A `CollectionRegistry` which containts a path to all collections
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use asset::{ AssetManager, VariantRegistry, CollectionRegistry };
-    /// let variants = VariantRegistry::new();
-    /// let collections = CollectionRegistry::new();
-    ///
-    /// AssetManager::init(variants, collections);
-    /// ```
-    pub fn init(&mut self, variants: VariantRegistry, collections: CollectionRegistry) {
+    /// Discovers all assets using the registered collection and variants
+    pub fn discover(&mut self) {
         // Start off by making sure every collection exist
-        for it in collections.entries.iter() {
+        for it in self.collections.iter() {
             if !it.exists() {
                 create_dir(it).unwrap();
                 log!(ASSET_CAT, "Created collection directory {:?}", it);
             }
         }
 
-        self.variants = variants.entries;
-        // Initialize the asset manager and grab a mutable ref
-        // UNSAFE: Grabbing a mut ref to the global state. Will be safe due to 
-        //      no assets being used before initialization
-        // let asset_manager: &mut AssetManager;
-        // unsafe {
-        //     ASSET_MANAGER = Some();
-        //     asset_manager = ASSET_MANAGER.as_mut().unwrap()
-        // }
-
-        // Recusrive file directory lookup. Sending members instead of AssetManager is due to RWLock on assets
+        // Recursive file directory lookup. Sending members instead of AssetManager is due to RWLock on assets
         fn discover(mut path: PathBuf, assets: &mut Vec<AssetEntry>, variants: &Vec<VariantRegister>) -> PathBuf {
             // Iterate through every entry in a directory
             for entry in read_dir(path.as_path()).unwrap() {
@@ -385,8 +265,8 @@ impl AssetManager {
         }
     }
 
-    /// Returns a `Option<AssetRef>
-    pub fn find<T: Asset, P: AsRef<Path>>(&'static self, p: P) -> Option<AssetRef<T>> {
+    /// TODO
+    pub fn find<'a, T: Asset, P: AsRef<Path>>(&'a self, p: P) -> Option<AssetRef<T>> {
         let read_lock = self.assets.read().unwrap();
         let entry = read_lock.iter().find(|it| it.path == p.as_ref())?;
 
@@ -409,6 +289,77 @@ impl AssetManager {
 
         Some(result)
     }
+
+    /// Adds a type variant to be used when discovering assets in [`discover`]
+    /// 
+    /// # Arguments
+    /// 
+    /// * `path` - A `PathBuf` to be added to collection entries
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use asset::AssetManager;
+    /// 
+    /// let mut asset_manager = AssetManager::new();
+    /// 
+    /// let mut exts = HashSet::new();
+    /// exts.insert("test".to_string());
+    /// 
+    /// asset_manager
+    ///     .register_variant(exts, |path| println!("Loading {:?}", path), |asset| println!("unLoading asset"));
+    /// ```
+    pub fn register_variant<'a, T, Load, Unload>(&'a mut self, extensions: HashSet<String>, load: Load, unload: Unload) -> &'a mut Self where 
+        T:      Asset + Sized, 
+        Load:   Fn(&Path) -> Result<T, LoadError> + Send + Sync + 'static, 
+        Unload: Fn(T) + Send + Sync + 'static
+    {
+        self.variants.push(VariantRegister{
+            type_id:    TypeId::of::<T>(),
+            extensions: extensions,
+            
+            load: box move |path| {
+                let result = load(path);
+                if result.is_err() {
+                    return None;
+                }
+
+                let foo = box result.unwrap();
+
+                Some(foo as Box<dyn Asset>)
+            },
+
+            unload: box move |asset| {
+                let actual = asset.downcast::<T>().unwrap();
+                unload(*actual); // Currently unload does not have an error out. This could change!!!!!
+            },
+        });
+        self
+    }
+
+    /// Adds a path to recursively search for assets in when doing [`discover`]
+    /// 
+    /// # Arguments
+    /// 
+    /// * `path` - A `PathBuf` to be added to collection entries
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use asset::AssetManager;
+    /// 
+    /// let mut asset_manager = AssetManager::new();
+    /// 
+    /// let mut exts = HashSet::new();
+    /// exts.insert("test".to_string());
+    /// 
+    /// asset_manager
+    ///     .register_variant(exts, |path| println!("Loading {:?}", path), |asset| println!("unLoading asset"));
+    /// ```
+    pub fn register_collection(&mut self, path: PathBuf) -> &mut Self {
+        self.collections.push(path);
+        self
+    }
 }
 
 impl ModuleCompileTime for AssetManager {
@@ -422,13 +373,14 @@ impl ModuleCompileTime for AssetManager {
 
     fn depends_on(builder: ModuleBuilder) -> ModuleBuilder {
         builder
+            .module::<Logger>()
+            .post_init(|engine| {
+            let asset_manager = engine.module_mut::<AssetManager>().unwrap();
+            asset_manager.discover();
+        })
     }
 }
 
 impl ModuleRuntime for AssetManager {
     fn as_any(&self) -> &dyn Any { self }
-
-    fn post_init(&'static mut self) {
-
-    }
 }

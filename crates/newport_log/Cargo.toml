@@ -1,0 +1,10 @@
+[package]
+name = "newport_log"
+version = "0.1.0"
+authors = ["Colby <me@cobeh.com>"]
+edition = "2018"
+
+[dependencies]
+newport_os     = { path = "../newport_os" }
+newport_core   = { path = "../newport_core" }
+newport_engine = { path = "../newport_engine" }

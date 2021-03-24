@@ -1,5 +1,5 @@
 [package]
-name = "gpu"
+name = "newport_gpu"
 version = "0.1.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"

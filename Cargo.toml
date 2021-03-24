@@ -10,11 +10,15 @@ repository = "https://github.com/colbyhall/newport"
 members = ["crates/*"]
 
 [dependencies]
-core   = { path = "crates/core" }
-os     = { path = "crates/os" }
-asset  = { path = "crates/asset" }
-log    = { path = "crates/log" }
-engine = { path = "crates/engine" }
+newport_core   = { path = "crates/newport_core" }
+newport_os     = { path = "crates/newport_os" }
+newport_asset  = { path = "crates/newport_asset" }
+newport_log    = { path = "crates/newport_log" }
+newport_engine = { path = "crates/newport_engine" }
 
 # Serde sadly has to be included in the dependency list of every package that uses it
 serde = { version = "*", features = ["derive"] }
+
+[[example]]
+name = "hello_world"
+path = "examples/hello_world.rs"
