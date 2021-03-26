@@ -17,3 +17,8 @@ pub mod log {
 pub mod asset {
     pub use newport_asset::*;
 }
+
+// GPU abstraction
+pub mod gpu {
+    pub use newport_gpu::*;
+}

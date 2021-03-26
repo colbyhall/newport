@@ -23,3 +23,7 @@
 //! * Create, upload, and destroy resources (buffers, textures, shaders, pipelines, etc)
 //! * Gather, submit, and wait on command work from various passes, in a multicore-compatible way
 //! * Automatic device memory management
+
+pub mod vk;
+pub use vk::*;
+
