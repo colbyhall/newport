@@ -87,7 +87,7 @@ impl Logger {
                 Verbosity::Error   => " Error ",
             };
             
-            // @NOTE(colby): Build output
+            // Build output
             let date = SystemDate::now();
             format!(
                 "{} [{:02}/{:02}/{} | {:02}:{:02}:{:02}:{:02}] {}",

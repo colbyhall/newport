@@ -5,3 +5,5 @@ authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
 
 [dependencies]
+# Serde sadly has to be included in the dependency list of every package that uses it
+serde = { version = "*", features = ["derive"] }
