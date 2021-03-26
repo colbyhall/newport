@@ -118,7 +118,7 @@ impl Engine {
     /// let engine = Engine::as_ref();
     /// let module = engine.module::<Module>().unwrap();
     /// ```
-    pub fn module<T: Module>(&'static self) -> Option<&'static T> {
+    pub fn module<'a, T: Module>(&'a self) -> Option<&'a T> {
         let id = TypeId::of::<T>();
         
         let module = self.modules.get(&id)?;
