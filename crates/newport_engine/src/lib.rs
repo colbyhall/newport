@@ -121,9 +121,7 @@ impl Engine {
     pub fn module<T: Module>(&'static self) -> Option<&'static T> {
         let id = TypeId::of::<T>();
         
-        let module = self.modules.get(&id);
-        if module.is_none() { return None; }
-        let module = module.unwrap();
+        let module = self.modules.get(&id)?;
         module.as_any().downcast_ref::<T>()
     }
 
@@ -144,9 +142,7 @@ impl Engine {
     pub fn module_mut<'a, T: Module>(&'a mut self) -> Option<&'a mut T> {
         let id = TypeId::of::<T>();
 
-        let module = self.modules.get_mut(&id);
-        if module.is_none() { return None; }
-        let module = module.unwrap();
+        let module = self.modules.get_mut(&id)?;
         
         // UNSAFE: I'm lazy and I don't want to implement all of these manually 
         unsafe{
