@@ -3,9 +3,11 @@
 #![allow(non_camel_case_types)]
 #![allow(unused_macros)]
 
-pub type PVOID   = *mut u8;
+use std::ffi::c_void;
+
+pub type PVOID   = *mut c_void;
 pub type LPVOID  = PVOID;
-pub type LPCVOID = *const u8;
+pub type LPCVOID = *const c_void;
 
 pub type BOOL = u32;
 pub type CHAR = u8;

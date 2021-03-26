@@ -356,5 +356,5 @@ impl ModuleCompileTime for AssetManager {
 }
 
 impl ModuleRuntime for AssetManager {
-    fn as_any(&self) -> &dyn Any { self }
+    fn as_any(&self) -> &dyn Any{ self }
 }

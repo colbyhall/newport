@@ -157,7 +157,7 @@ impl WindowBuilder {
 }
 
 #[cfg(target_os = "windows")]
-use HWND as WindowHandle;
+pub use crate::win32::HWND as WindowHandle;
 
 /// An os's shell window that can be drawn into
 /// 
@@ -247,9 +247,14 @@ impl Window {
         }
     }
 
-    // Returns the title as a &str
+    /// Returns the title as a &str
     pub fn title(&self) -> &str {
         &self.title
+    }
+
+    /// Returns the os handle generally as a [`std::ffi::c_void`]
+    pub fn handle(&self) -> WindowHandle {
+        self.handle
     }
 }
 

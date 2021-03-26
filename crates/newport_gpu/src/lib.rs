@@ -25,5 +25,38 @@
 //! * Automatic device memory management
 
 pub mod vk;
-pub use vk::*;
 
+#[cfg(target_os = "windows")]
+pub use vk::VulkanGPU as SelectedGPU;
+
+pub trait GPU {
+    fn new_device(&self, builder: DeviceBuilder) -> Result<Box<dyn Device>, DeviceCreateError>;
+}
+
+pub enum DeviceCreateError {
+    Unknown,
+    NoValidPhysicalDevice,
+}
+
+pub trait Device {
+    
+}
+
+use newport_os::window::WindowHandle;
+
+pub struct DeviceBuilder {
+    window: Option<WindowHandle>,
+}
+
+impl DeviceBuilder {
+    pub fn new() -> Self {
+        Self {
+            window: None,
+        }
+    }
+
+    pub fn present_to(mut self, window: WindowHandle) -> Self {
+        self.window = Some(window);
+        self
+    }
+}

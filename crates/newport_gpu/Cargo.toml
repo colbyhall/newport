@@ -9,5 +9,6 @@ newport_core   = { path = "../newport_core" }
 newport_engine = { path = "../newport_engine" }
 newport_log    = { path = "../newport_log" }
 newport_asset  = { path = "../newport_asset" }
+newport_os     = { path = "../newport_os" }
 
 ash  = { version = "0.32.0" }

@@ -54,11 +54,11 @@ impl ModuleCompileTime for Logger {
 }
 
 impl ModuleRuntime for Logger {
+    fn as_any(&self) -> &dyn Any{ self }
+
     fn post_init(&mut self, _: &mut Engine) {
         unsafe { LOGGER = self };
     }
-
-    fn as_any(&self) -> &dyn Any { self }
 }
 
 /// Level of verbosity in a log
@@ -119,27 +119,27 @@ impl Logger {
 #[macro_export]
 macro_rules! debug {
     ($($arg:tt)*) => (
-        crate::Logger::log(Verbosity::Debug, &format!($($arg)*))
+        Logger::log(Verbosity::Debug, &format!($($arg)*))
     );
 }
 
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)*) => (
-        crate::Logger::log(Verbosity::Info, &format!($($arg)*))
+        Logger::log(Verbosity::Info, &format!($($arg)*))
     );
 }
 
 #[macro_export]
-macro_rules! warning {
+macro_rules! warn {
     ($($arg:tt)*) => (
-        crate::Logger::log(Verbosity::Warning, &format!($($arg)*))
+        Logger::log(Verbosity::Warning, &format!($($arg)*))
     );
 }
 
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)*) => (
-        crate::Logger::log(Verbosity::Error, &format!($($arg)*))
+        Logger::log(Verbosity::Error, &format!($($arg)*))
     );
 }

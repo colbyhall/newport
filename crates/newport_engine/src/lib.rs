@@ -1,6 +1,7 @@
 #![feature(trait_alias)]
 
 use newport_core::containers::{ Box, HashMap };
+// use newport_core::AsAny;
 use newport_os::window::{ WindowBuilder, Window, WindowEvent };
 
 use std::any::TypeId;
@@ -140,9 +141,9 @@ impl Engine {
     /// let engine = Engine::as_ref();
     /// let module = engine.module_mut::<Module>().unwrap();
     /// ```
-    pub fn module_mut<T: Module>(&mut self) -> Option<&mut T> {
+    pub fn module_mut<'a, T: Module>(&'a mut self) -> Option<&'a mut T> {
         let id = TypeId::of::<T>();
-        
+
         let module = self.modules.get_mut(&id);
         if module.is_none() { return None; }
         let module = module.unwrap();
@@ -159,6 +160,11 @@ impl Engine {
     /// Returns the name of the engine runnable
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    /// Returns the window that the engine draws into
+    pub fn window(&self) -> &Window {
+        &self.window
     }
 }
 
@@ -266,11 +272,10 @@ pub trait ModuleRuntime: Any {
     /// Called after all modules are initialized
     fn post_init(&mut self, _: &mut Engine) { }
 
-    // Called after post initialization but before main loop
+    /// Called after post initialization but before main loop
     fn on_startup(&'static mut self) { }
 
     fn as_any(&self) -> &dyn Any;
 }
-
 /// Combined Module trait
 pub trait Module = ModuleRuntime + ModuleCompileTime;

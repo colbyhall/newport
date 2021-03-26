@@ -1,7 +1,8 @@
-use newport::engine::{ EngineBuilder, Engine, ModuleCompileTime, ModuleRuntime, Any };
+use newport::engine::*;
 use newport::asset::{ AssetManager, AssetRef, from_str, Path, PathBuf, Asset, LoadError };
 use newport::core::containers::HashSet;
 use newport::log::*;
+use newport::gpu::SelectedGPU;
 
 use std::fs::read_to_string;
 use serde::Deserialize;
@@ -22,14 +23,11 @@ impl ModuleCompileTime for HelloWorld {
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
-        builder
-            .module::<AssetManager>()
+        builder.module::<SelectedGPU>()
     }
 }
 
 impl ModuleRuntime for HelloWorld {
-    fn as_any(&self) -> &dyn Any { self }
-
     fn post_init(&mut self, engine: &mut Engine) {
         let asset_manager = engine.module_mut::<AssetManager>().unwrap();
 
@@ -55,6 +53,8 @@ impl ModuleRuntime for HelloWorld {
         let test: AssetRef<Test> = asset_manager.find("assets/test.test").unwrap();
         info!("[HelloWorld] {:?}", test);
     }
+
+    fn as_any(&self) -> &dyn Any{ self }
 }
 
 fn main() {
