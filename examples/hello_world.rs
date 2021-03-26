@@ -6,8 +6,6 @@ use newport::log::*;
 use std::fs::read_to_string;
 use serde::Deserialize;
 
-static HELLO_WORLD_CAT: Category = "hello_world";
-
 #[derive(Debug, Deserialize)]
 struct Test {
     a: String,
@@ -55,7 +53,7 @@ impl ModuleRuntime for HelloWorld {
 
         let asset_manager = engine.module::<AssetManager>().unwrap();
         let test: AssetRef<Test> = asset_manager.find("assets/test.test").unwrap();
-        log!(HELLO_WORLD_CAT, "{:?}", test);
+        info!("[HelloWorld] {:?}", test);
     }
 }
 

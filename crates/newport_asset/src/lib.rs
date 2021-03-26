@@ -17,8 +17,6 @@ use std::marker::PhantomData;
 use std::ops::{ Deref, DerefMut };
 use std::fmt;
 
-static ASSET_CAT: Category = "Asset";
-
 /// Trait alis for what an `Asset` can be
 pub trait Asset = Any;
 
@@ -217,7 +215,7 @@ impl AssetManager {
         for it in self.collections.iter() {
             if !it.exists() {
                 create_dir(it).unwrap();
-                log!(ASSET_CAT, "Created collection directory {:?}", it);
+                info!("[AssetManager] Created collection directory {:?}", it);
             }
         }
 
@@ -261,7 +259,7 @@ impl AssetManager {
         // Run through each collection recursively discovering assets
         let mut assets_lock = self.assets.write().unwrap();
         for it in self.collections.iter() { 
-            log!(ASSET_CAT, "Discovering assets in {:?}", it);
+            info!("[AssetManager] Discovering assets in {:?}", it);
             discover(it.clone(), &mut *assets_lock, &self.variants); 
         }
     }
@@ -288,7 +286,7 @@ impl AssetManager {
             let result = (variant.load)(&entry.path);
             if result.is_err() {
                 let err = result.err().unwrap();
-                log_error!(ASSET_CAT, "Failed to load {:?} due to {:?}", p, err);
+                error!("[AssetManager] Failed to load {:?} due to {:?}", p, err);
             } else {
                 *lock = Some(result.unwrap());
             }

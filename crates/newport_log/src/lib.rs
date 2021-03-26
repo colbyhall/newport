@@ -61,16 +61,6 @@ impl ModuleRuntime for Logger {
     fn as_any(&self) -> &dyn Any { self }
 }
 
-/// Type to easily create new categories
-/// 
-/// # Examples
-/// 
-/// ```
-/// static FOO_CAT: log::Category = "Foo"
-/// log_info!(FOO_CAT, "Hello, world!");
-/// ```
-pub type Category = &'static str;
-
 /// Level of verbosity in a log
 pub enum Verbosity {
     Debug,
@@ -87,7 +77,7 @@ impl Logger {
         unsafe{ LOGGER = self };
     }
 
-    pub fn log(cat: Category, verb: Verbosity, message: &str) {
+    pub fn log(verb: Verbosity, message: &str) {
         // Get verbosity as a &'static str
         let output = {
             let verb = match verb {
@@ -100,7 +90,8 @@ impl Logger {
             // @NOTE(colby): Build output
             let date = SystemDate::now();
             format!(
-                "[{:02}/{:02}/{} | {:02}:{:02}:{:02}:{:02}] {} [{}] {}",
+                "{} [{:02}/{:02}/{} | {:02}:{:02}:{:02}:{:02}] {}",
+                verb,
                 date.month,
                 date.day_of_month,
                 date.year,
@@ -108,8 +99,6 @@ impl Logger {
                 date.minute, 
                 date.second,
                 date.milli,
-                verb,
-                cat,
                 message,
             )
         };
@@ -128,51 +117,29 @@ impl Logger {
 }
 
 #[macro_export]
-macro_rules! log {
-    ($message:expr) => (
-        Logger::log("Temp", Verbosity::Info, $message)
-    );
-    ($cat:expr, $($arg:tt)*) => (
-        Logger::log($cat, Verbosity::Info, &format!($($arg)*))
+macro_rules! debug {
+    ($($arg:tt)*) => (
+        crate::Logger::log(Verbosity::Debug, &format!($($arg)*))
     );
 }
 
 #[macro_export]
-macro_rules! log_debug {
-    ($message:expr) => (
-        Logger::log("Temp", Verbosity::Debug, $message)
-    );
-    ($cat:expr, $($arg:tt)*) => (
-        Logger::log($cat, Verbosity::Debug, &format!($($arg)*))
+macro_rules! info {
+    ($($arg:tt)*) => (
+        crate::Logger::log(Verbosity::Info, &format!($($arg)*))
     );
 }
 
 #[macro_export]
-macro_rules! log_info {
-    ($message:expr) => (
-        Logger::log("Temp", Verbosity::Info, $message)
-    );
-    ($cat:expr, $($arg:tt)*) => (
-        Logger::log($cat, Verbosity::Info, &format!($($arg)*))
+macro_rules! warning {
+    ($($arg:tt)*) => (
+        crate::Logger::log(Verbosity::Warning, &format!($($arg)*))
     );
 }
 
 #[macro_export]
-macro_rules! log_warning {
-    ($message:expr) => (
-        Logger::log("Temp", Verbosity::Warning, $message)
-    );
-    ($cat:expr, $($arg:tt)*) => (
-        Logger::log($cat, Verbosity::Warning, &format!($($arg)*))
-    );
-}
-
-#[macro_export]
-macro_rules! log_error {
-    ($message:expr) => (
-        Logger::log("Temp", Verbosity::Error, $message)
-    );
-    ($cat:expr, $($arg:tt)*) => (
-        Logger::log($cat, Verbosity::Error, &format!($($arg)*))
+macro_rules! error {
+    ($($arg:tt)*) => (
+        crate::Logger::log(Verbosity::Error, &format!($($arg)*))
     );
 }
