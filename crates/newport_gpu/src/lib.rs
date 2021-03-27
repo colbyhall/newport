@@ -27,7 +27,7 @@
 pub mod vk;
 
 #[cfg(feature = "vulkan")]
-pub use vk::alias::*;
+pub use vk::*;
 
 use newport_asset::AssetManager;
 use newport_engine::*;
@@ -110,4 +110,23 @@ impl DeviceBuilder {
         self.window = Some(window);
         self
     }
+}
+
+// Type of memory allocations that buffers or textures can be allocated from
+pub enum Memory_Type {
+    HostVisible, // Able to be uploaded to by mapping memory. Slower to access. Faster to write to
+    DeiceLocal,  // Able to be uploaded to by using commands. Faster to access. Slower to write to
+}
+
+pub enum Format {
+    Undefined,
+    
+    RGB_U8,
+    RGB_U8_SRGB,
+    RGBA_U8,
+    RGBA_U8_SRGB,
+    
+    RGBA_F16,
+
+    BGR_U8_SRGB,    
 }

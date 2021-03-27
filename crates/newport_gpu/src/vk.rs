@@ -13,12 +13,12 @@ const ENABLED_LAYER_NAMES: [*const i8; 1] = [
     b"VK_LAYER_KHRONOS_validation\0".as_ptr() as *const i8
 ];
 
-pub struct VulkanInstance {
+pub struct Instance {
     entry:    ash::Entry, // We need to keep this around for post_init
     instance: ash::Instance,
 }
 
-impl GenericInstance for VulkanInstance {
+impl GenericInstance for Instance {
     fn new() -> Result<Self, InstanceCreateError> {
         let entry = unsafe{ 
             let entry = ash::Entry::new();
@@ -66,7 +66,7 @@ impl GenericInstance for VulkanInstance {
         })
     }
 
-    type Device = VulkanDevice;
+    type Device = Device;
     fn new_device(&self, builder: DeviceBuilder) -> Result<Self::Device, DeviceCreateError> {
         // Find a physical device based off of some parameters
         let physical_device;
@@ -188,7 +188,7 @@ impl GenericInstance for VulkanInstance {
             }
         }
 
-        return Ok(VulkanDevice{
+        return Ok(Device{
             logical:  logical_device,
             physical: physical_device,
 
@@ -203,8 +203,16 @@ impl GenericInstance for VulkanInstance {
     }
 }
 
+struct Swapchain {
+    handle: khr::Swapchain,
+    extent: vk::Extent2D,
+    format: Format,
+
+    backbuffers: Vec<Texture>,
+}
+
 #[allow(dead_code)]
-pub struct VulkanDevice {
+pub struct Device {
     logical:  ash::Device,
     physical: vk::PhysicalDevice,
 
@@ -216,13 +224,28 @@ pub struct VulkanDevice {
 
     #[cfg(target_os = "windows")]
     surface: Option<vk::SurfaceKHR>,
+
+    swapchain: Option<Swapchain>,
 }
 
-impl GenericDevice for VulkanDevice {
+impl Device {
+    fn recreate_swapchain(&mut self) {
+        if self.swapchain.is_some() {
+            let swapchain = self.swapchain.unwrap();
+
+        }
+    }
+}
+
+impl GenericDevice for Device {
 
 }
 
-pub mod alias {
-    pub use super::VulkanInstance as Instance;
-    pub use super::VulkanDevice as Device;
+#[derive(Default)]
+pub struct Texture {
+    image:   vk::Image,
+    view:    vk::ImageView,
+    sampler: vk::Sampler,
+
+    memory:  vk::DeviceMemory,
 }
