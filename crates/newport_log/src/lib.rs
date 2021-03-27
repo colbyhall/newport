@@ -1,12 +1,8 @@
 use newport_os::time::SystemDate;
 use newport_engine::*;
 
-use std::any::Any;
 use std::sync::Mutex;
-use std::fs::{
-    File,
-    create_dir,
-};
+use std::fs::{ File, create_dir, };
 use std::path::{ Path, PathBuf };
 use std::io::Write;
 use std::ptr::null_mut;
@@ -54,8 +50,6 @@ impl ModuleCompileTime for Logger {
 }
 
 impl ModuleRuntime for Logger {
-    fn as_any(&self) -> &dyn Any{ self }
-
     fn post_init(&mut self, _: &mut Engine) {
         unsafe { LOGGER = self };
     }

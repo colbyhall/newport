@@ -1,13 +1,11 @@
 #![feature(trait_alias)]
 
 use newport_core::containers::{ Box, HashMap };
-// use newport_core::AsAny;
 use newport_os::window::{ WindowBuilder, Window, WindowEvent };
 
 use std::any::TypeId;
 use std::sync::atomic::{ AtomicBool, Ordering };
-
-pub use std::any::Any;
+use std::any::Any;
 
 static mut ENGINE: Option<Engine> = None;
 
@@ -143,14 +141,7 @@ impl Engine {
         let id = TypeId::of::<T>();
 
         let module = self.modules.get_mut(&id)?;
-        
-        // UNSAFE: I'm lazy and I don't want to implement all of these manually 
-        unsafe{
-            let module = module.as_any() as *const dyn Any;
-            let module = module as *mut dyn Any;
-            let module = &mut *module;
-            module.downcast_mut::<T>()
-        }
+        module.as_any_mut().downcast_mut::<T>()
     }
 
     /// Returns the name of the engine runnable
@@ -264,14 +255,26 @@ pub trait ModuleCompileTime: Sized + 'static {
 }
 
 /// Runtime element of [`Module`]s
-pub trait ModuleRuntime: Any {
+pub trait ModuleRuntime: AsAny {
     /// Called after all modules are initialized
     fn post_init(&mut self, _: &mut Engine) { }
 
     /// Called after post initialization but before main loop
     fn on_startup(&'static mut self) { }
-
-    fn as_any(&self) -> &dyn Any;
 }
 /// Combined Module trait
 pub trait Module = ModuleRuntime + ModuleCompileTime;
+
+pub trait AsAny {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<T: ModuleRuntime + 'static> AsAny for T {
+    fn as_any(&self) -> &dyn Any{
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any{
+        self
+    }
+}

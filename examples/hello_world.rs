@@ -53,12 +53,11 @@ impl ModuleRuntime for HelloWorld {
         let test: AssetRef<Test> = asset_manager.find("assets/test.test").unwrap();
         info!("[HelloWorld] {:?}", test);
     }
-
-    fn as_any(&self) -> &dyn Any{ self }
 }
 
 fn main() {
     let builder = EngineBuilder::new()
-        .module::<HelloWorld>();
+        .module::<HelloWorld>()
+        .name("Hello World".to_string());
     Engine::run(builder).unwrap();
 }

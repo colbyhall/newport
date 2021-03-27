@@ -191,8 +191,6 @@ impl ModuleCompileTime for VulkanGPU {
 }
 
 impl ModuleRuntime for VulkanGPU {
-    fn as_any(&self) -> &dyn Any{ self }
-
     fn post_init(&mut self, _engine: &mut Engine) {
     }
 }
