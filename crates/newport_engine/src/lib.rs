@@ -42,7 +42,7 @@ impl Engine {
         let mut modules = HashMap::with_capacity(builder.entries.len());
         for it in builder.entries {
             if modules.contains_key(&it.id) { continue; }
-            modules.insert(it.id, (it.spawn)().unwrap());
+            modules.insert(it.id, (it.spawn)());
         }
 
         // Grab the project name or use a default
@@ -157,7 +157,7 @@ impl Engine {
 
 struct EngineBuilderEntry {
     id:     TypeId,
-    spawn:  fn() -> Result<Box<dyn ModuleRuntime>, String>,
+    spawn:  fn() -> Box<dyn ModuleRuntime>,
 }
 
 /// Structure used to define engine structure and execution
@@ -192,9 +192,8 @@ impl EngineBuilder {
     ///     .module::<Test>();
     /// ```
     pub fn module<T: Module>(mut self) -> Self {
-        fn spawn<T: Module>() -> Result<Box<dyn ModuleRuntime>, String> {
-            let t = T::new()?;
-            Ok(Box::new(t))
+        fn spawn<T: Module>() -> Box<dyn ModuleRuntime> {
+            Box::new(T::new())
         }
         
         // Add dependencies to the entries list. There will be duplicates
@@ -242,7 +241,7 @@ pub trait ModuleCompileTime: Sized + 'static {
     /// # Notes
     /// 
     /// * [`Engine`] is not available during this function
-    fn new() -> Result<Self, String>;
+    fn new() -> Self;
 
     /// Takes a builder to append on other modules or elements
     /// 

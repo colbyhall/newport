@@ -26,23 +26,74 @@
 
 pub mod vk;
 
-#[cfg(target_os = "windows")]
-pub use vk::VulkanGPU as SelectedGPU;
+#[cfg(feature = "vulkan")]
+pub use vk::alias::*;
 
-pub trait GPU {
-    fn new_device(&self, builder: DeviceBuilder) -> Result<Box<dyn Device>, DeviceCreateError>;
+use newport_asset::AssetManager;
+use newport_engine::*;
+use newport_os::window::WindowHandle;
+
+pub struct GPU {
+    instance: Instance,
+    device:   Option<Device>,
 }
 
+impl GPU {
+    pub fn instance(&self) -> &Instance {
+        &self.instance
+    }
+
+    pub fn device(&self) -> Option<&Device> {
+        self.device.as_ref()
+    }
+}
+
+impl ModuleCompileTime for GPU {
+    fn new() -> Self {
+        let instance = Instance::new().unwrap();
+        Self{
+            instance: instance,
+            device:   None,
+        }
+    }
+
+    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+        builder
+            .module::<AssetManager>()
+    }
+}
+
+impl ModuleRuntime for GPU {
+    fn post_init(&mut self, engine: &mut Engine) {
+        let builder = DeviceBuilder::new()
+            .present_to(engine.window().handle());
+        self.device = self.instance().new_device(builder).ok();
+    }
+}
+
+#[derive(Debug)]
+pub enum InstanceCreateError {
+    FailedToLoadLibrary,
+    IncompatibleDriver,
+    Unknown,
+}
+
+pub trait GenericInstance: Sized + 'static {
+    fn new() -> Result<Self, InstanceCreateError>;
+    
+    type Device: GenericDevice;
+    fn new_device(&self, builder: DeviceBuilder) -> Result<Self::Device, DeviceCreateError>;
+}
+
+#[derive(Debug)]
 pub enum DeviceCreateError {
     Unknown,
     NoValidPhysicalDevice,
 }
 
-pub trait Device {
-    
-}
+pub trait GenericDevice {
 
-use newport_os::window::WindowHandle;
+}
 
 pub struct DeviceBuilder {
     window: Option<WindowHandle>,

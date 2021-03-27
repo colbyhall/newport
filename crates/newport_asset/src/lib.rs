@@ -346,12 +346,12 @@ impl AssetManager {
 }
 
 impl ModuleCompileTime for AssetManager {
-    fn new() -> Result<Self, String> {
-        Ok(AssetManager{
+    fn new() -> Self {
+        AssetManager{
             variants:    Vec::new(),
             collections: Vec::new(),
             assets:      RwLock::new(Vec::new()),
-        })
+        }
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {

@@ -13,14 +13,9 @@ pub struct Logger {
 }
 
 impl ModuleCompileTime for Logger {
-    fn new() -> Result<Self, String> {
+    fn new() -> Self {
         if !Path::new(LOGS_PATH).exists() {
-            let result = create_dir(LOGS_PATH);
-            if result.is_err() {
-                let err = result.err().unwrap();
-                let err = format!("Failed to create directory at \"{}\" due to {:?}", LOGS_PATH, err.kind());
-                return Err(err);
-            }
+            create_dir(LOGS_PATH).unwrap();
         }
 
         let date = SystemDate::now();
@@ -37,15 +32,9 @@ impl ModuleCompileTime for Logger {
             )
         );
 
-        let file = File::create(&path);
-        if file.is_err() { 
-            let err = file.err().unwrap();
-            let err = format!("Failed to create logger file at {:?} due to {:?}", path, err.kind());
-            return Err(err);
-         }
-        let file = file.unwrap();
+        let file = File::create(&path).unwrap();
         
-        return Ok(Logger { file: Mutex::new(file) });
+        return Logger { file: Mutex::new(file) };
     }
 }
 

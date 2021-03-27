@@ -1,12 +1,10 @@
+use crate::DeviceBuilder;
 use crate::*;
-
-use newport_engine::*;
-use newport_asset::AssetManager;
 
 #[cfg(target_os = "windows")]
 use newport_os::win32;
 
-use ash::{ vk, Entry, Instance, extensions::khr };
+use ash::{ vk, extensions::khr };
 use ash::version::{ EntryV1_0, InstanceV1_0, InstanceV1_1, DeviceV1_0 };
 
 use std::ptr::null_mut;
@@ -15,13 +13,61 @@ const ENABLED_LAYER_NAMES: [*const i8; 1] = [
     b"VK_LAYER_KHRONOS_validation\0".as_ptr() as *const i8
 ];
 
-pub struct VulkanGPU {
-    entry:    Entry, // We need to keep this around for post_init
-    instance: Instance,
+pub struct VulkanInstance {
+    entry:    ash::Entry, // We need to keep this around for post_init
+    instance: ash::Instance,
 }
 
-impl GPU for VulkanGPU {
-    fn new_device(&self, builder: DeviceBuilder) -> Result<Box<dyn Device>, DeviceCreateError> {
+impl GenericInstance for VulkanInstance {
+    fn new() -> Result<Self, InstanceCreateError> {
+        let entry = unsafe{ 
+            let entry = ash::Entry::new();
+            if entry.is_err() {
+                return Err(InstanceCreateError::FailedToLoadLibrary);
+            }
+            entry.unwrap()
+        };
+
+        let app_info = vk::ApplicationInfo{
+            api_version: vk::make_version(1, 0, 0),
+            ..Default::default()
+        };
+
+        #[cfg(target_os = "windows")]
+        let enabled_extension_names = [
+            b"VK_KHR_surface\0".as_ptr() as *const i8,
+            b"VK_KHR_win32_surface\0".as_ptr() as *const i8
+        ];
+
+        let create_info = vk::InstanceCreateInfo::builder()
+            .application_info(&app_info)
+            .enabled_extension_names(&enabled_extension_names)
+            .enabled_layer_names(&ENABLED_LAYER_NAMES);
+        let instance = unsafe{ 
+            let instance = entry.create_instance(&create_info, None);
+            if instance.is_err() {
+                let err = instance.err().unwrap();
+                match err {
+                    ash::InstanceError::LoadError(_err) => return Err(InstanceCreateError::FailedToLoadLibrary),
+                    ash::InstanceError::VkError(err) => {
+                        match err {
+                            vk::Result::ERROR_INCOMPATIBLE_DRIVER => return Err(InstanceCreateError::IncompatibleDriver),
+                            _ => return Err(InstanceCreateError::Unknown),
+                        }
+                    }
+                }
+            }
+            instance.unwrap()
+        };
+
+        Ok(Self {
+            entry:    entry,
+            instance: instance,
+        })
+    }
+
+    type Device = VulkanDevice;
+    fn new_device(&self, builder: DeviceBuilder) -> Result<Self::Device, DeviceCreateError> {
         // Find a physical device based off of some parameters
         let physical_device;
         unsafe {
@@ -142,7 +188,7 @@ impl GPU for VulkanGPU {
             }
         }
 
-        return Ok(Box::new(VulkanDevice{
+        return Ok(VulkanDevice{
             logical:  logical_device,
             physical: physical_device,
 
@@ -153,48 +199,11 @@ impl GPU for VulkanGPU {
             surface_family_index:  surface_family_index,
 
             surface: surface
-        }));
+        });
     }
 }
 
-impl ModuleCompileTime for VulkanGPU {
-    fn new() -> Result<Self, String> {
-        let entry = unsafe{ Entry::new().unwrap() };
-
-        let app_info = vk::ApplicationInfo{
-            api_version: vk::make_version(1, 0, 0),
-            ..Default::default()
-        };
-
-        #[cfg(target_os = "windows")]
-        let enabled_extension_names = [
-            b"VK_KHR_surface\0".as_ptr() as *const i8,
-            b"VK_KHR_win32_surface\0".as_ptr() as *const i8
-        ];
-
-        let create_info = vk::InstanceCreateInfo::builder()
-            .application_info(&app_info)
-            .enabled_extension_names(&enabled_extension_names)
-            .enabled_layer_names(&ENABLED_LAYER_NAMES);
-        let instance = unsafe{ entry.create_instance(&create_info, None).unwrap() };
-
-        Ok(Self {
-            entry:    entry,
-            instance: instance,
-        })
-    }
-
-    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
-        builder
-            .module::<AssetManager>()
-    }
-}
-
-impl ModuleRuntime for VulkanGPU {
-    fn post_init(&mut self, _engine: &mut Engine) {
-    }
-}
-
+#[allow(dead_code)]
 pub struct VulkanDevice {
     logical:  ash::Device,
     physical: vk::PhysicalDevice,
@@ -209,6 +218,11 @@ pub struct VulkanDevice {
     surface: Option<vk::SurfaceKHR>,
 }
 
-impl Device for VulkanDevice {
+impl GenericDevice for VulkanDevice {
 
+}
+
+pub mod alias {
+    pub use super::VulkanInstance as Instance;
+    pub use super::VulkanDevice as Device;
 }

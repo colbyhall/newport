@@ -25,12 +25,12 @@ impl asset::Asset for Test {
 struct HelloWorld;
 
 impl engine::ModuleCompileTime for HelloWorld {
-    fn new() -> Result<Self, String> {
-        Ok(HelloWorld)
+    fn new() -> Self {
+        HelloWorld
     }
 
     fn depends_on(builder: engine::EngineBuilder) -> engine::EngineBuilder {
-        builder.module::<gpu::SelectedGPU>()
+        builder.module::<gpu::GPU>()
     }
 }
 
