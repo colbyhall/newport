@@ -9,9 +9,7 @@ pub mod engine {
 }
 
 // Global thread safe logger
-pub mod log {
-    pub use newport_log::*;
-}
+pub use newport_log::*;
 
 // Completely thread safe asset manager 
 pub mod asset {

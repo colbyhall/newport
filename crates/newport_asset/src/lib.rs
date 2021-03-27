@@ -4,7 +4,7 @@
 //! handles defining assets, loading assets, ref counting assets, and 
 //! serialization.
 
-use newport_core::containers::{ Vec, Box, HashSet };
+use newport_core::containers::{ Vec, Box };
 use newport_engine::*;
 use newport_log::*;
 
@@ -18,7 +18,11 @@ use std::ops::{ Deref, DerefMut };
 use std::fmt;
 
 /// Trait alis for what an `Asset` can be
-pub trait Asset = Any;
+pub trait Asset: Sized + 'static {
+    fn load(path: &Path) -> Result<Self, LoadError>;
+    fn unload(asset: Self);
+    fn extension() -> &'static str;
+}
 
 pub use std::path::{ Path, PathBuf };
 
@@ -28,25 +32,24 @@ pub use ron::ser::to_string;
 /// Enum for asset load errors
 #[derive(Debug)]
 pub enum LoadError {
-    FileNotFound
+    FileNotFound,
+    ParseError,
+    DataError
 }
-
-pub type LoadAsset = fn(&Path) -> Result<Box<dyn Asset>, LoadError>;
-pub type UnloadAsset = fn(Box<dyn Asset>);
 
 struct VariantRegister {
     type_id:    TypeId,
-    extensions: HashSet<String>,
+    extension:  &'static str,
     
-    load:     LoadAsset,
-    unload:   UnloadAsset
+    load:     fn(&Path) -> Result<Box<dyn Any>, LoadError>,
+    unload:   fn(Box<dyn Any>)
 }
 
 impl fmt::Debug for VariantRegister {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("VariantRegister")
             .field("type", &self.type_id)
-            .field("extensions", &self.extensions)
+            .field("extension", &self.extension)
             .finish()
     }
 }
@@ -59,7 +62,7 @@ struct AssetEntry {
 
     // Arc which is used for asset ref counting. As long as there is more 
     // than 1 reference the asset will be loaded
-    asset: Arc<RwLock<Option<Box<dyn Asset>>>>,
+    asset: Arc<RwLock<Option<Box<dyn Any>>>>,
 }
 
 /// A thread-safe reference-counting `Asset` reference.
@@ -72,14 +75,14 @@ struct AssetEntry {
 ///
 /// * `AssetWeak<T: Asset>` for asset weak ptrs
 #[derive(Clone)]
-pub struct AssetRef<'a, T: Asset + Sized> {
-    arc:     Arc<RwLock<Option<Box<dyn Asset>>>>,
+pub struct AssetRef<'a, T: 'static> {
+    arc:     Arc<RwLock<Option<Box<dyn Any>>>>,
     phantom: PhantomData<T>,
     variant: usize, // Index into AssetManager::variants
     manager: &'a AssetManager, 
 }
 
-impl<'a, T: Asset + Sized> AssetRef<'a, T> {
+impl<'a, T: 'static> AssetRef<'a, T> {
     /// Returns an `AssetWriteGuard<T>` for RAII exclusive write access
     ///
     /// # Examples
@@ -133,7 +136,7 @@ impl<'a, T: Asset + Sized> AssetRef<'a, T> {
     }
 }
 
-impl<'a, T: Asset + Sized + fmt::Debug> fmt::Debug for AssetRef<'a, T> {
+impl<'a, T:'static + fmt::Debug> fmt::Debug for AssetRef<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let read_lock = self.read();
 
@@ -145,7 +148,7 @@ impl<'a, T: Asset + Sized + fmt::Debug> fmt::Debug for AssetRef<'a, T> {
     }
 }
 
-impl<'a, T: Asset + Sized> Drop for AssetRef<'a, T> {
+impl<'a, T:'static> Drop for AssetRef<'a, T> {
     fn drop(&mut self) {
         // If we're the last unload the asset
         if self.strong_count() == 1 {
@@ -159,12 +162,12 @@ impl<'a, T: Asset + Sized> Drop for AssetRef<'a, T> {
 
 /// RAII structure used to release the exclusive write access of an `AssetRef` when dropped.
 /// This structure is created by the `write` method on `AssetRef`
-pub struct AssetWriteGuard<'a, T: Asset + Sized> {
-    lock:    RwLockWriteGuard<'a, Option<Box<dyn Asset>>>,
+pub struct AssetWriteGuard<'a, T: 'static> {
+    lock:    RwLockWriteGuard<'a, Option<Box<dyn Any>>>,
     phantom: PhantomData<T>
 }
 
-impl<'a, T: Asset + Sized> Deref for AssetWriteGuard<'a, T> {
+impl<'a, T: 'static> Deref for AssetWriteGuard<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -172,7 +175,7 @@ impl<'a, T: Asset + Sized> Deref for AssetWriteGuard<'a, T> {
     }
 }
 
-impl<'a, T: Asset + Sized> DerefMut for AssetWriteGuard<'a, T> {
+impl<'a, T: 'static> DerefMut for AssetWriteGuard<'a, T> {
     fn deref_mut(&mut self) -> &mut T {
         self.lock.as_mut().unwrap().downcast_mut::<T>().unwrap()
     }
@@ -180,12 +183,12 @@ impl<'a, T: Asset + Sized> DerefMut for AssetWriteGuard<'a, T> {
 
 /// RAII structure used to release the shared read access of an `AssetRef` when dropped.
 /// This structure is created by the `read` method on `AssetRef`
-pub struct AssetReadGuard<'a, T: Asset + Sized> {
-    lock:    RwLockReadGuard<'a, Option<Box<dyn Asset>>>,
+pub struct AssetReadGuard<'a, T: 'static> {
+    lock:    RwLockReadGuard<'a, Option<Box<dyn Any>>>,
     phantom: PhantomData<T>
 }
 
-impl<'a, T: Asset + Sized> Deref for AssetReadGuard<'a, T> {
+impl<'a, T: 'static> Deref for AssetReadGuard<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -237,7 +240,7 @@ impl AssetManager {
                     
                     // Find variant from extension
                     let v = variants.iter().enumerate()
-                        .find(|v| v.1.extensions.get(ext.to_str().unwrap()).is_some());
+                        .find(|v| v.1.extension == ext.to_str().unwrap());
                     if v.is_none() { continue; }
                     let (v_index, _) = v.unwrap();
                     
@@ -296,17 +299,23 @@ impl AssetManager {
     }
 
     /// Adds a type variant to be used when discovering assets in [`AssetManager::discover`]
-    /// 
-    /// # Arguments
-    /// 
-    /// * `path` - A `PathBuf` to be added to collection entries
-    pub fn register_variant<'a, T: 'static>(&'a mut self, extensions: HashSet<String>, load: LoadAsset, unload: UnloadAsset) -> &'a mut Self {
+    pub fn register_variant<'a, T: Asset>(&'a mut self) -> &'a mut Self {
+        fn load<T: Asset>(path: &Path) -> Result<Box<dyn Any>, LoadError> {
+            let t = T::load(path)?;
+            Ok(Box::new(t))
+        }
+
+        fn unload<T: Asset>(asset: Box<dyn Any>) {
+            let t = asset.downcast::<T>().unwrap();
+            T::unload(*t);
+        }
+
         self.variants.push(VariantRegister{
             type_id:    TypeId::of::<T>(),
-            extensions: extensions,
 
-            load:   load,
-            unload: unload,
+            extension:  T::extension(),
+            load:       load::<T>,
+            unload:     unload::<T>,
         });
         self
     }
@@ -355,5 +364,4 @@ impl ModuleCompileTime for AssetManager {
     }
 }
 
-impl ModuleRuntime for AssetManager {
-}
+impl ModuleRuntime for AssetManager { }
