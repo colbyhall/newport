@@ -1,6 +1,8 @@
 use newport::*;
+use newport::gpu::*;
 
 use std::fs::read_to_string;
+use std::sync::Arc;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -22,11 +24,17 @@ impl asset::Asset for Test {
     fn extension() -> &'static str { "test" }
 }
 
-struct HelloWorld;
+struct HelloWorld {
+    instance: Arc<Instance>,
+    device:   Option<Arc<Device>>,
+}
 
 impl engine::ModuleCompileTime for HelloWorld {
     fn new() -> Self {
-        HelloWorld
+        Self{
+            instance: Instance::new().unwrap(),
+            device:   None,
+        }
     }
 
     fn depends_on(builder: engine::EngineBuilder) -> engine::EngineBuilder {
@@ -41,6 +49,8 @@ impl engine::ModuleRuntime for HelloWorld {
         asset_manager
             .register_collection(asset::PathBuf::from("assets/"))
             .register_variant::<Test>();
+
+        self.device = Some(Device::new(self.instance.clone(), Some(engine.window().handle())).unwrap());
     }
 
     fn on_startup(&mut self) {
@@ -49,6 +59,13 @@ impl engine::ModuleRuntime for HelloWorld {
         let asset_manager = engine.module::<asset::AssetManager>().unwrap();
         let test: asset::AssetRef<Test> = asset_manager.find("assets/test.test").unwrap();
         info!("[HelloWorld] {:?}", test);
+    }
+
+    fn on_tick(&self, _dt: f32) {
+        let device = self.device.as_ref().unwrap();
+
+        let (_, receipt) = device.acquire_backbuffer();
+        device.display(&[&receipt]);
     }
 }
 

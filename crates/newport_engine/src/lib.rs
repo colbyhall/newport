@@ -6,6 +6,7 @@ use newport_os::window::{ WindowBuilder, Window, WindowEvent };
 use std::any::TypeId;
 use std::sync::atomic::{ AtomicBool, Ordering };
 use std::any::Any;
+use std::time::Instant;
 
 static mut ENGINE: Option<Engine> = None;
 
@@ -80,8 +81,25 @@ impl Engine {
 
             engine.window.set_visible(true);
 
+            let mut _fps = 0;
+            let mut frame_count = 0;
+            let mut time = 0.0;
+
             // Game loop
+            let mut last_frame_time = Instant::now();
             'run: while engine.is_running.load(Ordering::Relaxed) {
+                let now = Instant::now();
+                let dt = now.duration_since(last_frame_time).as_secs_f32();
+                last_frame_time = now;
+
+                time += dt;
+                if time >= 1.0 {
+                    time = 0.0;
+                    _fps = frame_count;
+                    frame_count = 0;
+                }
+                frame_count += 1;
+
                 for event in engine.window.poll_events() {
                     match event {
                         WindowEvent::Closed => {
@@ -90,6 +108,10 @@ impl Engine {
                         }
                         _ => { }
                     }
+                }
+
+                for (_, v) in ENGINE.as_ref().unwrap().modules.iter() {
+                    v.on_tick(dt);
                 }
             }
         }
@@ -260,6 +282,8 @@ pub trait ModuleRuntime: AsAny {
 
     /// Called after post initialization but before main loop
     fn on_startup(&'static mut self) { }
+
+    fn on_tick(&self, _dt: f32) { }
 }
 /// Combined Module trait
 pub trait Module = ModuleRuntime + ModuleCompileTime;

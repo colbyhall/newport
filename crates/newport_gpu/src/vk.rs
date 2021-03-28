@@ -13,8 +13,10 @@ use ash::{ vk, extensions::khr };
 use ash::version::{ EntryV1_0, InstanceV1_0, InstanceV1_1, DeviceV1_0 };
 
 use std::ptr::{ null_mut, copy_nonoverlapping };
-use std::slice::from_ref;
+use std::slice::{ from_ref, from_raw_parts };
 use std::sync::{ RwLock, Mutex };
+use std::ffi::CStr;
+use std::mem::size_of;
 
 const ENABLED_LAYER_NAMES: [*const i8; 1] = [
     b"VK_LAYER_KHRONOS_validation\0".as_ptr() as *const i8
@@ -80,6 +82,7 @@ struct Swapchain {
     format: Format,
 
     backbuffers: Vec<Arc<Texture>>,
+    current: Option<usize>,
 }
 
 impl Swapchain {
@@ -97,7 +100,7 @@ impl Swapchain {
 
             let mut selected_format = None;
             for it in formats.iter() {
-                if it.format == vk::Format::B8G8R8A8_SINT && it.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR {
+                if it.format == vk::Format::B8G8R8A8_SRGB && it.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR {
                     selected_format = Some(it);
                     break;
                 }
@@ -173,6 +176,7 @@ impl Swapchain {
                 format: Format::BGR_U8_SRGB,
                 
                 backbuffers: backbuffers,
+                current: None,
             }
         }
     }
@@ -187,6 +191,42 @@ impl Drop for Swapchain {
     }
 }
 
+#[must_use = "this `Receipt` must hold a lifetime until end of scope"]
+pub struct Receipt {
+    owner: Arc<Device>,
+
+    semaphore: vk::Semaphore,
+    fence:     vk::Fence,
+}
+
+impl Receipt {
+    fn new(owner: Arc<Device>) -> Self {
+        let semaphore_create_info = vk::SemaphoreCreateInfo::default();
+        let semaphore = unsafe{ owner.logical.create_semaphore(&semaphore_create_info, None).unwrap() };
+
+        let fence_create_info = vk::FenceCreateInfo::builder();
+        let fence = unsafe{ owner.logical.create_fence(&fence_create_info, None).unwrap() };
+        Self{
+            owner:     owner,
+            semaphore: semaphore,
+            fence:     fence
+        }
+    }
+}
+
+impl GenericReceipt for Receipt { }
+
+impl Drop for Receipt {
+    fn drop(&mut self) {
+        unsafe{
+            self.owner.logical.wait_for_fences(&[self.fence], true, 1 << 63).unwrap();
+            self.owner.logical.destroy_fence(self.fence, None);
+            self.owner.logical.destroy_semaphore(self.semaphore, None);
+        }
+    }
+}
+
+#[derive(Default, Copy, Clone)]
 struct DeviceThreadInfo {
     graphics_pool: vk::CommandPool,
     compute_pool:  vk::CommandPool,
@@ -216,8 +256,8 @@ pub struct Device {
     #[cfg(target_os = "windows")]
     surface: Option<vk::SurfaceKHR>,
 
-    swapchain: Mutex<Option<Swapchain>>,
-    thread_info: RwLock<HashMap<ThreadId, DeviceThreadInfo>>,
+    swapchain:   Mutex<Option<Swapchain>>,
+    thread_info: Mutex<HashMap<ThreadId, DeviceThreadInfo>>,
 }
 
 impl Device {
@@ -402,8 +442,8 @@ impl GenericDevice for Device {
 
             surface:   surface,
             
-            swapchain: Mutex::new(None),
-            thread_info: RwLock::new(HashMap::new()),
+            swapchain:   Mutex::new(None),
+            thread_info: Mutex::new(HashMap::new()),
         });
 
         {
@@ -412,6 +452,85 @@ impl GenericDevice for Device {
         }
 
         Ok(result)
+    }
+
+    fn acquire_backbuffer(&self) -> (Arc<Texture>, Receipt) {
+        assert_eq!(self.surface.is_some(), true);
+
+        let mut swapchain = self.swapchain.lock().unwrap();
+
+        let receipt = Receipt::new(swapchain.as_ref().unwrap().backbuffers[0].owner.clone());
+
+        let swapchain_khr = khr::Swapchain::new(&self.owner.instance, &self.logical);
+        let mut result = unsafe{ swapchain_khr.acquire_next_image(swapchain.as_ref().unwrap().handle, 1 << 63, receipt.semaphore, vk::Fence::default()) };
+        if result.is_err() {
+            *swapchain = Some(Swapchain::new(swapchain.as_ref().unwrap().backbuffers[0].owner.clone()));
+            result = unsafe{ swapchain_khr.acquire_next_image(swapchain.as_ref().unwrap().handle, 1 << 63, receipt.semaphore, vk::Fence::default()) };
+        }
+        let (index, _) = result.unwrap();
+
+        swapchain.as_mut().unwrap().current = Some(index as usize);
+
+        (swapchain.as_ref().unwrap().backbuffers[index as usize].clone(), receipt)
+    }
+
+    fn submit_graphics(&self, contexts: &[&GraphicsContext], wait_on: &[&Receipt]) -> Receipt {
+        let mut buffers = Vec::with_capacity(contexts.len());
+        for it in contexts.iter() {
+            buffers.push(it.command_buffer);
+        }
+
+        let receipt = Receipt::new(contexts[0].owner.clone());
+
+        let mut submit_info = vk::SubmitInfo::builder()
+            .command_buffers(&buffers[..])
+            .signal_semaphores(from_ref(&receipt.semaphore));
+        
+        let mut wait_semaphores = Vec::with_capacity(wait_on.len());
+        let mut wait_stages = Vec::with_capacity(wait_on.len());
+        if wait_on.len() > 0 {
+
+            for it in wait_on.iter() {
+                wait_semaphores.push(it.semaphore);
+                wait_stages.push(vk::PipelineStageFlags::BOTTOM_OF_PIPE);
+            }
+
+            submit_info = submit_info
+                .wait_semaphores(&wait_semaphores[..])
+                .wait_dst_stage_mask(&wait_stages[..]);
+        }
+
+        unsafe{ self.logical.queue_submit(self.graphics_queue.unwrap(), from_ref(&submit_info), receipt.fence).unwrap() };
+        
+        return receipt;
+    }
+
+    fn display(&self, wait_on: &[&Receipt]) {
+        assert_eq!(self.surface.is_some(), true);
+
+        let mut swapchain = self.swapchain.lock().unwrap();
+        let swapchain_khr = khr::Swapchain::new(&self.owner.instance, &self.logical);
+
+        let index = swapchain.as_ref().unwrap().current.expect("Backbuffer was not acquired") as u32;
+
+        let mut present_info = vk::PresentInfoKHR::builder()
+            .swapchains(from_ref(&swapchain.as_ref().unwrap().handle))
+            .image_indices(from_ref(&index));
+        
+        let mut wait_semaphores = Vec::with_capacity(wait_on.len());
+        if wait_on.len() > 0 {
+            for it in wait_on.iter() {
+                wait_semaphores.push(it.semaphore);
+            }
+
+            present_info = present_info
+                .wait_semaphores(&wait_semaphores[..]);
+        }
+
+        let result = unsafe{ swapchain_khr.queue_present(self.presentation_queue.unwrap(), &present_info) };
+        if result.is_err() {
+            *swapchain = Some(Swapchain::new(swapchain.as_ref().unwrap().backbuffers[0].owner.clone()));
+        }
     }
 }
 
@@ -660,5 +779,517 @@ impl GenericRenderPass for RenderPass {
                 depth:  depth,
             }))
         }
+    }
+}
+
+impl Drop for RenderPass {
+    fn drop(&mut self) {
+        todo!()
+    }
+}
+
+fn shader_variant_to_shader_stage(variant: ShaderVariant) -> vk::ShaderStageFlags {
+    match variant {
+        ShaderVariant::Vertex => vk::ShaderStageFlags::VERTEX,
+        ShaderVariant::Pixel => vk::ShaderStageFlags::FRAGMENT,
+    }
+}
+
+pub struct Shader {
+    owner:   Arc<Device>,
+
+    variant: ShaderVariant,
+    module:  vk::ShaderModule,
+}
+
+impl GenericShader for Shader {
+    fn new(owner: Arc<Device>, contents: Vec<u8>, variant: ShaderVariant) -> Result<Arc<Shader>, ()> {
+        let contents = unsafe{ from_raw_parts(contents.as_ptr() as *const u32, contents.len() / 4) };
+
+        let create_info = vk::ShaderModuleCreateInfo::builder()
+            .code(contents);
+
+        let shader = unsafe{ owner.logical.create_shader_module(&create_info, None) };
+        if shader.is_err() {
+            return Err(());
+        }
+        let shader = shader.unwrap();
+
+        Ok(Arc::new(Shader{
+            owner: owner,
+
+            variant: variant,
+            module:  shader,
+        }))
+    }
+}
+
+impl Drop for Shader {
+    fn drop(&mut self) {
+        todo!();
+    }
+}
+
+pub struct Pipeline {
+    owner: Arc<Device>,
+
+    handle: vk::Pipeline,
+    layout: vk::PipelineLayout,
+
+    desc: PipelineDescription,
+}
+
+impl GenericPipeline for Pipeline {
+    fn new(owner: Arc<Device>, desc: PipelineDescription) -> Result<Arc<Pipeline>, ()> {
+        match desc {
+            PipelineDescription::Graphics(desc) => {
+                assert!(desc.shaders.len() > 0);
+
+                // Create all the shader staage info for pipeline
+                let mut shader_stages = Vec::with_capacity(desc.shaders.len());
+                for it in desc.shaders.iter() {
+                    let stage = shader_variant_to_shader_stage(it.variant);
+
+                    let stage_info = unsafe{ 
+                        vk::PipelineShaderStageCreateInfo::builder()
+                            .stage(stage)
+                            .module(it.module)
+                            .name(CStr::from_ptr(b"main\0".as_ptr() as *const i8))
+                    };
+                    
+                    shader_stages.push(stage_info.build());
+                }
+
+                let mut stride = 0;
+                for it in desc.vertex_attributes.iter() {
+                    stride += it.size();
+                }
+
+                // Setup the vertex attributes
+                let binding = vk::VertexInputBindingDescription::builder()
+                    .binding(0)
+                    .stride(stride as u32)
+                    .input_rate(vk::VertexInputRate::VERTEX);
+
+                let mut attributes = Vec::with_capacity(desc.vertex_attributes.len());
+                let mut offset = 0;
+                for (index, it) in desc.vertex_attributes.iter().enumerate() {
+                    let format = match it {
+                        VertexAttribute::Int32   => vk::Format::R32_SINT,
+                        VertexAttribute::Float32 => vk::Format::R32_SFLOAT,
+                        VertexAttribute::Vector2 => vk::Format::R32G32_SFLOAT,
+                        VertexAttribute::Vector3 => vk::Format::R32G32B32_SFLOAT,
+                        VertexAttribute::Vector4 => vk::Format::R32G32B32A32_SFLOAT,
+                        VertexAttribute::Color   => vk::Format::R32G32B32A32_SFLOAT,
+                    };
+
+                    let attr = vk::VertexInputAttributeDescription::builder()
+                        .binding(0)
+                        .location(index as u32)
+                        .offset(offset as u32)
+                        .format(format);
+
+                    offset += it.size();
+
+                    attributes.push(attr.build());
+                }
+
+                let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::builder()
+                    .vertex_binding_descriptions(from_ref(&binding))
+                    .vertex_attribute_descriptions(&attributes[..]);
+
+                let input_assembly_state = vk::PipelineInputAssemblyStateCreateInfo::builder()
+                    .topology(vk::PrimitiveTopology::TRIANGLE_LIST);
+
+                let viewport = vk::Viewport::builder()
+                    .width(100.0)
+                    .height(100.0)
+                    .max_depth(1.0);
+                let scissor = vk::Rect2D::builder()
+                    .extent(vk::Extent2D::builder()
+                        .width(100)
+                        .height(100)
+                        .build()
+                    );
+
+                let viewport_state = vk::PipelineViewportStateCreateInfo::builder()
+                    .viewports(from_ref(&viewport))
+                    .scissors(from_ref(&scissor));
+                
+                let polygon_mode = match desc.draw_mode {
+                    DrawMode::Fill  => vk::PolygonMode::FILL,
+                    DrawMode::Line  => vk::PolygonMode::LINE,
+                    DrawMode::Point => vk::PolygonMode::POINT,
+                };
+
+                let mut cull = vk::CullModeFlags::NONE;
+                if desc.cull_mode.contains(CullMode::FRONT) {
+                    cull |= vk::CullModeFlags::FRONT;
+                }
+                if desc.cull_mode.contains(CullMode::BACK) {
+                    cull |= vk::CullModeFlags::BACK;
+                }
+
+                // NOTE: Depth Testing goes around here somewhere
+                let rasterizer_state = vk::PipelineRasterizationStateCreateInfo::builder()
+                    .polygon_mode(polygon_mode)
+                    .cull_mode(cull)
+                    .front_face(vk::FrontFace::CLOCKWISE)
+                    .line_width(desc.line_width);
+
+                let multisample_state = vk::PipelineMultisampleStateCreateInfo::builder()
+                    .rasterization_samples(vk::SampleCountFlags::TYPE_1)
+                    .min_sample_shading(1.0);
+
+                // Setting up blending and converting data types
+                fn blend_factor(fc: BlendFactor) -> vk::BlendFactor {
+                    match fc {
+                        BlendFactor::Zero               => return vk::BlendFactor::ZERO,
+                        BlendFactor::One                => return vk::BlendFactor::ONE,
+                        BlendFactor::SrcColor           => return vk::BlendFactor::SRC_COLOR,
+                        BlendFactor::OneMinusSrcColor   => return vk::BlendFactor::ONE_MINUS_SRC_COLOR,
+                        BlendFactor::DstColor           => return vk::BlendFactor::DST_COLOR,
+                        BlendFactor::OneMinusDstColor   => return vk::BlendFactor::ONE_MINUS_DST_COLOR,
+                        BlendFactor::SrcAlpha           => return vk::BlendFactor::SRC_ALPHA,
+                        BlendFactor::OneMinusSrcAlpha   => return vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
+                    }
+                }
+
+                fn blend_op(a: BlendOp) -> vk::BlendOp{
+                    match a {
+                        BlendOp::Add              => vk::BlendOp::ADD,
+                        BlendOp::Subtract         => vk::BlendOp::SUBTRACT,
+                        BlendOp::ReverseSubtract  => vk::BlendOp::REVERSE_SUBTRACT,
+                        BlendOp::Min              => vk::BlendOp::MIN,
+                        BlendOp::Max              => vk::BlendOp::MAX,
+                    }
+                }
+
+                let mut color_write_mask = vk::ColorComponentFlags::default();
+                if desc.color_mask.contains(ColorMask::RED) {
+                    color_write_mask |= vk::ColorComponentFlags::R;
+                }
+                if desc.color_mask.contains(ColorMask::GREEN) {
+                    color_write_mask |= vk::ColorComponentFlags::G;
+                }
+                if desc.color_mask.contains(ColorMask::BLUE) {
+                    color_write_mask |= vk::ColorComponentFlags::B;
+                }
+                if desc.color_mask.contains(ColorMask::ALPHA) {
+                    color_write_mask |= vk::ColorComponentFlags::A;
+                }
+
+                let color_blend_attachment = vk::PipelineColorBlendAttachmentState::builder()
+                    .blend_enable(desc.blend_enabled)
+                    .src_color_blend_factor(blend_factor(desc.src_color_blend_factor))
+                    .dst_color_blend_factor(blend_factor(desc.dst_color_blend_factor))
+                    .color_blend_op(blend_op(desc.color_blend_op))
+                    .src_alpha_blend_factor(blend_factor(desc.src_alpha_blend_factor))
+                    .dst_alpha_blend_factor(blend_factor(desc.dst_alpha_blend_factor))
+                    .alpha_blend_op(blend_op(desc.alpha_blend_op))
+                    .color_write_mask(color_write_mask);
+
+                let color_blend_state = vk::PipelineColorBlendStateCreateInfo::builder()
+                    .logic_op(vk::LogicOp::COPY)
+                    .attachments(from_ref(&color_blend_attachment));
+                
+                let dynamic_states = [
+                    vk::DynamicState::VIEWPORT,
+                    vk::DynamicState::SCISSOR,
+                ];
+
+                let dynamic_state = vk::PipelineDynamicStateCreateInfo::builder()
+                    .dynamic_states(&dynamic_states);
+                
+                let mut pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder(); // TODO: Do bindless descriptor layout
+                
+                // assert(push_constant_size <= 128); // Min push contsant size
+                let range = vk::PushConstantRange::builder()
+                    .size(desc.push_constant_size as u32)
+                    .stage_flags(vk::ShaderStageFlags::ALL_GRAPHICS);
+
+                if desc.push_constant_size > 0 {
+                    pipeline_layout_info = pipeline_layout_info
+                        .push_constant_ranges(from_ref(&range));
+                }
+
+                let layout = unsafe{ owner.logical.create_pipeline_layout(&pipeline_layout_info, None) };
+                if layout.is_err() {
+                    return Err(());
+                }
+                let layout = layout.unwrap();
+
+                let create_info = vk::GraphicsPipelineCreateInfo::builder()
+                    .stages(&shader_stages[..])
+                    .vertex_input_state(&vertex_input_state)
+                    .input_assembly_state(&input_assembly_state)
+                    .viewport_state(&viewport_state)
+                    .rasterization_state(&rasterizer_state)
+                    .multisample_state(&multisample_state)
+                    .color_blend_state(&color_blend_state)
+                    .dynamic_state(&dynamic_state)
+                    .layout(layout)
+                    .render_pass(desc.render_pass.handle)
+                    .base_pipeline_index(-1);
+
+                let handle = unsafe{ owner.logical.create_graphics_pipelines(vk::PipelineCache::default(), from_ref(&create_info), None) };
+                if handle.is_err() {
+                    return Err(());
+                }
+                let handle = handle.unwrap();
+
+                Ok(Arc::new(Pipeline {
+                    owner: owner,
+                    
+                    handle: handle[0],
+                    layout: layout,
+
+                    desc: PipelineDescription::Graphics(desc),
+                }))
+            }
+        }
+    }
+}
+
+pub struct GraphicsContext<'a> {
+    owner: Arc<Device>,
+
+    command_buffer: vk::CommandBuffer,
+    framebuffers:   Vec<vk::Framebuffer>,
+
+    pipelines:   Vec<Arc<Pipeline>>,
+    attachments: Vec<Arc<Texture>>,
+
+    current_render_pass: Option<&'a Arc<RenderPass>>,
+    current_scissor: Option<Rect>
+}
+
+fn layout_to_image_layout(layout: Layout) -> vk::ImageLayout {
+    match layout {
+        Layout::Undefined       => vk::ImageLayout::UNDEFINED,
+        Layout::General         => vk::ImageLayout::GENERAL,
+        Layout::ColorAttachment => vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+        Layout::DepthAttachment => vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        Layout::TransferSrc     => vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+        Layout::TransferDst     => vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        Layout::ShaderReadOnly  => vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        Layout::Present         => vk::ImageLayout::PRESENT_SRC_KHR,
+    }
+}
+
+impl<'a> GenericContext for GraphicsContext<'a> {
+    fn begin(&mut self) {
+        unsafe{ self.owner.logical.reset_command_buffer(self.command_buffer, vk::CommandBufferResetFlags::default()).unwrap() };
+        
+        let begin_info = vk::CommandBufferBeginInfo::builder()
+            .flags(vk::CommandBufferUsageFlags::SIMULTANEOUS_USE);
+
+        unsafe{ self.owner.logical.begin_command_buffer(self.command_buffer, &begin_info).unwrap() };
+    }
+
+    fn end(&mut self) {
+        unsafe{ self.owner.logical.end_command_buffer(self.command_buffer).unwrap() };
+    }
+
+    fn copy_buffer_to_texture(&mut self, dst: Arc<Texture>, _src: Arc<Buffer>) {
+        let subresource = vk::ImageSubresourceLayers::builder()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .layer_count(1);
+        
+        let extent = vk::Extent3D::builder()
+            .width(dst.width)
+            .height(dst.height)
+            .depth(dst.depth);
+
+        let _region = vk::BufferImageCopy::builder()
+            .image_subresource(subresource.build())
+            .image_extent(extent.build());
+        
+        // self.owner.logical.cmd_copy_buffer_to_image(self.command_buffer, src.handle, dst.image)
+        todo!();
+    }
+
+    fn resource_barrier_texture(&mut self, _texture: Arc<Texture>, _old_layout: Layout, _new_layout: Layout) {
+        todo!();
+    }
+}
+
+impl<'a> GenericGraphicsContext<'a> for GraphicsContext<'a> {
+    fn new(owner: Arc<Device>) -> Result<GraphicsContext<'a>, ()> {
+        let handle = {
+            let mut thread_infos = owner.thread_info.lock().unwrap();
+            let thread_id = std::thread::current().id();
+    
+            let mut thread_info = thread_infos.get_mut(&thread_id);
+            if thread_info.is_none() {
+                thread_infos.insert(thread_id, DeviceThreadInfo::default());
+                thread_info = thread_infos.get_mut(&thread_id)
+            }
+            let thread_info = thread_info.unwrap();
+    
+            if thread_info.graphics_pool == vk::CommandPool::default() {
+                let create_info = vk::CommandPoolCreateInfo::builder()
+                    .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER)
+                    .queue_family_index(owner.graphics_family_index.unwrap());
+    
+                thread_info.graphics_pool = unsafe{ owner.logical.create_command_pool(&create_info, None).unwrap() };
+            }
+    
+            let alloc_info = vk::CommandBufferAllocateInfo::builder()
+                .command_pool(thread_info.graphics_pool)
+                .level(vk::CommandBufferLevel::PRIMARY)
+                .command_buffer_count(1);
+            
+            let handle = unsafe{ owner.logical.allocate_command_buffers(&alloc_info) };
+            if handle.is_err() {
+                return Err(());
+            }
+            handle.unwrap()[0]
+        };
+
+        Ok(GraphicsContext{
+            owner: owner,
+
+            command_buffer: handle,
+            framebuffers:   Vec::new(),
+
+            pipelines:   Vec::new(),
+            attachments: Vec::new(),
+
+            current_render_pass: None,
+            current_scissor: None,
+        })
+    }
+
+    fn begin_render_pass(&mut self, render_pass: &'a Arc<RenderPass>, attachments: &[Arc<Texture>]) {
+        let extent = vk::Extent2D::builder()
+            .width(attachments[0].width)
+            .height(attachments[0].height)
+            .build();
+        
+        self.current_render_pass = Some(render_pass);
+        for it in attachments.iter() {
+            self.attachments.push(it.clone());
+        }
+
+        // Make the framebuffer
+        let mut views = Vec::with_capacity(attachments.len());
+        for it in attachments.iter() {
+            views.push(it.view);
+        }
+
+        let create_info = vk::FramebufferCreateInfo::builder()
+            .render_pass(render_pass.handle)
+            .attachments(&views[..])
+            .width(extent.width)
+            .height(extent.height)
+            .layers(1);
+
+        let framebuffer = unsafe{ self.owner.logical.create_framebuffer(&create_info, None).unwrap() };
+        self.framebuffers.push(framebuffer);
+
+        let render_area = vk::Rect2D::builder()
+            .extent(extent);
+
+        let begin_info = vk::RenderPassBeginInfo::builder()
+            .render_pass(render_pass.handle)
+            .framebuffer(framebuffer)
+            .render_area(render_area.build());
+        
+        unsafe{ self.owner.logical.cmd_begin_render_pass(self.command_buffer, &begin_info, vk::SubpassContents::INLINE) };
+    }
+
+    fn end_render_pass(&mut self) {
+        unsafe{ self.owner.logical.cmd_end_render_pass(self.command_buffer) };
+        self.current_render_pass = None;
+        self.current_scissor = None;
+    }
+
+    fn bind_scissor(&mut self, scissor: Option<Rect>) {
+        self.current_scissor = scissor;
+    }
+
+    fn bind_pipeline(&mut self, pipeline: Arc<Pipeline>) {
+        unsafe {
+            self.owner.logical.cmd_bind_pipeline(self.command_buffer, vk::PipelineBindPoint::GRAPHICS, pipeline.handle);
+            // self.owner.logical.cmd_bind_descriptor_sets(self.command_buffer, vk::PipelineBindPoint::GRAPHICS, ...);
+            // TODO: Bindless
+
+            let viewport = vk::Viewport::builder()
+                .width(self.attachments.last().unwrap().width as f32)
+                .height(self.attachments.last().unwrap().height as f32)
+                .max_depth(1.0);
+            self.owner.logical.cmd_set_viewport(self.command_buffer, 0, from_ref(&viewport));
+
+            if self.current_scissor.is_some() {
+                let scissor = self.current_scissor.unwrap();
+
+                let size = scissor.size();
+                let rect = vk::Rect2D::builder()
+                    .offset(
+                        vk::Offset2D::builder()
+                            .x(scissor.min.x as i32)
+                            .y(scissor.min.y as i32)
+                            .build()
+                        )
+                    .extent(
+                        vk::Extent2D::builder()
+                            .width(size.x as u32)
+                            .height(size.y as u32)
+                            .build()
+                        );
+                
+                self.owner.logical.cmd_set_scissor(self.command_buffer, 0, from_ref(&rect));
+            } else {
+                let rect = vk::Rect2D::builder()
+                    .extent(
+                        vk::Extent2D::builder()
+                            .width(viewport.x as u32)
+                            .height(viewport.y as u32)
+                            .build()
+                        );
+                self.owner.logical.cmd_set_scissor(self.command_buffer, 0, from_ref(&rect));
+            }
+        }
+
+        self.pipelines.push(pipeline);
+    }
+
+    fn bind_vertex_buffer(&mut self, buffer: Arc<Buffer>) {
+        let offset = 0;
+        unsafe{ self.owner.logical.cmd_bind_vertex_buffers(self.command_buffer, 0, from_ref(&buffer.handle), from_ref(&offset)) };
+    }
+
+    fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
+        unsafe{ self.owner.logical.cmd_draw(self.command_buffer, vertex_count as u32, 1, first_vertex as u32, 0) };
+    }
+
+    fn clear(&mut self, _color: Color, _attachments: &[Arc<Texture>]) {
+        todo!();
+    }
+
+    fn push_constants<T>(&mut self, t: T) {
+        let pipeline = &self.pipelines.last().unwrap();
+
+        let desc = match &pipeline.desc {
+            PipelineDescription::Graphics(desc) => desc
+        };
+        assert_eq!(size_of::<T>(), desc.push_constant_size);
+
+        unsafe{ 
+            self.owner.logical.cmd_push_constants(
+                self.command_buffer, 
+                pipeline.layout, 
+                vk::ShaderStageFlags::ALL_GRAPHICS, 
+                0, 
+                from_raw_parts(&t as *const T as *const u8, size_of::<T>()),
+            );
+        }
+    }
+}
+
+impl<'a> Drop for GraphicsContext<'a> {
+    fn drop(&mut self) {
+        todo!();
     }
 }

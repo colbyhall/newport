@@ -30,6 +30,8 @@ pub mod vk;
 pub use vk::*;
 
 use newport_os::window::WindowHandle;
+use newport_core::math::{ Rect, Color };
+
 use bitflags::*;
 
 pub use std::sync::Arc;
@@ -45,6 +47,8 @@ pub trait GenericInstance: Sized + 'static {
     fn new() -> Result<Arc<Self>, InstanceCreateError>;
 }
 
+pub trait GenericReceipt { }
+
 #[derive(Debug)]
 pub enum DeviceCreateError {
     Unknown,
@@ -53,6 +57,11 @@ pub enum DeviceCreateError {
 
 pub trait GenericDevice {
     fn new(instance: Arc<Instance>, window: Option<WindowHandle>) -> Result<Arc<Self>, DeviceCreateError>;
+
+    fn acquire_backbuffer(&self) -> (Arc<Texture>, Receipt);
+
+    fn submit_graphics(&self, contexts: &[&GraphicsContext], wait_on: &[&Receipt]) -> Receipt;
+    fn display(&self, wait_on: &[&Receipt]);
 }
 
 pub struct DeviceBuilder {
@@ -169,4 +178,157 @@ pub trait GenericTexture {
 
 pub trait GenericRenderPass {
     fn new(owner: Arc<Device>, colors: Vec<Format>, depth: Option<Format>) -> Result<Arc<RenderPass>, ()>;
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum ShaderVariant {
+    Vertex,
+    Pixel,
+}
+
+pub trait GenericShader {
+    fn new(owner: Arc<Device>, contents: Vec<u8>, variant: ShaderVariant) -> Result<Arc<Shader>, ()>;
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum DrawMode {
+    Fill,
+    Line,
+    Point,
+}
+
+bitflags!{
+    pub struct CullMode: u32 {
+        const FRONT = 0b01;
+        const BACK  = 0b10;
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum CompareOp {
+    Never,
+    Less,             // A < B
+    Equal,            // A == B
+    LessOrEqual,      // A < B || A == B
+    Greater,          // A > B
+    NotEqual,         // A != B
+    GreaterOrEqual,   // A > B || A == B
+    Always,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum BlendOp {
+    Add,
+    Subtract,
+    ReverseSubtract,
+    Min,
+    Max,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum BlendFactor {
+    Zero,
+    One,
+
+    SrcColor,
+    OneMinusSrcColor,
+    DstColor,
+    OneMinusDstColor,
+
+    SrcAlpha,
+    OneMinusSrcAlpha,
+}
+
+bitflags! {
+    pub struct ColorMask: u32 {
+        const RED   = 0b0001;
+        const GREEN = 0b0010;
+        const BLUE  = 0b0100;
+        const ALPHA = 0b1000;
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum VertexAttribute {
+    Int32,
+    Float32,
+    Vector2,
+    Vector3,
+    Vector4,
+    Color,
+}
+
+impl VertexAttribute {
+    pub fn size(self) -> usize {
+        match self {
+            VertexAttribute::Int32   => 4,
+            VertexAttribute::Float32 => 4,
+            VertexAttribute::Vector2 => 8,
+            VertexAttribute::Vector3 => 12,
+            VertexAttribute::Vector4 => 16,
+            VertexAttribute::Color   => 16,
+        }
+    }
+}
+
+pub struct GraphicsPipelineDescription {
+    pub render_pass:  Arc<RenderPass>,
+    pub shaders:      Vec<Arc<Shader>>,
+    
+    pub vertex_attributes: Vec<VertexAttribute>,
+
+    pub draw_mode:  DrawMode,
+    pub line_width: f32,
+
+    pub cull_mode:   CullMode,
+    pub color_mask:  ColorMask,
+
+    pub blend_enabled: bool,
+
+    pub src_color_blend_factor: BlendFactor,
+    pub dst_color_blend_factor: BlendFactor,
+    pub color_blend_op:         BlendOp,
+
+    pub src_alpha_blend_factor: BlendFactor,
+    pub dst_alpha_blend_factor: BlendFactor,
+    pub alpha_blend_op:         BlendOp,    
+
+    pub depth_test:    bool,
+    pub depth_write:   bool,
+    pub depth_compare: CompareOp,
+
+    /// Capped at 128 bytes
+    pub push_constant_size : usize, 
+}
+
+pub enum PipelineDescription {
+    Graphics(GraphicsPipelineDescription)
+}
+
+pub trait GenericPipeline {
+    fn new(owner: Arc<Device>, desc: PipelineDescription) -> Result<Arc<Pipeline>, ()>;
+}
+
+pub trait GenericContext {
+    fn begin(&mut self);
+    fn end(&mut self);
+
+    fn copy_buffer_to_texture(&mut self, dst: Arc<Texture>, src: Arc<Buffer>);
+    fn resource_barrier_texture(&mut self, texture: Arc<Texture>, old_layout: Layout, new_layout: Layout);
+}
+
+pub trait GenericGraphicsContext<'a>: GenericContext {
+    fn new(owner: Arc<Device>) -> Result<GraphicsContext<'a>, ()>;
+
+    fn begin_render_pass(&mut self, render_pass: &'a Arc<RenderPass>, attachments: &[Arc<Texture>]);
+    fn end_render_pass(&mut self);
+
+    fn bind_scissor(&mut self, scissor: Option<Rect>);
+    fn bind_pipeline(&mut self, pipeline: Arc<Pipeline>);
+    fn bind_vertex_buffer(&mut self, buffer: Arc<Buffer>);
+
+    fn draw(&mut self, vertex_count: usize, first_vertex: usize);
+    fn clear(&mut self, color: Color, attachments: &[Arc<Texture>]);
+
+    fn push_constants<T>(&mut self, t: T);
 }
