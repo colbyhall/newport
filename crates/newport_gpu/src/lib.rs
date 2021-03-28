@@ -29,47 +29,10 @@ pub mod vk;
 #[cfg(feature = "vulkan")]
 pub use vk::*;
 
-use newport_asset::AssetManager;
-use newport_engine::*;
 use newport_os::window::WindowHandle;
+use bitflags::*;
 
-pub struct GPU {
-    instance: Instance,
-    device:   Option<Device>,
-}
-
-impl GPU {
-    pub fn instance(&self) -> &Instance {
-        &self.instance
-    }
-
-    pub fn device(&self) -> Option<&Device> {
-        self.device.as_ref()
-    }
-}
-
-impl ModuleCompileTime for GPU {
-    fn new() -> Self {
-        let instance = Instance::new().unwrap();
-        Self{
-            instance: instance,
-            device:   None,
-        }
-    }
-
-    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
-        builder
-            .module::<AssetManager>()
-    }
-}
-
-impl ModuleRuntime for GPU {
-    fn post_init(&mut self, engine: &mut Engine) {
-        let builder = DeviceBuilder::new()
-            .present_to(engine.window().handle());
-        self.device = self.instance().new_device(builder).ok();
-    }
-}
+pub use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum InstanceCreateError {
@@ -79,10 +42,7 @@ pub enum InstanceCreateError {
 }
 
 pub trait GenericInstance: Sized + 'static {
-    fn new() -> Result<Self, InstanceCreateError>;
-    
-    type Device: GenericDevice;
-    fn new_device(&self, builder: DeviceBuilder) -> Result<Self::Device, DeviceCreateError>;
+    fn new() -> Result<Arc<Self>, InstanceCreateError>;
 }
 
 #[derive(Debug)]
@@ -92,17 +52,19 @@ pub enum DeviceCreateError {
 }
 
 pub trait GenericDevice {
-
+    fn new(instance: Arc<Instance>, window: Option<WindowHandle>) -> Result<Arc<Self>, DeviceCreateError>;
 }
 
 pub struct DeviceBuilder {
-    window: Option<WindowHandle>,
+    instance: Arc<Instance>,
+    window:   Option<WindowHandle>,
 }
 
 impl DeviceBuilder {
-    pub fn new() -> Self {
+    pub fn new(instance: Arc<Instance>) -> Self {
         Self {
-            window: None,
+            instance: instance,
+            window:   None,
         }
     }
 
@@ -110,14 +72,43 @@ impl DeviceBuilder {
         self.window = Some(window);
         self
     }
+
+    pub fn spawn(self) -> Result<Arc<Device>, DeviceCreateError> {
+        Device::new(self.instance, self.window)
+    }
 }
 
-// Type of memory allocations that buffers or textures can be allocated from
-pub enum Memory_Type {
-    HostVisible, // Able to be uploaded to by mapping memory. Slower to access. Faster to write to
-    DeiceLocal,  // Able to be uploaded to by using commands. Faster to access. Slower to write to
+/// Type of memory allocations that buffers or textures can be allocated from
+#[derive(Copy, Clone, Debug)]
+pub enum MemoryType {
+    /// Able to be uploaded to by mapping memory. Slower to access. Faster to write to
+    HostVisible, 
+    /// Able to be uploaded to by using commands. Faster to access. Slower to write to
+    DeviceLocal,  
 }
 
+bitflags! {
+    pub struct BufferUsage: u32 {
+        const TRANSFER_SRC      = 0b000001;
+        const TRANSFER_DST      = 0b000010;
+        const VERTEX            = 0b000100;
+        const INDEX             = 0b001000;
+        const CONSTANTS         = 0b010000;
+    }
+}
+
+pub enum ResourceCreateError {
+    Unknown,
+    OutOfMemory,
+}
+
+pub trait GenericBuffer {
+    fn new(device: Arc<Device>, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Arc<Buffer>, ResourceCreateError>;
+    fn copy_to<T>(&self, data: Vec<T>);
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Copy, Clone, Debug)]
 pub enum Format {
     Undefined,
     
@@ -129,4 +120,53 @@ pub enum Format {
     RGBA_F16,
 
     BGR_U8_SRGB,    
+}
+
+bitflags! {
+    pub struct TextureUsage: u32 {
+        const TRANSFER_SRC      = 0b000001;
+        const TRANSFER_DST      = 0b000010;
+        const SAMPLED           = 0b000100;
+        const COLOR_ATTACHMENT  = 0b001000;
+        const DEPTH_ATTACHMENT  = 0b010000;
+        const SWAPCHAIN         = 0b100000;
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Layout {
+    Undefined,
+    General,
+    ColorAttachment,
+    DepthAttachment,
+    TransferSrc,
+    TransferDst,
+    ShaderReadOnly,
+    Present,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Wrap {
+    Clamp,
+    Repeat,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Filter {
+    Nearest,
+    Linear,
+}
+
+pub trait GenericTexture {
+    fn owner(&self) -> &Arc<Device>;
+    fn memory_type(&self) -> MemoryType;
+    fn usage(&self) -> TextureUsage;
+    fn format(&self) -> Format;
+    fn width(&self) -> u32;
+    fn height(&self) -> u32;
+    fn depth(&self) -> u32;
+}
+
+pub trait GenericRenderPass {
+    fn new(owner: Arc<Device>, colors: Vec<Format>, depth: Option<Format>) -> Result<Arc<RenderPass>, ()>;
 }

@@ -12,6 +12,7 @@ newport_asset  = { path = "../newport_asset" }
 newport_os     = { path = "../newport_os" }
 
 ash  = { version = "0.32.0" }
+bitflags = "1.2"
 
 [features]
 default = ["vulkan"]

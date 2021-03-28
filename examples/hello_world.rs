@@ -30,7 +30,7 @@ impl engine::ModuleCompileTime for HelloWorld {
     }
 
     fn depends_on(builder: engine::EngineBuilder) -> engine::EngineBuilder {
-        builder.module::<gpu::GPU>()
+        builder.module::<asset::AssetManager>()
     }
 }
 
