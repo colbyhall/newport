@@ -88,13 +88,11 @@ struct Swapchain {
 impl Swapchain {
     fn new(device: Arc<Device>) -> Self {
         assert_eq!(device.surface.is_some(), true);
-
+        
         let swapchain_khr = khr::Swapchain::new(&device.owner.instance, &device.logical);
         let surface_khr = khr::Surface::new(&device.owner.entry, &device.owner.instance);
-
+        
         unsafe{ 
-            device.logical.device_wait_idle().unwrap();
-
             let capabilities = surface_khr.get_physical_device_surface_capabilities(device.physical, device.surface.unwrap()).unwrap();
             let formats = surface_khr.get_physical_device_surface_formats(device.physical, device.surface.unwrap()).unwrap();
 
@@ -158,7 +156,12 @@ impl Swapchain {
 
                 backbuffers.push(Arc::new(Texture{
                     owner: device.clone(),
-                    view:  view,
+                    
+                    image:   *it,
+                    view:    view,
+                    sampler: vk::Sampler::default(),
+                    memory:  DeviceAllocation::default(),
+
                     
                     memory_type: MemoryType::HostVisible,
                     usage:       TextureUsage::SWAPCHAIN,
@@ -185,44 +188,43 @@ impl Swapchain {
 impl Drop for Swapchain {
     fn drop(&mut self) {
         unsafe { 
+            self.backbuffers[0].owner.logical.device_wait_idle().unwrap();
             let swapchain_khr = khr::Swapchain::new(&self.backbuffers[0].owner.owner.instance, &self.backbuffers[0].owner.logical);
             swapchain_khr.destroy_swapchain(self.handle, None);
         }
     }
 }
 
-#[must_use = "this `Receipt` must hold a lifetime until end of scope"]
+#[derive(Clone)]
 pub struct Receipt {
-    owner: Arc<Device>,
-
-    semaphore: vk::Semaphore,
-    fence:     vk::Fence,
+    owner:   Arc<Device>,
+    id:      usize,
 }
 
 impl Receipt {
-    fn new(owner: Arc<Device>) -> Self {
-        let semaphore_create_info = vk::SemaphoreCreateInfo::default();
-        let semaphore = unsafe{ owner.logical.create_semaphore(&semaphore_create_info, None).unwrap() };
-
-        let fence_create_info = vk::FenceCreateInfo::builder();
-        let fence = unsafe{ owner.logical.create_fence(&fence_create_info, None).unwrap() };
+    fn new(owner: Arc<Device>, id: usize) -> Self {
         Self{
-            owner:     owner,
-            semaphore: semaphore,
-            fence:     fence
+            owner:   owner,
+            id:      id
         }
+    }
+
+    fn get(&self) -> Option<(vk::Semaphore, vk::Fence)> {
+        let work = self.owner.work.lock().unwrap();
+        let result = work.in_queue.get(&self.id)?;
+        Some((result.semaphore, result.fence))
     }
 }
 
-impl GenericReceipt for Receipt { }
+impl GenericReceipt for Receipt { 
+    fn wait(self) -> bool {
+        todo!();
+    }
 
-impl Drop for Receipt {
-    fn drop(&mut self) {
-        unsafe{
-            self.owner.logical.wait_for_fences(&[self.fence], true, 1 << 63).unwrap();
-            self.owner.logical.destroy_fence(self.fence, None);
-            self.owner.logical.destroy_semaphore(self.semaphore, None);
-        }
+    fn is_finished(&self) -> bool {
+        let work = self.owner.work.lock().unwrap();
+        let result = work.in_queue.get(&self.id);
+        result.is_none()
     }
 }
 
@@ -240,18 +242,34 @@ struct DeviceAllocation {
     size:   vk::DeviceSize,
 }
 
-#[allow(dead_code)]
+enum WorkVariant {
+    Graphics(Vec<GraphicsContext>),
+}
+
+struct WorkEntry {
+    semaphore: vk::Semaphore,
+    fence:     vk::Fence,
+    variant:   WorkVariant,
+}
+
+struct WorkContainer {
+    last_id:  usize,
+    in_queue: HashMap<usize, WorkEntry>,
+}
+
 pub struct Device {
     owner:    Arc<Instance>,
 
     logical:  ash::Device,
     physical: vk::PhysicalDevice,
 
-    graphics_queue:     Option<vk::Queue>,
-    presentation_queue: Option<vk::Queue>,
+    graphics_queue:     Option<Mutex<vk::Queue>>,
+    presentation_queue: Option<Mutex<vk::Queue>>,
 
     graphics_family_index:  Option<u32>,
     surface_family_index:   Option<u32>,
+
+    work: Mutex<WorkContainer>,
 
     #[cfg(target_os = "windows")]
     surface: Option<vk::SurfaceKHR>,
@@ -302,6 +320,15 @@ impl Device {
         unsafe {
             self.logical.free_memory(allocation.memory, None);
         }
+    }
+
+    fn push_work(&self, entry: WorkEntry) -> usize {
+        let mut work = self.work.lock().unwrap();
+        
+        let id = work.last_id;
+        work.in_queue.insert(id, entry);
+        work.last_id += 1;
+        id
     }
 }
 
@@ -434,11 +461,13 @@ impl GenericDevice for Device {
             logical:  logical_device,
             physical: physical_device,
 
-            graphics_queue:     graphics_queue,
-            presentation_queue: presentation_queue,
+            graphics_queue:     graphics_queue.map(|q| Mutex::new(q)),
+            presentation_queue: presentation_queue.map(|q| Mutex::new(q)),
 
             graphics_family_index: graphics_family_index,
             surface_family_index:  surface_family_index,
+
+            work: Mutex::new(WorkContainer{ last_id: 0, in_queue: HashMap::new() }),
 
             surface:   surface,
             
@@ -454,59 +483,85 @@ impl GenericDevice for Device {
         Ok(result)
     }
 
-    fn acquire_backbuffer(&self) -> (Arc<Texture>, Receipt) {
+    fn acquire_backbuffer(&self) -> Arc<Texture> {
         assert_eq!(self.surface.is_some(), true);
 
         let mut swapchain = self.swapchain.lock().unwrap();
 
-        let receipt = Receipt::new(swapchain.as_ref().unwrap().backbuffers[0].owner.clone());
+        let semaphore_create_info = vk::SemaphoreCreateInfo::builder();
+        let semaphore = unsafe{ self.logical.create_semaphore(&semaphore_create_info, None).unwrap() };
 
         let swapchain_khr = khr::Swapchain::new(&self.owner.instance, &self.logical);
-        let mut result = unsafe{ swapchain_khr.acquire_next_image(swapchain.as_ref().unwrap().handle, 1 << 63, receipt.semaphore, vk::Fence::default()) };
+        let mut result = unsafe{ swapchain_khr.acquire_next_image(swapchain.as_ref().unwrap().handle, 1 << 63, semaphore, vk::Fence::default()) };
         if result.is_err() {
             *swapchain = Some(Swapchain::new(swapchain.as_ref().unwrap().backbuffers[0].owner.clone()));
-            result = unsafe{ swapchain_khr.acquire_next_image(swapchain.as_ref().unwrap().handle, 1 << 63, receipt.semaphore, vk::Fence::default()) };
+            result = unsafe{ swapchain_khr.acquire_next_image(swapchain.as_ref().unwrap().handle, 1 << 63, semaphore, vk::Fence::default()) };
         }
         let (index, _) = result.unwrap();
 
         swapchain.as_mut().unwrap().current = Some(index as usize);
 
-        (swapchain.as_ref().unwrap().backbuffers[index as usize].clone(), receipt)
+        unsafe{ self.logical.destroy_semaphore(semaphore, None) };
+
+        swapchain.as_ref().unwrap().backbuffers[index as usize].clone()
     }
 
-    fn submit_graphics(&self, contexts: &[&GraphicsContext], wait_on: &[&Receipt]) -> Receipt {
+    fn submit_graphics(&self, contexts: Vec<GraphicsContext>, wait_on: &[Receipt]) -> Receipt {
         let mut buffers = Vec::with_capacity(contexts.len());
         for it in contexts.iter() {
             buffers.push(it.command_buffer);
         }
 
-        let receipt = Receipt::new(contexts[0].owner.clone());
+        let semaphore_create_info = vk::SemaphoreCreateInfo::default();
+        let semaphore = unsafe{ self.logical.create_semaphore(&semaphore_create_info, None).unwrap() };
+
+        let fence_create_info = vk::FenceCreateInfo::builder();
+        let fence = unsafe{ self.logical.create_fence(&fence_create_info, None).unwrap() };
 
         let mut submit_info = vk::SubmitInfo::builder()
             .command_buffers(&buffers[..])
-            .signal_semaphores(from_ref(&receipt.semaphore));
-        
-        let mut wait_semaphores = Vec::with_capacity(wait_on.len());
-        let mut wait_stages = Vec::with_capacity(wait_on.len());
-        if wait_on.len() > 0 {
+            .signal_semaphores(from_ref(&semaphore));
+            
+        unsafe {
+            let queue = self.graphics_queue.as_ref().unwrap().lock().unwrap();
 
-            for it in wait_on.iter() {
-                wait_semaphores.push(it.semaphore);
-                wait_stages.push(vk::PipelineStageFlags::BOTTOM_OF_PIPE);
+            self.remove_finished_work();
+
+            let mut wait_semaphores = Vec::with_capacity(wait_on.len());
+            let mut wait_stages = Vec::with_capacity(wait_on.len());
+            if wait_on.len() > 0 {
+                for it in wait_on.iter() {
+                    let sync = it.get();
+                    if sync.is_none() {
+                        continue;
+                    }
+                    let (semaphore, _) = sync.unwrap();
+
+                    wait_semaphores.push(semaphore);
+                    wait_stages.push(vk::PipelineStageFlags::BOTTOM_OF_PIPE);
+                }
+    
+                submit_info = submit_info
+                    .wait_semaphores(&wait_semaphores[..])
+                    .wait_dst_stage_mask(&wait_stages[..]);
             }
-
-            submit_info = submit_info
-                .wait_semaphores(&wait_semaphores[..])
-                .wait_dst_stage_mask(&wait_stages[..]);
+            self.logical.queue_submit(*queue, from_ref(&submit_info), fence).unwrap();
         }
-
-        unsafe{ self.logical.queue_submit(self.graphics_queue.unwrap(), from_ref(&submit_info), receipt.fence).unwrap() };
         
-        return receipt;
+        let owner = contexts[0].owner.clone();
+
+        let id = self.push_work(WorkEntry{
+            semaphore: semaphore,
+            fence:     fence,
+            variant: WorkVariant::Graphics(contexts)
+        });
+        Receipt::new(owner, id)
     }
 
-    fn display(&self, wait_on: &[&Receipt]) {
+    fn display(&self, wait_on: &[Receipt]) {
         assert_eq!(self.surface.is_some(), true);
+
+        self.remove_finished_work();
 
         let mut swapchain = self.swapchain.lock().unwrap();
         let swapchain_khr = khr::Swapchain::new(&self.owner.instance, &self.logical);
@@ -520,17 +575,38 @@ impl GenericDevice for Device {
         let mut wait_semaphores = Vec::with_capacity(wait_on.len());
         if wait_on.len() > 0 {
             for it in wait_on.iter() {
-                wait_semaphores.push(it.semaphore);
+                let sync = it.get();
+                if sync.is_none() {
+                    continue;
+                }
+                let (semaphore, _) = sync.unwrap();
+
+                wait_semaphores.push(semaphore);
             }
 
             present_info = present_info
                 .wait_semaphores(&wait_semaphores[..]);
         }
 
-        let result = unsafe{ swapchain_khr.queue_present(self.presentation_queue.unwrap(), &present_info) };
+        let result = unsafe{ 
+            let queue = self.presentation_queue.as_ref().unwrap().lock().unwrap();
+
+            swapchain_khr.queue_present(*queue, &present_info)
+        };
         if result.is_err() {
             *swapchain = Some(Swapchain::new(swapchain.as_ref().unwrap().backbuffers[0].owner.clone()));
         }
+    }
+
+    fn remove_finished_work(&self) {
+        let mut work = self.work.lock().unwrap();
+
+        work.in_queue.retain(|_, v| {
+            unsafe {
+                let result = self.logical.get_fence_status(v.fence).unwrap();
+                !result
+            }
+        });
     }
 }
 
@@ -626,10 +702,10 @@ fn vk_format(format: Format) -> vk::Format {
 pub struct Texture {
     owner:   Arc<Device>,
 
-    // image:   vk::Image,
+    image:   vk::Image,
     view:    vk::ImageView,
-    // sampler: vk::Sampler,
-    // memory:  vk::DeviceMemory,
+    sampler: vk::Sampler,
+    memory:  DeviceAllocation,
 
     memory_type: MemoryType,
 
@@ -1051,7 +1127,7 @@ impl GenericPipeline for Pipeline {
     }
 }
 
-pub struct GraphicsContext<'a> {
+pub struct GraphicsContext {
     owner: Arc<Device>,
 
     command_buffer: vk::CommandBuffer,
@@ -1060,7 +1136,7 @@ pub struct GraphicsContext<'a> {
     pipelines:   Vec<Arc<Pipeline>>,
     attachments: Vec<Arc<Texture>>,
 
-    current_render_pass: Option<&'a Arc<RenderPass>>,
+    current_render_pass: Option<Arc<RenderPass>>,
     current_scissor: Option<Rect>
 }
 
@@ -1077,7 +1153,7 @@ fn layout_to_image_layout(layout: Layout) -> vk::ImageLayout {
     }
 }
 
-impl<'a> GenericContext for GraphicsContext<'a> {
+impl GenericContext for GraphicsContext {
     fn begin(&mut self) {
         unsafe{ self.owner.logical.reset_command_buffer(self.command_buffer, vk::CommandBufferResetFlags::default()).unwrap() };
         
@@ -1091,7 +1167,7 @@ impl<'a> GenericContext for GraphicsContext<'a> {
         unsafe{ self.owner.logical.end_command_buffer(self.command_buffer).unwrap() };
     }
 
-    fn copy_buffer_to_texture(&mut self, dst: Arc<Texture>, _src: Arc<Buffer>) {
+    fn copy_buffer_to_texture(&mut self, dst: Arc<Texture>, src: Arc<Buffer>) {
         let subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(vk::ImageAspectFlags::COLOR)
             .layer_count(1);
@@ -1101,21 +1177,86 @@ impl<'a> GenericContext for GraphicsContext<'a> {
             .height(dst.height)
             .depth(dst.depth);
 
-        let _region = vk::BufferImageCopy::builder()
+        let region = vk::BufferImageCopy::builder()
             .image_subresource(subresource.build())
             .image_extent(extent.build());
         
-        // self.owner.logical.cmd_copy_buffer_to_image(self.command_buffer, src.handle, dst.image)
-        todo!();
+        unsafe{ 
+            self.owner.logical.cmd_copy_buffer_to_image(
+                self.command_buffer, 
+                src.handle, 
+                dst.image, 
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL, 
+                &[region.build()]
+            )
+        };
     }
 
-    fn resource_barrier_texture(&mut self, _texture: Arc<Texture>, _old_layout: Layout, _new_layout: Layout) {
-        todo!();
+    fn resource_barrier_texture(&mut self, texture: Arc<Texture>, old_layout: Layout, new_layout: Layout) {
+        let mut barrier = vk::ImageMemoryBarrier::builder()
+            .old_layout(layout_to_image_layout(old_layout))
+            .new_layout(layout_to_image_layout(new_layout))
+            .image(texture.image)
+            .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+            .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED);
+            
+        // TODO: Mips
+        barrier = barrier.subresource_range(
+            vk::ImageSubresourceRange::builder()
+                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                .base_mip_level(0)
+                .level_count(1)
+                .base_array_layer(0)
+                .layer_count(1)
+                .build()
+            );
+
+            
+        let src_stage;
+        let dst_stage;
+        match (old_layout, new_layout) {
+            (Layout::Undefined, Layout::TransferDst) => {
+                barrier = barrier
+                    .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE);
+
+                src_stage = vk::PipelineStageFlags::TOP_OF_PIPE;
+                dst_stage = vk::PipelineStageFlags::TRANSFER;
+            },
+            (Layout::TransferDst, Layout::ShaderReadOnly) => {
+                barrier = barrier
+                    .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                    .dst_access_mask(vk::AccessFlags::SHADER_READ);
+                    
+                src_stage = vk::PipelineStageFlags::TRANSFER;
+                dst_stage = vk::PipelineStageFlags::FRAGMENT_SHADER;
+            },
+            (Layout::ColorAttachment, Layout::Present) => {
+                src_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;
+                dst_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;
+            },
+            (Layout::Undefined, Layout::Present) => {
+                src_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;
+                dst_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;
+            },
+            _ => unimplemented!(),
+        }
+
+        unsafe{ 
+            self.owner.logical.cmd_pipeline_barrier(
+                self.command_buffer, 
+                src_stage, 
+                dst_stage, 
+                vk::DependencyFlags::default(), 
+                &[], 
+                &[], 
+                &[barrier.build()]
+            )
+        };
     }
 }
 
-impl<'a> GenericGraphicsContext<'a> for GraphicsContext<'a> {
-    fn new(owner: Arc<Device>) -> Result<GraphicsContext<'a>, ()> {
+impl GenericGraphicsContext for GraphicsContext {
+    fn new(owner: Arc<Device>) -> Result<GraphicsContext, ()> {
         let handle = {
             let mut thread_infos = owner.thread_info.lock().unwrap();
             let thread_id = std::thread::current().id();
@@ -1161,12 +1302,14 @@ impl<'a> GenericGraphicsContext<'a> for GraphicsContext<'a> {
         })
     }
 
-    fn begin_render_pass(&mut self, render_pass: &'a Arc<RenderPass>, attachments: &[Arc<Texture>]) {
+    fn begin_render_pass(&mut self, render_pass: Arc<RenderPass>, attachments: &[Arc<Texture>]) {
         let extent = vk::Extent2D::builder()
             .width(attachments[0].width)
             .height(attachments[0].height)
             .build();
         
+        let render_pass_handle = render_pass.handle;
+
         self.current_render_pass = Some(render_pass);
         for it in attachments.iter() {
             self.attachments.push(it.clone());
@@ -1179,7 +1322,7 @@ impl<'a> GenericGraphicsContext<'a> for GraphicsContext<'a> {
         }
 
         let create_info = vk::FramebufferCreateInfo::builder()
-            .render_pass(render_pass.handle)
+            .render_pass(render_pass_handle)
             .attachments(&views[..])
             .width(extent.width)
             .height(extent.height)
@@ -1192,7 +1335,7 @@ impl<'a> GenericGraphicsContext<'a> for GraphicsContext<'a> {
             .extent(extent);
 
         let begin_info = vk::RenderPassBeginInfo::builder()
-            .render_pass(render_pass.handle)
+            .render_pass(render_pass_handle)
             .framebuffer(framebuffer)
             .render_area(render_area.build());
         
@@ -1288,8 +1431,8 @@ impl<'a> GenericGraphicsContext<'a> for GraphicsContext<'a> {
     }
 }
 
-impl<'a> Drop for GraphicsContext<'a> {
+impl Drop for GraphicsContext {
     fn drop(&mut self) {
-        todo!();
+        // todo!();
     }
 }

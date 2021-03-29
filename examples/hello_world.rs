@@ -64,8 +64,15 @@ impl engine::ModuleRuntime for HelloWorld {
     fn on_tick(&self, _dt: f32) {
         let device = self.device.as_ref().unwrap();
 
-        let (_, receipt) = device.acquire_backbuffer();
-        device.display(&[&receipt]);
+        let backbuffer = device.acquire_backbuffer();
+
+        let mut graphics = GraphicsContext::new(device.clone()).unwrap();
+        graphics.begin();
+        graphics.resource_barrier_texture(backbuffer, Layout::Undefined, Layout::Present);
+        graphics.end();
+
+        let receipt = device.submit_graphics(vec![graphics], &[]);
+        device.display(&[receipt]);
     }
 }
 

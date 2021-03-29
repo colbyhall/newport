@@ -47,7 +47,10 @@ pub trait GenericInstance: Sized + 'static {
     fn new() -> Result<Arc<Self>, InstanceCreateError>;
 }
 
-pub trait GenericReceipt { }
+pub trait GenericReceipt: Sized { 
+    fn wait(self) -> bool;
+    fn is_finished(&self) -> bool;
+}
 
 #[derive(Debug)]
 pub enum DeviceCreateError {
@@ -58,10 +61,12 @@ pub enum DeviceCreateError {
 pub trait GenericDevice {
     fn new(instance: Arc<Instance>, window: Option<WindowHandle>) -> Result<Arc<Self>, DeviceCreateError>;
 
-    fn acquire_backbuffer(&self) -> (Arc<Texture>, Receipt);
+    fn acquire_backbuffer(&self) -> Arc<Texture>;
 
-    fn submit_graphics(&self, contexts: &[&GraphicsContext], wait_on: &[&Receipt]) -> Receipt;
-    fn display(&self, wait_on: &[&Receipt]);
+    fn submit_graphics(&self, contexts: Vec<GraphicsContext>, wait_on: &[Receipt]) -> Receipt;
+    fn display(&self, wait_on: &[Receipt]);
+
+    fn remove_finished_work(&self);
 }
 
 pub struct DeviceBuilder {
@@ -317,10 +322,10 @@ pub trait GenericContext {
     fn resource_barrier_texture(&mut self, texture: Arc<Texture>, old_layout: Layout, new_layout: Layout);
 }
 
-pub trait GenericGraphicsContext<'a>: GenericContext {
-    fn new(owner: Arc<Device>) -> Result<GraphicsContext<'a>, ()>;
+pub trait GenericGraphicsContext: GenericContext {
+    fn new(owner: Arc<Device>) -> Result<GraphicsContext, ()>;
 
-    fn begin_render_pass(&mut self, render_pass: &'a Arc<RenderPass>, attachments: &[Arc<Texture>]);
+    fn begin_render_pass(&mut self, render_pass: Arc<RenderPass>, attachments: &[Arc<Texture>]);
     fn end_render_pass(&mut self);
 
     fn bind_scissor(&mut self, scissor: Option<Rect>);
