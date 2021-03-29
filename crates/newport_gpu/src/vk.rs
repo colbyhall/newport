@@ -7,7 +7,6 @@ use newport_os::win32;
 
 use newport_core::containers::HashMap;
 
-use std::thread::ThreadId;
 
 use ash::{ vk, extensions::khr };
 use ash::version::{ EntryV1_0, InstanceV1_0, InstanceV1_1, DeviceV1_0 };
@@ -15,6 +14,7 @@ use ash::version::{ EntryV1_0, InstanceV1_0, InstanceV1_1, DeviceV1_0 };
 use std::ptr::{ null_mut, copy_nonoverlapping };
 use std::slice::{ from_ref, from_raw_parts };
 use std::sync::{ RwLock, Mutex };
+use std::thread::ThreadId;
 use std::ffi::CStr;
 use std::mem::size_of;
 
@@ -77,12 +77,14 @@ impl GenericInstance for Instance {
 }
 
 struct Swapchain {
+    // NOTE: Leak the swapchain handle because im currently lazy
+    // TODO: Maybe actually handle this?
     handle: vk::SwapchainKHR,
     extent: vk::Extent2D,
     format: Format,
 
     backbuffers: Vec<Arc<Texture>>,
-    current: Option<usize>,
+    current:     Option<usize>,
 }
 
 impl Swapchain {
@@ -181,16 +183,6 @@ impl Swapchain {
                 backbuffers: backbuffers,
                 current: None,
             }
-        }
-    }
-}
-
-impl Drop for Swapchain {
-    fn drop(&mut self) {
-        unsafe { 
-            self.backbuffers[0].owner.logical.device_wait_idle().unwrap();
-            let swapchain_khr = khr::Swapchain::new(&self.backbuffers[0].owner.owner.instance, &self.backbuffers[0].owner.logical);
-            swapchain_khr.destroy_swapchain(self.handle, None);
         }
     }
 }
@@ -604,6 +596,10 @@ impl GenericDevice for Device {
         work.in_queue.retain(|_, v| {
             unsafe {
                 let result = self.logical.get_fence_status(v.fence).unwrap();
+                if result {
+                    self.logical.destroy_fence(v.fence, None);
+                    self.logical.destroy_semaphore(v.semaphore, None);
+                }
                 !result
             }
         });
@@ -1433,6 +1429,14 @@ impl GenericGraphicsContext for GraphicsContext {
 
 impl Drop for GraphicsContext {
     fn drop(&mut self) {
-        // todo!();
+        let thread_infos = self.owner.thread_info.lock().unwrap();
+        let thread_id = std::thread::current().id();
+
+        let thread_info = thread_infos.get(&thread_id).unwrap();
+
+        unsafe {
+            self.owner.logical.free_command_buffers(thread_info.graphics_pool, &[self.command_buffer]);
+            self.framebuffers.iter().for_each(|it| self.owner.logical.destroy_framebuffer(*it, None));
+        }
     }
 }
