@@ -1131,6 +1131,7 @@ pub struct GraphicsContext {
 
     pipelines:   Vec<Arc<Pipeline>>,
     attachments: Vec<Arc<Texture>>,
+    buffers:     Vec<Arc<Buffer>>,
 
     current_render_pass: Option<Arc<RenderPass>>,
     current_scissor: Option<Rect>
@@ -1292,6 +1293,7 @@ impl GenericGraphicsContext for GraphicsContext {
 
             pipelines:   Vec::new(),
             attachments: Vec::new(),
+            buffers:     Vec::new(),
 
             current_render_pass: None,
             current_scissor: None,
@@ -1397,6 +1399,7 @@ impl GenericGraphicsContext for GraphicsContext {
     fn bind_vertex_buffer(&mut self, buffer: Arc<Buffer>) {
         let offset = 0;
         unsafe{ self.owner.logical.cmd_bind_vertex_buffers(self.command_buffer, 0, from_ref(&buffer.handle), from_ref(&offset)) };
+        self.buffers.push(buffer);
     }
 
     fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
