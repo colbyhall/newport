@@ -172,6 +172,8 @@ pub enum Filter {
 }
 
 pub trait GenericTexture {
+    fn new(owner: Arc<Device>, memory_type: MemoryType, usage: TextureUsage, format: Format, width: u32, height: u32, depth: u32, wrap: Wrap, min_filter: Filter, mag_filter: Filter) -> Result<Arc<Texture>, ResourceCreateError>;
+
     fn owner(&self) -> &Arc<Device>;
     fn memory_type(&self) -> MemoryType;
     fn usage(&self) -> TextureUsage;
