@@ -1,10 +1,13 @@
 [package]
 name = "newport"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/colbyhall/newport"
+description = "Fast module game engine built in rust"
+categories = ["game-engines", "game-development"]
+keywords = ["game", "engine", "gamedev", "newport"]
 
 [workspace]
 members = ["crates/*"]
