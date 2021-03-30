@@ -1,0 +1,13 @@
+[package]
+name = "newport_shaders"
+version = "0.1.0"
+authors = ["Colby <me@cobeh.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+spirv-std = { git = "https://github.com/EmbarkStudios/rust-gpu.git", branch = "main", version = "0.4.0-alpha.3" }

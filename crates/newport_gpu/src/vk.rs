@@ -15,7 +15,7 @@ use std::ptr::{ null_mut, copy_nonoverlapping };
 use std::slice::{ from_ref, from_raw_parts };
 use std::sync::{ RwLock, Mutex };
 use std::thread::ThreadId;
-use std::ffi::CStr;
+use std::ffi::CString;
 use std::mem::size_of;
 
 const ENABLED_LAYER_NAMES: [*const i8; 1] = [
@@ -995,6 +995,10 @@ impl GenericRenderPass for RenderPass {
             }))
         }
     }
+
+    fn owner(&self) -> &Arc<Device> {
+        &self.owner
+    }
 }
 
 impl Drop for RenderPass {
@@ -1015,9 +1019,11 @@ pub struct Shader {
 
     variant: ShaderVariant,
     module:  vk::ShaderModule,
+    main:    String,
 }
 
 impl GenericShader for Shader {
+    // TODO: SPIRV REFLECT?
     fn new(owner: Arc<Device>, contents: Vec<u8>, variant: ShaderVariant) -> Result<Arc<Shader>, ()> {
         let contents = unsafe{ from_raw_parts(contents.as_ptr() as *const u32, contents.len() / 4) };
 
@@ -1035,6 +1041,7 @@ impl GenericShader for Shader {
 
             variant: variant,
             module:  shader,
+            main:    "main".to_string(),
         }))
     }
 }
@@ -1065,12 +1072,12 @@ impl GenericPipeline for Pipeline {
                 for it in desc.shaders.iter() {
                     let stage = shader_variant_to_shader_stage(it.variant);
 
-                    let stage_info = unsafe{ 
-                        vk::PipelineShaderStageCreateInfo::builder()
-                            .stage(stage)
-                            .module(it.module)
-                            .name(CStr::from_ptr(b"main\0".as_ptr() as *const i8))
-                    };
+                    let main = CString::new(it.main.clone()).unwrap();
+
+                    let stage_info = vk::PipelineShaderStageCreateInfo::builder()
+                        .stage(stage)
+                        .module(it.module)
+                        .name(&main);
                     
                     shader_stages.push(stage_info.build());
                 }
@@ -1097,15 +1104,16 @@ impl GenericPipeline for Pipeline {
                         VertexAttribute::Vector4 => vk::Format::R32G32B32A32_SFLOAT,
                         VertexAttribute::Color   => vk::Format::R32G32B32A32_SFLOAT,
                     };
-
+                        
                     let attr = vk::VertexInputAttributeDescription::builder()
                         .binding(0)
                         .location(index as u32)
                         .offset(offset as u32)
                         .format(format);
-
+                        
+                    // TODO: Do this properly. This currently juse uses the size of offsets but this doesnt count for alignment
                     offset += it.size();
-
+                        
                     attributes.push(attr.build());
                 }
 
@@ -1262,6 +1270,7 @@ impl GenericPipeline for Pipeline {
                     desc: PipelineDescription::Graphics(desc),
                 }))
             }
+            _ => todo!()
         }
     }
 }
@@ -1557,7 +1566,8 @@ impl GenericGraphicsContext for GraphicsContext {
         let pipeline = &self.pipelines.last().unwrap();
 
         let desc = match &pipeline.desc {
-            PipelineDescription::Graphics(desc) => desc
+            PipelineDescription::Graphics(desc) => desc,
+            _ => unreachable!()
         };
         assert_eq!(size_of::<T>(), desc.push_constant_size);
 

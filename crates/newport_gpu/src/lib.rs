@@ -32,6 +32,7 @@ pub use vk::*;
 use newport_os::window::WindowHandle;
 use newport_core::math::{ Rect, Color };
 
+use std::mem::size_of;
 use bitflags::*;
 
 pub use std::sync::Arc;
@@ -185,6 +186,7 @@ pub trait GenericTexture {
 
 pub trait GenericRenderPass {
     fn new(owner: Arc<Device>, colors: Vec<Format>, depth: Option<Format>) -> Result<Arc<RenderPass>, ()>;
+    fn owner(&self) -> &Arc<Device>;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -278,6 +280,96 @@ impl VertexAttribute {
     }
 }
 
+pub trait Vertex {
+    fn attributes() -> Vec<VertexAttribute>;
+}
+
+pub struct PipelineBuilder {
+    desc: PipelineDescription,
+}
+
+impl PipelineBuilder {
+    pub fn new_graphics(render_pass: Arc<RenderPass>) -> Self {
+        let desc = GraphicsPipelineDescription{
+            render_pass: render_pass,
+            shaders:     Vec::new(),
+
+            vertex_attributes: Vec::new(),
+
+            draw_mode:  DrawMode::Fill,
+            line_width: 1.0,
+
+            cull_mode:  CullMode::empty(),
+            color_mask: ColorMask::all(),
+
+            blend_enabled: false,
+
+            src_color_blend_factor: BlendFactor::One,
+            dst_color_blend_factor: BlendFactor::One,
+            color_blend_op:         BlendOp::Add,
+
+            src_alpha_blend_factor: BlendFactor::One,
+            dst_alpha_blend_factor: BlendFactor::One,
+            alpha_blend_op:         BlendOp::Add,
+
+            depth_test:    true, 
+            depth_write:   true,
+            depth_compare: CompareOp::Less,
+
+            push_constant_size: 0,
+        };
+        Self { desc: PipelineDescription::Graphics(desc) }
+    }
+
+    pub fn shaders(mut self, shaders: Vec<Arc<Shader>>) -> Self {
+        match &mut self.desc {
+            PipelineDescription::Graphics(gfx) => gfx.shaders = shaders,
+            _ => unreachable!()
+        }
+        self
+    }
+
+    pub fn vertex<T: Vertex>(mut self) -> Self {
+        match &mut self.desc {
+            PipelineDescription::Graphics(gfx) => gfx.vertex_attributes = T::attributes(),
+            _ => unreachable!()
+        }
+        self
+    }
+
+    pub fn draw_mode(mut self, mode: DrawMode) -> Self {
+        match &mut self.desc {
+            PipelineDescription::Graphics(gfx) => gfx.draw_mode = mode,
+            _ => unreachable!()
+        }
+        self
+    }
+
+    pub fn line_width(mut self, width: f32) -> Self {
+        match &mut self.desc {
+            PipelineDescription::Graphics(gfx) => gfx.line_width = width,
+            _ => unreachable!()
+        }
+        self
+    }
+    
+    pub fn push_constant_size<T: Sized>(mut self) -> Self {
+        assert!(size_of::<T>() <= 128);
+        match &mut self.desc {
+            PipelineDescription::Graphics(gfx) => gfx.push_constant_size = size_of::<T>(),
+            _ => unreachable!()
+        }
+        self
+    }
+
+    pub fn build(self) -> Result<Arc<Pipeline>, ()> {
+        match &self.desc {
+            PipelineDescription::Graphics(gfx) => Pipeline::new(gfx.render_pass.owner().clone(), self.desc),
+            _ => todo!()
+        }
+    }
+}
+
 pub struct GraphicsPipelineDescription {
     pub render_pass:  Arc<RenderPass>,
     pub shaders:      Vec<Arc<Shader>>,
@@ -309,7 +401,8 @@ pub struct GraphicsPipelineDescription {
 }
 
 pub enum PipelineDescription {
-    Graphics(GraphicsPipelineDescription)
+    Graphics(GraphicsPipelineDescription),
+    Compute,
 }
 
 pub trait GenericPipeline {
