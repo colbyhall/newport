@@ -3,7 +3,7 @@ pub mod core {
     pub use newport_core::*;
 }
 
-// Core runnable structure 
+// Runnable structure 
 pub mod engine {
     pub use newport_engine::*;
 }
@@ -19,4 +19,9 @@ pub mod asset {
 // GPU abstraction
 pub mod gpu {
     pub use newport_gpu::*;
+}
+
+// Runtime graphics using the gpu crate
+pub mod graphics {
+    pub use newport_graphics::*;
 }

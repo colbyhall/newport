@@ -10,12 +10,13 @@ repository = "https://github.com/colbyhall/newport"
 members = ["crates/*"]
 
 [dependencies]
-newport_core   = { path = "crates/newport_core" }
-newport_os     = { path = "crates/newport_os" }
-newport_asset  = { path = "crates/newport_asset" }
-newport_log    = { path = "crates/newport_log" }
-newport_engine = { path = "crates/newport_engine" }
-newport_gpu = { path = "crates/newport_gpu" }
+newport_core      = { path = "crates/newport_core" }
+newport_os        = { path = "crates/newport_os" }
+newport_asset     = { path = "crates/newport_asset" }
+newport_log       = { path = "crates/newport_log" }
+newport_engine    = { path = "crates/newport_engine" }
+newport_gpu       = { path = "crates/newport_gpu" }
+newport_graphics  = { path = "crates/newport_graphics" }
 
 # Serde sadly has to be included in the dependency list of every package that uses it
 serde = { version = "*", features = ["derive"] }

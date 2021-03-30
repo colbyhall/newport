@@ -7,4 +7,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+newport_engine = { path = "../newport_engine" }
+newport_gpu    = { path = "../newport_gpu" }
+
+[build-dependencies]
+# Used to build newport_shaders
 spirv-builder = { git = "https://github.com/EmbarkStudios/rust-gpu.git", branch = "main", version = "0.4.0-alpha.3" }

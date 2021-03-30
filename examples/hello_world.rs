@@ -1,8 +1,6 @@
 use newport::*;
-use newport::gpu::*;
 
 use std::fs::read_to_string;
-use std::sync::Arc;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -24,21 +22,18 @@ impl asset::Asset for Test {
     fn extension() -> &'static str { "test" }
 }
 
-struct HelloWorld {
-    instance: Arc<Instance>,
-    device:   Option<Arc<Device>>,
-}
+struct HelloWorld;
 
 impl engine::ModuleCompileTime for HelloWorld {
     fn new() -> Self {
-        Self{
-            instance: Instance::new().unwrap(),
-            device:   None,
-        }
+        Self
     }
 
     fn depends_on(builder: engine::EngineBuilder) -> engine::EngineBuilder {
-        builder.module::<asset::AssetManager>()
+        builder
+            .module::<graphics::Graphics>()
+            .module::<asset::AssetManager>()
+
     }
 }
 
@@ -49,8 +44,6 @@ impl engine::ModuleRuntime for HelloWorld {
         asset_manager
             .register_collection(asset::PathBuf::from("assets/"))
             .register_variant::<Test>();
-
-        self.device = Some(Device::new(self.instance.clone(), Some(engine.window().handle())).unwrap());
     }
 
     fn on_startup(&mut self) {
@@ -62,17 +55,17 @@ impl engine::ModuleRuntime for HelloWorld {
     }
 
     fn on_tick(&self, _dt: f32) {
-        let device = self.device.as_ref().unwrap();
+        // let device = self.device.as_ref().unwrap();
 
-        let backbuffer = device.acquire_backbuffer();
+        // let backbuffer = device.acquire_backbuffer();
 
-        let mut graphics = GraphicsContext::new(device.clone()).unwrap();
-        graphics.begin();
-        graphics.resource_barrier_texture(backbuffer, Layout::Undefined, Layout::Present);
-        graphics.end();
+        // let mut graphics = GraphicsContext::new(device.clone()).unwrap();
+        // graphics.begin();
+        // graphics.resource_barrier_texture(backbuffer, Layout::Undefined, Layout::Present);
+        // graphics.end();
 
-        let receipt = device.submit_graphics(vec![graphics], &[]);
-        device.display(&[receipt]);
+        // let receipt = device.submit_graphics(vec![graphics], &[]);
+        // device.display(&[receipt]);
     }
 }
 
