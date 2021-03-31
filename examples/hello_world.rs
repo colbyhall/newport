@@ -24,10 +24,6 @@ impl asset::Asset for Test {
     fn extension() -> &'static str { "test" }
 }
 
-struct TestVertex {
-    
-}
-
 struct HelloWorld {
     instance: Arc<Instance>,
     device:   Option<Arc<Device>>,

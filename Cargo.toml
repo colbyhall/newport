@@ -13,16 +13,16 @@ keywords = ["game", "engine", "gamedev", "newport"]
 members = ["crates/*"]
 
 [dependencies]
-newport_core      = { path = "crates/newport_core" }
-newport_os        = { path = "crates/newport_os" }
-newport_asset     = { path = "crates/newport_asset" }
-newport_log       = { path = "crates/newport_log" }
-newport_engine    = { path = "crates/newport_engine" }
-newport_gpu       = { path = "crates/newport_gpu" }
-newport_graphics  = { path = "crates/newport_graphics" }
+newport_core      = { path = "crates/newport_core", version = "0.0.1" }
+newport_os        = { path = "crates/newport_os", version = "0.0.1" }
+newport_asset     = { path = "crates/newport_asset", version = "0.0.1" }
+newport_log       = { path = "crates/newport_log", version = "0.0.1" }
+newport_engine    = { path = "crates/newport_engine", version = "0.0.1" }
+newport_gpu       = { path = "crates/newport_gpu", version = "0.0.1" }
+newport_graphics  = { path = "crates/newport_graphics", version = "0.0.1" }
 
 # Serde sadly has to be included in the dependency list of every package that uses it
-serde = { version = "*", features = ["derive"] }
+serde = { version = "1.0.125", features = ["derive"] }
 
 [[example]]
 name = "hello_world"
