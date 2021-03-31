@@ -1,3 +1,6 @@
+#[allow(unused_imports)]
+use num_traits::*;
+
 pub struct Color {
     pub r: f32,
     pub g: f32,

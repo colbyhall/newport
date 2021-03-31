@@ -1,5 +1,8 @@
 use crate::Vector2;
 
+#[allow(unused_imports)]
+use num_traits::*;
+
 #[derive(Copy, Clone)]
 pub struct Rect {
     pub min: Vector2,

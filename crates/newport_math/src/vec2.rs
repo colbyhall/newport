@@ -14,6 +14,9 @@ use core::ops::{
     Neg
 };
 
+#[allow(unused_imports)]
+use num_traits::*;
+
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 #[cfg_attr(target_arch = "spirv", repr(simd))]
 pub struct Vector2 {

@@ -1,4 +1,4 @@
-use core::{ 
+use core::ops::{ 
     Add, 
     AddAssign, 
     
@@ -14,6 +14,11 @@ use core::{
     Neg,
 };
 use core::convert::From;
+
+#[allow(unused_imports)]
+use num_traits::*;
+
+use crate::Vector3;
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 #[cfg_attr(target_arch = "spirv", repr(simd))]
@@ -233,5 +238,12 @@ impl Neg for Vector4 {
 impl From<f32> for Vector4 {
     fn from(s: f32) -> Self {
         Vector4::new(s, s, s, s)
+    }
+}
+
+impl From<(Vector3, f32)> for Vector4 {
+    fn from(xyzw: (Vector3, f32)) -> Self {
+        let (xyz, w) = xyzw;
+        Vector4::new(xyz.x, xyz.y, xyz.z, w)
     }
 }

@@ -1,6 +1,10 @@
 use core::ops::{ Mul, MulAssign, };
 
 use crate::Vector4;
+use crate::Vector3;
+
+#[allow(unused_imports)]
+use num_traits::*;
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Matrix4 {
@@ -56,46 +60,79 @@ impl Matrix4 {
             _ => Vector4::ZERO,
         }
     }
+
+    pub const fn ortho(width: f32, height: f32, far: f32, near: f32) -> Self {
+        let top    = height / 2.0;
+        let bottom = -top;
+
+        let right = width / 2.0;
+        let left = -right;
+
+        let mut result = Matrix4::IDENTITY;
+        result.x_axis.x =  2.0 / (right - left);
+        result.y_axis.y =  2.0 / (top - bottom);
+        result.z_axis.z = -2.0 / (far - near);
+
+        result.w_axis.x = -((right + left) / (right - left));
+        result.w_axis.y = -((top + bottom) / (top - bottom));
+        result.w_axis.z = -((far + near) / (far - near));
+        result
+    }
+
+    pub fn translate(xyz: Vector3) -> Matrix4 {
+        let mut result = Matrix4::IDENTITY;
+        result.w_axis = (xyz, 1.0).into();
+        result
+    }
 }
 
 impl Mul for Matrix4 {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        let mut rows = [Vector4::ZERO; 4];
-        for (index, it) in rows.iter_mut().enumerate() {
-            it.x = self.row(index).dot(rhs.x_axis);
-            it.y = self.row(index).dot(rhs.y_axis);
-            it.z = self.row(index).dot(rhs.z_axis);
-            it.w = self.row(index).dot(rhs.w_axis);
-        }
-        Self::from_rows(rows[0], rows[1], rows[2], rows[3])
+        let mut row_x = Vector4::ZERO;
+        row_x.x = self.row(0).dot(rhs.x_axis);
+        row_x.y = self.row(0).dot(rhs.y_axis);
+        row_x.z = self.row(0).dot(rhs.z_axis);
+        row_x.w = self.row(0).dot(rhs.w_axis);
+
+        let mut row_y = Vector4::ZERO;
+        row_y.x = self.row(1).dot(rhs.x_axis);
+        row_y.y = self.row(1).dot(rhs.y_axis);
+        row_y.z = self.row(1).dot(rhs.z_axis);
+        row_y.w = self.row(1).dot(rhs.w_axis);
+
+        let mut row_z = Vector4::ZERO;
+        row_z.x = self.row(2).dot(rhs.x_axis);
+        row_z.y = self.row(2).dot(rhs.y_axis);
+        row_z.z = self.row(2).dot(rhs.z_axis);
+        row_z.w = self.row(2).dot(rhs.w_axis);
+
+        let mut row_w = Vector4::ZERO;
+        row_w.x = self.row(3).dot(rhs.x_axis);
+        row_w.y = self.row(3).dot(rhs.y_axis);
+        row_w.z = self.row(3).dot(rhs.z_axis);
+        row_w.w = self.row(3).dot(rhs.w_axis);
+        
+        Self::from_rows(row_x, row_y, row_z, row_w)
     }
 }
 
 impl Mul<Vector4> for Matrix4 {
-    type Output = Self;
+    type Output = Vector4;
 
     fn mul(self, rhs: Vector4) -> Self::Output {
-        let mut rows = [Vector4::ZERO; 4];
-        for (index, it) in rows.iter_mut().enumerate() {
-            it.x = self.row(index).dot(rhs.x.into());
-            it.y = self.row(index).dot(rhs.y.into());
-            it.z = self.row(index).dot(rhs.z.into());
-            it.w = self.row(index).dot(rhs.w.into());
-        }
-        Self::from_rows(rows[0], rows[1], rows[2], rows[3])
+        let x = self.row(0).dot(rhs);
+        let y = self.row(1).dot(rhs);
+        let z = self.row(2).dot(rhs);
+        let w = self.row(3).dot(rhs);
+
+        Vector4::new(x, y, z, w)
     }
 }
 
 impl MulAssign for Matrix4 {
     fn mul_assign(&mut self, rhs: Self) {
-        *self = *self * rhs;
-    }
-}
-
-impl MulAssign<Vector4> for Matrix4 {
-    fn mul_assign(&mut self, rhs: Vector4) {
         *self = *self * rhs;
     }
 }
