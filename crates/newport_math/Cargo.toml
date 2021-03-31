@@ -1,0 +1,13 @@
+[package]
+name = "newport_math"
+version = "0.1.0"
+authors = ["Colby <me@cobeh.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+num-traits = { version = "0.2.14", features = ["libm"] }
+
+[target.'cfg(target_arch = "spirv")'.dependencies]
+spirv-std = { version = "0.4.0-alpha.1", features = ["const-generics"] }

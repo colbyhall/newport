@@ -7,3 +7,6 @@ edition = "2018"
 [dependencies]
 # Serde sadly has to be included in the dependency list of every package that uses it
 serde = { version = "*", features = ["derive"] }
+
+# TEMP TEMP TEMP
+glam = { version = "0.13", default-features = false, features = ["libm", "scalar-math"] }

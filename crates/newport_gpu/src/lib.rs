@@ -30,7 +30,7 @@ pub mod vk;
 pub use vk::*;
 
 use newport_os::window::WindowHandle;
-use newport_core::math::{ Rect, Color };
+use newport_math::{ Rect, Color };
 
 use std::mem::size_of;
 use bitflags::*;

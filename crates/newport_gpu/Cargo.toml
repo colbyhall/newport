@@ -10,6 +10,7 @@ newport_engine = { path = "../newport_engine" }
 newport_log    = { path = "../newport_log" }
 newport_asset  = { path = "../newport_asset" }
 newport_os     = { path = "../newport_os" }
+newport_math   = { path = "../newport_math" }
 
 ash  = { version = "0.32.0" }
 bitflags = "1.2"
