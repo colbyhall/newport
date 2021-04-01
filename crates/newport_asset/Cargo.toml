@@ -3,6 +3,11 @@ name = "newport_asset"
 version = "0.0.1"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
+license = "MIT"
+repository = "https://github.com/colbyhall/newport"
+description = "Thread safe asset manager for Newport engine"
+categories = ["game-engines", "game-development"]
+keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
 newport_core   = { path = "../newport_core", version = "0.0.1" }

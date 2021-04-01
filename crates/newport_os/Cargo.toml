@@ -3,5 +3,10 @@ name = "newport_os"
 version = "0.0.1"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
+license = "MIT"
+repository = "https://github.com/colbyhall/newport"
+description = "Os abstractions for engine use"
+categories = ["game-engines", "game-development"]
+keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]

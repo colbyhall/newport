@@ -3,8 +3,11 @@ name = "newport_math"
 version = "0.0.1"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+repository = "https://github.com/colbyhall/newport"
+description = "Math library that also works with spirv shaders for Newport engine"
+categories = ["game-engines", "game-development"]
+keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
 num-traits = { version = "0.2.14", default-features = false, features = ["libm"] }

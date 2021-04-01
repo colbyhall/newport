@@ -1,12 +1,12 @@
 [package]
-name = "newport_core"
-version = "0.0.1"
-authors = ["Colby <me@cobeh.com>"]
-edition = "2018"
+name        = "newport_core"
+version     = "0.0.1"
+authors     = ["Colby <me@cobeh.com>"]
+edition     = "2018"
+license     = "MIT"
+repository  = "https://github.com/colbyhall/newport"
+categories  = ["game-engines", "game-development"]
+keywords    = ["game", "engine", "gamedev", "newport"]
+description = "Core engine library used by most packages for newport"
 
 [dependencies]
-# Serde sadly has to be included in the dependency list of every package that uses it
-serde = { version = "*", features = ["derive"] }
-
-# TEMP TEMP TEMP
-glam = { version = "0.13", default-features = false, features = ["libm", "scalar-math"] }
