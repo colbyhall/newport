@@ -21,9 +21,10 @@ pub fn main_fs(color: Color, output: &mut Vector4) {
 #[spirv(vertex)]
 pub fn main_vs(
     position: Vector3,
+    color:    Color,
     out_color: &mut Color,
     #[spirv(position, invariant)] out_pos: &mut Vector4,
 ) {
-    *out_color = Color::GREEN;
+    *out_color = color.into();
     *out_pos = (position, 1.0).into();
 }

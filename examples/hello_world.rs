@@ -60,15 +60,15 @@ impl engine::ModuleRuntime for HelloWorld {
 
         let vertices = vec![
             HelloWorldVertex{
-                position: Vector3::new(-0.5, -0.5, 0.0),
+                position: Vector3::new(-0.5, 0.5, 0.0),
                 color:    Color::RED,
             },
             HelloWorldVertex{
-                position: Vector3::new(0.0, 0.5, 0.0),
+                position: Vector3::new(0.0, -0.5, 0.0),
                 color:    Color::GREEN,
             },
             HelloWorldVertex{
-                position: Vector3::new(0.5, -0.5, 0.0),
+                position: Vector3::new(0.5, 0.5, 0.0),
                 color:    Color::BLUE,
             }
         ];
