@@ -25,3 +25,8 @@ pub mod gpu {
 pub mod graphics {
     pub use newport_graphics::*;
 }
+
+// No std math library that works for shaders
+pub mod math {
+    pub use newport_math::*;
+}

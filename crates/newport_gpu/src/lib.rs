@@ -112,6 +112,7 @@ bitflags! {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum ResourceCreateError {
     Unknown,
     OutOfMemory,
@@ -196,7 +197,7 @@ pub enum ShaderVariant {
 }
 
 pub trait GenericShader {
-    fn new(owner: Arc<Device>, contents: Vec<u8>, variant: ShaderVariant) -> Result<Arc<Shader>, ()>;
+    fn new(owner: Arc<Device>, contents: Vec<u8>, variant: ShaderVariant, main: String) -> Result<Arc<Shader>, ()>;
 }
 
 #[derive(Copy, Clone, Debug)]

@@ -1024,7 +1024,7 @@ pub struct Shader {
 
 impl GenericShader for Shader {
     // TODO: SPIRV REFLECT?
-    fn new(owner: Arc<Device>, contents: Vec<u8>, variant: ShaderVariant) -> Result<Arc<Shader>, ()> {
+    fn new(owner: Arc<Device>, contents: Vec<u8>, variant: ShaderVariant, main: String) -> Result<Arc<Shader>, ()> {
         let contents = unsafe{ from_raw_parts(contents.as_ptr() as *const u32, contents.len() / 4) };
 
         let create_info = vk::ShaderModuleCreateInfo::builder()
@@ -1041,7 +1041,7 @@ impl GenericShader for Shader {
 
             variant: variant,
             module:  shader,
-            main:    "main".to_string(),
+            main:    main,
         }))
     }
 }
@@ -1073,13 +1073,16 @@ impl GenericPipeline for Pipeline {
                     let stage = shader_variant_to_shader_stage(it.variant);
 
                     let main = CString::new(it.main.clone()).unwrap();
-
+                    
                     let stage_info = vk::PipelineShaderStageCreateInfo::builder()
                         .stage(stage)
                         .module(it.module)
-                        .name(&main);
+                        .name(&main)
+                        .build();
+
+                    main.into_raw(); // LEAK LEAK LEAK
                     
-                    shader_stages.push(stage_info.build());
+                    shader_stages.push(stage_info);
                 }
 
                 let mut stride = 0;
@@ -1111,7 +1114,7 @@ impl GenericPipeline for Pipeline {
                         .offset(offset as u32)
                         .format(format);
                         
-                    // TODO: Do this properly. This currently juse uses the size of offsets but this doesnt count for alignment
+                    // TODO: Do this properly. This currently just uses the size of offsets but this doesnt count for alignment
                     offset += it.size();
                         
                     attributes.push(attr.build());
@@ -1537,10 +1540,12 @@ impl GenericGraphicsContext for GraphicsContext {
                 let rect = vk::Rect2D::builder()
                     .extent(
                         vk::Extent2D::builder()
-                            .width(viewport.x as u32)
-                            .height(viewport.y as u32)
+                            .width(viewport.width as u32)
+                            .height(viewport.height as u32)
                             .build()
-                        );
+                        )
+                    .build();
+
                 self.owner.logical.cmd_set_scissor(self.command_buffer, 0, from_ref(&rect));
             }
         }
