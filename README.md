@@ -1,6 +1,7 @@
 # ![Newport](assets/branding/logo_black_name.svg)
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![Build](https://github.com/colbyhall/newport/actions/workflows/ci.yml/badge.svg)](https://github.com/colbyhall/newport/actions/workflows/ci.yml)
 
 ## About
 Newport is a modular 2D and 3D game engine built in Rust for Rust. It is designed to be easily extendable and easy to use. The project is early on in development. Every API is extremely volatile as the engine is worked on more.
