@@ -6,9 +6,6 @@
 ## About
 Newport is a modular 2D and 3D game engine built in Rust for Rust. It is designed to be easily extendable and easy to use. The project is early on in development. Every API is extremely volatile as the engine is worked on more.
 
-## Philosophy
-Newport is soley being made in conjunction with a private game project. This will be one of the main driving factors in its feature set. The engine is designed to be completely multithreaded. The purpose of this is to maximize CPU usage. The engine will also be entirely designed in Rust. This includes asset format (Rust Object Notation), modding (Rust -> WASM), and shaders([rust-gpu](https://github.com/EmbarkStudios/rust-gpu)). This is less about loving Rust and more about keeping everything in the same language to loosen up friction. Several engine modules are designed to be used completely indendent. 
-
 ## Goals
 * **Independent** - Build with minimal dependencies
 * **Modular** - Use modules to build building blocks that are combined for engine features. 
