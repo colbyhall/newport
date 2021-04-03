@@ -242,6 +242,7 @@ struct WorkEntry {
     semaphore: vk::Semaphore,
     fence:     vk::Fence,
     variant:   WorkVariant,
+    thread_id: ThreadId,
 }
 
 struct WorkContainer {
@@ -545,7 +546,8 @@ impl GenericDevice for Device {
         let id = self.push_work(WorkEntry{
             semaphore: semaphore,
             fence:     fence,
-            variant: WorkVariant::Graphics(contexts)
+            variant:   WorkVariant::Graphics(contexts),
+            thread_id: std::thread::current().id(),
         });
         Receipt::new(owner, id)
     }
@@ -594,6 +596,10 @@ impl GenericDevice for Device {
         let mut work = self.work.lock().unwrap();
 
         work.in_queue.retain(|_, v| {
+            if v.thread_id != std::thread::current().id() {
+                return true;
+            }
+
             unsafe {
                 let result = self.logical.get_fence_status(v.fence).unwrap();
                 if result {
