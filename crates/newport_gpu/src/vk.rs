@@ -352,13 +352,18 @@ impl GenericDevice for Device {
                 let properties = instance.instance.get_physical_device_properties(*it);
                 let features = instance.instance.get_physical_device_features(*it);
 
+                // Find extensions to do bindless
+                let mut indexing_features = vk::PhysicalDeviceDescriptorIndexingFeatures::default();
+
                 let mut device_features = vk::PhysicalDeviceFeatures2::default();
+                device_features.p_next = &mut indexing_features as *mut vk::PhysicalDeviceDescriptorIndexingFeatures as *mut std::ffi::c_void;
                 instance.instance.get_physical_device_features2(*it, &mut device_features);
 
                 // TODO: Maybe do more checking with features we actually will need like KHR Swapchain support?
                 //  also maybe take something in from the builder
                 let mut is_acceptable = true;
                 is_acceptable &= properties.device_type == vk::PhysicalDeviceType::DISCRETE_GPU && features.geometry_shader == 1;
+                is_acceptable &= indexing_features.descriptor_binding_partially_bound == 1 && indexing_features.runtime_descriptor_array == 1;
 
                 if is_acceptable { selected_device = Some(*it); }
             }
@@ -433,7 +438,12 @@ impl GenericDevice for Device {
                 b"VK_KHR_swapchain\0".as_ptr() as *const i8
             ];
 
+            let mut indexing_features = vk::PhysicalDeviceDescriptorIndexingFeatures::builder()
+                .descriptor_binding_partially_bound(true)
+                .runtime_descriptor_array(true);
+
             let create_info = vk::DeviceCreateInfo::builder()
+                .push_next(&mut indexing_features)
                 .queue_create_infos(&queue_create_infos[..])
                 .enabled_layer_names(&ENABLED_LAYER_NAMES)
                 .enabled_extension_names(&extensions)
@@ -466,7 +476,15 @@ impl GenericDevice for Device {
                 .build(),
         ];
 
-        let create_info = vk::DescriptorSetLayoutCreateInfo::builder().bindings(&bindless_bindings);
+        let bind_flags = [vk::DescriptorBindingFlags::PARTIALLY_BOUND_EXT; 2];
+
+        let mut extension = vk::DescriptorSetLayoutBindingFlagsCreateInfo::builder()
+            .binding_flags(&bind_flags)
+            .build();
+
+        let create_info = vk::DescriptorSetLayoutCreateInfo::builder()
+            .push_next(&mut extension)
+            .bindings(&bindless_bindings);
         let bindless_layout = unsafe{ logical_device.create_descriptor_set_layout(&create_info, None).unwrap() };
 
         let pool_sizes = [
@@ -722,23 +740,6 @@ impl GenericDevice for Device {
 
             image_infos.push(image_info);
             sampler_infos.push(sampler_info);
-        }
-
-        // Fill out the rest will null reference
-        if image_infos.len() < 2048 {
-            for _ in 0..2048 - image_infos.len() {
-                let image_info = vk::DescriptorImageInfo::builder()
-                    .image_view(null_texture.view)
-                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                    .build();
-
-                let sampler_info = vk::DescriptorImageInfo::builder()
-                    .sampler(null_texture.sampler)
-                    .build();
-
-                image_infos.push(image_info);
-                sampler_infos.push(sampler_info);
-            }
         }
 
         let image_set_write = vk::WriteDescriptorSet::builder()
@@ -1404,11 +1405,11 @@ impl GenericPipeline for Pipeline {
                 let dynamic_state = vk::PipelineDynamicStateCreateInfo::builder()
                     .dynamic_states(&dynamic_states);
                 
-                // let layouts = [
-                    // owner.bindless_layout
-                // ];
-                let mut pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder(); // TODO: Do bindless descriptor layout
-                    // .set_layouts(&layouts);
+                let layouts = [
+                    owner.bindless_layout
+                ];
+                let mut pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder() // TODO: Do bindless descriptor layout
+                    .set_layouts(&layouts);
 
                 // assert(push_constant_size <= 128); // Min push contsant size
                 let range = vk::PushConstantRange::builder()
@@ -1689,14 +1690,14 @@ impl GenericGraphicsContext for GraphicsContext {
     fn bind_pipeline(&mut self, pipeline: Arc<Pipeline>) {
         unsafe {
             self.owner.logical.cmd_bind_pipeline(self.command_buffer, vk::PipelineBindPoint::GRAPHICS, pipeline.handle);
-            // self.owner.logical.cmd_bind_descriptor_sets(
-                // self.command_buffer, 
-                // vk::PipelineBindPoint::GRAPHICS, 
-                // pipeline.layout, 
-                // 0, 
-                // &[pipeline.owner.bindless_set], 
-                // &[]
-            // );
+            self.owner.logical.cmd_bind_descriptor_sets(
+                self.command_buffer, 
+                vk::PipelineBindPoint::GRAPHICS, 
+                pipeline.layout, 
+                0, 
+                &[pipeline.owner.bindless_set], 
+                &[]
+            );
 
             let viewport = vk::Viewport::builder()
                 .width(self.attachments.last().unwrap().width as f32)

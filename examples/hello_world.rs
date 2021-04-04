@@ -48,6 +48,9 @@ impl engine::ModuleRuntime for HelloWorld {
         let render_pass = RenderPass::new(device.clone(), vec![Format::BGR_U8_SRGB], None).unwrap();
 
         let shader = "
+            Texture2D    all_textures[] : register(t0);
+            SamplerState all_samplers[] : register(s1);
+
             struct Vertex {
                 float3 position : POSITION;
                 float4 color    : COLOR;
@@ -125,6 +128,8 @@ impl engine::ModuleRuntime for HelloWorld {
         let device = &render_state.device;
 
         let backbuffer = device.acquire_backbuffer();
+
+        device.update_bindless();
 
         let mut graphics = GraphicsContext::new(device.clone()).unwrap();
         graphics.begin();
