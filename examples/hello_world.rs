@@ -3,7 +3,6 @@ use gpu::*;
 use math::*;
 
 use std::sync::Arc;
-use std::fs::read;
 use std::mem::size_of;
 
 struct RenderState {
@@ -48,10 +47,39 @@ impl engine::ModuleRuntime for HelloWorld {
 
         let render_pass = RenderPass::new(device.clone(), vec![Format::BGR_U8_SRGB], None).unwrap();
 
-        let shaders = read("target\\spirv-builder\\spirv-unknown-unknown\\release\\newport_shaders.spv").unwrap();
+        let shader = "
+            struct Vertex {
+                float3 position : POSITION;
+                float4 color    : COLOR;
+            };
 
-        let vertex_shader = Shader::new(device.clone(), shaders.clone(), ShaderVariant::Vertex, "main_vs".to_string()).unwrap();
-        let pixel_shader = Shader::new(device.clone(), shaders, ShaderVariant::Pixel, "main_fs".to_string()).unwrap();
+            struct Vertex_Out {
+                float4 color : COLOR;
+                float4 position: SV_POSITION;
+            };
+
+            Vertex_Out main_vs( Vertex IN ){
+                Vertex_Out OUT;
+
+                OUT.color = IN.color;
+                OUT.position = float4(IN.position, 1.0);
+
+                return OUT;
+            }
+
+            float4 main_ps( float4 IN : COLOR) : SV_TARGET {
+                return IN;
+            }
+        ";
+
+        let vertex_main = "main_vs".to_string();
+        let pixel_main = "main_ps".to_string();
+
+        let vertex_bin = shaders::compile("vertex.hlsl", shader, &vertex_main, ShaderVariant::Vertex).unwrap();
+        let pixel_bin = shaders::compile("pixel.hlsl", shader, &pixel_main, ShaderVariant::Pixel).unwrap();
+
+        let vertex_shader = Shader::new(device.clone(), vertex_bin, ShaderVariant::Vertex, vertex_main).unwrap();
+        let pixel_shader = Shader::new(device.clone(), pixel_bin, ShaderVariant::Pixel, pixel_main).unwrap();
 
         let pipeline = PipelineBuilder::new_graphics(render_pass.clone())
             .shaders(vec![vertex_shader, pixel_shader])
@@ -60,15 +88,15 @@ impl engine::ModuleRuntime for HelloWorld {
 
         let vertices = vec![
             HelloWorldVertex{
-                position: Vector3::new(-0.5, 0.5, 0.0),
+                position: Vector3::new(-0.5, -0.5, 0.0),
                 color:    Color::RED,
             },
             HelloWorldVertex{
-                position: Vector3::new(0.0, -0.5, 0.0),
+                position: Vector3::new(0.0, 0.5, 0.0),
                 color:    Color::GREEN,
             },
             HelloWorldVertex{
-                position: Vector3::new(0.5, 0.5, 0.0),
+                position: Vector3::new(0.5, -0.5, 0.0),
                 color:    Color::BLUE,
             }
         ];

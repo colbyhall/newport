@@ -7,13 +7,12 @@ use newport_os::win32;
 
 use newport_core::containers::HashMap;
 
-
 use ash::{ vk, extensions::khr };
 use ash::version::{ EntryV1_0, InstanceV1_0, InstanceV1_1, DeviceV1_0 };
 
 use std::ptr::{ null_mut, copy_nonoverlapping };
 use std::slice::{ from_ref, from_raw_parts };
-use std::sync::{ RwLock, Mutex };
+use std::sync::{ RwLock, Mutex, Weak };
 use std::thread::ThreadId;
 use std::ffi::CString;
 use std::mem::size_of;
@@ -77,7 +76,7 @@ impl GenericInstance for Instance {
 }
 
 struct Swapchain {
-    // NOTE: Leak the swapchain handle because im currently lazy
+    // HACK: Leak the swapchain handle because it crashes when trying to free it. Probably due to it being attached to resources???
     // TODO: Maybe actually handle this?
     handle: vk::SwapchainKHR,
     extent: vk::Extent2D,
@@ -250,6 +249,11 @@ struct WorkContainer {
     in_queue: HashMap<usize, WorkEntry>,
 }
 
+struct BindlessInfo {
+    textures:     Vec<Weak<Texture>>,
+    null_texture: Option<Arc<Texture>>,
+}
+
 pub struct Device {
     owner:    Arc<Instance>,
 
@@ -269,6 +273,12 @@ pub struct Device {
 
     swapchain:   Mutex<Option<Swapchain>>,
     thread_info: Mutex<HashMap<ThreadId, DeviceThreadInfo>>,
+
+    bindless_info: Mutex<BindlessInfo>,
+
+    bindless_layout: vk::DescriptorSetLayout,
+    bindless_pool:   vk::DescriptorPool,
+    bindless_set:        vk::DescriptorSet,
 }
 
 impl Device {
@@ -342,18 +352,13 @@ impl GenericDevice for Device {
                 let properties = instance.instance.get_physical_device_properties(*it);
                 let features = instance.instance.get_physical_device_features(*it);
 
-                // Find extensions to do bindless
-                let mut indexing_features = vk::PhysicalDeviceDescriptorIndexingFeatures::default();
-
                 let mut device_features = vk::PhysicalDeviceFeatures2::default();
-                device_features.p_next = &mut indexing_features as *mut vk::PhysicalDeviceDescriptorIndexingFeatures as *mut std::ffi::c_void;
                 instance.instance.get_physical_device_features2(*it, &mut device_features);
 
                 // TODO: Maybe do more checking with features we actually will need like KHR Swapchain support?
                 //  also maybe take something in from the builder
                 let mut is_acceptable = true;
                 is_acceptable &= properties.device_type == vk::PhysicalDeviceType::DISCRETE_GPU && features.geometry_shader == 1;
-                is_acceptable &= indexing_features.descriptor_binding_partially_bound == 1 && indexing_features.runtime_descriptor_array == 1;
 
                 if is_acceptable { selected_device = Some(*it); }
             }
@@ -427,12 +432,8 @@ impl GenericDevice for Device {
             let extensions = [
                 b"VK_KHR_swapchain\0".as_ptr() as *const i8
             ];
-            let mut indexing_features = vk::PhysicalDeviceDescriptorIndexingFeatures::builder()
-                .descriptor_binding_partially_bound(true)
-                .runtime_descriptor_array(true);
 
             let create_info = vk::DeviceCreateInfo::builder()
-                .push_next(&mut indexing_features)
                 .queue_create_infos(&queue_create_infos[..])
                 .enabled_layer_names(&ENABLED_LAYER_NAMES)
                 .enabled_extension_names(&extensions)
@@ -447,6 +448,57 @@ impl GenericDevice for Device {
                 presentation_queue = None;
             }
         }
+
+        // Do the whole bindless setup thing
+        let bindless_bindings = [
+            vk::DescriptorSetLayoutBinding::builder()
+                .binding(0)
+                .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+                .descriptor_count(2048)
+                .stage_flags(vk::ShaderStageFlags::ALL_GRAPHICS)
+                .build(),
+            
+            vk::DescriptorSetLayoutBinding::builder()
+                .binding(1)
+                .descriptor_type(vk::DescriptorType::SAMPLER)
+                .descriptor_count(2048)
+                .stage_flags(vk::ShaderStageFlags::ALL_GRAPHICS)
+                .build(),
+        ];
+
+        let create_info = vk::DescriptorSetLayoutCreateInfo::builder().bindings(&bindless_bindings);
+        let bindless_layout = unsafe{ logical_device.create_descriptor_set_layout(&create_info, None).unwrap() };
+
+        let pool_sizes = [
+            vk::DescriptorPoolSize::builder()
+                .ty(vk::DescriptorType::SAMPLED_IMAGE)
+                .descriptor_count(1)
+                .build(),
+            
+            vk::DescriptorPoolSize::builder()
+                .ty(vk::DescriptorType::SAMPLER)
+                .descriptor_count(1)
+                .build(),
+        ];
+
+        let create_info = vk::DescriptorPoolCreateInfo::builder()
+            .pool_sizes(&pool_sizes)
+            .max_sets(1);
+        let bindless_pool = unsafe{ logical_device.create_descriptor_pool(&create_info, None).unwrap() };
+
+        let layouts = [
+            bindless_layout
+        ];
+
+        let create_info = vk::DescriptorSetAllocateInfo::builder()
+            .descriptor_pool(bindless_pool)
+            .set_layouts(&layouts);
+        let bindless_set = unsafe{ logical_device.allocate_descriptor_sets(&create_info).unwrap() };
+
+        let bindles_info = BindlessInfo{
+            textures:     Vec::new(),
+            null_texture: None,
+        };
 
         let result = Arc::new(Device{
             owner:    instance,
@@ -466,11 +518,34 @@ impl GenericDevice for Device {
             
             swapchain:   Mutex::new(None),
             thread_info: Mutex::new(HashMap::new()),
+
+            bindless_info: Mutex::new(bindles_info),
+            
+            bindless_layout: bindless_layout,
+            bindless_pool:   bindless_pool,
+            bindless_set:    bindless_set[0],
         });
 
         {
             let mut swapchain = result.swapchain.lock().unwrap();
             *swapchain = Some(Swapchain::new(result.clone()));
+        }
+        
+        // Create null texture
+        let null_texutre = Texture::new(
+            result.clone(), 
+            MemoryType::DeviceLocal, 
+            TextureUsage::SAMPLED, 
+            Format::RGBA_U8, 
+            64, 64, 1, 
+            Wrap::Clamp, 
+            Filter::Linear, 
+            Filter::Linear
+        ).unwrap();
+
+        {
+            let mut bindless = result.bindless_info.lock().unwrap();
+            bindless.null_texture = Some(null_texutre);
         }
 
         Ok(result)
@@ -609,6 +684,83 @@ impl GenericDevice for Device {
                 !result
             }
         });
+    }
+
+    fn update_bindless(&self) {
+        let bindless = self.bindless_info.lock().unwrap();
+
+        let null_texture = bindless.null_texture.as_ref().unwrap();
+
+        let mut image_infos   = Vec::with_capacity(2048); // TODO: Use temp allocator
+        let mut sampler_infos = Vec::with_capacity(2048); // TODO: Use temp allocator
+        for it in bindless.textures.iter() {
+            if it.strong_count() == 0 {
+                let image_info = vk::DescriptorImageInfo::builder()
+                    .image_view(null_texture.view)
+                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                    .build();
+
+                let sampler_info = vk::DescriptorImageInfo::builder()
+                    .sampler(null_texture.sampler)
+                    .build();
+
+                image_infos.push(image_info);
+                sampler_infos.push(sampler_info);
+                continue;
+            }
+
+            let tex = it.upgrade().unwrap();
+
+            let image_info = vk::DescriptorImageInfo::builder()
+                .image_view(tex.view)
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .build();
+
+            let sampler_info = vk::DescriptorImageInfo::builder()
+                .sampler(tex.sampler)
+                .build();
+
+            image_infos.push(image_info);
+            sampler_infos.push(sampler_info);
+        }
+
+        // Fill out the rest will null reference
+        if image_infos.len() < 2048 {
+            for _ in 0..2048 - image_infos.len() {
+                let image_info = vk::DescriptorImageInfo::builder()
+                    .image_view(null_texture.view)
+                    .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                    .build();
+
+                let sampler_info = vk::DescriptorImageInfo::builder()
+                    .sampler(null_texture.sampler)
+                    .build();
+
+                image_infos.push(image_info);
+                sampler_infos.push(sampler_info);
+            }
+        }
+
+        let image_set_write = vk::WriteDescriptorSet::builder()
+            .dst_set(self.bindless_set)
+            .dst_binding(0)
+            .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+            .image_info(&image_infos[..])
+            .build();
+
+        let samplers_set_write = vk::WriteDescriptorSet::builder()
+            .dst_set(self.bindless_set)
+            .dst_binding(1)
+            .descriptor_type(vk::DescriptorType::SAMPLER)
+            .image_info(&sampler_infos[..])
+            .build();
+
+        let set_writes = [
+            image_set_write,
+            samplers_set_write
+        ];
+
+        unsafe{ self.logical.update_descriptor_sets(&set_writes, &[]) };
     }
 }
 
@@ -845,7 +997,7 @@ impl GenericTexture for Texture {
         }
         let sampler = sampler.unwrap();
 
-        Ok(Arc::new(Texture{
+        let result = Arc::new(Texture{
             owner: owner,
 
             image:   image,
@@ -861,7 +1013,27 @@ impl GenericTexture for Texture {
             width:  width,
             height: height,
             depth:  depth,
-        }))
+        });
+
+        // Add a weak reference to the device for bindless
+        if usage.contains(TextureUsage::SAMPLED) {
+            let mut bindless = result.owner.bindless_info.lock().unwrap();
+            let mut found = false;
+
+            for it in bindless.textures.iter_mut() {
+                if it.strong_count() == 0 {
+                    *it = Arc::downgrade(&result);
+                    found = true;
+                    break;
+                }
+            }
+
+            if !found {
+                bindless.textures.push(Arc::downgrade(&result));
+            }
+        }
+
+        Ok(result)
     }
 
     fn owner(&self) -> &Arc<Device> { &self.owner }
@@ -1029,7 +1201,6 @@ pub struct Shader {
 }
 
 impl GenericShader for Shader {
-    // TODO: SPIRV REFLECT?
     fn new(owner: Arc<Device>, contents: Vec<u8>, variant: ShaderVariant, main: String) -> Result<Arc<Shader>, ()> {
         let contents = unsafe{ from_raw_parts(contents.as_ptr() as *const u32, contents.len() / 4) };
 
@@ -1233,8 +1404,12 @@ impl GenericPipeline for Pipeline {
                 let dynamic_state = vk::PipelineDynamicStateCreateInfo::builder()
                     .dynamic_states(&dynamic_states);
                 
+                // let layouts = [
+                    // owner.bindless_layout
+                // ];
                 let mut pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder(); // TODO: Do bindless descriptor layout
-                
+                    // .set_layouts(&layouts);
+
                 // assert(push_constant_size <= 128); // Min push contsant size
                 let range = vk::PushConstantRange::builder()
                     .size(desc.push_constant_size as u32)
@@ -1514,8 +1689,14 @@ impl GenericGraphicsContext for GraphicsContext {
     fn bind_pipeline(&mut self, pipeline: Arc<Pipeline>) {
         unsafe {
             self.owner.logical.cmd_bind_pipeline(self.command_buffer, vk::PipelineBindPoint::GRAPHICS, pipeline.handle);
-            // self.owner.logical.cmd_bind_descriptor_sets(self.command_buffer, vk::PipelineBindPoint::GRAPHICS, ...);
-            // TODO: Bindless
+            // self.owner.logical.cmd_bind_descriptor_sets(
+                // self.command_buffer, 
+                // vk::PipelineBindPoint::GRAPHICS, 
+                // pipeline.layout, 
+                // 0, 
+                // &[pipeline.owner.bindless_set], 
+                // &[]
+            // );
 
             let viewport = vk::Viewport::builder()
                 .width(self.attachments.last().unwrap().width as f32)

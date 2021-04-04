@@ -12,7 +12,3 @@ keywords = ["game", "engine", "gamedev", "newport"]
 [dependencies]
 newport_engine = { path = "../newport_engine", version = "0.0.1" }
 newport_gpu    = { path = "../newport_gpu", version = "0.0.1" }
-
-[build-dependencies]
-# Used to build newport_shaders
-spirv-builder = { git = "https://github.com/EmbarkStudios/rust-gpu.git", branch = "main", version = "0.4.0-alpha.3" }

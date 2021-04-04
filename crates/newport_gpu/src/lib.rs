@@ -29,13 +29,15 @@ pub mod vk;
 #[cfg(feature = "vulkan")]
 pub use vk::*;
 
+pub mod shaders;
+
 use newport_os::window::WindowHandle;
 use newport_math::{ Rect, Color };
 
 use std::mem::size_of;
 use bitflags::*;
 
-pub use std::sync::Arc;
+pub use std::sync::{ Arc, Mutex };
 
 #[derive(Debug)]
 pub enum InstanceCreateError {
@@ -68,6 +70,7 @@ pub trait GenericDevice {
     fn display(&self, wait_on: &[Receipt]);
 
     fn remove_finished_work(&self);
+    fn update_bindless(&self);
 }
 
 pub struct DeviceBuilder {
@@ -190,7 +193,7 @@ pub trait GenericRenderPass {
     fn owner(&self) -> &Arc<Device>;
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ShaderVariant {
     Vertex,
     Pixel,
