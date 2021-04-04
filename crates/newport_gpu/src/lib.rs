@@ -122,7 +122,7 @@ pub enum ResourceCreateError {
 }
 
 pub trait GenericBuffer {
-    fn new(device: Arc<Device>, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Arc<Buffer>, ResourceCreateError>;
+    fn new(owner: Arc<Device>, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Arc<Buffer>, ResourceCreateError>;
     fn copy_to<T>(&self, data: Vec<T>);
 }
 
@@ -430,6 +430,8 @@ pub trait GenericGraphicsContext: GenericContext {
     fn bind_scissor(&mut self, scissor: Option<Rect>);
     fn bind_pipeline(&mut self, pipeline: Arc<Pipeline>);
     fn bind_vertex_buffer(&mut self, buffer: Arc<Buffer>);
+    fn bind_constant_buffer(&mut self, buffer: Arc<Buffer>) -> u32;
+    fn bind_sampled_texture(&mut self, texture: Arc<Texture>) -> u32;
 
     fn draw(&mut self, vertex_count: usize, first_vertex: usize);
     fn clear(&mut self, color: Color, attachments: &[Arc<Texture>]);

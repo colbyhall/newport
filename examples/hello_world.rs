@@ -48,8 +48,9 @@ impl engine::ModuleRuntime for HelloWorld {
         let render_pass = RenderPass::new(device.clone(), vec![Format::BGR_U8_SRGB], None).unwrap();
 
         let shader = "
-            Texture2D    all_textures[] : register(t0);
-            SamplerState all_samplers[] : register(s1);
+            ByteAddressBuffer all_buffers[]  : register(t0);
+            Texture2D         all_textures[] : register(t1);
+            SamplerState      all_samplers[] : register(s2);
 
             struct Vertex {
                 float3 position : POSITION;
@@ -129,8 +130,6 @@ impl engine::ModuleRuntime for HelloWorld {
 
         let backbuffer = device.acquire_backbuffer();
 
-        device.update_bindless();
-
         let mut graphics = GraphicsContext::new(device.clone()).unwrap();
         graphics.begin();
         {
@@ -143,6 +142,8 @@ impl engine::ModuleRuntime for HelloWorld {
         graphics.resource_barrier_texture(backbuffer, Layout::ColorAttachment, Layout::Present);
         graphics.end();
 
+        device.update_bindless();
+        
         let receipt = device.submit_graphics(vec![graphics], &[]);
         device.display(&[receipt]);
     }

@@ -170,7 +170,9 @@ impl Swapchain {
 
                     width:  capabilities.current_extent.width,
                     height: capabilities.current_extent.height,
-                    depth:  1
+                    depth:  1,
+
+                    bindless: None
                 }));
             }
 
@@ -252,6 +254,9 @@ struct WorkContainer {
 struct BindlessInfo {
     textures:     Vec<Weak<Texture>>,
     null_texture: Option<Arc<Texture>>,
+
+    buffers:      Vec<Weak<Buffer>>,
+    null_buffer:  Option<Arc<Buffer>>,
 }
 
 pub struct Device {
@@ -463,20 +468,27 @@ impl GenericDevice for Device {
         let bindless_bindings = [
             vk::DescriptorSetLayoutBinding::builder()
                 .binding(0)
+                .descriptor_type(vk::DescriptorType::STORAGE_BUFFER)
+                .descriptor_count(2048)
+                .stage_flags(vk::ShaderStageFlags::ALL_GRAPHICS)
+                .build(),
+
+            vk::DescriptorSetLayoutBinding::builder()
+                .binding(1)
                 .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
                 .descriptor_count(2048)
                 .stage_flags(vk::ShaderStageFlags::ALL_GRAPHICS)
                 .build(),
             
             vk::DescriptorSetLayoutBinding::builder()
-                .binding(1)
+                .binding(2)
                 .descriptor_type(vk::DescriptorType::SAMPLER)
                 .descriptor_count(2048)
                 .stage_flags(vk::ShaderStageFlags::ALL_GRAPHICS)
                 .build(),
         ];
 
-        let bind_flags = [vk::DescriptorBindingFlags::PARTIALLY_BOUND_EXT; 2];
+        let bind_flags = [vk::DescriptorBindingFlags::PARTIALLY_BOUND_EXT; 3];
 
         let mut extension = vk::DescriptorSetLayoutBindingFlagsCreateInfo::builder()
             .binding_flags(&bind_flags)
@@ -488,6 +500,11 @@ impl GenericDevice for Device {
         let bindless_layout = unsafe{ logical_device.create_descriptor_set_layout(&create_info, None).unwrap() };
 
         let pool_sizes = [
+            vk::DescriptorPoolSize::builder()
+                .ty(vk::DescriptorType::STORAGE_BUFFER)
+                .descriptor_count(1)
+                .build(),
+            
             vk::DescriptorPoolSize::builder()
                 .ty(vk::DescriptorType::SAMPLED_IMAGE)
                 .descriptor_count(1)
@@ -516,6 +533,9 @@ impl GenericDevice for Device {
         let bindles_info = BindlessInfo{
             textures:     Vec::new(),
             null_texture: None,
+
+            buffers:      Vec::new(),
+            null_buffer:  None,
         };
 
         let result = Arc::new(Device{
@@ -561,9 +581,18 @@ impl GenericDevice for Device {
             Filter::Linear
         ).unwrap();
 
+        // Create the null buffer
+        let null_buffer = Buffer::new(
+            result.clone(),
+            BufferUsage::CONSTANTS,
+            MemoryType::HostVisible,
+            16
+        ).unwrap();
+
         {
             let mut bindless = result.bindless_info.lock().unwrap();
             bindless.null_texture = Some(null_texutre);
+            bindless.null_buffer  = Some(null_buffer);
         }
 
         Ok(result)
@@ -707,10 +736,39 @@ impl GenericDevice for Device {
     fn update_bindless(&self) {
         let bindless = self.bindless_info.lock().unwrap();
 
+        let null_buffer = bindless.null_buffer.as_ref().unwrap();
+        let mut buffers = Vec::with_capacity(bindless.buffers.len());
+        for it in bindless.buffers.iter() {
+            if it.strong_count() == 0 {
+                let info = vk::DescriptorBufferInfo::builder()
+                    .buffer(null_buffer.handle)
+                    .range(null_buffer.size as u64)
+                    .build();
+
+                buffers.push(info);
+                continue;
+            }
+
+            let buffer = it.upgrade().unwrap();
+            let info = vk::DescriptorBufferInfo::builder()
+                .buffer(buffer.handle)
+                .range(buffer.size as u64)
+                .build();
+
+            buffers.push(info);
+        }
+
+        let buffers_set_write = vk::WriteDescriptorSet::builder()
+            .dst_set(self.bindless_set)
+            .dst_binding(0)
+            .descriptor_type(vk::DescriptorType::STORAGE_BUFFER)
+            .buffer_info(&buffers[..])
+            .build();
+
         let null_texture = bindless.null_texture.as_ref().unwrap();
 
-        let mut image_infos   = Vec::with_capacity(2048); // TODO: Use temp allocator
-        let mut sampler_infos = Vec::with_capacity(2048); // TODO: Use temp allocator
+        let mut image_infos   = Vec::with_capacity(bindless.textures.len()); // TODO: Use temp allocator
+        let mut sampler_infos = Vec::with_capacity(bindless.textures.len()); // TODO: Use temp allocator
         for it in bindless.textures.iter() {
             if it.strong_count() == 0 {
                 let image_info = vk::DescriptorImageInfo::builder()
@@ -744,21 +802,22 @@ impl GenericDevice for Device {
 
         let image_set_write = vk::WriteDescriptorSet::builder()
             .dst_set(self.bindless_set)
-            .dst_binding(0)
+            .dst_binding(1)
             .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
             .image_info(&image_infos[..])
             .build();
 
         let samplers_set_write = vk::WriteDescriptorSet::builder()
             .dst_set(self.bindless_set)
-            .dst_binding(1)
+            .dst_binding(2)
             .descriptor_type(vk::DescriptorType::SAMPLER)
             .image_info(&sampler_infos[..])
             .build();
 
         let set_writes = [
+            buffers_set_write,
             image_set_write,
-            samplers_set_write
+            samplers_set_write,
         ];
 
         unsafe{ self.logical.update_descriptor_sets(&set_writes, &[]) };
@@ -770,12 +829,15 @@ pub struct Buffer {
 
     handle: vk::Buffer,
     memory: RwLock<DeviceAllocation>,
+    size:   usize,
 
     usage:  BufferUsage,
+
+    bindless: Option<u32>, // Index into owner bindless buffer array
 }
 
 impl GenericBuffer for Buffer {
-    fn new(device: Arc<Device>, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Arc<Buffer>, ResourceCreateError> {
+    fn new(owner: Arc<Device>, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Arc<Buffer>, ResourceCreateError> {
         let mut vk_usage = vk::BufferUsageFlags::default();
         if usage.contains(BufferUsage::TRANSFER_SRC) {
             vk_usage |= vk::BufferUsageFlags::TRANSFER_SRC;
@@ -790,7 +852,7 @@ impl GenericBuffer for Buffer {
             vk_usage |= vk::BufferUsageFlags::INDEX_BUFFER;
         }
         if usage.contains(BufferUsage::CONSTANTS) {
-            vk_usage |= vk::BufferUsageFlags::UNIFORM_BUFFER;
+            vk_usage |= vk::BufferUsageFlags::STORAGE_BUFFER;
         }
 
         unsafe {
@@ -799,23 +861,59 @@ impl GenericBuffer for Buffer {
                 .usage(vk_usage)
                 .sharing_mode(vk::SharingMode::EXCLUSIVE); // TODO: Look into this more
     
-            let handle = device.logical.create_buffer(&create_info, None).unwrap();
+            let handle = owner.logical.create_buffer(&create_info, None).unwrap();
     
             // Allocate memory for buffer
-            let memory = device.allocate_memory(device.logical.get_buffer_memory_requirements(handle), memory);
+            let memory = owner.allocate_memory(owner.logical.get_buffer_memory_requirements(handle), memory);
             if memory.is_err() {
                 return Err(ResourceCreateError::OutOfMemory);
             }
             let memory = memory.unwrap();
-            device.logical.bind_buffer_memory(handle, memory.memory, 0).unwrap();
+            owner.logical.bind_buffer_memory(handle, memory.memory, 0).unwrap();
+
+            // Add a weak reference to the device for bindless
+            if usage.contains(BufferUsage::CONSTANTS) {
+                let mut bindless = owner.bindless_info.lock().unwrap();
+                
+                let found = bindless.buffers
+                    .iter_mut().enumerate()
+                    .find(|(_, x)| x.strong_count() == 0)
+                    .map(|(index, _)| index);
+
+                let index = found.unwrap_or(bindless.buffers.len());
+
+                let result = Arc::new(Buffer{
+                    owner: owner.clone(),
+    
+                    handle: handle,
+                    memory: RwLock::new(memory),
+                    size:   size,
+
+                    usage:  usage,
+                    
+                    bindless: Some(index as u32),
+                });
+
+                let weak = Arc::downgrade(&result);
+                if found.is_some() {
+                    bindless.buffers[index] = weak;
+                } else {
+                    bindless.buffers.push(weak);
+                }
+
+                return Ok(result);
+            }
 
             Ok(Arc::new(Buffer{
-                owner: device,
+                owner: owner,
 
                 handle: handle,
                 memory: RwLock::new(memory),
+                size:   size,
 
                 usage:  usage,
+                
+                bindless: None,
             }))
         }
     }
@@ -870,6 +968,9 @@ pub struct Texture {
     width:  u32,
     height: u32,
     depth:  u32,
+
+    // Index into the devices bindless array
+    bindless: Option<u32>,
 }
 
 
@@ -998,7 +1099,48 @@ impl GenericTexture for Texture {
         }
         let sampler = sampler.unwrap();
 
-        let result = Arc::new(Texture{
+        // Add a weak reference to the device for bindless
+        if usage.contains(TextureUsage::SAMPLED) {
+            let mut bindless = owner.bindless_info.lock().unwrap();
+            
+            let found = bindless.textures
+                .iter_mut().enumerate()
+                .find(|(_, x)| x.strong_count() == 0)
+                .map(|(index, _)| index);
+
+            let index = found.unwrap_or(bindless.textures.len());
+
+            let result = Arc::new(Texture{
+                owner: owner.clone(), // SPEED: Exra ref count due to mutex lock.
+    
+                image:   image,
+                view:    view,
+                sampler: sampler,
+                memory:  memory,
+    
+                memory_type: memory_type,
+    
+                usage:  usage,
+                format: format,
+    
+                width:  width,
+                height: height,
+                depth:  depth,
+    
+                bindless: Some(index as u32)
+            });
+
+            let weak = Arc::downgrade(&result);
+            if found.is_some() {
+                bindless.textures[index] = weak;
+            } else {
+                bindless.textures.push(weak);
+            }
+
+            return Ok(result);
+        }
+
+        Ok(Arc::new(Texture{
             owner: owner,
 
             image:   image,
@@ -1014,27 +1156,9 @@ impl GenericTexture for Texture {
             width:  width,
             height: height,
             depth:  depth,
-        });
 
-        // Add a weak reference to the device for bindless
-        if usage.contains(TextureUsage::SAMPLED) {
-            let mut bindless = result.owner.bindless_info.lock().unwrap();
-            let mut found = false;
-
-            for it in bindless.textures.iter_mut() {
-                if it.strong_count() == 0 {
-                    *it = Arc::downgrade(&result);
-                    found = true;
-                    break;
-                }
-            }
-
-            if !found {
-                bindless.textures.push(Arc::downgrade(&result));
-            }
-        }
-
-        Ok(result)
+            bindless: None
+        }))
     }
 
     fn owner(&self) -> &Arc<Device> { &self.owner }
@@ -1745,6 +1869,18 @@ impl GenericGraphicsContext for GraphicsContext {
         let offset = 0;
         unsafe{ self.owner.logical.cmd_bind_vertex_buffers(self.command_buffer, 0, from_ref(&buffer.handle), from_ref(&offset)) };
         self.buffers.push(buffer);
+    }
+
+    fn bind_constant_buffer(&mut self, buffer: Arc<Buffer>) -> u32 {
+        let result = buffer.bindless.unwrap();
+        self.buffers.push(buffer);
+        result
+    }
+
+    fn bind_sampled_texture(&mut self, texture: Arc<Texture>) -> u32 {
+        let result = texture.bindless.unwrap();
+        self.attachments.push(texture);
+        result
     }
 
     fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
