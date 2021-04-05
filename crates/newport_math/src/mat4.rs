@@ -6,7 +6,7 @@ use crate::Vector3;
 #[allow(unused_imports)]
 use num_traits::*;
 
-#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Default, PartialEq, PartialOrd, Debug)]
 pub struct Matrix4 {
     pub x_axis: Vector4,
     pub y_axis: Vector4,
@@ -62,20 +62,15 @@ impl Matrix4 {
     }
 
     pub const fn ortho(width: f32, height: f32, far: f32, near: f32) -> Self {
-        let top    = height / 2.0;
-        let bottom = -top;
-
-        let right = width / 2.0;
-        let left = -right;
-
+        // NOTE: 0 - 1 z clipping
         let mut result = Matrix4::IDENTITY;
-        result.x_axis.x =  2.0 / (right - left);
-        result.y_axis.y =  2.0 / (top - bottom);
-        result.z_axis.z = -2.0 / (far - near);
+        result.x_axis.x = 2.0 / width;
+        result.y_axis.y = 2.0 / height;
+        result.z_axis.z = 1.0 / (far - near);
 
-        result.w_axis.x = -((right + left) / (right - left));
-        result.w_axis.y = -((top + bottom) / (top - bottom));
-        result.w_axis.z = -((far + near) / (far - near));
+        result.w_axis.x = 0.0;
+        result.w_axis.y = 0.0;
+        result.w_axis.z = near / (far - near);
         result
     }
 

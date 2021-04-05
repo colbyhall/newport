@@ -1,6 +1,8 @@
 use newport_engine::*;
 use newport_gpu::*;
 
+pub mod font;
+
 pub struct Graphics {
     instance: Arc<Instance>,
     device:   Option<Arc<Device>>,

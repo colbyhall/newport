@@ -71,6 +71,8 @@ pub trait GenericDevice {
 
     fn remove_finished_work(&self);
     fn update_bindless(&self);
+
+    fn wait_for_idle(&self);
 }
 
 pub struct DeviceBuilder {

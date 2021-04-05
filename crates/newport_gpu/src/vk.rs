@@ -211,7 +211,17 @@ impl Receipt {
 
 impl GenericReceipt for Receipt { 
     fn wait(self) -> bool {
-        todo!();
+        let work = self.owner.work.lock().unwrap();
+
+        let entry = work.in_queue.get(&self.id);
+        if entry.is_none() { return false; }
+        let entry = entry.unwrap();
+
+        unsafe {
+            self.owner.logical.wait_for_fences(&[entry.fence], true, u64::MAX).unwrap()
+        };
+
+        return true;
     }
 
     fn is_finished(&self) -> bool {
@@ -821,6 +831,10 @@ impl GenericDevice for Device {
         ];
 
         unsafe{ self.logical.update_descriptor_sets(&set_writes, &[]) };
+    }
+
+    fn wait_for_idle(&self) {
+        unsafe { self.logical.device_wait_idle().unwrap() };
     }
 }
 

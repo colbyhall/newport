@@ -12,3 +12,6 @@ keywords = ["game", "engine", "gamedev", "newport"]
 [dependencies]
 newport_engine = { path = "../newport_engine", version = "0.0.1" }
 newport_gpu    = { path = "../newport_gpu", version = "0.0.1" }
+newport_math   = { path = "../newport_math", version = "0.0.1" }
+
+freetype-rs = "0.27.0"
