@@ -1,4 +1,14 @@
-# ![Newport](assets/branding/logo_black_name.svg)
+<picture>
+      <source 
+        srcset="assets/branding/logo_white.svg"
+        media="(prefers-color-scheme: dark)"
+      />
+      <source
+        srcset="assets/branding/logo_black_name.svg"
+        media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)"
+      />
+      <img src="assets/branding/logo_black_name.svg" />
+</picture>
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Build](https://github.com/colbyhall/newport/actions/workflows/ci.yml/badge.svg)](https://github.com/colbyhall/newport/actions/workflows/ci.yml)
