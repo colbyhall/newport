@@ -1,8 +1,7 @@
 # ![Newport](assets/branding/logo_black_name.svg)
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
-[![Build](https://github.com/colbyhall/newport/actions/workflows/ci.yml/badge.svg)](https://github.com/colbyhall/newport/actions/
-workflows/ci.yml)
+[![Build](https://github.com/colbyhall/newport/actions/workflows/ci.yml/badge.svg)](https://github.com/colbyhall/newport/actions/workflows/ci.yml)
 [![Crates](https://meritbadge.herokuapp.com/newport)](https://crates.io/crates/newport)
 
 ## About
