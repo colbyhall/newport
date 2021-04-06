@@ -1,15 +1,15 @@
-use newport_engine::*;
-use newport_gpu::*;
+use newport_engine::{ ModuleCompileTime, ModuleRuntime, Engine };
+use newport_gpu::{ Instance, Device };
 
 pub mod font;
 
 pub struct Graphics {
-    instance: Arc<Instance>,
-    device:   Option<Arc<Device>>,
+    instance: Instance,
+    device:   Option<Device>,
 }
 
 impl Graphics {
-    pub fn device(&self) -> &Arc<Device> {
+    pub fn device(&self) -> &Device {
         self.device.as_ref().unwrap()
     }
 }
@@ -25,10 +25,6 @@ impl ModuleCompileTime for Graphics {
 
 impl ModuleRuntime for Graphics {
     fn post_init(&mut self, engine: &mut Engine) {
-        let device = DeviceBuilder::new(self.instance.clone())
-            .present_to(engine.window().handle())
-            .spawn().unwrap();
-        
-        self.device = Some(device);
+        self.device = self.instance.create_device(Some(engine.window().handle())).ok();
     }
 }

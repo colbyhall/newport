@@ -15,7 +15,7 @@ thread_local! {
 }
 
 pub struct FontCollection {
-    face: Face,
+    face:  Face,
     fonts: HashMap<u32, Font>,
 }
 
@@ -115,15 +115,18 @@ impl FontCollection {
             let descent = descent * scale;
     
             let graphics = Engine::as_ref().module::<Graphics>()?;
-            let device = graphics.device();
+            let device   = graphics.device();
     
-            let pixel_buffer = Buffer::new(device.clone(), BufferUsage::TRANSFER_SRC, MemoryType::HostVisible, pixels.len() * size_of::<u32>()).ok()?;
-            pixel_buffer.copy_to(pixels);
+            let pixel_buffer = device.create_buffer(
+                BufferUsage::TRANSFER_SRC, 
+                MemoryType::HostVisible, 
+                pixels.len() * size_of::<u32>()
+            ).ok()?;
+            pixel_buffer.copy_to(&pixels[..]);
     
-            let atlas = Texture::new(
-                device.clone(), 
-                MemoryType::DeviceLocal, 
+            let atlas = device.create_texture(
                 TextureUsage::TRANSFER_DST | TextureUsage::SAMPLED,
+                MemoryType::DeviceLocal, 
                 Format::RGBA_U8,
                 tex_width as u32,
                 tex_height as u32,
@@ -133,14 +136,14 @@ impl FontCollection {
                 Filter::Nearest
             ).ok()?;
     
-            let mut gfx = GraphicsContext::new(device.clone()).ok()?;
-            gfx.begin();
+            let mut gfx = device.create_graphics_context().ok()?;
             {
-                gfx.resource_barrier_texture(atlas.clone(), Layout::Undefined, Layout::TransferDst);
-                gfx.copy_buffer_to_texture(atlas.clone(), pixel_buffer.clone());
-                gfx.resource_barrier_texture(atlas.clone(), Layout::TransferDst, Layout::ShaderReadOnly);
+                gfx.begin();
+                gfx.resource_barrier_texture(&atlas, Layout::Undefined, Layout::TransferDst);
+                gfx.copy_buffer_to_texture(&atlas, &pixel_buffer);
+                gfx.resource_barrier_texture(&atlas, Layout::TransferDst, Layout::ShaderReadOnly);
+                gfx.end();
             }
-            gfx.end();
     
             let receipt = device.submit_graphics(vec![gfx], &[]);
             receipt.wait();
@@ -169,7 +172,7 @@ pub struct Font {
     pub height:   f32,
 
     pub glyphs: Vec<Glyph>,
-    pub atlas:  Arc<Texture>,
+    pub atlas:  Texture,
 }
 
 impl Font {

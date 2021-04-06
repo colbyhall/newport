@@ -24,20 +24,21 @@
 //! * Gather, submit, and wait on command work from various passes, in a multicore-compatible way
 //! * Automatic device memory management
 
-pub mod vk;
-
-#[cfg(feature = "vulkan")]
-pub use vk::*;
-
-pub mod shaders;
-
 use newport_os::window::WindowHandle;
 use newport_math::{ Rect, Color };
 
 use std::mem::size_of;
+use std::sync::{ Arc };
+
 use bitflags::*;
 
-pub use std::sync::{ Arc, Mutex };
+#[cfg(feature = "vulkan")]
+mod vk;
+
+#[cfg(feature = "vulkan")]
+use vk::*;
+
+pub mod shaders;
 
 #[derive(Debug)]
 pub enum InstanceCreateError {
@@ -46,13 +47,36 @@ pub enum InstanceCreateError {
     Unknown,
 }
 
-pub trait GenericInstance: Sized + 'static {
-    fn new() -> Result<Arc<Self>, InstanceCreateError>;
+#[derive(Clone)]
+pub struct Instance {
+    inner: Arc<InstanceInner>,
 }
 
-pub trait GenericReceipt: Sized { 
-    fn wait(self) -> bool;
-    fn is_finished(&self) -> bool;
+impl Instance {
+    pub fn new() -> Result<Self, InstanceCreateError> {
+        let inner = InstanceInner::new()?;
+        Ok(Self{ inner: inner })
+    }
+
+    pub fn create_device(&self, window: Option<WindowHandle>) -> Result<Device, DeviceCreateError> {
+        let inner = DeviceInner::new(self.inner.clone(), window)?;
+        Ok(Device{ inner: inner })
+    }
+}
+
+#[derive(Clone)]
+pub struct Receipt {
+    inner: ReceiptInner,
+}
+
+impl Receipt {
+    pub fn wait(self) -> bool {
+        self.inner.wait()
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.inner.is_finished()
+    }
 }
 
 #[derive(Debug)]
@@ -61,42 +85,63 @@ pub enum DeviceCreateError {
     NoValidPhysicalDevice,
 }
 
-pub trait GenericDevice {
-    fn new(instance: Arc<Instance>, window: Option<WindowHandle>) -> Result<Arc<Self>, DeviceCreateError>;
-
-    fn acquire_backbuffer(&self) -> Arc<Texture>;
-
-    fn submit_graphics(&self, contexts: Vec<GraphicsContext>, wait_on: &[Receipt]) -> Receipt;
-    fn display(&self, wait_on: &[Receipt]);
-
-    fn remove_finished_work(&self);
-    fn update_bindless(&self);
-
-    fn wait_for_idle(&self);
+#[derive(Clone)]
+pub struct Device {
+    inner: Arc<DeviceInner>
 }
 
-pub struct DeviceBuilder {
-    instance: Arc<Instance>,
-    window:   Option<WindowHandle>,
+impl Device {
+    pub fn create_buffer(&self, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Buffer, ResourceCreateError> {
+        let inner = BufferInner::new(self.inner.clone(), usage, memory, size)?;
+        Ok(Buffer{ inner: inner })
+    }
+
+    pub fn create_texture(&self, usage: TextureUsage, memory: MemoryType, format: Format, width: u32, height: u32, depth: u32, wrap: Wrap, min_filter: Filter, mag_filter: Filter) -> Result<Texture, ResourceCreateError> {
+        let inner = TextureInner::new(self.inner.clone(), memory, usage, format, width, height, depth, wrap, min_filter, mag_filter)?;
+        Ok(Texture{ inner: inner })
+    }
+
+    pub fn create_render_pass(&self, colors: Vec<Format>, depth: Option<Format>) -> Result<RenderPass, ()> {
+        let inner = RenderPassInner::new(self.inner.clone(), colors, depth)?;
+        Ok(RenderPass{ inner: inner })
+    }
+
+    pub fn create_shader(&self, contents: &[u8], variant: ShaderVariant, main: String) -> Result<Shader, ()> {
+        let inner = ShaderInner::new(self.inner.clone(), contents, variant, main)?;
+        Ok(Shader{ inner: inner })
+    }
+
+    pub fn create_pipeline(&self, desc: PipelineDescription) -> Result<Pipeline, ()> {
+        let inner = PipelineInner::new(self.inner.clone(), desc)?;
+        Ok(Pipeline{ inner: inner })
+    }
+
+    pub fn create_graphics_context(&self) -> Result<GraphicsContext, ()> {
+        let inner = GraphicsContextInner::new(self.inner.clone())?;
+        Ok(GraphicsContext{ inner: inner })
+    }
+
+    pub fn acquire_backbuffer(&self) -> Texture {
+        Texture{ inner: self.inner.acquire_backbuffer() }
+    }
+
+    pub fn submit_graphics(&self, contexts: Vec<GraphicsContext>, wait_on: &[Receipt]) -> Receipt {
+        self.inner.submit_graphics(contexts, wait_on)
+    }
+
+    pub fn display(&self, wait_on: &[Receipt]) {
+        self.inner.display(wait_on)
+    }
+
+    pub fn update_bindless(&self) {
+        self.inner.update_bindless()
+    }
+
+    pub fn wait_for_idle(&self) {
+        self.inner.wait_for_idle()
+    }
 }
 
-impl DeviceBuilder {
-    pub fn new(instance: Arc<Instance>) -> Self {
-        Self {
-            instance: instance,
-            window:   None,
-        }
-    }
-
-    pub fn present_to(mut self, window: WindowHandle) -> Self {
-        self.window = Some(window);
-        self
-    }
-
-    pub fn spawn(self) -> Result<Arc<Device>, DeviceCreateError> {
-        Device::new(self.instance, self.window)
-    }
-}
 
 /// Type of memory allocations that buffers or textures can be allocated from
 #[derive(Copy, Clone, Debug)]
@@ -117,15 +162,25 @@ bitflags! {
     }
 }
 
+#[derive(Clone)]
+pub struct Buffer {
+    inner: Arc<BufferInner>,
+}
+
+impl Buffer {
+    pub fn copy_to<T>(&self, data: &[T]) {
+        self.inner.copy_to::<T>(data)
+    }
+
+    pub fn bindless(&self) -> Option<u32> {
+        self.inner.bindless()
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum ResourceCreateError {
     Unknown,
     OutOfMemory,
-}
-
-pub trait GenericBuffer {
-    fn new(owner: Arc<Device>, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Arc<Buffer>, ResourceCreateError>;
-    fn copy_to<T>(&self, data: Vec<T>);
 }
 
 #[allow(non_camel_case_types)]
@@ -178,22 +233,38 @@ pub enum Filter {
     Linear,
 }
 
-pub trait GenericTexture {
-    fn new(owner: Arc<Device>, memory_type: MemoryType, usage: TextureUsage, format: Format, width: u32, height: u32, depth: u32, wrap: Wrap, min_filter: Filter, mag_filter: Filter) -> Result<Arc<Texture>, ResourceCreateError>;
-
-    fn owner(&self) -> &Arc<Device>;
-    fn memory_type(&self) -> MemoryType;
-    fn usage(&self) -> TextureUsage;
-    fn format(&self) -> Format;
-    fn width(&self) -> u32;
-    fn height(&self) -> u32;
-    fn depth(&self) -> u32;
+#[derive(Clone)]
+pub struct Texture {
+    inner: Arc<TextureInner>,
 }
 
-pub trait GenericRenderPass {
-    fn new(owner: Arc<Device>, colors: Vec<Format>, depth: Option<Format>) -> Result<Arc<RenderPass>, ()>;
-    fn owner(&self) -> &Arc<Device>;
+impl Texture {
+    pub fn format(&self) -> Format { 
+        self.inner.format()
+    }
+
+    pub fn width(&self) -> u32 { 
+        self.inner.width()
+    }
+
+    pub fn height(&self) -> u32 { 
+        self.inner.height()
+    }
+
+    pub fn depth(&self) -> u32 { 
+        self.inner.depth()
+    }
+
+    pub fn bindless(&self) -> Option<u32> {
+        self.inner.bindless()
+    }
 }
+
+#[derive(Clone)]
+pub struct RenderPass {
+    inner: Arc<RenderPassInner>,
+}
+
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ShaderVariant {
@@ -201,8 +272,8 @@ pub enum ShaderVariant {
     Pixel,
 }
 
-pub trait GenericShader {
-    fn new(owner: Arc<Device>, contents: Vec<u8>, variant: ShaderVariant, main: String) -> Result<Arc<Shader>, ()>;
+pub struct Shader {
+    inner: Arc<ShaderInner>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -295,7 +366,7 @@ pub struct PipelineBuilder {
 }
 
 impl PipelineBuilder {
-    pub fn new_graphics(render_pass: Arc<RenderPass>) -> Self {
+    pub fn new_graphics(render_pass: RenderPass) -> Self {
         let desc = GraphicsPipelineDescription{
             render_pass: render_pass,
             shaders:     Vec::new(),
@@ -327,7 +398,7 @@ impl PipelineBuilder {
         Self { desc: PipelineDescription::Graphics(desc) }
     }
 
-    pub fn shaders(mut self, shaders: Vec<Arc<Shader>>) -> Self {
+    pub fn shaders(mut self, shaders: Vec<Shader>) -> Self {
         match &mut self.desc {
             PipelineDescription::Graphics(gfx) => gfx.shaders = shaders,
             _ => unreachable!()
@@ -368,17 +439,14 @@ impl PipelineBuilder {
         self
     }
 
-    pub fn build(self) -> Result<Arc<Pipeline>, ()> {
-        match &self.desc {
-            PipelineDescription::Graphics(gfx) => Pipeline::new(gfx.render_pass.owner().clone(), self.desc),
-            _ => todo!()
-        }
+    pub fn build(self) -> PipelineDescription {
+        self.desc
     }
 }
 
 pub struct GraphicsPipelineDescription {
-    pub render_pass:  Arc<RenderPass>,
-    pub shaders:      Vec<Arc<Shader>>,
+    pub render_pass:  RenderPass,
+    pub shaders:      Vec<Shader>,
     
     pub vertex_attributes: Vec<VertexAttribute>,
 
@@ -411,32 +479,65 @@ pub enum PipelineDescription {
     Compute,
 }
 
-pub trait GenericPipeline {
-    fn new(owner: Arc<Device>, desc: PipelineDescription) -> Result<Arc<Pipeline>, ()>;
+#[derive(Clone)]
+pub struct Pipeline {
+    inner: Arc<PipelineInner>,
 }
 
-pub trait GenericContext {
-    fn begin(&mut self);
-    fn end(&mut self);
-
-    fn copy_buffer_to_texture(&mut self, dst: Arc<Texture>, src: Arc<Buffer>);
-    fn resource_barrier_texture(&mut self, texture: Arc<Texture>, old_layout: Layout, new_layout: Layout);
+pub struct GraphicsContext {
+    inner: GraphicsContextInner,
 }
 
-pub trait GenericGraphicsContext: GenericContext {
-    fn new(owner: Arc<Device>) -> Result<GraphicsContext, ()>;
+impl GraphicsContext {
+    pub fn begin(&mut self) {
+        self.inner.begin();
+    }
 
-    fn begin_render_pass(&mut self, render_pass: Arc<RenderPass>, attachments: &[Arc<Texture>]);
-    fn end_render_pass(&mut self);
+    pub fn end(&mut self) {
+        self.inner.end();
+    }
 
-    fn bind_scissor(&mut self, scissor: Option<Rect>);
-    fn bind_pipeline(&mut self, pipeline: Arc<Pipeline>);
-    fn bind_vertex_buffer(&mut self, buffer: Arc<Buffer>);
-    fn bind_constant_buffer(&mut self, buffer: Arc<Buffer>) -> u32;
-    fn bind_sampled_texture(&mut self, texture: Arc<Texture>) -> u32;
+    pub fn resource_barrier_texture(&mut self, texture: &Texture, old_layout: Layout, new_layout: Layout) {
+        self.inner.resource_barrier_texture(texture.inner.clone(), old_layout, new_layout);
+    }
 
-    fn draw(&mut self, vertex_count: usize, first_vertex: usize);
-    fn clear(&mut self, color: Color);
+    pub fn copy_buffer_to_texture(&mut self, dst: &Texture, src: &Buffer) {
+        self.inner.copy_buffer_to_texture(dst.inner.clone(), src.inner.clone());
+    }
 
-    fn push_constants<T>(&mut self, t: T);
+    pub fn begin_render_pass(&mut self, render_pass: &RenderPass, attachments: &[&Texture]) {
+        let mut a = Vec::with_capacity(attachments.len());
+        attachments.iter().for_each(|e| a.push(e.inner.clone()) );
+
+        self.inner.begin_render_pass(render_pass.inner.clone(), &a[..]);
+    }
+
+    pub fn end_render_pass(&mut self) {
+        self.inner.end_render_pass();
+    }
+
+    pub fn clear(&mut self, color: Color) -> &mut Self {
+        self.inner.clear(color);
+        self
+    }
+
+    pub fn bind_pipeline(&mut self, pipeline: &Pipeline) {
+        self.inner.bind_pipeline(pipeline.inner.clone());
+    }
+
+    pub fn bind_scissor(&mut self, scissor: Option<Rect>) {
+        self.inner.bind_scissor(scissor);
+    }
+
+    pub fn bind_vertex_buffer(&mut self, buffer: &Buffer){
+        self.inner.bind_vertex_buffer(buffer.inner.clone());
+    }
+
+    pub fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
+        self.inner.draw(vertex_count, first_vertex);
+    }
+
+    pub fn push_constants<T>(&mut self, t: T) {
+        self.inner.push_constants::<T>(t);
+    }
 }

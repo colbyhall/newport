@@ -1,25 +1,21 @@
 use newport::*;
-use gpu::*;
 use math::*;
 use engine::*;
+use gpu::*;
 use graphics::*;
 
 use font::FontCollection;
-use newport_graphics::font::Font;
 
-use std::sync::Arc;
 use std::mem::size_of;
 use std::fs;
 use std::cell::RefCell;
 
 struct RenderState {
-    render_pass: Arc<RenderPass>,
-    pipeline:    Arc<Pipeline>,
+    render_pass: RenderPass,
+    pipeline:    Pipeline,
 
-    vertex_buffer: Arc<Buffer>,
+    vertex_buffer: Buffer,
     font_collection: RefCell<FontCollection>,
-
-
 }
 
 struct HelloWorld {
@@ -57,7 +53,7 @@ impl ModuleCompileTime for HelloWorld {
                 let graphics = engine.module::<Graphics>().unwrap();
                 let device   = graphics.device();
                 
-                let render_pass = RenderPass::new(device.clone(), vec![Format::BGR_U8_SRGB], None).unwrap();
+                let render_pass = device.create_render_pass(vec![Format::BGR_U8_SRGB], None).unwrap();
         
                 let shader = "
                     ByteAddressBuffer all_buffers[]  : register(t0);
@@ -108,14 +104,15 @@ impl ModuleCompileTime for HelloWorld {
                 let vertex_bin = shaders::compile("vertex.hlsl", shader, &vertex_main, ShaderVariant::Vertex).unwrap();
                 let pixel_bin  = shaders::compile("pixel.hlsl", shader, &pixel_main, ShaderVariant::Pixel).unwrap();
         
-                let vertex_shader = Shader::new(device.clone(), vertex_bin, ShaderVariant::Vertex, vertex_main).unwrap();
-                let pixel_shader  = Shader::new(device.clone(), pixel_bin, ShaderVariant::Pixel, pixel_main).unwrap();
+                let vertex_shader = device.create_shader(&vertex_bin[..], ShaderVariant::Vertex, vertex_main).unwrap();
+                let pixel_shader  = device.create_shader(&pixel_bin[..], ShaderVariant::Pixel, pixel_main).unwrap();
         
-                let pipeline = PipelineBuilder::new_graphics(render_pass.clone())
+                let pipeline_desc = PipelineBuilder::new_graphics(render_pass.clone())
                     .shaders(vec![vertex_shader, pixel_shader])
                     .vertex::<HelloWorldVertex>()
                     .push_constant_size::<Constants>()
-                    .build().unwrap();
+                    .build();
+                let pipeline = device.create_pipeline(pipeline_desc).unwrap();
         
                 let vert_z = 10.0;
                 let size = 500.0;
@@ -147,14 +144,13 @@ impl ModuleCompileTime for HelloWorld {
                     },
                 ];
         
-                let vertex_buffer = Buffer::new(
-                    device.clone(), 
+                let vertex_buffer = device.create_buffer(
                     BufferUsage::VERTEX, 
                     MemoryType::HostVisible, 
                     vertices.len() * size_of::<HelloWorldVertex>()
                 ).unwrap();
         
-                vertex_buffer.copy_to(vertices);
+                vertex_buffer.copy_to(&vertices[..]);
 
                 let font_file = fs::read("assets/fonts/menlo_regular.ttf").unwrap();
         
@@ -182,28 +178,29 @@ impl ModuleRuntime for HelloWorld {
 
         device.update_bindless();
 
-        let mut graphics = GraphicsContext::new(device.clone()).unwrap();
-        graphics.begin();
+        let mut graphics = device.create_graphics_context().unwrap();
         {
-            graphics.begin_render_pass(render_state.render_pass.clone(), &[backbuffer.clone()]);
-            graphics.clear(Color::BLACK);
-            graphics.bind_pipeline(render_state.pipeline.clone());
-            graphics.bind_vertex_buffer(render_state.vertex_buffer.clone());
-            let index = graphics.bind_sampled_texture(font.atlas.clone());
-
-            let view = Matrix4::ortho(backbuffer.width() as f32, backbuffer.height() as f32, 1000.0, 0.1);
-
-            let constants = Constants { 
-                view: view,
-                tex: index,
-            };
-
-            graphics.push_constants(constants);
-            graphics.draw(6, 0);
-            graphics.end_render_pass();
+            graphics.begin();
+            {
+                graphics.begin_render_pass(&render_state.render_pass, &[&backbuffer]);
+                graphics.clear(Color::new(0.01, 0.01, 0.01, 1.0));
+                graphics.bind_pipeline(&render_state.pipeline);
+                graphics.bind_vertex_buffer(&render_state.vertex_buffer);
+                
+                let view = Matrix4::ortho(backbuffer.width() as f32, backbuffer.height() as f32, 1000.0, 0.1);
+                let constants = Constants { 
+                    view: view,
+                    tex: font.atlas.bindless().unwrap(),
+                };
+                
+                graphics.push_constants(constants);
+                graphics.draw(6, 0);
+    
+                graphics.end_render_pass();
+            }
+            graphics.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present);
+            graphics.end();
         }
-        graphics.resource_barrier_texture(backbuffer, Layout::ColorAttachment, Layout::Present);
-        graphics.end();
         
         let receipt = device.submit_graphics(vec![graphics], &[]);
         device.display(&[receipt]);

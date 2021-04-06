@@ -1,4 +1,3 @@
-// #![allow(unused_variables)]
 #![allow(dead_code)]
 use crate::*;
 
@@ -21,13 +20,13 @@ const ENABLED_LAYER_NAMES: [*const i8; 1] = [
     b"VK_LAYER_KHRONOS_validation\0".as_ptr() as *const i8
 ];
 
-pub struct Instance {
-    entry:    ash::Entry, // We need to keep this around for post_init
+pub struct InstanceInner {
+    entry:    ash::Entry,
     instance: ash::Instance,
 }
 
-impl GenericInstance for Instance {
-    fn new() -> Result<Arc<Self>, InstanceCreateError> {
+impl InstanceInner {
+    pub fn new() -> Result<Arc<Self>, InstanceCreateError> {
         let entry = unsafe{ 
             let entry = ash::Entry::new();
             if entry.is_err() {
@@ -82,12 +81,12 @@ struct Swapchain {
     extent: vk::Extent2D,
     format: Format,
 
-    backbuffers: Vec<Arc<Texture>>,
+    backbuffers: Vec<Arc<TextureInner>>,
     current:     Option<usize>,
 }
 
 impl Swapchain {
-    fn new(device: Arc<Device>) -> Self {
+    fn new(device: Arc<DeviceInner>) -> Self {
         assert_eq!(device.surface.is_some(), true);
         
         let swapchain_khr = khr::Swapchain::new(&device.owner.instance, &device.logical);
@@ -155,7 +154,7 @@ impl Swapchain {
                 
                 let view = device.logical.create_image_view(&create_info, None).unwrap();
 
-                backbuffers.push(Arc::new(Texture{
+                backbuffers.push(Arc::new(TextureInner{
                     owner: device.clone(),
                     
                     image:   *it,
@@ -189,13 +188,13 @@ impl Swapchain {
 }
 
 #[derive(Clone)]
-pub struct Receipt {
-    owner:   Arc<Device>,
+pub struct ReceiptInner {
+    owner:   Arc<DeviceInner>,
     id:      usize,
 }
 
-impl Receipt {
-    fn new(owner: Arc<Device>, id: usize) -> Self {
+impl ReceiptInner {
+    fn new(owner: Arc<DeviceInner>, id: usize) -> Self {
         Self{
             owner:   owner,
             id:      id
@@ -207,10 +206,8 @@ impl Receipt {
         let result = work.in_queue.get(&self.id)?;
         Some((result.semaphore, result.fence))
     }
-}
-
-impl GenericReceipt for Receipt { 
-    fn wait(self) -> bool {
+    
+    pub fn wait(self) -> bool {
         {
             let work = self.owner.work.lock().unwrap();
     
@@ -222,13 +219,13 @@ impl GenericReceipt for Receipt {
                 self.owner.logical.wait_for_fences(&[entry.fence], true, u64::MAX).unwrap()
             };
         }
-
+    
         self.owner.remove_finished_work();
-
+    
         return true;
     }
-
-    fn is_finished(&self) -> bool {
+    
+    pub fn is_finished(&self) -> bool {
         let work = self.owner.work.lock().unwrap();
         let result = work.in_queue.get(&self.id);
         result.is_none()
@@ -266,15 +263,15 @@ struct WorkContainer {
 }
 
 struct BindlessInfo {
-    textures:     Vec<Weak<Texture>>,
-    null_texture: Option<Arc<Texture>>,
+    textures:     Vec<Weak<TextureInner>>,
+    null_texture: Option<Arc<TextureInner>>,
 
-    buffers:      Vec<Weak<Buffer>>,
-    null_buffer:  Option<Arc<Buffer>>,
+    buffers:      Vec<Weak<BufferInner>>,
+    null_buffer:  Option<Arc<BufferInner>>,
 }
 
-pub struct Device {
-    owner:    Arc<Instance>,
+pub struct DeviceInner {
+    owner:    Arc<InstanceInner>,
 
     logical:  ash::Device,
     physical: vk::PhysicalDevice,
@@ -300,7 +297,7 @@ pub struct Device {
     bindless_set:        vk::DescriptorSet,
 }
 
-impl Device {
+impl DeviceInner {
     fn allocate_memory(&self, requirements: vk::MemoryRequirements, memory_type: MemoryType) -> Result<DeviceAllocation, ()> {
         let property_flag = match memory_type {
             MemoryType::DeviceLocal => vk::MemoryPropertyFlags::DEVICE_LOCAL,
@@ -352,11 +349,9 @@ impl Device {
         work.last_id += 1;
         id
     }
-}
 
-impl GenericDevice for Device {
     // TODO: Custom allocation logic
-    fn new(instance: Arc<Instance>, window: Option<WindowHandle>) -> Result<Arc<Self>, DeviceCreateError> {
+    pub fn new(instance: Arc<InstanceInner>, window: Option<WindowHandle>) -> Result<Arc<Self>, DeviceCreateError> {
         // Find a physical device based off of some parameters
         let physical_device;
         unsafe {
@@ -552,7 +547,7 @@ impl GenericDevice for Device {
             null_buffer:  None,
         };
 
-        let result = Arc::new(Device{
+        let result = Arc::new(DeviceInner{
             owner:    instance,
 
             logical:  logical_device,
@@ -584,7 +579,7 @@ impl GenericDevice for Device {
         }
         
         // Create null texture
-        let null_texutre = Texture::new(
+        let null_texutre = TextureInner::new(
             result.clone(), 
             MemoryType::DeviceLocal, 
             TextureUsage::SAMPLED, 
@@ -596,7 +591,7 @@ impl GenericDevice for Device {
         ).unwrap();
 
         // Create the null buffer
-        let null_buffer = Buffer::new(
+        let null_buffer = BufferInner::new(
             result.clone(),
             BufferUsage::CONSTANTS,
             MemoryType::HostVisible,
@@ -612,7 +607,7 @@ impl GenericDevice for Device {
         Ok(result)
     }
 
-    fn acquire_backbuffer(&self) -> Arc<Texture> {
+    pub fn acquire_backbuffer(&self) -> Arc<TextureInner> {
         assert_eq!(self.surface.is_some(), true);
 
         let mut swapchain = self.swapchain.lock().unwrap();
@@ -635,10 +630,10 @@ impl GenericDevice for Device {
         swapchain.as_ref().unwrap().backbuffers[index as usize].clone()
     }
 
-    fn submit_graphics(&self, contexts: Vec<GraphicsContext>, wait_on: &[Receipt]) -> Receipt {
+    pub fn submit_graphics(&self, contexts: Vec<GraphicsContext>, wait_on: &[Receipt]) -> Receipt {
         let mut buffers = Vec::with_capacity(contexts.len());
         for it in contexts.iter() {
-            buffers.push(it.command_buffer);
+            buffers.push(it.inner.command_buffer);
         }
 
         let semaphore_create_info = vk::SemaphoreCreateInfo::default();
@@ -660,7 +655,7 @@ impl GenericDevice for Device {
             let mut wait_stages = Vec::with_capacity(wait_on.len());
             if wait_on.len() > 0 {
                 for it in wait_on.iter() {
-                    let sync = it.get();
+                    let sync = it.inner.get();
                     if sync.is_none() {
                         continue;
                     }
@@ -677,7 +672,7 @@ impl GenericDevice for Device {
             self.logical.queue_submit(*queue, from_ref(&submit_info), fence).unwrap();
         }
         
-        let owner = contexts[0].owner.clone();
+        let owner = contexts[0].inner.owner.clone();
 
         let id = self.push_work(WorkEntry{
             semaphore: semaphore,
@@ -685,10 +680,10 @@ impl GenericDevice for Device {
             variant:   WorkVariant::Graphics(contexts),
             thread_id: std::thread::current().id(),
         });
-        Receipt::new(owner, id)
+        Receipt{ inner: ReceiptInner::new(owner, id) }
     }
 
-    fn display(&self, wait_on: &[Receipt]) {
+    pub fn display(&self, wait_on: &[Receipt]) {
         assert_eq!(self.surface.is_some(), true);
 
         self.remove_finished_work();
@@ -705,7 +700,7 @@ impl GenericDevice for Device {
         let mut wait_semaphores = Vec::with_capacity(wait_on.len());
         if wait_on.len() > 0 {
             for it in wait_on.iter() {
-                let sync = it.get();
+                let sync = it.inner.get();
                 if sync.is_none() {
                     continue;
                 }
@@ -728,7 +723,7 @@ impl GenericDevice for Device {
         }
     }
 
-    fn remove_finished_work(&self) {
+    pub fn remove_finished_work(&self) {
         let mut work = self.work.lock().unwrap();
 
         work.in_queue.retain(|_, v| {
@@ -747,7 +742,7 @@ impl GenericDevice for Device {
         });
     }
 
-    fn update_bindless(&self) {
+    pub fn update_bindless(&self) {
         let bindless = self.bindless_info.lock().unwrap();
 
         let null_buffer = bindless.null_buffer.as_ref().unwrap();
@@ -837,13 +832,13 @@ impl GenericDevice for Device {
         unsafe{ self.logical.update_descriptor_sets(&set_writes, &[]) };
     }
 
-    fn wait_for_idle(&self) {
+    pub fn wait_for_idle(&self) {
         unsafe { self.logical.device_wait_idle().unwrap() };
     }
 }
 
-pub struct Buffer {
-    owner:  Arc<Device>,
+pub struct BufferInner {
+    owner:  Arc<DeviceInner>,
 
     handle: vk::Buffer,
     memory: RwLock<DeviceAllocation>,
@@ -854,8 +849,8 @@ pub struct Buffer {
     bindless: Option<u32>, // Index into owner bindless buffer array
 }
 
-impl GenericBuffer for Buffer {
-    fn new(owner: Arc<Device>, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Arc<Buffer>, ResourceCreateError> {
+impl BufferInner {
+    pub fn new(owner: Arc<DeviceInner>, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Arc<BufferInner>, ResourceCreateError> {
         let mut vk_usage = vk::BufferUsageFlags::default();
         if usage.contains(BufferUsage::TRANSFER_SRC) {
             vk_usage |= vk::BufferUsageFlags::TRANSFER_SRC;
@@ -900,7 +895,7 @@ impl GenericBuffer for Buffer {
 
                 let index = found.unwrap_or(bindless.buffers.len());
 
-                let result = Arc::new(Buffer{
+                let result = Arc::new(BufferInner{
                     owner: owner.clone(),
     
                     handle: handle,
@@ -922,7 +917,7 @@ impl GenericBuffer for Buffer {
                 return Ok(result);
             }
 
-            Ok(Arc::new(Buffer{
+            Ok(Arc::new(BufferInner{
                 owner: owner,
 
                 handle: handle,
@@ -936,7 +931,7 @@ impl GenericBuffer for Buffer {
         }
     }
 
-    fn copy_to<T>(&self, data: Vec<T>) {
+    pub fn copy_to<T>(&self, data: &[T]) {
         let memory = self.memory.write().unwrap();
 
         unsafe {
@@ -945,9 +940,13 @@ impl GenericBuffer for Buffer {
             self.owner.logical.unmap_memory(memory.memory);
         }
     }
+
+    pub fn bindless(&self) -> Option<u32> {
+        self.bindless
+    }
 }
 
-impl Drop for Buffer {
+impl Drop for BufferInner {
     fn drop(&mut self) {
         unsafe {
             self.owner.logical.destroy_buffer(self.handle, None);
@@ -970,8 +969,8 @@ fn vk_format(format: Format) -> vk::Format {
     }
 }
 
-pub struct Texture {
-    owner:   Arc<Device>,
+pub struct TextureInner {
+    owner:   Arc<DeviceInner>,
 
     image:   vk::Image,
     view:    vk::ImageView,
@@ -992,9 +991,9 @@ pub struct Texture {
 }
 
 
-impl GenericTexture for Texture {
-    fn new(
-        owner: Arc<Device>, 
+impl TextureInner {
+    pub fn new(
+        owner: Arc<DeviceInner>, 
         memory_type: MemoryType, 
         usage: TextureUsage, 
         format: Format, 
@@ -1004,7 +1003,7 @@ impl GenericTexture for Texture {
         wrap: Wrap, 
         min_filter: Filter, 
         mag_filter: Filter
-    ) -> Result<Arc<Texture>, ResourceCreateError> {
+    ) -> Result<Arc<TextureInner>, ResourceCreateError> {
         let mut image_type = vk::ImageType::TYPE_3D;
         if depth == 1 {
             image_type = vk::ImageType::TYPE_2D;
@@ -1128,7 +1127,7 @@ impl GenericTexture for Texture {
 
             let index = found.unwrap_or(bindless.textures.len());
 
-            let result = Arc::new(Texture{
+            let result = Arc::new(TextureInner{
                 owner: owner.clone(), // SPEED: Exra ref count due to mutex lock.
     
                 image:   image,
@@ -1158,7 +1157,7 @@ impl GenericTexture for Texture {
             return Ok(result);
         }
 
-        Ok(Arc::new(Texture{
+        Ok(Arc::new(TextureInner{
             owner: owner,
 
             image:   image,
@@ -1179,16 +1178,17 @@ impl GenericTexture for Texture {
         }))
     }
 
-    fn owner(&self) -> &Arc<Device> { &self.owner }
-    fn memory_type(&self) -> MemoryType { self.memory_type }
-    fn usage(&self) -> TextureUsage { self.usage }
-    fn format(&self) -> Format { self.format }
-    fn width(&self) -> u32 { self.width }
-    fn height(&self) -> u32 { self.height }
-    fn depth(&self) -> u32 { self.depth }
+    pub fn format(&self) -> Format { self.format }
+    pub fn width(&self) -> u32 { self.width }
+    pub fn height(&self) -> u32 { self.height }
+    pub fn depth(&self) -> u32 { self.depth }
+
+    pub fn bindless(&self) -> Option<u32> {
+        self.bindless
+    }
 }
 
-impl Drop for Texture {
+impl Drop for TextureInner {
     fn drop(&mut self) {
         if self.usage.contains(TextureUsage::SWAPCHAIN) {
             unsafe {
@@ -1200,8 +1200,8 @@ impl Drop for Texture {
     }
 }
 
-pub struct RenderPass {
-    owner: Arc<Device>,
+pub struct RenderPassInner {
+    owner: Arc<DeviceInner>,
 
     handle: vk::RenderPass,
 
@@ -1209,8 +1209,8 @@ pub struct RenderPass {
     depth:  Option<Format,>
 }
 
-impl GenericRenderPass for RenderPass {
-    fn new(owner: Arc<Device>, colors: Vec<Format>, depth: Option<Format>) -> Result<Arc<RenderPass>, ()> {
+impl RenderPassInner {
+    pub fn new(owner: Arc<DeviceInner>, colors: Vec<Format>, depth: Option<Format>) -> Result<Arc<RenderPassInner>, ()> {
         let mut color_refs = Vec::with_capacity(colors.len());
         
         let num_attachments = {
@@ -1308,7 +1308,7 @@ impl GenericRenderPass for RenderPass {
             }
             let handle = handle.unwrap();
 
-            Ok(Arc::new(RenderPass{
+            Ok(Arc::new(RenderPassInner{
                 owner: owner,
                 handle: handle,
                 colors: colors,
@@ -1316,13 +1316,9 @@ impl GenericRenderPass for RenderPass {
             }))
         }
     }
-
-    fn owner(&self) -> &Arc<Device> {
-        &self.owner
-    }
 }
 
-impl Drop for RenderPass {
+impl Drop for RenderPassInner {
     fn drop(&mut self) {
         todo!()
     }
@@ -1335,16 +1331,16 @@ fn shader_variant_to_shader_stage(variant: ShaderVariant) -> vk::ShaderStageFlag
     }
 }
 
-pub struct Shader {
-    owner:   Arc<Device>,
+pub struct ShaderInner {
+    owner:   Arc<DeviceInner>,
 
     variant: ShaderVariant,
     module:  vk::ShaderModule,
     main:    String,
 }
 
-impl GenericShader for Shader {
-    fn new(owner: Arc<Device>, contents: Vec<u8>, variant: ShaderVariant, main: String) -> Result<Arc<Shader>, ()> {
+impl ShaderInner {
+    pub fn new(owner: Arc<DeviceInner>, contents: &[u8], variant: ShaderVariant, main: String) -> Result<Arc<ShaderInner>, ()> {
         let contents = unsafe{ from_raw_parts(contents.as_ptr() as *const u32, contents.len() / 4) };
 
         let create_info = vk::ShaderModuleCreateInfo::builder()
@@ -1356,7 +1352,7 @@ impl GenericShader for Shader {
         }
         let shader = shader.unwrap();
 
-        Ok(Arc::new(Shader{
+        Ok(Arc::new(ShaderInner{
             owner: owner,
 
             variant: variant,
@@ -1366,14 +1362,14 @@ impl GenericShader for Shader {
     }
 }
 
-impl Drop for Shader {
+impl Drop for ShaderInner {
     fn drop(&mut self) {
         todo!();
     }
 }
 
-pub struct Pipeline {
-    owner: Arc<Device>,
+pub struct PipelineInner {
+    owner: Arc<DeviceInner>,
 
     handle: vk::Pipeline,
     layout: vk::PipelineLayout,
@@ -1381,8 +1377,8 @@ pub struct Pipeline {
     desc: PipelineDescription,
 }
 
-impl GenericPipeline for Pipeline {
-    fn new(owner: Arc<Device>, desc: PipelineDescription) -> Result<Arc<Pipeline>, ()> {
+impl PipelineInner {
+    pub fn new(owner: Arc<DeviceInner>, desc: PipelineDescription) -> Result<Arc<PipelineInner>, ()> {
         match desc {
             PipelineDescription::Graphics(desc) => {
                 assert!(desc.shaders.len() > 0);
@@ -1390,13 +1386,13 @@ impl GenericPipeline for Pipeline {
                 // Create all the shader staage info for pipeline
                 let mut shader_stages = Vec::with_capacity(desc.shaders.len());
                 for it in desc.shaders.iter() {
-                    let stage = shader_variant_to_shader_stage(it.variant);
+                    let stage = shader_variant_to_shader_stage(it.inner.variant);
 
-                    let main = CString::new(it.main.clone()).unwrap();
+                    let main = CString::new(it.inner.main.clone()).unwrap();
                     
                     let stage_info = vk::PipelineShaderStageCreateInfo::builder()
                         .stage(stage)
-                        .module(it.module)
+                        .module(it.inner.module)
                         .name(&main)
                         .build();
 
@@ -1579,7 +1575,7 @@ impl GenericPipeline for Pipeline {
                     .color_blend_state(&color_blend_state)
                     .dynamic_state(&dynamic_state)
                     .layout(layout)
-                    .render_pass(desc.render_pass.handle)
+                    .render_pass(desc.render_pass.inner.handle)
                     .base_pipeline_index(-1);
 
                 let handle = unsafe{ owner.logical.create_graphics_pipelines(vk::PipelineCache::default(), from_ref(&create_info), None) };
@@ -1588,7 +1584,7 @@ impl GenericPipeline for Pipeline {
                 }
                 let handle = handle.unwrap();
 
-                Ok(Arc::new(Pipeline {
+                Ok(Arc::new(PipelineInner {
                     owner: owner,
                     
                     handle: handle[0],
@@ -1602,19 +1598,18 @@ impl GenericPipeline for Pipeline {
     }
 }
 
-pub struct GraphicsContext {
-    owner: Arc<Device>,
+pub struct GraphicsContextInner {
+    owner: Arc<DeviceInner>,
 
     command_buffer: vk::CommandBuffer,
     
     framebuffers: Vec<vk::Framebuffer>,
-    pipelines:    Vec<Arc<Pipeline>>,
-    textures:     Vec<Arc<Texture>>,
-    buffers:      Vec<Arc<Buffer>>,
+    pipelines:    Vec<Arc<PipelineInner>>,
+    textures:     Vec<Arc<TextureInner>>,
+    buffers:      Vec<Arc<BufferInner>>,
 
-    current_render_pass: Option<Arc<RenderPass>>,
     current_scissor:     Option<Rect>,
-    current_attachments: Option<Vec<Arc<Texture>>>,
+    current_attachments: Option<Vec<Arc<TextureInner>>>,
 }
 
 fn layout_to_image_layout(layout: Layout) -> vk::ImageLayout {
@@ -1630,8 +1625,8 @@ fn layout_to_image_layout(layout: Layout) -> vk::ImageLayout {
     }
 }
 
-impl GenericContext for GraphicsContext {
-    fn begin(&mut self) {
+impl GraphicsContextInner {
+    pub fn begin(&mut self) {
         unsafe{ self.owner.logical.reset_command_buffer(self.command_buffer, vk::CommandBufferResetFlags::default()).unwrap() };
         
         let begin_info = vk::CommandBufferBeginInfo::builder()
@@ -1640,11 +1635,11 @@ impl GenericContext for GraphicsContext {
         unsafe{ self.owner.logical.begin_command_buffer(self.command_buffer, &begin_info).unwrap() };
     }
 
-    fn end(&mut self) {
+    pub fn end(&mut self) {
         unsafe{ self.owner.logical.end_command_buffer(self.command_buffer).unwrap() };
     }
 
-    fn copy_buffer_to_texture(&mut self, dst: Arc<Texture>, src: Arc<Buffer>) {
+    pub fn copy_buffer_to_texture(&mut self, dst: Arc<TextureInner>, src: Arc<BufferInner>) {
         let subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(vk::ImageAspectFlags::COLOR)
             .layer_count(1);
@@ -1669,7 +1664,7 @@ impl GenericContext for GraphicsContext {
         };
     }
 
-    fn resource_barrier_texture(&mut self, texture: Arc<Texture>, old_layout: Layout, new_layout: Layout) {
+    pub fn resource_barrier_texture(&mut self, texture: Arc<TextureInner>, old_layout: Layout, new_layout: Layout) {
         let mut barrier = vk::ImageMemoryBarrier::builder()
             .old_layout(layout_to_image_layout(old_layout))
             .new_layout(layout_to_image_layout(new_layout))
@@ -1732,8 +1727,8 @@ impl GenericContext for GraphicsContext {
     }
 }
 
-impl GenericGraphicsContext for GraphicsContext {
-    fn new(owner: Arc<Device>) -> Result<GraphicsContext, ()> {
+impl GraphicsContextInner {
+    pub fn new(owner: Arc<DeviceInner>) -> Result<GraphicsContextInner, ()> {
         let handle = {
             let mut thread_infos = owner.thread_info.lock().unwrap();
             let thread_id = std::thread::current().id();
@@ -1765,7 +1760,7 @@ impl GenericGraphicsContext for GraphicsContext {
             handle.unwrap()[0]
         };
 
-        Ok(GraphicsContext{
+        Ok(GraphicsContextInner{
             owner: owner,
 
             command_buffer: handle,
@@ -1775,13 +1770,12 @@ impl GenericGraphicsContext for GraphicsContext {
             textures:     Vec::new(),
             buffers:      Vec::new(),
 
-            current_render_pass: None,
             current_scissor: None,
             current_attachments: None,
         })
     }
 
-    fn begin_render_pass(&mut self, render_pass: Arc<RenderPass>, attachments: &[Arc<Texture>]) {
+    pub fn begin_render_pass(&mut self, render_pass: Arc<RenderPassInner>, attachments: &[Arc<TextureInner>]) {
         let extent = vk::Extent2D::builder()
             .width(attachments[0].width)
             .height(attachments[0].height)
@@ -1789,7 +1783,6 @@ impl GenericGraphicsContext for GraphicsContext {
         
         let render_pass_handle = render_pass.handle;
 
-        self.current_render_pass = Some(render_pass);
         for it in attachments.iter() {
             self.textures.push(it.clone());
         }
@@ -1822,18 +1815,17 @@ impl GenericGraphicsContext for GraphicsContext {
         unsafe{ self.owner.logical.cmd_begin_render_pass(self.command_buffer, &begin_info, vk::SubpassContents::INLINE) };
     }
 
-    fn end_render_pass(&mut self) {
+    pub fn end_render_pass(&mut self) {
         unsafe{ self.owner.logical.cmd_end_render_pass(self.command_buffer) };
-        self.current_render_pass = None;
         self.current_scissor = None;
         self.current_attachments = None;
     }
 
-    fn bind_scissor(&mut self, scissor: Option<Rect>) {
+    pub fn bind_scissor(&mut self, scissor: Option<Rect>) {
         self.current_scissor = scissor;
     }
 
-    fn bind_pipeline(&mut self, pipeline: Arc<Pipeline>) {
+    pub fn bind_pipeline(&mut self, pipeline: Arc<PipelineInner>) {
         unsafe {
             self.owner.logical.cmd_bind_pipeline(self.command_buffer, vk::PipelineBindPoint::GRAPHICS, pipeline.handle);
             self.owner.logical.cmd_bind_descriptor_sets(
@@ -1887,29 +1879,17 @@ impl GenericGraphicsContext for GraphicsContext {
         self.pipelines.push(pipeline);
     }
 
-    fn bind_vertex_buffer(&mut self, buffer: Arc<Buffer>) {
+    pub fn bind_vertex_buffer(&mut self, buffer: Arc<BufferInner>) {
         let offset = 0;
         unsafe{ self.owner.logical.cmd_bind_vertex_buffers(self.command_buffer, 0, from_ref(&buffer.handle), from_ref(&offset)) };
         self.buffers.push(buffer);
     }
 
-    fn bind_constant_buffer(&mut self, buffer: Arc<Buffer>) -> u32 {
-        let result = buffer.bindless.unwrap();
-        self.buffers.push(buffer);
-        result
-    }
-
-    fn bind_sampled_texture(&mut self, texture: Arc<Texture>) -> u32 {
-        let result = texture.bindless.unwrap();
-        self.textures.push(texture);
-        result
-    }
-
-    fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
+    pub fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
         unsafe{ self.owner.logical.cmd_draw(self.command_buffer, vertex_count as u32, 1, first_vertex as u32, 0) };
     }
 
-    fn clear(&mut self, color: Color) {
+    pub fn clear(&mut self, color: Color) {
         let attachments = self.current_attachments.as_ref().unwrap();
         assert!(attachments.len() > 0);
 
@@ -1940,7 +1920,7 @@ impl GenericGraphicsContext for GraphicsContext {
         unsafe{ self.owner.logical.cmd_clear_attachments(self.command_buffer, &clear[..], &[clear_rect]) };
     }
 
-    fn push_constants<T>(&mut self, t: T) {
+    pub fn push_constants<T>(&mut self, t: T) {
         let pipeline = &self.pipelines.last().unwrap();
 
         let desc = match &pipeline.desc {
@@ -1961,7 +1941,7 @@ impl GenericGraphicsContext for GraphicsContext {
     }
 }
 
-impl Drop for GraphicsContext {
+impl Drop for GraphicsContextInner {
     fn drop(&mut self) {
         let thread_infos = self.owner.thread_info.lock().unwrap();
         let thread_id = std::thread::current().id();
