@@ -436,7 +436,7 @@ pub trait GenericGraphicsContext: GenericContext {
     fn bind_sampled_texture(&mut self, texture: Arc<Texture>) -> u32;
 
     fn draw(&mut self, vertex_count: usize, first_vertex: usize);
-    fn clear(&mut self, color: Color, attachments: &[Arc<Texture>]);
+    fn clear(&mut self, color: Color);
 
     fn push_constants<T>(&mut self, t: T);
 }

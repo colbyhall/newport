@@ -4,17 +4,22 @@ use math::*;
 use engine::*;
 use graphics::*;
 
+use font::FontCollection;
+use newport_graphics::font::Font;
+
 use std::sync::Arc;
 use std::mem::size_of;
 use std::fs;
-use stb_image::image;
+use std::cell::RefCell;
 
 struct RenderState {
     render_pass: Arc<RenderPass>,
     pipeline:    Arc<Pipeline>,
 
     vertex_buffer: Arc<Buffer>,
-    texture: Arc<Texture>,
+    font_collection: RefCell<FontCollection>,
+
+
 }
 
 struct HelloWorld {
@@ -93,7 +98,7 @@ impl ModuleCompileTime for HelloWorld {
                         SamplerState my_sampler = all_samplers[constants.tex];
         
                         float4 color = my_texture.Sample(my_sampler, IN.uv, 0);
-                        return float4(IN.uv.x, IN.uv.y, color.r, 1.0);
+                        return color;
                     }
                 ";
         
@@ -138,7 +143,7 @@ impl ModuleCompileTime for HelloWorld {
                     },
                     HelloWorldVertex{
                         position: Vector3::new(size, -size, vert_z),
-                        uv:       Vector2::new(0.0, 1.0),
+                        uv:       Vector2::new(1.0, 1.0),
                     },
                 ];
         
@@ -151,61 +156,14 @@ impl ModuleCompileTime for HelloWorld {
         
                 vertex_buffer.copy_to(vertices);
 
-                let pixels = fs::read("assets/branding/logo_white.png").unwrap();
-
-                let load_result = image::load_from_memory(&pixels[..]);
-
-                let texture = match load_result {
-                    image::LoadResult::ImageU8(image) => {
-                        let width = image.width as u32;
-                        let height = image.height as u32;
-
-                        let pixels = image.data;
-
-                        let buffer = Buffer::new(
-                            device.clone(), 
-                            BufferUsage::TRANSFER_SRC, 
-                            MemoryType::HostVisible, 
-                            pixels.len()
-                        ).unwrap();
-                        buffer.copy_to(pixels);
-
-                        let tex = Texture::new(
-                            device.clone(), 
-                            MemoryType::DeviceLocal, 
-                            TextureUsage::TRANSFER_DST | TextureUsage::SAMPLED,
-                            Format::RGBA_U8,
-                            width,
-                            height,
-                            1,
-                            Wrap::Clamp,
-                            Filter::Nearest,
-                            Filter::Nearest
-                        ).unwrap();
-
-                        let mut gfx = GraphicsContext::new(device.clone()).unwrap();
-                        gfx.begin();
-                        {
-                            gfx.resource_barrier_texture(tex.clone(), Layout::Undefined, Layout::TransferDst);
-                            gfx.copy_buffer_to_texture(tex.clone(), buffer.clone());
-                            gfx.resource_barrier_texture(tex.clone(), Layout::TransferDst, Layout::ShaderReadOnly);
-                        }
-                        gfx.end();
-    
-                        let receipt = device.submit_graphics(vec![gfx], &[]);
-                        receipt.wait();
-
-                        tex
-                    },
-                    _ => unimplemented!()
-                };
+                let font_file = fs::read("assets/fonts/menlo_regular.ttf").unwrap();
         
                 engine.module_mut::<HelloWorld>().unwrap().render_state = Some(RenderState{
                     render_pass: render_pass,
                     pipeline: pipeline,
         
                     vertex_buffer: vertex_buffer,
-                    texture: texture
+                    font_collection: RefCell::new(FontCollection::new(font_file).unwrap())
                 })
             }
         )
@@ -219,15 +177,19 @@ impl ModuleRuntime for HelloWorld {
 
         let backbuffer = device.acquire_backbuffer();
 
+        let mut fc = render_state.font_collection.borrow_mut();
+        let font = fc.font_at_size(16, 1.0).unwrap();
+
         device.update_bindless();
 
         let mut graphics = GraphicsContext::new(device.clone()).unwrap();
         graphics.begin();
         {
             graphics.begin_render_pass(render_state.render_pass.clone(), &[backbuffer.clone()]);
+            graphics.clear(Color::BLACK);
             graphics.bind_pipeline(render_state.pipeline.clone());
             graphics.bind_vertex_buffer(render_state.vertex_buffer.clone());
-            let index = graphics.bind_sampled_texture(render_state.texture.clone());
+            let index = graphics.bind_sampled_texture(font.atlas.clone());
 
             let view = Matrix4::ortho(backbuffer.width() as f32, backbuffer.height() as f32, 1000.0, 0.1);
 

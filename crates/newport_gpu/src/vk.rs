@@ -211,15 +211,19 @@ impl Receipt {
 
 impl GenericReceipt for Receipt { 
     fn wait(self) -> bool {
-        let work = self.owner.work.lock().unwrap();
+        {
+            let work = self.owner.work.lock().unwrap();
+    
+            let entry = work.in_queue.get(&self.id);
+            if entry.is_none() { return false; }
+            let entry = entry.unwrap();
+    
+            unsafe {
+                self.owner.logical.wait_for_fences(&[entry.fence], true, u64::MAX).unwrap()
+            };
+        }
 
-        let entry = work.in_queue.get(&self.id);
-        if entry.is_none() { return false; }
-        let entry = entry.unwrap();
-
-        unsafe {
-            self.owner.logical.wait_for_fences(&[entry.fence], true, u64::MAX).unwrap()
-        };
+        self.owner.remove_finished_work();
 
         return true;
     }
@@ -959,7 +963,7 @@ fn vk_format(format: Format) -> vk::Format {
         Format::Undefined    => vk::Format::UNDEFINED,
         Format::RGB_U8       => vk::Format::R8G8B8_UINT,
         Format::RGB_U8_SRGB  => vk::Format::R8G8B8_SRGB,
-        Format::RGBA_U8      => vk::Format::R8G8B8A8_UINT,
+        Format::RGBA_U8      => vk::Format::R8G8B8A8_UNORM,
         Format::RGBA_U8_SRGB => vk::Format::R8G8B8A8_SRGB,
         Format::RGBA_F16     => vk::Format::R16G16B16A16_SFLOAT,
         Format::BGR_U8_SRGB  => vk::Format::B8G8R8A8_SRGB
@@ -1602,14 +1606,15 @@ pub struct GraphicsContext {
     owner: Arc<Device>,
 
     command_buffer: vk::CommandBuffer,
-    framebuffers:   Vec<vk::Framebuffer>,
-
-    pipelines:   Vec<Arc<Pipeline>>,
-    attachments: Vec<Arc<Texture>>,
-    buffers:     Vec<Arc<Buffer>>,
+    
+    framebuffers: Vec<vk::Framebuffer>,
+    pipelines:    Vec<Arc<Pipeline>>,
+    textures:     Vec<Arc<Texture>>,
+    buffers:      Vec<Arc<Buffer>>,
 
     current_render_pass: Option<Arc<RenderPass>>,
-    current_scissor: Option<Rect>
+    current_scissor:     Option<Rect>,
+    current_attachments: Option<Vec<Arc<Texture>>>,
 }
 
 fn layout_to_image_layout(layout: Layout) -> vk::ImageLayout {
@@ -1764,14 +1769,15 @@ impl GenericGraphicsContext for GraphicsContext {
             owner: owner,
 
             command_buffer: handle,
-            framebuffers:   Vec::new(),
-
-            pipelines:   Vec::new(),
-            attachments: Vec::new(),
-            buffers:     Vec::new(),
+            
+            framebuffers: Vec::new(),
+            pipelines:    Vec::new(),
+            textures:     Vec::new(),
+            buffers:      Vec::new(),
 
             current_render_pass: None,
             current_scissor: None,
+            current_attachments: None,
         })
     }
 
@@ -1785,11 +1791,12 @@ impl GenericGraphicsContext for GraphicsContext {
 
         self.current_render_pass = Some(render_pass);
         for it in attachments.iter() {
-            self.attachments.push(it.clone());
+            self.textures.push(it.clone());
         }
+        self.current_attachments = Some(attachments.to_vec()); // TODO: Temp Allocator
 
         // Make the framebuffer
-        let mut views = Vec::with_capacity(attachments.len());
+        let mut views = Vec::with_capacity(attachments.len()); // TODO: Temp Allocator
         for it in attachments.iter() {
             views.push(it.view);
         }
@@ -1819,6 +1826,7 @@ impl GenericGraphicsContext for GraphicsContext {
         unsafe{ self.owner.logical.cmd_end_render_pass(self.command_buffer) };
         self.current_render_pass = None;
         self.current_scissor = None;
+        self.current_attachments = None;
     }
 
     fn bind_scissor(&mut self, scissor: Option<Rect>) {
@@ -1838,8 +1846,8 @@ impl GenericGraphicsContext for GraphicsContext {
             );
 
             let viewport = vk::Viewport::builder()
-                .width(self.attachments.last().unwrap().width as f32)
-                .height(self.attachments.last().unwrap().height as f32)
+                .width(self.textures.last().unwrap().width as f32)
+                .height(self.textures.last().unwrap().height as f32)
                 .max_depth(1.0);
             self.owner.logical.cmd_set_viewport(self.command_buffer, 0, from_ref(&viewport));
 
@@ -1893,7 +1901,7 @@ impl GenericGraphicsContext for GraphicsContext {
 
     fn bind_sampled_texture(&mut self, texture: Arc<Texture>) -> u32 {
         let result = texture.bindless.unwrap();
-        self.attachments.push(texture);
+        self.textures.push(texture);
         result
     }
 
@@ -1901,8 +1909,35 @@ impl GenericGraphicsContext for GraphicsContext {
         unsafe{ self.owner.logical.cmd_draw(self.command_buffer, vertex_count as u32, 1, first_vertex as u32, 0) };
     }
 
-    fn clear(&mut self, _color: Color, _attachments: &[Arc<Texture>]) {
-        todo!();
+    fn clear(&mut self, color: Color) {
+        let attachments = self.current_attachments.as_ref().unwrap();
+        assert!(attachments.len() > 0);
+
+        let mut clear = Vec::with_capacity(attachments.len());
+        for (index, _) in attachments.iter().enumerate() {
+            let clear_value = vk::ClearValue{
+                color: vk::ClearColorValue{
+                    float32: [color.r, color.g, color.b, color.a],
+                },
+            };
+
+            clear.push(vk::ClearAttachment::builder()
+                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                .color_attachment(index as u32)
+                .clear_value(clear_value)
+                .build()
+            );
+        }
+
+        let extent = vk::Extent2D::builder()
+            .width(attachments[0].width)
+            .height(attachments[0].height)
+            .build();
+        let clear_rect = vk::ClearRect::builder()
+            .rect(vk::Rect2D::builder().extent(extent).build())
+            .layer_count(1)
+            .build();
+        unsafe{ self.owner.logical.cmd_clear_attachments(self.command_buffer, &clear[..], &[clear_rect]) };
     }
 
     fn push_constants<T>(&mut self, t: T) {
