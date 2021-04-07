@@ -1,11 +1,10 @@
 mod context;
-mod id;
-mod control;
-mod input;
+pub use context::*;
 
-pub use {
-    id::Id,
-    context::Context,
-    control::Control,
-    input::Input,
-};
+mod id;
+pub use id::*;
+
+mod input;
+pub use input::*;
+
+pub mod widgets;

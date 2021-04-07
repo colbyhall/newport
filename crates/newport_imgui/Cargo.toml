@@ -1,10 +1,13 @@
 [package]
 name = "newport_imgui"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
+repository = "https://github.com/colbyhall/newport"
+description = "Newport Engine's editor imgui"
+categories = ["game-engines", "game-development"]
+keywords = ["game", "engine", "gamedev", "newport"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anymap = "0.12.1"

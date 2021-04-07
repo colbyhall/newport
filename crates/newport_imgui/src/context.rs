@@ -1,17 +1,21 @@
-use crate::{ Id, Control };
+use crate::{ Id, Input };
 
 pub struct Context {
-    frame: u64,
+    hovered: Option<Id>,
+    focused: Option<Id>,
+
+    input: Option<Input>,
 }
 
 impl Context {
     pub fn new() -> Self {
         Self {
-            frame:  0,
+            hovered: None,
+            focused: None,
         }
     }
 
-    pub fn begin_frame(&mut self) {
+    pub fn begin_frame(&mut self, input: Input) -> {
         
     }
 
