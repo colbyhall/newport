@@ -1,5 +1,6 @@
-use newport_engine::{ ModuleCompileTime, ModuleRuntime, Engine };
+use newport_engine::{ ModuleCompileTime, ModuleRuntime, Engine, EngineBuilder };
 use newport_gpu::{ Instance, Device };
+use newport_asset::AssetManager;
 
 pub mod font;
 
@@ -20,6 +21,11 @@ impl ModuleCompileTime for Graphics {
             instance: Instance::new().unwrap(),
             device:   None,
         }
+    }
+
+    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+        builder
+            .module::<AssetManager>()
     }
 }
 

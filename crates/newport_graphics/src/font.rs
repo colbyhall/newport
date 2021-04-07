@@ -1,11 +1,13 @@
 use newport_gpu::*;
 use newport_math::*;
+use newport_asset::*;
 use newport_engine::Engine;
 
 use crate::Graphics;
 
 use std::{mem::size_of, thread_local};
 use std::collections::HashMap;
+use std::fs;
 
 use freetype::{ Library, Face };
 use freetype::face::LoadFlag;
@@ -161,6 +163,17 @@ impl FontCollection {
         }
 
         self.fonts.get(&size)
+    }
+}
+
+impl Asset for FontCollection {
+    fn load(path: &Path) -> Result<Self, LoadError> {
+        let font_file = fs::read(path).map_err(|_| LoadError::FileNotFound)?;
+        FontCollection::new(font_file).map_err(|_| LoadError::DataError)
+    }
+
+    fn extension() -> &'static str {
+        "ttf"
     }
 }
 

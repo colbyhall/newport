@@ -11,3 +11,7 @@ keywords = ["game", "engine", "gamedev", "newport"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+newport_math     = { path = "../newport_math", version = "0.0.1" }
+newport_graphics = { path = "../newport_graphics", version = "0.0.1" }
+newport_gpu      = { path = "../newport_gpu", version = "0.0.1" }
+newport_asset    = { path = "../newport_asset", version = "0.0.1" }

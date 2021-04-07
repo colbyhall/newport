@@ -20,7 +20,7 @@ use std::fmt;
 /// Trait alis for what an `Asset` can be
 pub trait Asset: Sized + 'static {
     fn load(path: &Path) -> Result<Self, LoadError>;
-    fn unload(asset: Self);
+    fn unload(_asset: Self) { }
     fn extension() -> &'static str;
 }
 
@@ -75,14 +75,14 @@ struct AssetEntry {
 ///
 /// * `AssetWeak<T: Asset>` for asset weak ptrs
 #[derive(Clone)]
-pub struct AssetRef<'a, T: 'static> {
+pub struct AssetRef<T: 'static> {
     arc:     Arc<RwLock<Option<Box<dyn Any>>>>,
     phantom: PhantomData<T>,
     variant: usize, // Index into AssetManager::variants
-    manager: &'a AssetManager, 
+    manager: &'static AssetManager, 
 }
 
-impl<'a, T: 'static> AssetRef<'a, T> {
+impl<T: 'static> AssetRef<T> {
     /// Returns an `AssetWriteGuard<T>` for RAII exclusive write access
     ///
     /// # Examples
@@ -136,7 +136,7 @@ impl<'a, T: 'static> AssetRef<'a, T> {
     }
 }
 
-impl<'a, T:'static + fmt::Debug> fmt::Debug for AssetRef<'a, T> {
+impl<T:'static + fmt::Debug> fmt::Debug for AssetRef<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let read_lock = self.read();
 
@@ -148,7 +148,7 @@ impl<'a, T:'static + fmt::Debug> fmt::Debug for AssetRef<'a, T> {
     }
 }
 
-impl<'a, T:'static> Drop for AssetRef<'a, T> {
+impl<T:'static> Drop for AssetRef<T> {
     fn drop(&mut self) {
         // If we're the last unload the asset
         if self.strong_count() == 1 {
@@ -268,7 +268,7 @@ impl AssetManager {
     }
 
     /// TODO
-    pub fn find<'a, P: AsRef<Path> + fmt::Debug, T: Asset>(&'a self, p: P) -> Option<AssetRef<T>> {
+    pub fn find<P: AsRef<Path> + fmt::Debug, T: Asset>(&'static self, p: P) -> Option<AssetRef<T>> {
         let read_lock = self.assets.read().unwrap();
         let entry = read_lock.iter().find(|it| it.path == p.as_ref())?;
 

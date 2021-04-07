@@ -1,10 +1,17 @@
 mod context;
-pub use context::*;
-
 mod id;
-pub use id::*;
-
 mod input;
-pub use input::*;
-
+mod paint;
+mod layout;
+mod gui;
+mod response;
 pub mod widgets;
+
+pub use context::*;
+pub use id::*;
+pub use input::*;
+pub use paint::*;
+pub use layout::*;
+pub use gui::*;
+pub use response::*;
+pub use widgets::Widget;
