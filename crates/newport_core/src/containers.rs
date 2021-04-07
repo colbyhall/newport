@@ -15,18 +15,20 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 struct ArenaInternal {
-    memory: Box<[u8]>,
+    memory: *mut u8,
     used:   usize,
+    capacity:    usize,
 }
 
 #[derive(Clone)]
 pub struct Arena(Rc<RefCell<ArenaInternal>>);
 
 impl Arena {
-    pub fn new(memory: Box<[u8]>) -> Self {
+    pub fn new(memory: &mut [u8]) -> Self {
         Self(Rc::new(RefCell::new(ArenaInternal{
-            memory: memory,
-            used:   0,
+            memory:     memory.as_mut_ptr(),
+            used:       0,
+            capacity:   memory.len(),
         })))
     }
 
@@ -40,14 +42,21 @@ impl Arena {
         let arena = self.0.as_ref().borrow();
         arena.used
     }
+
+    pub fn capacity(&self) -> usize {
+        let arena = self.0.as_ref().borrow();
+        arena.capacity
+    }
 }
 
 unsafe impl Allocator for Arena {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let mut arena = self.0.as_ref().borrow_mut();
 
+        let memory = unsafe{ from_raw_parts_mut(arena.memory, arena.capacity) };
+
         let used = arena.used;
-        let ptr = &mut arena.memory[used] as *mut u8;
+        let ptr = &mut memory[used] as *mut u8;
         arena.used += layout.size();
 
         let result: NonNull<[u8]> = unsafe{
@@ -59,5 +68,24 @@ unsafe impl Allocator for Arena {
 
     unsafe fn deallocate(&self, _ptr: NonNull<u8>, _layout: Layout) {
         // do nothing
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Arena;
+
+    #[derive(Debug)]
+    struct Test {
+        foo: i32,
+    }
+
+    #[test]
+    fn it_works() {
+        let mut memory = Vec::with_capacity(1024 * 1024 * 1024);
+        memory.resize(memory.capacity(), 0);
+        let arena = Arena::new(&mut memory[..]);
+        let foo = Box::new_in(Test{ foo: 1234 }, arena);
+        println!("{:?}", foo);
     }
 }
