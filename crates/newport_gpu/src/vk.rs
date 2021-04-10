@@ -1195,7 +1195,12 @@ impl Drop for TextureInner {
                 self.owner.logical.destroy_image_view(self.view, None);
             }
         } else {
-            todo!();
+            unsafe {
+                self.owner.logical.destroy_image(self.image, None);
+                self.owner.logical.destroy_image_view(self.view, None);
+                self.owner.logical.destroy_sampler(self.sampler, None);
+                self.owner.free_memory(self.memory);
+            }
         }
     }
 }

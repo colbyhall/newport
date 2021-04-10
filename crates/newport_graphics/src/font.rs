@@ -87,12 +87,12 @@ impl FontCollection {
                 let y0 = pen_y - bmp_rows;
                 let x1 = pen_x + bmp_width;
                 let y1 = pen_y + 2;
+
+                let width = (x1 - x0) as f32;
+                let height = (y1 - y0) as f32;
     
-                let width = ((x1 - x0) >> 6) as f32;
-                let height = ((y1 - y0) >> 6) as f32;
-    
-                let uv0 = Vector2::new(x0 as f32 / tex_width as f32, y1 as f32 / tex_height as f32);
-                let uv1 = Vector2::new(x1 as f32 / tex_width as f32, y0 as f32 / tex_height as f32);
+                let uv0 = Vector2::new(x0 as f32 / tex_width as f32, y0 as f32 / tex_height as f32);
+                let uv1 = Vector2::new(x1 as f32 / tex_width as f32, y1 as f32 / tex_height as f32);
     
                 glyphs[i] = Glyph {
                     width: width,

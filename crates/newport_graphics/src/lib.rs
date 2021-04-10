@@ -32,5 +32,9 @@ impl ModuleCompileTime for Graphics {
 impl ModuleRuntime for Graphics {
     fn post_init(&mut self, engine: &mut Engine) {
         self.device = self.instance.create_device(Some(engine.window().handle())).ok();
+
+        let asset_manager = engine.module_mut::<AssetManager>().unwrap();
+        asset_manager
+            .register_variant::<font::FontCollection>();
     }
 }

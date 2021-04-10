@@ -439,6 +439,22 @@ impl PipelineBuilder {
         self
     }
 
+    pub fn enable_blend(mut self) -> Self {
+        match &mut self.desc {
+            PipelineDescription::Graphics(gfx) => gfx.blend_enabled = true,
+            _ => unreachable!()
+        }
+        self
+    }
+
+    pub fn src_alpha_blend(mut self, factor: BlendFactor) -> Self {
+        match &mut self.desc {
+            PipelineDescription::Graphics(gfx) => gfx.src_alpha_blend_factor = factor,
+            _ => unreachable!()
+        }
+        self
+    }
+
     pub fn build(self) -> PipelineDescription {
         self.desc
     }

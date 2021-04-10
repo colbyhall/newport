@@ -38,7 +38,7 @@ impl Vector4 {
     }
 
     pub const fn dot(self, rhs: Self) -> f32 {
-        self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
+        self.x * rhs.x + self.y * rhs.y + self.z * rhs.z + self.w * rhs.w
     }
 
     pub const fn to_tuple(self) -> (f32, f32, f32, f32) {

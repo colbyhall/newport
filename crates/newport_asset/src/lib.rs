@@ -96,7 +96,7 @@ impl<T: 'static> AssetRef<T> {
     /// let mut write_lock = asset_ref.write();
     /// write_lock.foo = 45;
     /// ```
-    pub fn write(&mut self) -> AssetWriteGuard<T> {
+    pub fn write(&self) -> AssetWriteGuard<T> {
         AssetWriteGuard {
             lock:    self.arc.write().unwrap(),
             phantom: PhantomData,
@@ -243,7 +243,7 @@ impl AssetManager {
                         .find(|v| v.1.extension == ext.to_str().unwrap());
                     if v.is_none() { continue; }
                     let (v_index, _) = v.unwrap();
-                    
+
                     // Build the asset entry and push to assets vector
                     let write_time = entry.metadata().unwrap().modified().unwrap();
                     assets.push(AssetEntry{

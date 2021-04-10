@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 mod context;
 mod id;
 mod input;
