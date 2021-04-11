@@ -1,18 +1,3 @@
-// #[cfg(target_os = "windows")]
-// use newport_os::win32;
-
-// use newport_core::containers::HashMap;
-
-// use ash::{ vk, extensions::khr };
-// use ash::version::{ InstanceV1_0, InstanceV1_1, DeviceV1_0 };
-
-// use std::ptr::{ null_mut, copy_nonoverlapping };
-// use std::slice::{ from_ref, from_raw_parts };
-// use std::sync::{ RwLock, Mutex, Weak };
-// use std::thread::ThreadId;
-// use std::ffi::CString;
-// use std::mem::size_of;
-
 use crate::{ Format };
 use ash::vk;
 
