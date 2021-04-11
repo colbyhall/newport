@@ -301,20 +301,6 @@ struct CACHE_DESCRIPTOR {
     Type:           PROCESSOR_CACHE_TYPE,
 }
 
-#[macro_export]
-macro_rules! proc_address {
-    ($lib:expr, $proc:expr) => (
-        {
-            let func_ptr = $lib.raw_address($proc);
-            if func_ptr.is_null() {
-                None
-            } else {
-                Some(unsafe { std::mem::transmute(func_ptr) })
-            }
-        }
-    )
-}
-
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq)]
 enum LOGICAL_PROCESSOR_RELATIONSHIP {

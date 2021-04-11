@@ -119,6 +119,9 @@ impl Egui {
         }
         let input = self.input.as_mut().unwrap();
 
+        let engine = Engine::as_ref();
+        let dpi = engine.window().dpi();
+
         match event {
             WindowEvent::Char(c) => {
                 let mut s = String::new();
@@ -209,14 +212,14 @@ impl Egui {
                 let button = button.unwrap();
 
                 input.events.push(Event::PointerButton{
-                    pos: pos2(position.0 as f32, position.1 as f32),
+                    pos: pos2(position.0 as f32 / dpi, position.1 as f32 / dpi),
                     button:     button,
                     pressed:    *pressed,
                     modifiers:  Default::default(),
                 });
             },
             WindowEvent::MouseMove(x, y) => {
-                input.events.push(Event::PointerMoved(pos2(*x as f32, *y as f32)));
+                input.events.push(Event::PointerMoved(pos2(*x as f32 / dpi, *y as f32 / dpi)));
             }
             _ => {}
         }
@@ -226,9 +229,12 @@ impl Egui {
         let engine = Engine::as_ref();
         let viewport = engine.window().size();
 
+        let dpi = engine.window().dpi();
+
         let mut input = self.input.take().unwrap_or_default();
-        input.screen_rect = Some(Rect::from_min_max(pos2(0.0, 0.0), pos2(viewport.0 as f32, viewport.1 as f32)));
+        input.screen_rect = Some(Rect::from_min_max(pos2(0.0, 0.0), pos2(viewport.0 as f32 / dpi, viewport.1 as f32 / dpi)));
         input.predicted_dt = dt;
+        input.pixels_per_point = Some(dpi);   
 
         self.context.begin_frame(input);
     }
@@ -306,6 +312,8 @@ impl Egui {
 
         let texture = self.texture.as_ref().unwrap();
 
+        let dpi = engine.window().dpi();
+
         // Load all vertex data into one giant buffer
         let mut vertex_buffer_len = 0;
         let mut index_buffer_len = 0;
@@ -347,8 +355,10 @@ impl Egui {
         index_buffer.copy_to(&indices[..]);
 
         let viewport = engine.window().size();
-        let proj = Matrix4::ortho(viewport.0 as f32, viewport.1 as f32, 1000.0, 0.1);
-        let view = Matrix4::translate(Vector3::new(-(viewport.0 as f32) / 2.0, -(viewport.1 as f32) / 2.0, 0.0));
+        let viewport = Vector2::new(viewport.0 as f32 / dpi, viewport.1 as f32 / dpi);
+
+        let proj = Matrix4::ortho(viewport.x, viewport.y, 1000.0, 0.1);
+        let view = Matrix4::translate(Vector3::new(-viewport.x / 2.0, -viewport.y / 2.0, 0.0));
 
         gfx.bind_pipeline(&self.pipeline);
         gfx.bind_vertex_buffer(&vertex_buffer);

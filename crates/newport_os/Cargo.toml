@@ -10,3 +10,4 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
+lazy_static = "1.4.0"

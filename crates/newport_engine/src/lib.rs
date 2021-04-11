@@ -46,10 +46,12 @@ impl Engine {
     
         // UNSAFE: Set the global state
         let engine = unsafe{ 
-            let window = WindowBuilder::new()
+            let mut window = WindowBuilder::new()
                 .title(name.clone())
                 .spawn()
                 .unwrap();
+
+            window.maximize();
 
             ENGINE = Some(Engine{
                 name:       name,

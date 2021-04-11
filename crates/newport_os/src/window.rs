@@ -1,16 +1,57 @@
+#![allow(dead_code)]
+
 #[cfg(target_os = "windows")]
 use crate::win32::*;
 
 #[cfg(target_os = "windows")]
-use crate::{MAKEINTRESOURCEA, GET_WHEEL_DELTA_WPARAM, HIWORD};
+use crate::{ MAKEINTRESOURCEA, GET_WHEEL_DELTA_WPARAM, HIWORD, proc_address };
 
+use crate::library::Library;
 use crate::input::*;
+
+use lazy_static::lazy_static;
 
 use std::collections::VecDeque;
 use std::mem::size_of;
 use std::ptr::{null_mut, null, NonNull};
 use std::ffi::CString;
 use std::num::Wrapping;
+
+#[repr(C)]
+#[allow(non_camel_case_types)]
+enum PROCESS_DPI_AWARENESS {
+    PROCESS_DPI_UNAWARE,
+    PROCESS_SYSTEM_DPI_AWARE,
+    PROCESS_PER_MONITOR_DPI_AWARE
+}
+
+type SetProcessDPIAwareness = extern fn(PROCESS_DPI_AWARENESS) -> HRESULT;
+
+#[repr(C)]
+#[allow(non_camel_case_types)]
+enum MONITOR_DPI_TYPE {
+    MDT_EFFECTIVE_DPI,
+    MDT_ANGULAR_DPI,
+    MDT_RAW_DPI,
+    MDT_DEFAULT,
+}
+
+type GetDpiForMonitor = extern fn(HMONITOR, MONITOR_DPI_TYPE, *mut UINT, *mut UINT) -> HRESULT;
+
+#[cfg(target_os = "windows")]
+lazy_static! {
+    static ref SHCORE: Option<Library> = {
+        let library = Library::new("shcore.dll").ok()?;
+
+        let func : Option<SetProcessDPIAwareness> = proc_address!(library, "SetProcessDpiAwareness");
+        if func.is_some() {
+            let func = func.unwrap();
+            func(PROCESS_DPI_AWARENESS::PROCESS_SYSTEM_DPI_AWARE);
+        }
+
+        Some(library)
+    };
+}
 
 /// Builder used to create [`Window`]s with set parameters
 pub struct WindowBuilder {
@@ -91,6 +132,7 @@ impl WindowBuilder {
     ///     .unwrap();
     /// ```
     pub fn spawn(self) -> Result<Window, WindowSpawnError> {
+        #[allow(unused_unsafe)]
         unsafe {
             let class = WNDCLASSEXA{
                 cbSize:         size_of::<WNDCLASSEXA>() as UINT, 
@@ -139,6 +181,27 @@ impl WindowBuilder {
                 null_mut()
             );
 
+            let shcore = SHCORE.as_ref();
+            let dpi = if shcore.is_none() {
+                1.0
+            } else {
+                let shcore = shcore.unwrap();
+
+                let mut result = 1.0;
+
+                let func : Option<GetDpiForMonitor> = proc_address!(shcore, "GetDpiForMonitor");
+                if func.is_some() {
+                    let monitor = MonitorFromWindow(handle, MONITOR_DEFAULTTONEAREST);
+
+                    let mut dpix : UINT = 0;
+                    let mut dpiy : UINT = 0;
+                    let func = func.unwrap();
+                    func(monitor, MONITOR_DPI_TYPE::MDT_EFFECTIVE_DPI, &mut dpix, &mut dpiy);
+                    result = dpix as f32 / 96.0;
+                }
+                result
+            };
+
             if handle == INVALID_HANDLE_VALUE {
                 return Err(WindowSpawnError::WindowCreateFailed);
             }
@@ -147,6 +210,7 @@ impl WindowBuilder {
                 handle: handle,
                 size:   (width, height),
                 title:  self.title,
+                dpi:    dpi,
             };
 
             window.center_in_window(); // TODO: Have some position in the builder with a center function
@@ -166,6 +230,7 @@ pub struct Window {
     handle: WindowHandle,
     size: (u32, u32),
     title: String,
+    dpi:   f32,
 }
 
 #[cfg(target_os = "windows")]
@@ -259,6 +324,10 @@ impl Window {
 
     pub fn size(&self) -> (u32, u32) {
         self.size
+    }
+
+    pub fn dpi(&self) -> f32 {
+        self.dpi
     }
 }
 
