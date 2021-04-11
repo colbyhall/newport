@@ -256,6 +256,10 @@ impl Window {
     pub fn handle(&self) -> WindowHandle {
         self.handle
     }
+
+    pub fn size(&self) -> (u32, u32) {
+        self.size
+    }
 }
 
 #[cfg(target_os = "windows")]

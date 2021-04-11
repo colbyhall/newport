@@ -1,7 +1,8 @@
 #![feature(trait_alias)]
 
 use newport_core::containers::{ Box, HashMap };
-use newport_os::window::{ WindowBuilder, Window, WindowEvent };
+use newport_os::window::{ WindowBuilder, Window };
+pub use newport_os::window::WindowEvent;
 
 use std::any::TypeId;
 use std::sync::atomic::{ AtomicBool, Ordering };
@@ -106,7 +107,11 @@ impl Engine {
                             engine.is_running.store(false, Ordering::Relaxed);
                             break 'run;
                         }
-                        _ => { }
+                        _ => { 
+                            for (_, v) in ENGINE.as_ref().unwrap().modules.iter() {
+                                v.process_input(&event);
+                            }
+                        }
                     }
                 }
 
@@ -282,6 +287,10 @@ pub trait ModuleRuntime: AsAny {
 
     /// Called after post initialization but before main loop
     fn on_startup(&'static mut self) { }
+
+    fn process_input(&self, _event: &WindowEvent) -> bool {
+        false
+    }
 
     fn on_tick(&self, _dt: f32) { }
 }
