@@ -61,3 +61,10 @@ impl From<Vector4> for Color {
         Self{ r: color.x, g: color.y, b: color.z, a: color.w }
     }
 }
+
+impl From<(f32, f32, f32, f32)> for Color {
+    fn from(rgba: (f32, f32, f32, f32)) -> Self {
+        let (r, g, b, a) = rgba;
+        Self{ r, g, b, a }
+    }
+}

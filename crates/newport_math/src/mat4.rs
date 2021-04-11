@@ -74,9 +74,9 @@ impl Matrix4 {
         result
     }
 
-    pub fn translate(xyz: Vector3) -> Matrix4 {
+    pub fn translate(xyz: impl Into<Vector3>) -> Matrix4 {
         let mut result = Matrix4::IDENTITY;
-        result.w_axis = (xyz, 1.0).into();
+        result.w_axis = (xyz.into(), 1.0).into();
         result
     }
 }

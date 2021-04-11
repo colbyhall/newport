@@ -30,7 +30,3 @@ pub mod graphics {
 pub mod math {
     pub use newport_math::*;
 }
-
-pub mod imgui {
-    pub use newport_imgui::*;
-}

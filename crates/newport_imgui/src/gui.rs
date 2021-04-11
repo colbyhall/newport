@@ -1,13 +1,13 @@
 use crate::{ Id, Painter, Context, Layout, widgets::Widget, Response };
 
 pub struct GUI<'a> {
-    id: Id,
+    pub(crate) id: Id,
 
-    layout: Layout,
+    pub(crate) layout: Layout,
 
-    painter: Painter,
+    pub(crate) painter: Painter,
 
-    context: &'a mut Context,
+    pub(crate) context: &'a mut Context,
 }
 
 impl<'a> GUI<'a> {

@@ -163,11 +163,27 @@ impl ModuleRuntime for HelloWorld {
 
         let backbuffer = device.acquire_backbuffer();
 
-        let font = asset_manager.find("assets/fonts/menlo_regular.ttf").unwrap();
+        let font: AssetRef<font::FontCollection> = asset_manager.find("assets/fonts/menlo_regular.ttf").unwrap();
+
+        let text = "Hello World";
+        let size = 15;
+        let padding = 10.0;
+
+        let mut rect = {
+            let mut fc = font.write();
+            let font = fc.font_at_size(size, 1.0).unwrap();
+            font.string_rect(text, 10000.0)
+        };
+        rect.max += padding;
+        rect.min -= padding;
+
+        let xy = Vector2::new(100.0, 100.0);
+        rect.max += xy;
+        rect.min += xy;
 
         let mut painter = Painter::new();
-        painter.rect((Vector2::new(-100.0, -100.0), Vector2::new(100.0, 100.0)).into()).color(Color::MAGENTA);
-        painter.text("Hello World".into(), font, 15, Vector2::new(100.0, 100.0)).color(Color::CYAN);
+        painter.rect(rect).color(Color::MAGENTA);
+        painter.text(text, font, size, xy).color(Color::CYAN);
         let painter_vertices = painter.tesselate();
 
         let buffer = device.create_buffer(
@@ -184,14 +200,14 @@ impl ModuleRuntime for HelloWorld {
             graphics.begin();
             {
                 graphics.begin_render_pass(&render_state.render_pass, &[&backbuffer]);
-                graphics.clear(Color::new(0.01, 0.01, 0.01, 1.0));
+                graphics.clear((0.01, 0.01, 0.01, 1.0));
                 graphics.bind_pipeline(&render_state.pipeline);
                 graphics.bind_vertex_buffer(&buffer);
                 
                 let size = Vector2::new(backbuffer.width() as f32, backbuffer.height() as f32);
 
                 let proj = Matrix4::ortho(size.x, size.y, 1000.0, 0.1);
-                let view = Matrix4::translate((-size / 2.0, 0.0).into());
+                let view = Matrix4::translate((-size / 2.0, 0.0));
                 let constants = Constants { 
                     view:  proj * view,
                 };

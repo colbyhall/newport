@@ -3,6 +3,8 @@ use newport_graphics::font::FontCollection;
 use newport_asset::AssetRef;
 use newport_gpu::*;
 
+use std::convert::Into;
+
 pub struct RectShape {
     bounds:  Rect,
 
@@ -10,8 +12,8 @@ pub struct RectShape {
 }
 
 impl RectShape {
-    pub fn color(&mut self, color: Color) -> &mut Self {
-        self.color = Some(color);
+    pub fn color(&mut self, color: impl Into<Color>) -> &mut Self {
+        self.color = Some(color.into());
         self
     }
 }
@@ -28,8 +30,8 @@ pub struct TextShape {
 }
 
 impl TextShape {
-    pub fn color(&mut self, color: Color) -> &mut Self {
-        self.color = Some(color);
+    pub fn color(&mut self, color: impl Into<Color>) -> &mut Self {
+        self.color = Some(color.into());
         self
     }
 }
@@ -77,10 +79,10 @@ impl Painter {
         Self { shapes: Vec::with_capacity(1024) }
     }
 
-    pub fn rect(&mut self, bounds: Rect) -> &mut RectShape {
+    pub fn rect(&mut self, bounds: impl Into<Rect>) -> &mut RectShape {
         self.shapes.push(
             Shape::Rect(RectShape{
-                bounds: bounds,
+                bounds: bounds.into(),
 
                 color: None,
             }
@@ -92,15 +94,15 @@ impl Painter {
         }
     }
 
-    pub fn text(&mut self, text: String, font: AssetRef<FontCollection>, size: u32, at: Vector2) -> &mut TextShape {
+    pub fn text(&mut self, text: impl Into<String>, font: AssetRef<FontCollection>, size: u32, at: impl Into<Vector2>) -> &mut TextShape {
         self.shapes.push(
             Shape::Text(TextShape{
-                text: text,
+                text: text.into(),
 
                 font: font,
                 size: size,
 
-                at: at,
+                at: at.into(),
 
                 color: None,
             }
@@ -214,7 +216,7 @@ impl Painter {
                             _ => {
                                 let g = font.glyph_from_char(c).unwrap();
 
-                                let xy = Vector2::new(pos.x, pos.y - text.size as f32);
+                                let xy = Vector2::new(pos.x, pos.y - text.size as f32 + font.descent);
                                 
                                 let x0 = xy.x + g.bearing_x;
                                 let y1 = xy.y + g.bearing_y;

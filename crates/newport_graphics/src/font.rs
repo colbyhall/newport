@@ -229,8 +229,8 @@ impl Font {
             if x > width { width = x; }
         }
 
-        let min = Vector2::ZERO;
-        let max = Vector2::new(width, height);
+        let min = Vector2::new(0.0, -height);
+        let max = Vector2::new(width, 0.0);
         Rect::from_min_max(min, max)
     }
 }

@@ -29,6 +29,7 @@ use newport_math::{ Rect, Color };
 
 use std::mem::size_of;
 use std::sync::{ Arc };
+use std::convert::Into;
 
 use bitflags::*;
 
@@ -506,8 +507,8 @@ impl GraphicsContext {
         self.0.end_render_pass();
     }
 
-    pub fn clear(&mut self, color: Color) -> &mut Self {
-        self.0.clear(color);
+    pub fn clear(&mut self, color: impl Into<Color>) -> &mut Self {
+        self.0.clear(color.into());
         self
     }
 

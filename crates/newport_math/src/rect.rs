@@ -47,3 +47,13 @@ impl From<(Vector2, Vector2)> for Rect {
         }
     }
 }
+
+impl From<(f32, f32, f32, f32)> for Rect {
+    fn from(rect: (f32, f32, f32, f32)) -> Self {
+        let (x0, y0, x1, y1) = rect;
+        Self {
+            min: Vector2::new(x0, y0),
+            max: Vector2::new(x1, y1)
+        }
+    }
+}

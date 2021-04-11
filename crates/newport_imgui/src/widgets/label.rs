@@ -23,7 +23,9 @@ impl Label {
 }
 
 impl Widget for Label {
-    fn gui(self, _gui: &mut GUI) -> Response {
+    fn gui(self, gui: &mut GUI) -> Response {
+        
+
 
         Response::NONE
     }

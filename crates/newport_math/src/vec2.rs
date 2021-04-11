@@ -14,6 +14,8 @@ use core::ops::{
     Neg
 };
 
+use core::convert::From;
+
 #[allow(unused_imports)]
 use num_traits::*;
 
@@ -265,5 +267,12 @@ impl Neg for Vector2 {
             x: -self.x,
             y: -self.y,
         }
+    }
+}
+
+impl From<(f32, f32)> for Vector2 {
+    fn from(xy: (f32, f32)) -> Self {
+        let (x, y) = xy;
+        Self{ x, y }
     }
 }
