@@ -8,6 +8,7 @@ use std::any::TypeId;
 use std::sync::atomic::{ AtomicBool, Ordering };
 use std::any::Any;
 use std::time::Instant;
+use std::convert::Into;
 
 static mut ENGINE: Option<Engine> = None;
 
@@ -16,7 +17,7 @@ static mut ENGINE: Option<Engine> = None;
 /// Created using an [`EngineBuilder`] which defines the functionality of the app using [`Module`]s 
 pub struct Engine {
     name:    String,
-    modules: HashMap<TypeId, Box<dyn ModuleRuntime>>, 
+    modules: HashMap<TypeId, Box<dyn Any>>, 
 
     is_running: AtomicBool,
     window:     Window,
@@ -39,24 +40,12 @@ impl Engine {
     ///     .module::<AssetManager>();
     /// Engine::run(builder).unwrap();
     /// ```
-    pub fn run(mut builder: EngineBuilder) -> Result<&'static Engine, ()> {      
-        // NOTE: ModuleCompileTime::new() happens before engine is initialized
-        let mut modules = HashMap::with_capacity(builder.entries.len());
-        for it in builder.entries {
-            if modules.contains_key(&it.id) { continue; }
-            modules.insert(it.id, (it.spawn)());
-        }
-
+    pub fn run(mut builder: EngineBuilder) {      
         // Grab the project name or use a default
-        let name;
-        if builder.name.is_some() {
-            name = builder.name.unwrap();
-        } else {
-            name = "project".to_string();
-        }
+        let name = builder.name.unwrap_or("newport".to_string());
     
         // UNSAFE: Set the global state
-        unsafe{ 
+        let engine = unsafe{ 
             let window = WindowBuilder::new()
                 .title(name.clone())
                 .spawn()
@@ -64,64 +53,60 @@ impl Engine {
 
             ENGINE = Some(Engine{
                 name:       name,
-                modules:    modules,
+                modules:    HashMap::with_capacity(builder.entries.len()),
                 is_running: AtomicBool::new(true),
                 window:     window,
             });
 
-            let engine = ENGINE.as_mut().unwrap();
+            ENGINE.as_mut().unwrap()
+        };
 
-            // Do post init
-            for (_, module) in engine.modules.iter_mut() {
-                module.post_init(ENGINE.as_mut().unwrap());
+        // NOTE: All modules a module depends on will be available at initialization
+        builder.entries.drain(..).for_each(|it| {
+            engine.modules.insert(it.id, (it.spawn)());
+        });
+
+        // Do post init
+        builder.post_inits.drain(..).for_each(|init| init(engine));
+
+        engine.window.set_visible(true);
+
+        let mut _fps = 0;
+        let mut frame_count = 0;
+        let mut time = 0.0;
+
+        // Game loop
+        let mut last_frame_time = Instant::now();
+        'run: while engine.is_running.load(Ordering::Relaxed) {
+            let now = Instant::now();
+            let dt = now.duration_since(last_frame_time).as_secs_f32();
+            last_frame_time = now;
+
+            time += dt;
+            if time >= 1.0 {
+                time = 0.0;
+                _fps = frame_count;
+                frame_count = 0;
             }
-            builder.post_inits.drain(..).for_each(|init| init(ENGINE.as_mut().unwrap()));
+            frame_count += 1;
 
-            // Do on_startup
-            engine.modules.iter_mut().for_each(|(_, module)| module.on_startup());
+            for event in engine.window.poll_events() {
+                builder.process_input.iter().for_each(|process_input| process_input(engine, &event));
 
-            engine.window.set_visible(true);
-
-            let mut _fps = 0;
-            let mut frame_count = 0;
-            let mut time = 0.0;
-
-            // Game loop
-            let mut last_frame_time = Instant::now();
-            'run: while engine.is_running.load(Ordering::Relaxed) {
-                let now = Instant::now();
-                let dt = now.duration_since(last_frame_time).as_secs_f32();
-                last_frame_time = now;
-
-                time += dt;
-                if time >= 1.0 {
-                    time = 0.0;
-                    _fps = frame_count;
-                    frame_count = 0;
-                }
-                frame_count += 1;
-
-                for event in engine.window.poll_events() {
-                    match event {
-                        WindowEvent::Closed => {
-                            engine.is_running.store(false, Ordering::Relaxed);
-                            break 'run;
-                        }
-                        _ => { 
-                            for (_, v) in ENGINE.as_ref().unwrap().modules.iter() {
-                                v.process_input(&event);
-                            }
-                        }
+                match event {
+                    WindowEvent::Closed => {
+                        engine.is_running.store(false, Ordering::Relaxed);
+                        break 'run;
                     }
-                }
-
-                for (_, v) in ENGINE.as_ref().unwrap().modules.iter() {
-                    v.on_tick(dt);
+                    _ => {}
                 }
             }
+
+            builder.tick.iter().for_each(|tick| tick(engine, dt));
         }
 
-        Ok(Self::as_ref())
+        // Do pre shutdowns
+        builder.pre_shutdown.drain(..).for_each(|shutdown| shutdown(engine));
     }
 
     /// Returns the global [`Engine`] as a ref
@@ -147,28 +132,7 @@ impl Engine {
         let id = TypeId::of::<T>();
         
         let module = self.modules.get(&id)?;
-        module.as_any().downcast_ref::<T>()
-    }
-
-    /// Searches a module by type and returns an [`Option<&'static mut T>`]
-    /// 
-    /// # Arguments 
-    /// 
-    /// * `T` - A [`Module`] that should have been created using a [`EngineBuilder`]
-    /// 
-    /// # Examples 
-    /// 
-    /// ```
-    /// use newport_engine::Engine;
-    /// 
-    /// let engine = Engine::as_ref();
-    /// let module = engine.module_mut::<Module>().unwrap();
-    /// ```
-    pub fn module_mut<'a, T: Module>(&'a mut self) -> Option<&'a mut T> {
-        let id = TypeId::of::<T>();
-
-        let module = self.modules.get_mut(&id)?;
-        module.as_any_mut().downcast_mut::<T>()
+        module.downcast_ref::<T>()
     }
 
     /// Returns the name of the engine runnable
@@ -184,14 +148,23 @@ impl Engine {
 
 struct EngineBuilderEntry {
     id:     TypeId,
-    spawn:  fn() -> Box<dyn ModuleRuntime>,
+    spawn:  fn() -> Box<dyn Any>,
 }
+
+pub trait PostInit      = FnOnce(&Engine) + 'static;
+pub trait ProcessInput  = Fn(&Engine, &WindowEvent) + 'static;
+pub trait Tick          = Fn(&Engine, f32) + 'static;
+pub trait PreShutdown   = FnOnce(&Engine) + 'static;
 
 /// Structure used to define engine structure and execution
 pub struct EngineBuilder {
     entries:    Vec<EngineBuilderEntry>,
     name:       Option<String>,
-    post_inits: Vec<Box<dyn FnOnce(&'static mut Engine) + 'static>>,
+
+    post_inits:     Vec<Box<dyn PostInit>>,
+    process_input:  Vec<Box<dyn ProcessInput>>,
+    tick:           Vec<Box<dyn Tick>>,
+    pre_shutdown:   Vec<Box<dyn PreShutdown>>,
 }
 
 impl EngineBuilder {
@@ -200,7 +173,11 @@ impl EngineBuilder {
         Self { 
             entries:    Vec::with_capacity(32),
             name:       None,
-            post_inits: Vec::new(),
+
+            post_inits:     Vec::new(),
+            process_input:  Vec::new(),
+            tick:           Vec::new(),
+            pre_shutdown:   Vec::new(),
         }
     }
 
@@ -219,7 +196,15 @@ impl EngineBuilder {
     ///     .module::<Test>();
     /// ```
     pub fn module<T: Module>(mut self) -> Self {
-        fn spawn<T: Module>() -> Box<dyn ModuleRuntime> {
+        // Don't add another module thats already added
+        let id = TypeId::of::<T>();
+        for it in self.entries.iter() {
+            if it.id == id {
+                return self;
+            }
+        }
+
+        fn spawn<T: Module>() -> Box<dyn Any> {
             Box::new(T::new())
         }
         
@@ -228,7 +213,7 @@ impl EngineBuilder {
 
         // Push entry with generic spawn func and type id
         self.entries.push(EngineBuilderEntry{
-            id:     TypeId::of::<T>(),
+            id:     id,
             spawn:  spawn::<T>,
         });
 
@@ -249,25 +234,39 @@ impl EngineBuilder {
     /// let builder = EngineBuilder::new()
     ///     .module::<Test>();
     /// ```
-    pub fn post_init<F: FnOnce(&'static mut Engine) + 'static>(mut self, f: F) -> Self {
+    pub fn post_init<F: PostInit>(mut self, f: F) -> Self {
         self.post_inits.push(Box::new(f));
         self
     }
 
+    /// Adds a post initialization closure to the list
+    pub fn process_input<F: ProcessInput>(mut self, f: F) -> Self {
+        self.process_input.push(Box::new(f));
+        self
+    }
+
+    /// Adds a tick closure to the list
+    pub fn tick<F: Tick>(mut self, f: F) -> Self {
+        self.tick.push(Box::new(f));
+        self
+    }
+
+    /// Adds a pre shutdown closure to the list
+    pub fn pre_shutdown<F: PreShutdown>(mut self, f: F) -> Self {
+        self.pre_shutdown.push(Box::new(f));
+        self
+    }
+
     /// Sets the name of the engine runnable
-    pub fn name(mut self, name: String) -> Self {
-        self.name = Some(name);
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
         self
     }
 }
 
-/// Compile time element of [`Module`]s. Required to be split for dyn
-pub trait ModuleCompileTime: Sized + 'static {
+/// Modules are an easy way to have global immutable state
+pub trait Module: Sized + 'static {
     /// Creates a module and returns as result. This is the initialization point for Modules
-    /// 
-    /// # Notes
-    /// 
-    /// * [`Engine`] is not available during this function
     fn new() -> Self;
 
     /// Takes a builder to append on other modules or elements
@@ -277,36 +276,5 @@ pub trait ModuleCompileTime: Sized + 'static {
     /// * `builder` - A [`EngineBuilder`] used to add dep modules or functions
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
-    }
-}
-
-/// Runtime element of [`Module`]s
-pub trait ModuleRuntime: AsAny {
-    /// Called after all modules are initialized
-    fn post_init(&mut self, _: &mut Engine) { }
-
-    /// Called after post initialization but before main loop
-    fn on_startup(&'static mut self) { }
-
-    fn process_input(&self, _event: &WindowEvent) -> bool {
-        false
-    }
-
-    fn on_tick(&self, _dt: f32) { }
-}
-/// Combined Module trait
-pub trait Module = ModuleRuntime + ModuleCompileTime;
-
-pub trait AsAny {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-impl<T: ModuleRuntime + 'static> AsAny for T {
-    fn as_any(&self) -> &dyn Any{
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any{
-        self
     }
 }

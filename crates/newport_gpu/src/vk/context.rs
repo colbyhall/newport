@@ -298,8 +298,18 @@ impl GraphicsContext {
         self.buffers.push(buffer);
     }
 
+    pub fn bind_index_buffer(&mut self, buffer: Arc<Buffer>) {
+        let offset = 0;
+        unsafe{ self.owner.logical.cmd_bind_index_buffer(self.command_buffer, buffer.handle, offset, vk::IndexType::UINT32) };
+        self.buffers.push(buffer);
+    }
+
     pub fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
         unsafe{ self.owner.logical.cmd_draw(self.command_buffer, vertex_count as u32, 1, first_vertex as u32, 0) };
+    }
+
+    pub fn draw_indexed(&mut self, index_count: usize, first_index: usize) {
+        unsafe{ self.owner.logical.cmd_draw_indexed(self.command_buffer, index_count as u32, 1, first_index as u32, 0, 0) };
     }
 
     pub fn clear(&mut self, color: Color) {

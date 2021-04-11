@@ -316,6 +316,7 @@ bitflags! {
 #[derive(Copy, Clone, Debug)]
 pub enum VertexAttribute {
     Int32,
+    Uint32,
     Float32,
     Vector2,
     Vector3,
@@ -327,6 +328,7 @@ impl VertexAttribute {
     pub fn size(self) -> usize {
         match self {
             VertexAttribute::Int32   => 4,
+            VertexAttribute::Uint32  => 4,
             VertexAttribute::Float32 => 4,
             VertexAttribute::Vector2 => 8,
             VertexAttribute::Vector3 => 12,
@@ -345,9 +347,9 @@ pub struct PipelineBuilder {
 }
 
 impl PipelineBuilder {
-    pub fn new_graphics(render_pass: RenderPass) -> Self {
+    pub fn new_graphics(render_pass: &RenderPass) -> Self {
         let desc = GraphicsPipelineDescription{
-            render_pass: render_pass,
+            render_pass: render_pass.clone(),
             shaders:     Vec::new(),
 
             vertex_attributes: Vec::new(),
@@ -524,8 +526,16 @@ impl GraphicsContext {
         self.0.bind_vertex_buffer(buffer.0.clone());
     }
 
+    pub fn bind_index_buffer(&mut self, buffer: &Buffer) {
+        self.0.bind_index_buffer(buffer.0.clone());
+    }
+
     pub fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
         self.0.draw(vertex_count, first_vertex);
+    }
+
+    pub fn draw_indexed(&mut self, index_count: usize, first_index: usize) {
+        self.0.draw_indexed(index_count, first_index);
     }
 
     pub fn push_constants<T>(&mut self, t: T) {

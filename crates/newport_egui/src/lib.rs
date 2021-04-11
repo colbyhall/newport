@@ -1,54 +1,261 @@
-use newport_engine::*;
+use newport_engine::{ Engine, WindowEvent };
+use newport_graphics::Graphics;
+use newport_gpu as gpu;
+use gpu::*;
+
+use newport_math::{ Vector2, Color, Matrix4, Vector3 };
 
 pub use egui::*;
 
-use std::sync::Mutex;
-use std::cell::RefCell;
+use std::mem::size_of;
+use std::sync::Arc;
 
-pub struct EGUI {
-    context:  Mutex<CtxRef>,
-    pub func: Option<fn(&mut CtxRef)>,
+static SHADER_SOURCE: &str = "
+    #define NULL 0
+    ByteAddressBuffer all_buffers[]  : register(t0);
+    Texture2D         all_textures[] : register(t1);
+    SamplerState      all_samplers[] : register(s2);
+    struct Constants {
+        float4x4 view;
+    };
+    [[vk::push_constant]] Constants constants;
 
-    input: RefCell<RawInput>,
+    struct Vertex {
+        float3 position : POSITION;
+        float2 uv       : TEXCOORD;
+        float4 color    : COLOR;
+        uint texture     : TEXTURE;
+    };
+    struct Vertex_Out {
+        float2 uv       : TEXCOORD;
+        float4 color    : COLOR;
+        uint texture     : TEXTURE;
+        
+        float4 position : SV_POSITION;
+    };
+    Vertex_Out main_vs( Vertex IN ){
+        Vertex_Out OUT;
+        OUT.uv      = IN.uv;
+        OUT.color   = IN.color;
+        OUT.texture = IN.texture;
+
+        OUT.position = mul(constants.view, float4(IN.position, 1.0));
+        return OUT;
+    }
+    struct Pixel_In {
+        float2 uv    : TEXCOORD;
+        float4 color : COLOR;
+        uint texture  : TEXTURE;
+    };
+    float4 main_ps( Pixel_In IN) : SV_TARGET {
+        Texture2D    my_texture = all_textures[IN.texture];
+        SamplerState my_sampler = all_samplers[IN.texture];
+        
+        return IN.color * my_texture.Sample(my_sampler, IN.uv, 0);
+    }
+";
+
+struct EguiTexture {
+    gpu:  gpu::Texture,
+    egui: Arc<egui::Texture>,
 }
 
-impl ModuleCompileTime for EGUI {
-    fn new() -> Self {
-        Self{
-            context: Mutex::new(CtxRef::default()),
-            func:    None,
+pub struct Egui {
+    context:  CtxRef,
+    input:    Option<RawInput>,
+    
+    pipeline: Pipeline,
+    texture:  Option<EguiTexture>,
+}
 
-            input: RefCell::new(RawInput::default()),
+#[allow(dead_code)]
+struct DrawConstants {
+    view: Matrix4,
+}
+
+impl Egui {
+    pub fn new() -> Self {
+        let engine = Engine::as_ref();
+
+        let graphics = engine.module::<Graphics>().unwrap();
+        let device = graphics.device();
+
+        let vertex_main = "main_vs".to_string();
+        let pixel_main  = "main_ps".to_string();
+        
+        let vertex_bin = shaders::compile("vertex.hlsl", SHADER_SOURCE, &vertex_main, ShaderVariant::Vertex).unwrap();
+        let pixel_bin  = shaders::compile("pixel.hlsl", SHADER_SOURCE, &pixel_main, ShaderVariant::Pixel).unwrap();
+
+        let vertex_shader = device.create_shader(&vertex_bin[..], ShaderVariant::Vertex, vertex_main).unwrap();
+        let pixel_shader  = device.create_shader(&pixel_bin[..], ShaderVariant::Pixel, pixel_main).unwrap();
+
+        let pipeline_desc = PipelineBuilder::new_graphics(graphics.backbuffer_render_pass())
+            .shaders(vec![vertex_shader, pixel_shader])
+            .vertex::<GuiVertex>()
+            .enable_blend()
+            .src_alpha_blend(BlendFactor::OneMinusSrcAlpha)
+            .push_constant_size::<DrawConstants>()
+            .build();
+
+        let pipeline = device.create_pipeline(pipeline_desc).unwrap();
+
+        Self {
+            context: CtxRef::default(),
+            input:   None,
+
+            pipeline: pipeline,
+            texture:  None,
         }
     }
-}
 
-impl ModuleRuntime for EGUI {
-    fn process_input(&self, _event: &WindowEvent) -> bool {
-        false
+    pub fn process_input(&mut self, _event: &WindowEvent) {
+
     }
 
-    fn on_tick(&self, dt: f32) {
-        let func = self.func.unwrap();
-        let mut lock = self.context.lock().unwrap();
-
+    pub fn begin_frame(&mut self, dt: f32) {
         let engine = Engine::as_ref();
-        let size = engine.window().size();
+        let viewport = engine.window().size();
 
-        let mut input = self.input.borrow_mut();
-        input.screen_rect = Some(
-            Rect::from_min_max(
-                Default::default(), 
-                pos2(size.0 as f32, size.1 as f32)
-            )
-        );
+        let mut input = self.input.take().unwrap_or_default();
+        input.screen_rect = Some(Rect::from_min_max(pos2(0.0, 0.0), pos2(viewport.0 as f32, viewport.1 as f32)));
         input.predicted_dt = dt;
 
-        lock.begin_frame(input.clone());
-        input.events.clear();    
-        func(&mut lock);
-        let (output, shapes) = lock.end_frame();
-        let clipped_meshes = lock.tessellate(shapes);
-        
+        self.context.begin_frame(input);
+    }
+
+    pub fn end_frame(&mut self, ) -> (Output, Vec<ClippedMesh>) {
+        let (output, shapes) = self.context.end_frame();
+
+        let engine = Engine::as_ref();
+        let graphics = engine.module::<Graphics>().unwrap();
+        let device = graphics.device();
+
+        let texture = self.context.texture();
+        if self.texture.is_none() || self.texture.is_some() && self.texture.as_ref().unwrap().egui.version != texture.version {
+            let pixel_buffer = device.create_buffer(
+                BufferUsage::TRANSFER_SRC, 
+                MemoryType::HostVisible, 
+                texture.pixels.len()
+            ).unwrap();
+            pixel_buffer.copy_to(&texture.pixels[..]);
+    
+            let gpu_texture = device.create_texture(
+                TextureUsage::TRANSFER_DST | TextureUsage::SAMPLED,
+                MemoryType::DeviceLocal, 
+                Format::RGBA_U8,
+                texture.width as u32,
+                texture.height as u32,
+                1,
+                Wrap::Clamp,
+                Filter::Nearest,
+                Filter::Nearest
+            ).unwrap();
+
+            let mut gfx = device.create_graphics_context().unwrap();
+            {
+                gfx.begin();
+                gfx.resource_barrier_texture(&gpu_texture, gpu::Layout::Undefined, gpu::Layout::TransferDst);
+                gfx.copy_buffer_to_texture(&gpu_texture, &pixel_buffer);
+                gfx.resource_barrier_texture(&gpu_texture, gpu::Layout::TransferDst, gpu::Layout::ShaderReadOnly);
+                gfx.end();
+            }
+    
+            let receipt = device.submit_graphics(vec![gfx], &[]);
+            receipt.wait();
+
+            self.texture = Some(EguiTexture{
+                gpu: gpu_texture,
+                egui: texture,
+            });
+        }
+
+        (output, self.context.tessellate(shapes))
+    }
+
+    pub fn draw(&mut self, clipped_meshes: Vec<ClippedMesh>, gfx: &mut GraphicsContext) {
+        if clipped_meshes.len() == 0 {
+            return;
+        }
+
+        let engine = Engine::as_ref();
+        let graphics = engine.module::<Graphics>().unwrap();
+        let device = graphics.device();
+
+        let texture = self.texture.as_ref().unwrap();
+
+        // Load all vertex data into one giant buffer
+        let mut vertex_buffer_len = 0;
+        let mut index_buffer_len = 0;
+        for it in clipped_meshes.iter() {
+            vertex_buffer_len += it.1.vertices.len();
+            index_buffer_len  += it.1.indices.len();
+        }
+
+        let mut vertices = Vec::with_capacity(vertex_buffer_len);
+        let mut indices = Vec::with_capacity(index_buffer_len);
+
+        let mut indice_start = 0;
+        for it in clipped_meshes.iter() {
+            for vertex in it.1.vertices.iter() {
+                let tex = match it.1.texture_id {
+                    TextureId::Egui => texture.gpu.bindless().unwrap(),
+                    TextureId::User(num) => num as u32,
+                };
+
+                vertices.push(GuiVertex{
+                    position: Vector2::new(vertex.pos.x, vertex.pos.y),
+                    uv:       Vector2::new(vertex.uv.x,  vertex.uv.y),
+                    color:    Color::new(vertex.color.r() as f32 / 255.0, vertex.color.g() as f32 / 255.0, vertex.color.b() as f32 / 255.0, vertex.color.a() as f32 / 255.0),
+                    tex:      tex,
+                });
+            }
+
+            for index in it.1.indices.iter() {
+                indices.push(index + indice_start);
+            }
+
+            indice_start += it.1.indices.len() as u32;
+        }
+
+        let vertex_buffer = device.create_buffer(BufferUsage::VERTEX, MemoryType::HostVisible, vertex_buffer_len * size_of::<GuiVertex>()).unwrap();
+        vertex_buffer.copy_to(&vertices[..]);
+
+        let index_buffer = device.create_buffer(BufferUsage::INDEX, MemoryType::HostVisible, index_buffer_len * size_of::<u32>()).unwrap();
+        index_buffer.copy_to(&indices[..]);
+
+        let viewport = engine.window().size();
+        let proj = Matrix4::ortho(viewport.0 as f32, viewport.1 as f32, 1000.0, 0.1);
+        let view = Matrix4::translate(Vector3::new(-(viewport.0 as f32) / 2.0, viewport.1 as f32 / 2.0, 0.0));
+
+        gfx.bind_pipeline(&self.pipeline);
+        gfx.bind_vertex_buffer(&vertex_buffer);
+        gfx.bind_index_buffer(&index_buffer);
+        gfx.push_constants(DrawConstants{
+            view: proj * view,
+        });
+        gfx.draw_indexed(indices.len(), 0);
+    }
+
+    pub fn ctx(&self) -> &CtxRef {
+        &self.context
+    }
+}
+
+#[allow(dead_code)]
+struct GuiVertex {
+    position: Vector2,
+    uv:       Vector2,
+    color:    Color,
+    tex:      u32,
+}
+
+impl Vertex for GuiVertex {
+    fn attributes() -> Vec<VertexAttribute> {
+        vec![
+            VertexAttribute::Vector2,
+            VertexAttribute::Vector2,
+            VertexAttribute::Color,
+            VertexAttribute::Uint32,
+        ]
     }
 }

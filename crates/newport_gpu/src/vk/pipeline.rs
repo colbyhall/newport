@@ -64,6 +64,7 @@ impl Pipeline {
                 for (index, it) in desc.vertex_attributes.iter().enumerate() {
                     let format = match it {
                         VertexAttribute::Int32   => vk::Format::R32_SINT,
+                        VertexAttribute::Uint32   => vk::Format::R32_UINT,
                         VertexAttribute::Float32 => vk::Format::R32_SFLOAT,
                         VertexAttribute::Vector2 => vk::Format::R32G32_SFLOAT,
                         VertexAttribute::Vector3 => vk::Format::R32G32B32_SFLOAT,

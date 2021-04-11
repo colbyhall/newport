@@ -12,7 +12,7 @@ pub struct Logger {
     file: Mutex<File>,
 }
 
-impl ModuleCompileTime for Logger {
+impl Module for Logger {
     fn new() -> Self {
         if !Path::new(LOGS_PATH).exists() {
             create_dir(LOGS_PATH).unwrap();
@@ -36,11 +36,14 @@ impl ModuleCompileTime for Logger {
         
         return Logger { file: Mutex::new(file) };
     }
-}
 
-impl ModuleRuntime for Logger {
-    fn post_init(&mut self, _: &mut Engine) {
-        unsafe { LOGGER = self };
+    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+        builder.post_init(|engine: &Engine| {
+            let logger = engine.module::<Logger>().unwrap();
+
+            // UNSAFE: Set the global ptr
+            unsafe { LOGGER = logger as *const Logger as *mut Logger };
+        })
     }
 }
 

@@ -1,5 +1,5 @@
 [package]
-name = "newport_egui"
+name = "newport_editor"
 version = "0.0.1"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
@@ -11,5 +11,4 @@ newport_engine   = { path = "../newport_engine", version = "0.0.1" }
 newport_gpu      = { path = "../newport_gpu", version = "0.0.1" }
 newport_graphics = { path = "../newport_graphics", version = "0.0.1" }
 newport_math = { path = "../newport_math", version = "0.0.1" }
-
-egui = "0.11.0"
+newport_egui = { path = "../newport_egui", version = "0.0.1" }

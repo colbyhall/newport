@@ -9,13 +9,14 @@ use newport_engine::*;
 use newport_log::*;
 
 use std::any::{ TypeId, Any };
-use std::sync::{ RwLock, Arc, RwLockReadGuard, RwLockWriteGuard  };
+use std::sync::{ RwLock, Arc, RwLockReadGuard, RwLockWriteGuard, Mutex };
 use std::time::SystemTime;
 use std::fs::{ create_dir, read_dir };
 use std::ffi::OsStr;
 use std::marker::PhantomData;
 use std::ops::{ Deref, DerefMut };
 use std::fmt;
+use std::convert::Into;
 
 /// Trait alis for what an `Asset` can be
 pub trait Asset: Sized + 'static {
@@ -45,15 +46,6 @@ struct VariantRegister {
     unload:   fn(Box<dyn Any>)
 }
 
-impl fmt::Debug for VariantRegister {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("VariantRegister")
-            .field("type", &self.type_id)
-            .field("extension", &self.extension)
-            .finish()
-    }
-}
-
 #[derive(Debug)]
 struct AssetEntry {
     path:       PathBuf,
@@ -61,7 +53,7 @@ struct AssetEntry {
     write_time: SystemTime,
 
     // Arc which is used for asset ref counting. As long as there is more 
-    // than 1 reference the asset will be loaded
+    // than 1 reference the asset is ensured to be loaded
     asset: Arc<RwLock<Option<Box<dyn Any>>>>,
 }
 
@@ -79,7 +71,7 @@ pub struct AssetRef<T: 'static> {
     arc:     Arc<RwLock<Option<Box<dyn Any>>>>,
     phantom: PhantomData<T>,
     variant: usize, // Index into AssetManager::variants
-    manager: &'static AssetManager, 
+    manager: AssetManager, 
 }
 
 impl<T: 'static> AssetRef<T> {
@@ -152,7 +144,8 @@ impl<T:'static> Drop for AssetRef<T> {
     fn drop(&mut self) {
         // If we're the last unload the asset
         if self.strong_count() == 1 {
-            let variant = &self.manager.variants[self.variant];
+            let variants = self.manager.0.variants.lock().unwrap();
+            let variant = &variants[self.variant];
 
             let mut lock = self.arc.write().unwrap();
             (variant.unload)(lock.take().unwrap());
@@ -196,12 +189,11 @@ impl<'a, T: 'static> Deref for AssetReadGuard<'a, T> {
     }
 }
 
-/// Manager that handles assets across multiple threads. 
-#[derive(Debug)]
-pub struct AssetManager {
+
+struct AssetManagerInner {
     /// Variants and Collections are taken on initialized and do not change over the runtime of program
-    variants:    Vec<VariantRegister>,
-    collections: Vec<PathBuf>,
+    variants:    Mutex<Vec<VariantRegister>>,
+    collections: Mutex<Vec<PathBuf>>,
     
     /// Assets are currently kept in a vector hidden behind a RwLock
     /// 
@@ -211,11 +203,16 @@ pub struct AssetManager {
     assets: RwLock<Vec<AssetEntry>>,
 }
 
+/// Manager that handles assets across multiple threads. 
+#[derive(Clone)]
+pub struct AssetManager(Arc<AssetManagerInner>);
+
 impl AssetManager {
     /// Discovers all assets using the registered collection and variants
-    pub fn discover(&mut self) {
+    pub fn discover(&self) {
+        let collections = self.0.collections.lock().unwrap();
         // Start off by making sure every collection exist
-        for it in self.collections.iter() {
+        for it in collections.iter() {
             if !it.exists() {
                 create_dir(it).unwrap();
                 info!("[AssetManager] Created collection directory {:?}", it);
@@ -259,28 +256,31 @@ impl AssetManager {
             path
         }
         
+        let variants = self.0.variants.lock().unwrap();
+
         // Run through each collection recursively discovering assets
-        let mut assets_lock = self.assets.write().unwrap();
-        for it in self.collections.iter() { 
+        let mut assets_lock = self.0.assets.write().unwrap();
+        for it in collections.iter() { 
             info!("[AssetManager] Discovering assets in {:?}", it);
-            discover(it.clone(), &mut *assets_lock, &self.variants); 
+            discover(it.clone(), &mut *assets_lock, &variants); 
         }
     }
 
     /// TODO
-    pub fn find<P: AsRef<Path> + fmt::Debug, T: Asset>(&'static self, p: P) -> Option<AssetRef<T>> {
-        let read_lock = self.assets.read().unwrap();
+    pub fn find<P: AsRef<Path> + fmt::Debug, T: Asset>(&self, p: P) -> Option<AssetRef<T>> {
+        let read_lock = self.0.assets.read().unwrap();
         let entry = read_lock.iter().find(|it| it.path == p.as_ref())?;
 
         // Assert if the type is incorrect
-        let variant = &self.variants[entry.variant];
+        let variants = self.0.variants.lock().unwrap();
+        let variant = &variants[entry.variant];
         assert!(TypeId::of::<T>() == variant.type_id);
         
         let result = AssetRef { 
             arc:     entry.asset.clone(), // Increment ref count
             phantom: PhantomData,
             variant: entry.variant,
-            manager: self,
+            manager: self.clone(),
         };
 
         // If we're the first reference the load the asset
@@ -299,7 +299,7 @@ impl AssetManager {
     }
 
     /// Adds a type variant to be used when discovering assets in [`AssetManager::discover`]
-    pub fn register_variant<'a, T: Asset>(&'a mut self) -> &'a mut Self {
+    pub fn register_variant<T: Asset>(&self) -> &Self {
         fn load<T: Asset>(path: &Path) -> Result<Box<dyn Any>, LoadError> {
             let t = T::load(path)?;
             Ok(Box::new(t))
@@ -310,7 +310,8 @@ impl AssetManager {
             T::unload(*t);
         }
 
-        self.variants.push(VariantRegister{
+        let mut variants = self.0.variants.lock().unwrap();
+        variants.push(VariantRegister{
             type_id:    TypeId::of::<T>(),
 
             extension:  T::extension(),
@@ -325,43 +326,28 @@ impl AssetManager {
     /// # Arguments
     /// 
     /// * `path` - A `PathBuf` to be added to collection entries
-    /// 
-    /// # Examples
-    /// 
-    /// ```
-    /// use newport_asset::AssetManager;
-    /// 
-    /// let mut asset_manager = AssetManager::new();
-    /// 
-    /// let mut exts = HashSet::new();
-    /// exts.insert("test".to_string());
-    /// 
-    /// asset_manager
-    ///     .register_variant(exts, |path| println!("Loading {:?}", path), |asset| println!("unLoading asset"));
-    /// ```
-    pub fn register_collection(&mut self, path: PathBuf) -> &mut Self {
-        self.collections.push(path);
+    pub fn register_collection(&self, path: impl Into<PathBuf>) -> &Self {
+        let mut collections = self.0.collections.lock().unwrap();
+        collections.push(path.into());
         self
     }
 }
 
-impl ModuleCompileTime for AssetManager {
+impl Module for AssetManager {
     fn new() -> Self {
-        AssetManager{
-            variants:    Vec::new(),
-            collections: Vec::new(),
+        Self(Arc::new(AssetManagerInner{
+            variants:    Mutex::new(Vec::new()),
+            collections: Mutex::new(Vec::new()),
             assets:      RwLock::new(Vec::new()),
-        }
+        }))
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
             .module::<Logger>()
-            .post_init(|engine| {
-            let asset_manager = engine.module_mut::<AssetManager>().unwrap();
+            .post_init(|engine: &Engine| {
+            let asset_manager = engine.module::<AssetManager>().unwrap();
             asset_manager.discover();
         })
     }
 }
-
-impl ModuleRuntime for AssetManager { }

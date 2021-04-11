@@ -1,19 +1,16 @@
-use newport::engine::*;
+use newport::engine::{ Module, Engine, EngineBuilder };
 
 struct HelloWorld;
 
-impl ModuleCompileTime for HelloWorld {
+impl Module for HelloWorld {
     fn new() -> Self {
         Self
     }
 }
 
-impl ModuleRuntime for HelloWorld {
-}
-
 fn main() {
     let builder = EngineBuilder::new()
         .module::<HelloWorld>()
-        .name("Hello World".to_string());
-    Engine::run(builder).unwrap();
+        .name("Hello World");
+    Engine::run(builder);
 }
