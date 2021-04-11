@@ -36,7 +36,7 @@ use bitflags::*;
 mod vk;
 
 #[cfg(feature = "vulkan")]
-use vk::*;
+use vk as api;
 
 pub mod shaders;
 
@@ -48,36 +48,21 @@ pub enum InstanceCreateError {
 }
 
 #[derive(Clone)]
-pub struct Instance {
-    inner: Arc<InstanceInner>,
-}
+pub struct Instance(Arc<api::Instance>);
 
 impl Instance {
     pub fn new() -> Result<Self, InstanceCreateError> {
-        let inner = InstanceInner::new()?;
-        Ok(Self{ inner: inner })
+        let inner = api::Instance::new()?;
+        Ok(Self(inner))
     }
 
     pub fn create_device(&self, window: Option<WindowHandle>) -> Result<Device, DeviceCreateError> {
-        let inner = DeviceInner::new(self.inner.clone(), window)?;
-        Ok(Device{ inner: inner })
+        let inner = api::Device::new(self.0.clone(), window)?;
+        Ok(Device(inner))
     }
 }
 
-#[derive(Clone)]
-pub struct Receipt {
-    inner: ReceiptInner,
-}
-
-impl Receipt {
-    pub fn wait(self) -> bool {
-        self.inner.wait()
-    }
-
-    pub fn is_finished(&self) -> bool {
-        self.inner.is_finished()
-    }
-}
+pub use api::Receipt as Receipt;
 
 #[derive(Debug)]
 pub enum DeviceCreateError {
@@ -86,59 +71,60 @@ pub enum DeviceCreateError {
 }
 
 #[derive(Clone)]
-pub struct Device {
-    inner: Arc<DeviceInner>
-}
+pub struct Device(Arc<api::Device>);
 
 impl Device {
     pub fn create_buffer(&self, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Buffer, ResourceCreateError> {
-        let inner = BufferInner::new(self.inner.clone(), usage, memory, size)?;
-        Ok(Buffer{ inner: inner })
+        let inner = api::Buffer::new(self.0.clone(), usage, memory, size)?;
+        Ok(Buffer(inner))
     }
 
     pub fn create_texture(&self, usage: TextureUsage, memory: MemoryType, format: Format, width: u32, height: u32, depth: u32, wrap: Wrap, min_filter: Filter, mag_filter: Filter) -> Result<Texture, ResourceCreateError> {
-        let inner = TextureInner::new(self.inner.clone(), memory, usage, format, width, height, depth, wrap, min_filter, mag_filter)?;
-        Ok(Texture{ inner: inner })
+        let inner = api::Texture::new(self.0.clone(), memory, usage, format, width, height, depth, wrap, min_filter, mag_filter)?;
+        Ok(Texture(inner))
     }
 
     pub fn create_render_pass(&self, colors: Vec<Format>, depth: Option<Format>) -> Result<RenderPass, ()> {
-        let inner = RenderPassInner::new(self.inner.clone(), colors, depth)?;
-        Ok(RenderPass{ inner: inner })
+        let inner = api::RenderPass::new(self.0.clone(), colors, depth)?;
+        Ok(RenderPass(inner))
     }
 
     pub fn create_shader(&self, contents: &[u8], variant: ShaderVariant, main: String) -> Result<Shader, ()> {
-        let inner = ShaderInner::new(self.inner.clone(), contents, variant, main)?;
-        Ok(Shader{ inner: inner })
+        let inner = api::Shader::new(self.0.clone(), contents, variant, main)?;
+        Ok(Shader(inner))
     }
 
     pub fn create_pipeline(&self, desc: PipelineDescription) -> Result<Pipeline, ()> {
-        let inner = PipelineInner::new(self.inner.clone(), desc)?;
-        Ok(Pipeline{ inner: inner })
+        let inner = api::Pipeline::new(self.0.clone(), desc)?;
+        Ok(Pipeline(inner))
     }
 
     pub fn create_graphics_context(&self) -> Result<GraphicsContext, ()> {
-        let inner = GraphicsContextInner::new(self.inner.clone())?;
-        Ok(GraphicsContext{ inner: inner })
+        let inner = api::GraphicsContext::new(self.0.clone())?;
+        Ok(GraphicsContext(inner))
     }
 
     pub fn acquire_backbuffer(&self) -> Texture {
-        Texture{ inner: self.inner.acquire_backbuffer() }
+        Texture(self.0.acquire_backbuffer())
     }
 
-    pub fn submit_graphics(&self, contexts: Vec<GraphicsContext>, wait_on: &[Receipt]) -> Receipt {
-        self.inner.submit_graphics(contexts, wait_on)
+    pub fn submit_graphics(&self, mut contexts: Vec<GraphicsContext>, wait_on: &[Receipt]) -> Receipt {
+        let mut api_contexts = Vec::with_capacity(contexts.len());
+        contexts.drain(..).for_each(|x| api_contexts.push(x.0));
+
+        self.0.submit_graphics(api_contexts, wait_on)
     }
 
     pub fn display(&self, wait_on: &[Receipt]) {
-        self.inner.display(wait_on)
+        self.0.display(wait_on)
     }
 
     pub fn update_bindless(&self) {
-        self.inner.update_bindless()
+        self.0.update_bindless()
     }
 
     pub fn wait_for_idle(&self) {
-        self.inner.wait_for_idle()
+        self.0.wait_for_idle()
     }
 }
 
@@ -163,17 +149,15 @@ bitflags! {
 }
 
 #[derive(Clone)]
-pub struct Buffer {
-    inner: Arc<BufferInner>,
-}
+pub struct Buffer(Arc<api::Buffer>);
 
 impl Buffer {
     pub fn copy_to<T>(&self, data: &[T]) {
-        self.inner.copy_to::<T>(data)
+        self.0.copy_to::<T>(data)
     }
 
     pub fn bindless(&self) -> Option<u32> {
-        self.inner.bindless()
+        self.0.bindless()
     }
 }
 
@@ -234,36 +218,32 @@ pub enum Filter {
 }
 
 #[derive(Clone)]
-pub struct Texture {
-    inner: Arc<TextureInner>,
-}
+pub struct Texture(Arc<api::Texture>);
 
 impl Texture {
     pub fn format(&self) -> Format { 
-        self.inner.format()
+        self.0.format()
     }
 
     pub fn width(&self) -> u32 { 
-        self.inner.width()
+        self.0.width()
     }
 
     pub fn height(&self) -> u32 { 
-        self.inner.height()
+        self.0.height()
     }
 
     pub fn depth(&self) -> u32 { 
-        self.inner.depth()
+        self.0.depth()
     }
 
     pub fn bindless(&self) -> Option<u32> {
-        self.inner.bindless()
+        self.0.bindless()
     }
 }
 
 #[derive(Clone)]
-pub struct RenderPass {
-    inner: Arc<RenderPassInner>,
-}
+pub struct RenderPass(Arc<api::RenderPass>);
 
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -272,9 +252,7 @@ pub enum ShaderVariant {
     Pixel,
 }
 
-pub struct Shader {
-    inner: Arc<ShaderInner>,
-}
+pub struct Shader(Arc<api::Shader>);
 
 #[derive(Copy, Clone, Debug)]
 pub enum DrawMode {
@@ -496,64 +474,60 @@ pub enum PipelineDescription {
 }
 
 #[derive(Clone)]
-pub struct Pipeline {
-    inner: Arc<PipelineInner>,
-}
+pub struct Pipeline(Arc<api::Pipeline>);
 
-pub struct GraphicsContext {
-    inner: GraphicsContextInner,
-}
+pub struct GraphicsContext(api::GraphicsContext);
 
 impl GraphicsContext {
     pub fn begin(&mut self) {
-        self.inner.begin();
+        self.0.begin();
     }
 
     pub fn end(&mut self) {
-        self.inner.end();
+        self.0.end();
     }
 
     pub fn resource_barrier_texture(&mut self, texture: &Texture, old_layout: Layout, new_layout: Layout) {
-        self.inner.resource_barrier_texture(texture.inner.clone(), old_layout, new_layout);
+        self.0.resource_barrier_texture(texture.0.clone(), old_layout, new_layout);
     }
 
     pub fn copy_buffer_to_texture(&mut self, dst: &Texture, src: &Buffer) {
-        self.inner.copy_buffer_to_texture(dst.inner.clone(), src.inner.clone());
+        self.0.copy_buffer_to_texture(dst.0.clone(), src.0.clone());
     }
 
     pub fn begin_render_pass(&mut self, render_pass: &RenderPass, attachments: &[&Texture]) {
         let mut a = Vec::with_capacity(attachments.len());
-        attachments.iter().for_each(|e| a.push(e.inner.clone()) );
+        attachments.iter().for_each(|e| a.push(e.0.clone()) );
 
-        self.inner.begin_render_pass(render_pass.inner.clone(), &a[..]);
+        self.0.begin_render_pass(render_pass.0.clone(), &a[..]);
     }
 
     pub fn end_render_pass(&mut self) {
-        self.inner.end_render_pass();
+        self.0.end_render_pass();
     }
 
     pub fn clear(&mut self, color: Color) -> &mut Self {
-        self.inner.clear(color);
+        self.0.clear(color);
         self
     }
 
     pub fn bind_pipeline(&mut self, pipeline: &Pipeline) {
-        self.inner.bind_pipeline(pipeline.inner.clone());
+        self.0.bind_pipeline(pipeline.0.clone());
     }
 
     pub fn bind_scissor(&mut self, scissor: Option<Rect>) {
-        self.inner.bind_scissor(scissor);
+        self.0.bind_scissor(scissor);
     }
 
     pub fn bind_vertex_buffer(&mut self, buffer: &Buffer){
-        self.inner.bind_vertex_buffer(buffer.inner.clone());
+        self.0.bind_vertex_buffer(buffer.0.clone());
     }
 
     pub fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
-        self.inner.draw(vertex_count, first_vertex);
+        self.0.draw(vertex_count, first_vertex);
     }
 
     pub fn push_constants<T>(&mut self, t: T) {
-        self.inner.push_constants::<T>(t);
+        self.0.push_constants::<T>(t);
     }
 }
