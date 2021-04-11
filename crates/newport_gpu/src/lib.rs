@@ -436,6 +436,14 @@ impl PipelineBuilder {
         self
     }
 
+    pub fn dst_alpha_blend(mut self, factor: BlendFactor) -> Self {
+        match &mut self.desc {
+            PipelineDescription::Graphics(gfx) => gfx.dst_alpha_blend_factor = factor,
+            _ => unreachable!()
+        }
+        self
+    }
+
     pub fn build(self) -> PipelineDescription {
         self.desc
     }

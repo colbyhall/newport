@@ -3,6 +3,8 @@ use newport_graphics::Graphics;
 use newport_gpu as gpu;
 use gpu::*;
 
+use newport_os::input::*;
+
 use newport_math::{ Vector2, Color, Matrix4, Vector3 };
 
 pub use egui::*;
@@ -40,6 +42,9 @@ static SHADER_SOURCE: &str = "
         OUT.texture = IN.texture;
 
         OUT.position = mul(constants.view, float4(IN.position, 1.0));
+
+        OUT.position.y = -OUT.position.y;
+
         return OUT;
     }
     struct Pixel_In {
@@ -93,7 +98,7 @@ impl Egui {
             .shaders(vec![vertex_shader, pixel_shader])
             .vertex::<GuiVertex>()
             .enable_blend()
-            .src_alpha_blend(BlendFactor::OneMinusSrcAlpha)
+            // .dst_alpha_blend(BlendFactor::OneMinusSrcAlpha)
             .push_constant_size::<DrawConstants>()
             .build();
 
@@ -108,8 +113,113 @@ impl Egui {
         }
     }
 
-    pub fn process_input(&mut self, _event: &WindowEvent) {
+    pub fn process_input(&mut self, event: &WindowEvent) {
+        if self.input.is_none() {
+            self.input = Some(RawInput::default());
+        }
+        let input = self.input.as_mut().unwrap();
 
+        match event {
+            WindowEvent::Char(c) => {
+                let mut s = String::new();
+                s.push(*c);
+
+                input.events.push(Event::Text(s));
+            },
+            WindowEvent::Key{ key, pressed } => {
+                let key = match *key {
+                    KEY_DOWN  => Some(Key::ArrowDown), 
+                    KEY_LEFT  => Some(Key::ArrowLeft), 
+                    KEY_RIGHT => Some(Key::ArrowRight), 
+                    KEY_UP    => Some(Key::ArrowUp), 
+
+                    KEY_ESCAPE      => Some(Key::Escape),
+                    KEY_TAB         => Some(Key::Tab),
+                    KEY_BACKSPACE   => Some(Key::Backspace),
+                    KEY_ENTER       => Some(Key::Enter),
+                    KEY_SPACE       => Some(Key::Space),
+                    KEY_INSERT      => Some(Key::Insert),
+                    KEY_DELETE      => Some(Key::Delete),
+                    KEY_HOME        => Some(Key::Home),
+                    KEY_END         => Some(Key::End),
+                    
+                    // TODO: PageUp
+                    // TODO: PageDown
+
+                    KEY_0 => Some(Key::Num0),
+                    KEY_1 => Some(Key::Num1),
+                    KEY_2 => Some(Key::Num2),
+                    KEY_3 => Some(Key::Num3),
+                    KEY_4 => Some(Key::Num4),
+                    KEY_5 => Some(Key::Num5),
+                    KEY_6 => Some(Key::Num6),
+                    KEY_7 => Some(Key::Num7),
+                    KEY_8 => Some(Key::Num8),
+                    KEY_9 => Some(Key::Num9),
+
+                    KEY_A => Some(Key::A),
+                    KEY_B => Some(Key::B), 
+                    KEY_C => Some(Key::C), 
+                    KEY_D => Some(Key::D), 
+                    KEY_E => Some(Key::E), 
+                    KEY_F => Some(Key::F), 
+                    KEY_G => Some(Key::G), 
+                    KEY_H => Some(Key::H), 
+                    KEY_I => Some(Key::I), 
+                    KEY_J => Some(Key::J), 
+                    KEY_K => Some(Key::K), 
+                    KEY_L => Some(Key::L), 
+                    KEY_M => Some(Key::M), 
+                    KEY_N => Some(Key::N), 
+                    KEY_O => Some(Key::O), 
+                    KEY_P => Some(Key::P), 
+                    KEY_Q => Some(Key::Q), 
+                    KEY_R => Some(Key::R), 
+                    KEY_S => Some(Key::S), 
+                    KEY_T => Some(Key::T), 
+                    KEY_U => Some(Key::U), 
+                    KEY_V => Some(Key::V), 
+                    KEY_W => Some(Key::W), 
+                    KEY_X => Some(Key::X), 
+                    KEY_Y => Some(Key::Y), 
+                    KEY_Z => Some(Key::Z), 
+                    _ => None,
+                };
+
+                if key.is_none() {
+                    return;
+                }
+                let key = key.unwrap();
+                input.events.push(Event::Key{
+                    key:        key,
+                    pressed:    *pressed,
+                    modifiers:  Default::default(),
+                });
+            },
+            WindowEvent::MouseButton{ mouse_button, pressed, position } => {
+                let button = match *mouse_button {
+                    MOUSE_BUTTON_LEFT   => Some(PointerButton::Primary),
+                    MOUSE_BUTTON_MIDDLE => Some(PointerButton::Middle),
+                    MOUSE_BUTTON_RIGHT  => Some(PointerButton::Secondary),
+                    _ => None,
+                };
+                if button.is_none() {
+                    return;
+                }
+                let button = button.unwrap();
+
+                input.events.push(Event::PointerButton{
+                    pos: pos2(position.0 as f32, position.1 as f32),
+                    button:     button,
+                    pressed:    *pressed,
+                    modifiers:  Default::default(),
+                });
+            },
+            WindowEvent::MouseMove(x, y) => {
+                input.events.push(Event::PointerMoved(pos2(*x as f32, *y as f32)));
+            }
+            _ => {}
+        }
     }
 
     pub fn begin_frame(&mut self, dt: f32) {
@@ -135,14 +245,27 @@ impl Egui {
             let pixel_buffer = device.create_buffer(
                 BufferUsage::TRANSFER_SRC, 
                 MemoryType::HostVisible, 
-                texture.pixels.len()
+                texture.pixels.len() * 4,
             ).unwrap();
-            pixel_buffer.copy_to(&texture.pixels[..]);
-    
+
+            let mut pixels = Vec::with_capacity(texture.pixels.len());
+            for it in texture.srgba_pixels() {
+                let (r, g, b, a) = it.to_tuple();
+
+                let mut color: u32 = (r as u32) << 24;
+                color |= (g as u32) << 16;
+                color |= (b as u32) << 8;
+                color |= a as u32;
+
+
+                pixels.push(color);
+            }
+            pixel_buffer.copy_to(&pixels[..]);
+
             let gpu_texture = device.create_texture(
                 TextureUsage::TRANSFER_DST | TextureUsage::SAMPLED,
                 MemoryType::DeviceLocal, 
-                Format::RGBA_U8,
+                Format::RGBA_U8_SRGB,
                 texture.width as u32,
                 texture.height as u32,
                 1,
@@ -214,7 +337,7 @@ impl Egui {
                 indices.push(index + indice_start);
             }
 
-            indice_start += it.1.indices.len() as u32;
+            indice_start += it.1.vertices.len() as u32;
         }
 
         let vertex_buffer = device.create_buffer(BufferUsage::VERTEX, MemoryType::HostVisible, vertex_buffer_len * size_of::<GuiVertex>()).unwrap();
@@ -225,7 +348,7 @@ impl Egui {
 
         let viewport = engine.window().size();
         let proj = Matrix4::ortho(viewport.0 as f32, viewport.1 as f32, 1000.0, 0.1);
-        let view = Matrix4::translate(Vector3::new(-(viewport.0 as f32) / 2.0, viewport.1 as f32 / 2.0, 0.0));
+        let view = Matrix4::translate(Vector3::new(-(viewport.0 as f32) / 2.0, -(viewport.1 as f32) / 2.0, 0.0));
 
         gfx.bind_pipeline(&self.pipeline);
         gfx.bind_vertex_buffer(&vertex_buffer);

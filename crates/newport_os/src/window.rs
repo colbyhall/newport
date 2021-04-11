@@ -280,7 +280,7 @@ pub enum WindowEvent {
     Resizing(u32, u32),
     Char(char),
     MouseWheel(i16),
-    MouseButton { mouse_button: Input, pressed: bool },
+    MouseButton { mouse_button: Input, pressed: bool, position: (u32, u32) },
     MouseMove(u32, u32)
 }
 
@@ -312,6 +312,9 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
 
     let window : &mut Window;
     unsafe { window = iterator.window.as_mut(); }
+
+    let x = (lParam & 0xFFFF) as u32;
+    let y = ((lParam >> 16) & 0xFFFF) as u32;
 
     match uMsg {
         WM_CLOSE => {
@@ -370,31 +373,29 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
         },
         WM_LBUTTONDOWN => {
             unsafe { SetCapture(window.handle); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: true });
+            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: true, position: (x, y) });
         },
         WM_LBUTTONUP => {
             unsafe { ReleaseCapture(); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: false });
+            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: false, position: (x, y) });
         },
         WM_MBUTTONDOWN => {
             unsafe { SetCapture(window.handle); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: true });
+            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: true, position: (x, y) });
         },
         WM_MBUTTONUP => {
             unsafe { ReleaseCapture(); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: false });
+            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: false, position: (x, y) });
         },
         WM_RBUTTONDOWN => {
             unsafe { SetCapture(window.handle); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: true });
+            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: true, position: (x, y) });
         },
         WM_RBUTTONUP => {
             unsafe { ReleaseCapture(); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: false });
+            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: false, position: (x, y) });
         },
         WM_MOUSEMOVE => {
-            let x = (lParam & 0xFFFF) as u32;
-            let y = ((lParam >> 16) & 0xFFFF) as u32;
             result = Some(WindowEvent::MouseMove(x, y));
         },
         _ => { }

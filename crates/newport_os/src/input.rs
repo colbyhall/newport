@@ -1,5 +1,5 @@
 /// Variant enum for `Input` used to distinguish between input types
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InputType {
     Key{ code: u8, symbol: char },
     MouseButton(u8),
@@ -7,10 +7,10 @@ pub enum InputType {
 }
 
 /// Static information about input sets
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Input {
-    display_name: &'static str,
-    variant: InputType,
+    pub display_name: &'static str,
+    pub variant: InputType,
 }
 
 impl Input {
