@@ -5,7 +5,7 @@ use gpu::*;
 
 use newport_os::input::*;
 
-use newport_math::{ Vector2, Color, Matrix4, Vector3 };
+use newport_math::{ Color, Matrix4, Vector2, Vector3, srgb_to_linear };
 
 pub use egui::*;
 
@@ -35,11 +35,12 @@ static SHADER_SOURCE: &str = "
         
         float4 position : SV_POSITION;
     };
+
     Vertex_Out main_vs( Vertex IN ){
         Vertex_Out OUT;
         OUT.uv      = IN.uv;
-        OUT.color   = IN.color;
         OUT.texture = IN.texture;
+        OUT.color   = IN.color;
 
         OUT.position = mul(constants.view, float4(IN.position, 1.0));
 
@@ -47,6 +48,7 @@ static SHADER_SOURCE: &str = "
 
         return OUT;
     }
+
     struct Pixel_In {
         float2 uv    : TEXCOORD;
         float4 color : COLOR;
@@ -98,7 +100,7 @@ impl Egui {
             .shaders(vec![vertex_shader, pixel_shader])
             .vertex::<GuiVertex>()
             .enable_blend()
-            // .dst_alpha_blend(BlendFactor::OneMinusSrcAlpha)
+            .dst_alpha_blend(BlendFactor::OneMinusSrcAlpha)
             .push_constant_size::<DrawConstants>()
             .build();
 
@@ -255,13 +257,11 @@ impl Egui {
             ).unwrap();
 
             let mut pixels = Vec::with_capacity(texture.pixels.len());
-            for it in texture.srgba_pixels() {
-                let (r, g, b, a) = it.to_tuple();
-
-                let mut color: u32 = (r as u32) << 24;
-                color |= (g as u32) << 16;
-                color |= (b as u32) << 8;
-                color |= a as u32;
+            for it in texture.pixels.iter() {
+                let mut color: u32 = (*it as u32) << 24;
+                color |= (*it as u32) << 16;
+                color |= (*it as u32) << 8;
+                color |= *it as u32;
 
 
                 pixels.push(color);
@@ -333,10 +333,16 @@ impl Egui {
                     TextureId::User(num) => num as u32,
                 };
 
+                let r = srgb_to_linear(vertex.color.r() as f32 / 255.0);
+                let g = srgb_to_linear(vertex.color.g() as f32 / 255.0);
+                let b = srgb_to_linear(vertex.color.b() as f32 / 255.0);
+                let a = vertex.color.a() as f32 / 255.0;
+                let color = Color::new(r, g, b, a);
+
                 vertices.push(GuiVertex{
                     position: Vector2::new(vertex.pos.x, vertex.pos.y),
                     uv:       Vector2::new(vertex.uv.x,  vertex.uv.y),
-                    color:    Color::new(vertex.color.r() as f32 / 255.0, vertex.color.g() as f32 / 255.0, vertex.color.b() as f32 / 255.0, vertex.color.a() as f32 / 255.0),
+                    color:    color,
                     tex:      tex,
                 });
             }

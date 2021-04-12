@@ -30,6 +30,7 @@ use newport_math::{ Rect, Color };
 use std::mem::size_of;
 use std::sync::{ Arc };
 use std::convert::Into;
+use std::fmt;
 
 use bitflags::*;
 
@@ -246,6 +247,13 @@ impl Texture {
 #[derive(Clone)]
 pub struct RenderPass(Arc<api::RenderPass>);
 
+impl fmt::Debug for RenderPass {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        fmt
+            .debug_struct("RenderPass")
+            .finish()
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ShaderVariant {
@@ -254,6 +262,14 @@ pub enum ShaderVariant {
 }
 
 pub struct Shader(Arc<api::Shader>);
+
+impl fmt::Debug for Shader {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        fmt
+            .debug_struct("Shader")
+            .finish()
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 pub enum DrawMode {
@@ -444,11 +460,20 @@ impl PipelineBuilder {
         self
     }
 
+    pub fn src_color_blend(mut self, factor: BlendFactor) -> Self {
+        match &mut self.desc {
+            PipelineDescription::Graphics(gfx) => gfx.src_color_blend_factor = factor,
+            _ => unreachable!()
+        }
+        self
+    }
+
     pub fn build(self) -> PipelineDescription {
         self.desc
     }
 }
 
+#[derive(Debug)]
 pub struct GraphicsPipelineDescription {
     pub render_pass:  RenderPass,
     pub shaders:      Vec<Shader>,
@@ -479,6 +504,7 @@ pub struct GraphicsPipelineDescription {
     pub push_constant_size : usize, 
 }
 
+#[derive(Debug)]
 pub enum PipelineDescription {
     Graphics(GraphicsPipelineDescription),
     Compute,

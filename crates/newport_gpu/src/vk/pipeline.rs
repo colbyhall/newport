@@ -177,7 +177,8 @@ impl Pipeline {
                     .src_alpha_blend_factor(blend_factor(desc.src_alpha_blend_factor))
                     .dst_alpha_blend_factor(blend_factor(desc.dst_alpha_blend_factor))
                     .alpha_blend_op(blend_op(desc.alpha_blend_op))
-                    .color_write_mask(color_write_mask);
+                    .color_write_mask(color_write_mask)
+                    .build();
 
                 let color_blend_state = vk::PipelineColorBlendStateCreateInfo::builder()
                     .logic_op(vk::LogicOp::COPY)
