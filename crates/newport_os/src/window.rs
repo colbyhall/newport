@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(arithmetic_overflow)]
 
 #[cfg(target_os = "windows")]
 use crate::win32::*;
@@ -53,10 +54,22 @@ lazy_static! {
     };
 }
 
+#[derive(Copy, Clone)]
+pub enum WindowStyle {
+    Windowed,
+    Borderless,
+    Fullscreen,
+    CustomTitleBar{
+        border: f32,
+        drag:   f32,
+    }
+}
+
 /// Builder used to create [`Window`]s with set parameters
 pub struct WindowBuilder {
     size:  (u32, u32),
     title: String,
+    style: WindowStyle,
 }
 
 impl WindowBuilder {
@@ -71,6 +84,7 @@ impl WindowBuilder {
         Self{
             size: (1280, 720),
             title: String::new(),
+            style: WindowStyle::Windowed,
         }
     }
 
@@ -106,6 +120,11 @@ impl WindowBuilder {
     /// ```
     pub fn size(mut self, size: (u32, u32)) -> Self {
         self.size = size;
+        self
+    }
+
+    pub fn style(mut self, style: WindowStyle) -> Self {
+        self.style = style;
         self
     }
 }
@@ -156,13 +175,15 @@ impl WindowBuilder {
             // Apparently on Windows 10 "A" suffix functions can take utf 8
             assert!(self.title.is_ascii(), "We're only using ASCII windows functions. This should eventually change");
 
+            let style = WS_OVERLAPPEDWINDOW;
+
             let mut adjusted_rect = RECT {
                 left:   0,
                 top:    0,
                 right:  self.size.0,
                 bottom: self.size.1,
             };
-            AdjustWindowRect(&mut adjusted_rect, WP_OVERLAPPEDWINDOW, 0);
+            AdjustWindowRect(&mut adjusted_rect, style, 0);
 
             let width  = (Wrapping(adjusted_rect.right) - Wrapping(adjusted_rect.left)).0;
             let height = (Wrapping(adjusted_rect.bottom) - Wrapping(adjusted_rect.top)).0;
@@ -172,7 +193,7 @@ impl WindowBuilder {
                 0, 
                 class.lpszClassName, 
                 window_title.as_ptr(), 
-                WP_OVERLAPPEDWINDOW, 
+                style, 
                 0, 0, 
                 width, height, 
                 null_mut(), 
@@ -211,6 +232,7 @@ impl WindowBuilder {
                 size:   (width, height),
                 title:  self.title,
                 dpi:    dpi,
+                style:  self.style,
             };
 
             window.center_in_window(); // TODO: Have some position in the builder with a center function
@@ -231,6 +253,7 @@ pub struct Window {
     size: (u32, u32),
     title: String,
     dpi:   f32,
+    style: WindowStyle,
 }
 
 #[cfg(target_os = "windows")]
@@ -263,6 +286,10 @@ impl Window {
         self.size.1 = viewport_size.bottom - viewport_size.top;
     }
 
+    pub fn minimize(&mut self) {
+        unsafe { ShowWindow(self.handle, 6) };
+    }
+
     /// Polls os shell for window events and returns a [`WindowEventIterator`]
     /// 
     /// # Examples
@@ -281,11 +308,13 @@ impl Window {
     ///     }
     /// } 
     /// ```
-    pub fn poll_events(&mut self) -> WindowEventIterator {
+    pub fn poll_events(&mut self, ignore_drag: bool) -> WindowEventIterator {
         unsafe {
             let mut result = WindowEventIterator{
                 queue:  VecDeque::new(),
-                window: NonNull::new(self as *mut Window).unwrap(),
+
+                ignore_drag: ignore_drag,
+                window:      NonNull::new(self as *mut Window).unwrap(),
             };
 
             // We upload the self ptr here because of rust move semantics.
@@ -329,6 +358,14 @@ impl Window {
     pub fn dpi(&self) -> f32 {
         self.dpi
     }
+
+    pub fn is_maximized(&self) -> bool {
+        unsafe{ IsZoomed(self.handle) != 0 }
+    }
+
+    pub fn is_minimized(&self) -> bool {
+        unsafe{ IsIconic(self.handle) != 0 }
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -356,6 +393,8 @@ pub enum WindowEvent {
 /// Iterator containing [`WindowEvent`]s after being polled
 pub struct WindowEventIterator {
     queue:  VecDeque<WindowEvent>,
+    
+    ignore_drag: bool,
     window: NonNull<Window>,
 }
 
@@ -377,31 +416,31 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
         }
         iterator = &mut *iterator_ptr;
     }
-    let mut result : Option<WindowEvent> = None;
+    let mut event : Option<WindowEvent> = None;
 
-    let window : &mut Window;
-    unsafe { window = iterator.window.as_mut(); }
+    let window = unsafe { iterator.window.as_mut() };
 
     let x = (lParam & 0xFFFF) as u32;
     let y = ((lParam >> 16) & 0xFFFF) as u32;
 
+    let mut result: LRESULT = 0;
     match uMsg {
         WM_CLOSE => {
-            result = Some(WindowEvent::Closed);
+            event = Some(WindowEvent::Closed);
         },
         WM_SETFOCUS => {
-            result = Some(WindowEvent::FocusGained);
+            event = Some(WindowEvent::FocusGained);
         },
         WM_KILLFOCUS => {
-            result = Some(WindowEvent::FocusLost);
+            event = Some(WindowEvent::FocusLost);
         },
         WM_SYSKEYDOWN | WM_KEYDOWN => {
             let key = Input::key_from_code(wParam as u8).unwrap();
-            result = Some(WindowEvent::Key{ key: key, pressed: true });
+            event = Some(WindowEvent::Key{ key: key, pressed: true });
         },
         WM_SYSKEYUP | WM_KEYUP => {
             let key = Input::key_from_code(wParam as u8).unwrap();
-            result = Some(WindowEvent::Key{ key: key, pressed: false });
+            event = Some(WindowEvent::Key{ key: key, pressed: false });
         },
         WM_SIZING | WM_SIZE => {
             let mut viewport_size = RECT::default();
@@ -412,9 +451,9 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
             window.size.1 = viewport_size.bottom - viewport_size.top;
 
             if uMsg == WM_SIZING {
-                result = Some(WindowEvent::Resizing(old_width, old_height));
+                event = Some(WindowEvent::Resizing(old_width, old_height));
             } else {
-                result = Some(WindowEvent::Resized(old_width, old_height));
+                event = Some(WindowEvent::Resized(old_width, old_height));
             }
         },
         WM_CHAR => {
@@ -434,45 +473,147 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
                 c += surrogate_pair_second & 0x03FF;
             }
 
-            result = Some(WindowEvent::Char(std::char::from_u32(c).unwrap()));
+            event = Some(WindowEvent::Char(std::char::from_u32(c).unwrap()));
         },
         WM_MOUSEHWHEEL => {
             let delta = GET_WHEEL_DELTA_WPARAM!(wParam);
-            result = Some(WindowEvent::MouseWheel(delta));
+            event = Some(WindowEvent::MouseWheel(delta));
         },
         WM_LBUTTONDOWN => {
             unsafe { SetCapture(window.handle); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: true, position: (x, y) });
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: true, position: (x, y) });
         },
         WM_LBUTTONUP => {
             unsafe { ReleaseCapture(); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: false, position: (x, y) });
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: false, position: (x, y) });
         },
         WM_MBUTTONDOWN => {
             unsafe { SetCapture(window.handle); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: true, position: (x, y) });
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: true, position: (x, y) });
         },
         WM_MBUTTONUP => {
             unsafe { ReleaseCapture(); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: false, position: (x, y) });
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: false, position: (x, y) });
         },
         WM_RBUTTONDOWN => {
             unsafe { SetCapture(window.handle); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: true, position: (x, y) });
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: true, position: (x, y) });
         },
         WM_RBUTTONUP => {
             unsafe { ReleaseCapture(); }
-            result = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: false, position: (x, y) });
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: false, position: (x, y) });
         },
         WM_MOUSEMOVE => {
-            result = Some(WindowEvent::MouseMove(x, y));
+            event = Some(WindowEvent::MouseMove(x, y));
         },
-        _ => { }
+
+        // NOTE: This is all the crazy style stuff
+        WM_NCACTIVATE => {
+            match window.style {
+                WindowStyle::CustomTitleBar{ .. } => {
+                    result = 1;
+
+                    if window.is_minimized() {
+                        result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) };
+                    }
+                },
+                _ => { }
+            }
+        },
+        WM_NCCALCSIZE => {
+            match window.style {
+                WindowStyle::CustomTitleBar{ .. } => {
+                    let mut margins = MARGINS::default();
+        
+                    let rect = unsafe{ &mut *(lParam as *mut RECT) };
+        
+                    if window.is_maximized() {
+                        let x_push = unsafe{ GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
+                        let y_push = unsafe{ GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
+        
+                        rect.left += x_push as u32;
+                        rect.top  += y_push as u32;
+                        rect.bottom -= x_push as u32;
+                        rect.right -= y_push as u32;
+        
+                        margins.cxLeftWidth = x_push;
+                        margins.cxRightWidth = x_push;
+        
+                        margins.cyTopHeight = y_push;
+                        margins.cyBottomHeight = y_push;
+                    }
+        
+                    unsafe{ DwmExtendFrameIntoClientArea(hWnd, &margins) };
+                },
+                _ => { }
+            }
+        },
+        WM_NCHITTEST => {
+            match window.style {
+                WindowStyle::CustomTitleBar{ border, drag } => {
+                    let mut mouse = POINT{ x: x, y: y };
+
+                    let mut frame = RECT::default();
+                    unsafe{ GetWindowRect(hWnd, &mut frame) };
+                    if !frame.point_in_rect(mouse) {
+                        return HTNOWHERE;
+                    }
+        
+                    let mut client = RECT::default();
+                    unsafe{ 
+                        GetClientRect(hWnd, &mut client);
+                        ScreenToClient(hWnd, &mut mouse);
+                    }
+        
+                    let mut left = false;
+                    let mut right = false;
+                    let mut bot = false;
+                    let mut top = false;
+                    if !window.is_maximized() {
+                        left = client.left <= mouse.x && mouse.x < client.left + border as u32;
+                        right = client.right - border as u32 <= mouse.x && mouse.x < client.right;
+                        bot = client.bottom - border as u32 <= mouse.y && mouse.y < client.bottom;
+                        top = client.top <= mouse.y && mouse.y < client.top + border as u32;
+                    }
+        
+                    if left {
+                        if top {
+                            result = HTTOPLEFT;
+                        } else if bot {
+                            result = HTBOTTOMLEFT;
+                        } else {
+                            result = HTLEFT;
+                        }
+                    } else if right {
+                        if top {
+                            result = HTTOPRIGHT;
+                        } else if bot {
+                            result = HTBOTTOMRIGHT;
+                        } else {
+                            result = HTRIGHT;
+                        }
+                    } else if top {
+                        result = HTTOP;
+                    } else if bot {
+                        result = HTBOTTOM;
+                    } else {
+                        if client.top <= mouse.y && mouse.y < client.top + drag as u32 && !iterator.ignore_drag {
+                            result = HTCAPTION;
+                        } else {
+                            result = HTCLIENT;
+                        }
+                    }
+                },
+                _ => { }
+            }
+
+        },
+        _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
     }
 
-    if result.is_some() {
-        iterator.queue.push_back(result.unwrap());
+    if event.is_some() {
+        iterator.queue.push_back(event.unwrap());
     }
 
-    unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
+    result
 }

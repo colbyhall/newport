@@ -11,3 +11,4 @@ keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
 lazy_static = "1.4.0"
+newport_math = { path = "../newport_math", version = "0.0.1" }

@@ -18,6 +18,6 @@ impl Module for Gui {
 fn main() {
     let builder = EngineBuilder::new()
         .module::<Gui>()
-        .name("Gui");
+        .name("Editor Example");
     Engine::run(builder);
 }

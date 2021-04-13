@@ -1,7 +1,7 @@
 #![feature(trait_alias)]
 
 use newport_core::containers::{ Box, HashMap };
-use newport_os::window::{ WindowBuilder, Window };
+use newport_os::window::{ WindowBuilder, Window, WindowStyle };
 pub use newport_os::window::WindowEvent;
 
 use std::any::TypeId;
@@ -20,7 +20,9 @@ pub struct Engine {
     modules: HashMap<TypeId, Box<dyn Any>>, 
 
     is_running: AtomicBool,
-    window:     Window,
+    
+    ignore_drag: AtomicBool,
+    window:      Window,
 }
 
 impl Engine {
@@ -48,6 +50,10 @@ impl Engine {
         let engine = unsafe{ 
             let mut window = WindowBuilder::new()
                 .title(name.clone())
+                .style(WindowStyle::CustomTitleBar{
+                    border: 5.0,
+                    drag:   20.0
+                })
                 .spawn()
                 .unwrap();
 
@@ -57,7 +63,9 @@ impl Engine {
                 name:       name,
                 modules:    HashMap::with_capacity(builder.entries.len()),
                 is_running: AtomicBool::new(true),
-                window:     window,
+                
+                ignore_drag: AtomicBool::new(false),
+                window:      window,
             });
 
             ENGINE.as_mut().unwrap()
@@ -92,7 +100,7 @@ impl Engine {
             }
             frame_count += 1;
 
-            for event in engine.window.poll_events() {
+            for event in engine.window.poll_events(engine.ignore_drag.load(Ordering::Relaxed)) {
                 builder.process_input.iter().for_each(|process_input| process_input(engine, &event));
 
                 match event {
@@ -103,6 +111,8 @@ impl Engine {
                     _ => {}
                 }
             }
+
+            engine.ignore_drag.store(false, Ordering::Relaxed);
 
             builder.tick.iter().for_each(|tick| tick(engine, dt));
         }
@@ -145,6 +155,14 @@ impl Engine {
     /// Returns the window that the engine draws into
     pub fn window(&self) -> &Window {
         &self.window
+    }
+
+    pub fn ignore_drag(&self) {
+        self.ignore_drag.store(true, Ordering::Relaxed);
+    }
+
+    pub fn shutdown(&self) {
+        self.is_running.store(false, Ordering::Relaxed);
     }
 }
 

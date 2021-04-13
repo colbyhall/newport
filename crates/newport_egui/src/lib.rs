@@ -1,7 +1,6 @@
 use newport_engine::{ Engine, WindowEvent };
 use newport_graphics::Graphics;
 use newport_gpu as gpu;
-use gpu::*;
 
 use newport_os::input::*;
 
@@ -71,7 +70,7 @@ pub struct Egui {
     context:  CtxRef,
     input:    Option<RawInput>,
     
-    pipeline: Pipeline,
+    pipeline: gpu::Pipeline,
     texture:  Option<EguiTexture>,
 }
 
@@ -90,17 +89,17 @@ impl Egui {
         let vertex_main = "main_vs".to_string();
         let pixel_main  = "main_ps".to_string();
         
-        let vertex_bin = shaders::compile("vertex.hlsl", SHADER_SOURCE, &vertex_main, ShaderVariant::Vertex).unwrap();
-        let pixel_bin  = shaders::compile("pixel.hlsl", SHADER_SOURCE, &pixel_main, ShaderVariant::Pixel).unwrap();
+        let vertex_bin = gpu::shaders::compile("vertex.hlsl", SHADER_SOURCE, &vertex_main, gpu::ShaderVariant::Vertex).unwrap();
+        let pixel_bin  = gpu::shaders::compile("pixel.hlsl", SHADER_SOURCE, &pixel_main, gpu::ShaderVariant::Pixel).unwrap();
 
-        let vertex_shader = device.create_shader(&vertex_bin[..], ShaderVariant::Vertex, vertex_main).unwrap();
-        let pixel_shader  = device.create_shader(&pixel_bin[..], ShaderVariant::Pixel, pixel_main).unwrap();
+        let vertex_shader = device.create_shader(&vertex_bin[..], gpu::ShaderVariant::Vertex, vertex_main).unwrap();
+        let pixel_shader  = device.create_shader(&pixel_bin[..], gpu::ShaderVariant::Pixel, pixel_main).unwrap();
 
-        let pipeline_desc = PipelineBuilder::new_graphics(graphics.backbuffer_render_pass())
+        let pipeline_desc = gpu::PipelineBuilder::new_graphics(graphics.backbuffer_render_pass())
             .shaders(vec![vertex_shader, pixel_shader])
             .vertex::<GuiVertex>()
             .enable_blend()
-            .dst_alpha_blend(BlendFactor::OneMinusSrcAlpha)
+            .dst_alpha_blend(gpu::BlendFactor::OneMinusSrcAlpha)
             .push_constant_size::<DrawConstants>()
             .build();
 
@@ -251,8 +250,8 @@ impl Egui {
         let texture = self.context.texture();
         if self.texture.is_none() || self.texture.is_some() && self.texture.as_ref().unwrap().egui.version != texture.version {
             let pixel_buffer = device.create_buffer(
-                BufferUsage::TRANSFER_SRC, 
-                MemoryType::HostVisible, 
+                gpu::BufferUsage::TRANSFER_SRC, 
+                gpu::MemoryType::HostVisible, 
                 texture.pixels.len() * 4,
             ).unwrap();
 
@@ -269,15 +268,15 @@ impl Egui {
             pixel_buffer.copy_to(&pixels[..]);
 
             let gpu_texture = device.create_texture(
-                TextureUsage::TRANSFER_DST | TextureUsage::SAMPLED,
-                MemoryType::DeviceLocal, 
-                Format::RGBA_U8_SRGB,
+                gpu::TextureUsage::TRANSFER_DST | gpu::TextureUsage::SAMPLED,
+                gpu::MemoryType::DeviceLocal, 
+                gpu::Format::RGBA_U8_SRGB,
                 texture.width as u32,
                 texture.height as u32,
                 1,
-                Wrap::Clamp,
-                Filter::Nearest,
-                Filter::Nearest
+                gpu::Wrap::Clamp,
+                gpu::Filter::Nearest,
+                gpu::Filter::Nearest
             ).unwrap();
 
             let mut gfx = device.create_graphics_context().unwrap();
@@ -301,7 +300,7 @@ impl Egui {
         (output, self.context.tessellate(shapes))
     }
 
-    pub fn draw(&mut self, clipped_meshes: Vec<ClippedMesh>, gfx: &mut GraphicsContext) {
+    pub fn draw(&mut self, clipped_meshes: Vec<ClippedMesh>, gfx: &mut gpu::GraphicsContext) {
         if clipped_meshes.len() == 0 {
             return;
         }
@@ -354,10 +353,10 @@ impl Egui {
             indice_start += it.1.vertices.len() as u32;
         }
 
-        let vertex_buffer = device.create_buffer(BufferUsage::VERTEX, MemoryType::HostVisible, vertex_buffer_len * size_of::<GuiVertex>()).unwrap();
+        let vertex_buffer = device.create_buffer(gpu::BufferUsage::VERTEX, gpu::MemoryType::HostVisible, vertex_buffer_len * size_of::<GuiVertex>()).unwrap();
         vertex_buffer.copy_to(&vertices[..]);
 
-        let index_buffer = device.create_buffer(BufferUsage::INDEX, MemoryType::HostVisible, index_buffer_len * size_of::<u32>()).unwrap();
+        let index_buffer = device.create_buffer(gpu::BufferUsage::INDEX, gpu::MemoryType::HostVisible, index_buffer_len * size_of::<u32>()).unwrap();
         index_buffer.copy_to(&indices[..]);
 
         let viewport = engine.window().size();
@@ -388,13 +387,13 @@ struct GuiVertex {
     tex:      u32,
 }
 
-impl Vertex for GuiVertex {
-    fn attributes() -> Vec<VertexAttribute> {
+impl gpu::Vertex for GuiVertex {
+    fn attributes() -> Vec<gpu::VertexAttribute> {
         vec![
-            VertexAttribute::Vector2,
-            VertexAttribute::Vector2,
-            VertexAttribute::Color,
-            VertexAttribute::Uint32,
+            gpu::VertexAttribute::Vector2,
+            gpu::VertexAttribute::Vector2,
+            gpu::VertexAttribute::Color,
+            gpu::VertexAttribute::Uint32,
         ]
     }
 }

@@ -1,20 +1,12 @@
 use newport_engine::{ Module, Engine, EngineBuilder, WindowEvent };
 use newport_graphics::Graphics;
-use newport_gpu::*;
-use newport_egui as egui;
-use egui::Egui;
+use newport_egui::*;
+use newport_gpu as gpu;
 
 use std::sync::{ Mutex, MutexGuard };
 
-struct TestPanel {
-    name: String,
-    age:  i32,
-}
-
 struct EditorInner {
     gui: Egui,
-
-    test_panel: TestPanel,
 }
 
 pub struct Editor(Mutex<EditorInner>);
@@ -34,27 +26,78 @@ impl Editor {
 
         editor.gui.begin_frame(dt);
 
-        egui::SidePanel::left("side_panel", 300.0).show(&editor.gui.ctx().clone(), |ui| {
-            ui.heading("My egui Application");
-            ui.horizontal(|ui| {
-                ui.label("Your name: ");
-                ui.text_edit_singleline(&mut editor.test_panel.name);
-            });
-            ui.add(egui::Slider::new(&mut editor.test_panel.age, 0..=120).text("age"));
-            if ui.button("Click each year").clicked() {
-                editor.test_panel.age += 1;
-            }
-            ui.label(format!("Hello '{}', age {}", editor.test_panel.name, editor.test_panel.age));
+        let ctx = editor.gui.ctx().clone();
 
-        });
-        
-        egui::Window::new("Settings").show(&editor.gui.ctx().clone(), |ui| {
-            editor.gui.ctx().settings_ui(ui)
+        let response = TopPanel::top("title").show(&ctx, |ui|{
+            menu::bar(ui, |ui|{
+                let original_width = ui.available_width();
+
+                menu::menu(ui, "File", |ui| {
+                    if ui.button("Open").clicked() {
+                        println!("Hello World");
+                    }
+                });
+
+                menu::menu(ui, "Edit", |ui| {
+                    if ui.button("Open").clicked() {
+                        println!("Hello World");
+                    }
+                });
+
+                menu::menu(ui, "Selection", |ui| {
+                    if ui.button("Open").clicked() {
+                        println!("Hello World");
+                    }
+                });
+
+                menu::menu(ui, "View", |ui| {
+                    if ui.button("Open").clicked() {
+                        println!("Hello World");
+                    }
+                });
+
+                menu::menu(ui, "Help", |ui| {
+                    if ui.button("Open").clicked() {
+                        println!("Hello World");
+                    }
+                });
+
+                // Take full width and fixed height:
+                let height = ui.spacing().interact_size.y;
+                let size = vec2(ui.available_width(), height);
+
+                let used = original_width - size.x;
+
+                ui.allocate_ui_with_layout(size, Layout::right_to_left(), |ui| {
+                    if ui.button("🗙").clicked() {
+                        engine.shutdown();
+                    }
+
+                    if ui.button("🗖").clicked() {
+                        engine.shutdown();
+                    }
+
+                    if ui.button("🗕").clicked() {
+                        engine.shutdown();
+                    }
+
+                    let right_used = size.x - ui.available_width();
+
+                    ui.add_space(used - right_used);
+                    ui.centered_and_justified(|ui| {
+                        let label = format!("{} - Newport Editor", engine.name());
+                        ui.label(label)
+                    })
+                });
+            });
         });
 
         let (_, clipped_meshes) = editor.gui.end_frame();
-
         device.update_bindless();
+
+        if !ctx.is_using_pointer() && response.response.hovered() {
+            engine.ignore_drag();
+        }
 
         let backbuffer = device.acquire_backbuffer();
         let mut gfx = device.create_graphics_context().unwrap();
@@ -65,7 +108,7 @@ impl Editor {
             editor.gui.draw(clipped_meshes, &mut gfx);
             gfx.end_render_pass();
         }
-        gfx.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present);
+        gfx.resource_barrier_texture(&backbuffer, gpu::Layout::ColorAttachment, gpu::Layout::Present);
         gfx.end();
         
         let receipt = device.submit_graphics(vec![gfx], &[]);
@@ -78,11 +121,6 @@ impl Module for Editor {
     fn new() -> Self {
         Self(Mutex::new(EditorInner{
             gui: Egui::new(),
-
-            test_panel: TestPanel {
-                name: "Billy Bob".to_string(),
-                age: 45,
-            }
         }))
     }
 
