@@ -3,6 +3,7 @@ use newport_graphics::Graphics;
 use newport_gpu as gpu;
 
 use newport_os::input::*;
+use newport_os as os;
 
 use newport_math::{ Color, Matrix4, Vector2, Vector3, srgb_to_linear };
 
@@ -114,14 +115,13 @@ impl Egui {
         }
     }
 
-    pub fn process_input(&mut self, event: &WindowEvent) {
+    pub fn process_input(&mut self, window: &os::window::Window, event: &os::window::WindowEvent) {
         if self.input.is_none() {
             self.input = Some(RawInput::default());
         }
         let input = self.input.as_mut().unwrap();
 
-        let engine = Engine::as_ref();
-        let dpi = engine.window().dpi();
+        let dpi = window.dpi();
 
         match event {
             WindowEvent::Char(c) => {
@@ -221,6 +221,9 @@ impl Egui {
             },
             WindowEvent::MouseMove(x, y) => {
                 input.events.push(Event::PointerMoved(pos2(*x as f32 / dpi, *y as f32 / dpi)));
+            },
+            WindowEvent::MouseLeave => {
+                input.events.push(Event::PointerGone);
             }
             _ => {}
         }
@@ -228,9 +231,12 @@ impl Egui {
 
     pub fn begin_frame(&mut self, dt: f32) {
         let engine = Engine::as_ref();
-        let viewport = engine.window().size();
 
-        let dpi = engine.window().dpi();
+        let window = engine.window();
+
+        let viewport = window.size();
+
+        let dpi = window.dpi();
 
         let mut input = self.input.take().unwrap_or_default();
         input.screen_rect = Some(Rect::from_min_max(pos2(0.0, 0.0), pos2(viewport.0 as f32 / dpi, viewport.1 as f32 / dpi)));
@@ -311,7 +317,9 @@ impl Egui {
 
         let texture = self.texture.as_ref().unwrap();
 
-        let dpi = engine.window().dpi();
+        let window = engine.window();
+
+        let dpi = window.dpi();
 
         // Load all vertex data into one giant buffer
         let mut vertex_buffer_len = 0;
@@ -359,7 +367,7 @@ impl Egui {
         let index_buffer = device.create_buffer(gpu::BufferUsage::INDEX, gpu::MemoryType::HostVisible, index_buffer_len * size_of::<u32>()).unwrap();
         index_buffer.copy_to(&indices[..]);
 
-        let viewport = engine.window().size();
+        let viewport = window.size();
         let viewport = Vector2::new(viewport.0 as f32 / dpi, viewport.1 as f32 / dpi);
 
         let proj = Matrix4::ortho(viewport.x, viewport.y, 1000.0, 0.1);

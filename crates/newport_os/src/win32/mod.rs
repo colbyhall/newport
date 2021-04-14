@@ -34,6 +34,9 @@ pub type ULONGLONG = u64;
 pub type LPSTR  = *mut i8;
 pub type LPCSTR = *const i8;
 
+pub type LPWSTR  = *mut i16;
+pub type LPCWSTR = *const i16;
+
 pub type WORD    = u16;
 pub type DWORD   = u32;
 pub type LPDWORD = *mut DWORD;
@@ -145,3 +148,6 @@ pub use kernel32::*;
 
 pub mod dwmapi;
 pub use dwmapi::*;
+
+pub mod uxtheme;
+pub use uxtheme::*;

@@ -227,12 +227,15 @@ impl WindowBuilder {
                 return Err(WindowSpawnError::WindowCreateFailed);
             }
 
+            SetWindowTheme(handle, b"\0".as_ptr() as LPCWSTR, b"\0".as_ptr() as LPCWSTR);
+
             let mut window = Window{
                 handle: handle,
                 size:   (width, height),
                 title:  self.title,
                 dpi:    dpi,
                 style:  self.style,
+                ignore_drag: false,
             };
 
             window.center_in_window(); // TODO: Have some position in the builder with a center function
@@ -254,6 +257,7 @@ pub struct Window {
     title: String,
     dpi:   f32,
     style: WindowStyle,
+    ignore_drag: bool,
 }
 
 #[cfg(target_os = "windows")]
@@ -308,12 +312,11 @@ impl Window {
     ///     }
     /// } 
     /// ```
-    pub fn poll_events(&mut self, ignore_drag: bool) -> WindowEventIterator {
+    pub fn poll_events(&mut self) -> WindowEventIterator {
         unsafe {
             let mut result = WindowEventIterator{
                 queue:  VecDeque::new(),
 
-                ignore_drag: ignore_drag,
                 window:      NonNull::new(self as *mut Window).unwrap(),
             };
 
@@ -366,6 +369,10 @@ impl Window {
     pub fn is_minimized(&self) -> bool {
         unsafe{ IsIconic(self.handle) != 0 }
     }
+
+    pub fn set_ignore_drag(&mut self, ignore_drag: bool) {
+        self.ignore_drag = ignore_drag;
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -387,14 +394,14 @@ pub enum WindowEvent {
     Char(char),
     MouseWheel(i16),
     MouseButton { mouse_button: Input, pressed: bool, position: (u32, u32) },
-    MouseMove(u32, u32)
+    MouseMove(u32, u32),
+    MouseLeave
 }
 
 /// Iterator containing [`WindowEvent`]s after being polled
 pub struct WindowEventIterator {
     queue:  VecDeque<WindowEvent>,
     
-    ignore_drag: bool,
     window: NonNull<Window>,
 }
 
@@ -506,8 +513,32 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
         WM_MOUSEMOVE => {
             event = Some(WindowEvent::MouseMove(x, y));
         },
+        WM_MOUSELEAVE => {
+            event = Some(WindowEvent::MouseLeave);
+        },
 
         // NOTE: This is all the crazy style stuff
+        WM_DWMCOMPOSITIONCHANGED => {
+            match window.style {
+                WindowStyle::CustomTitleBar{ .. } => {
+                    let mut margins = MARGINS::default();
+        
+                    if window.is_maximized() {
+                        let x_push = unsafe{ GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
+                        let y_push = unsafe{ GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
+        
+                        margins.cxLeftWidth = x_push;
+                        margins.cxRightWidth = x_push;
+        
+                        margins.cyTopHeight = y_push;
+                        margins.cyBottomHeight = y_push;
+                    }
+        
+                    unsafe{ DwmExtendFrameIntoClientArea(hWnd, &margins) };
+                },
+                _ => { }
+            }
+        },
         WM_NCACTIVATE => {
             match window.style {
                 WindowStyle::CustomTitleBar{ .. } => {
@@ -555,21 +586,23 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
 
                     let mut frame = RECT::default();
                     unsafe{ GetWindowRect(hWnd, &mut frame) };
-                    if !frame.point_in_rect(mouse) {
-                        return HTNOWHERE;
-                    }
         
                     let mut client = RECT::default();
                     unsafe{ 
                         GetClientRect(hWnd, &mut client);
                         ScreenToClient(hWnd, &mut mouse);
                     }
+
+                    if !client.point_in_rect(mouse) {
+                        println!("test");
+                        return HTNOWHERE;
+                    }
         
                     let mut left = false;
                     let mut right = false;
                     let mut bot = false;
                     let mut top = false;
-                    if !window.is_maximized() {
+                    if !window.is_minimized() {
                         left = client.left <= mouse.x && mouse.x < client.left + border as u32;
                         right = client.right - border as u32 <= mouse.x && mouse.x < client.right;
                         bot = client.bottom - border as u32 <= mouse.y && mouse.y < client.bottom;
@@ -597,7 +630,7 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
                     } else if bot {
                         result = HTBOTTOM;
                     } else {
-                        if client.top <= mouse.y && mouse.y < client.top + drag as u32 && !iterator.ignore_drag {
+                        if client.top <= mouse.y && mouse.y < client.top + drag as u32 && !window.ignore_drag {
                             result = HTCAPTION;
                         } else {
                             result = HTCLIENT;

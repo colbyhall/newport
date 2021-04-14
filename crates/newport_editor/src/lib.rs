@@ -1,12 +1,20 @@
 use newport_engine::{ Module, Engine, EngineBuilder, WindowEvent };
-use newport_graphics::Graphics;
+use newport_graphics::{ Graphics, Texture };
 use newport_egui::*;
 use newport_gpu as gpu;
+use newport_os as os;
 
-use std::sync::{ Mutex, MutexGuard };
+use newport_asset::{ AssetRef, AssetManager };
+
+use std::sync::{ Mutex, MutexGuard, RwLock };
+
+struct EditorAssets {
+    engine_icon: AssetRef<Texture>,
+}
 
 struct EditorInner {
-    gui: Egui,
+    gui:    Egui,
+    assets: RwLock<Option<EditorAssets>>,
 }
 
 pub struct Editor(Mutex<EditorInner>);
@@ -31,6 +39,13 @@ impl Editor {
         let response = TopPanel::top("title").show(&ctx, |ui|{
             menu::bar(ui, |ui|{
                 let original_width = ui.available_width();
+
+                let assets_lock = editor.assets.read().unwrap();
+                let assets = assets_lock.as_ref().unwrap();
+
+                let icon = assets.engine_icon.read();
+
+                ui.image(TextureId::User(icon.gpu().bindless().unwrap() as u64), vec2(15.0, 15.0));
 
                 menu::menu(ui, "File", |ui| {
                     if ui.button("Open").clicked() {
@@ -69,34 +84,39 @@ impl Editor {
                 let used = original_width - size.x;
 
                 ui.allocate_ui_with_layout(size, Layout::right_to_left(), |ui| {
+                    let mut window = engine.window();
+
                     if ui.button("🗙").clicked() {
                         engine.shutdown();
                     }
 
                     if ui.button("🗖").clicked() {
-                        engine.shutdown();
+                        window.maximize();
                     }
 
                     if ui.button("🗕").clicked() {
-                        engine.shutdown();
+                        window.minimize();
                     }
 
                     let right_used = size.x - ui.available_width();
 
                     ui.add_space(used - right_used);
+
+                    let space_left = ui.available_rect_before_wrap_finite();
+                    window.set_ignore_drag(!ui.rect_contains_pointer(space_left));
+
                     ui.centered_and_justified(|ui| {
                         let label = format!("{} - Newport Editor", engine.name());
                         ui.label(label)
                     })
-                });
-            });
+                })
+            })
         });
 
         let (_, clipped_meshes) = editor.gui.end_frame();
         device.update_bindless();
 
         if !ctx.is_using_pointer() && response.response.hovered() {
-            engine.ignore_drag();
         }
 
         let backbuffer = device.acquire_backbuffer();
@@ -120,20 +140,31 @@ impl Editor {
 impl Module for Editor {
     fn new() -> Self {
         Self(Mutex::new(EditorInner{
-            gui: Egui::new(),
+            gui:    Egui::new(),
+            assets: RwLock::new(None),
         }))
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
             .module::<Graphics>()
-            .process_input(|engine: &Engine, event: &WindowEvent| {
+            .process_input(|engine: &Engine, window: &os::window::Window, event: &WindowEvent| {
                 let mut editor = engine.module::<Editor>().unwrap().lock(); // SPEED: Maybe this will be too slow????
-                editor.gui.process_input(event);
+                editor.gui.process_input(window, event);
             })
             .tick(|engine: &Engine, dt: f32| {
                 let editor = engine.module::<Editor>().unwrap();
                 editor.do_frame(dt);
+            })
+            .post_init(|engine: &Engine| {
+                let asset_manager = engine.module::<AssetManager>().unwrap();
+                
+                let editor = engine.module::<Editor>().unwrap().lock();
+
+                let mut editor_assets = editor.assets.write().unwrap();
+                *editor_assets = Some(EditorAssets{
+                    engine_icon: asset_manager.find("assets/branding/logo_white.tex").unwrap(),
+                });
             })
     }
 }

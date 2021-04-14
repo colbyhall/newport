@@ -105,27 +105,27 @@ impl Logger {
 #[macro_export]
 macro_rules! debug {
     ($($arg:tt)*) => (
-        Logger::log(Verbosity::Debug, &format!($($arg)*))
+        $crate::Logger::log($crate::Verbosity::Debug, &format!($($arg)*))
     );
 }
 
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)*) => (
-        Logger::log(Verbosity::Info, &format!($($arg)*))
+        $crate::Logger::log($crate::Verbosity::Info, &format!($($arg)*))
     );
 }
 
 #[macro_export]
 macro_rules! warn {
     ($($arg:tt)*) => (
-        Logger::log(Verbosity::Warning, &format!($($arg)*))
+        $crate::Logger::log($crate::Verbosity::Warning, &format!($($arg)*))
     );
 }
 
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)*) => (
-        Logger::log(Verbosity::Error, &format!($($arg)*))
+        $crate::Logger::log($crate::Verbosity::Error, &format!($($arg)*))
     );
 }

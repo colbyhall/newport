@@ -27,8 +27,8 @@ pub trait Asset: Sized + 'static {
 
 pub use std::path::{ Path, PathBuf };
 
-pub use ron::de::from_str;
-pub use ron::ser::to_string;
+pub use ron::de;
+pub use ron::ser;
 
 /// Enum for asset load errors
 #[derive(Debug)]
@@ -189,7 +189,6 @@ impl<'a, T: 'static> Deref for AssetReadGuard<'a, T> {
     }
 }
 
-
 struct AssetManagerInner {
     /// Variants and Collections are taken on initialized and do not change over the runtime of program
     variants:    Mutex<Vec<VariantRegister>>,
@@ -335,19 +334,23 @@ impl AssetManager {
 
 impl Module for AssetManager {
     fn new() -> Self {
-        Self(Arc::new(AssetManagerInner{
+        let result = Self(Arc::new(AssetManagerInner{
             variants:    Mutex::new(Vec::new()),
             collections: Mutex::new(Vec::new()),
             assets:      RwLock::new(Vec::new()),
-        }))
+        }));
+
+        result.register_collection("assets/");
+
+        result
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
             .module::<Logger>()
             .post_init(|engine: &Engine| {
-            let asset_manager = engine.module::<AssetManager>().unwrap();
-            asset_manager.discover();
-        })
+                let asset_manager = engine.module::<AssetManager>().unwrap();
+                asset_manager.discover();
+            })
     }
 }

@@ -93,11 +93,14 @@ pub const WM_XBUTTONUP      : u32 = 0x020C;
 pub const WM_XBUTTONDBLCLK  : u32 = 0x020D;
 pub const WM_MOUSEHWHEEL    : u32 = 0x020E;
 
+pub const WM_MOUSELEAVE : u32 = 0x02A3;
+
 pub const WM_SIZING : u32 = 0x0214;
 
 pub const WM_NCCALCSIZE : u32 = 0x0083;
 pub const WM_NCHITTEST  : u32 = 0x0084;
 pub const WM_NCACTIVATE : u32 = 0x0086;
+pub const WM_DWMCOMPOSITIONCHANGED : u32 = 798;
 
 pub const WM_SYSCOMMAND : u32 = 0x0112;
 pub const SC_MAXIMIZE   : u64 = 0xF030;

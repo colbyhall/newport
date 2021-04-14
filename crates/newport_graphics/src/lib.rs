@@ -1,8 +1,13 @@
 use newport_engine::{ Module, Engine, EngineBuilder };
-use newport_gpu::{ Instance, Device, RenderPass, Format };
+pub use newport_gpu as gpu;
+use gpu::{ Instance, Device, RenderPass, Format };
 use newport_asset::AssetManager;
 
-pub mod font;
+mod font;
+pub use font::*;
+
+mod texture;
+pub use texture::*;
 
 pub struct Graphics {
     device:      Device,
@@ -28,7 +33,8 @@ impl Module for Graphics {
 
         let asset_manager = engine.module::<AssetManager>().unwrap();
         asset_manager
-            .register_variant::<font::FontCollection>();
+            .register_variant::<FontCollection>()
+            .register_variant::<Texture>();
 
         let backbuffer_render_pass = device.create_render_pass(vec![Format::BGR_U8_SRGB], None).unwrap();
 
@@ -40,3 +46,4 @@ impl Module for Graphics {
             .module::<AssetManager>()
     }
 }
+

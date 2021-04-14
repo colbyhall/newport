@@ -5,6 +5,7 @@ use newport_os::window::{ WindowBuilder, Window, WindowStyle };
 pub use newport_os::window::WindowEvent;
 
 use std::any::TypeId;
+use std::sync::{ Mutex, MutexGuard };
 use std::sync::atomic::{ AtomicBool, Ordering };
 use std::any::Any;
 use std::time::Instant;
@@ -21,8 +22,7 @@ pub struct Engine {
 
     is_running: AtomicBool,
     
-    ignore_drag: AtomicBool,
-    window:      Window,
+    window:      Mutex<Window>,
 }
 
 impl Engine {
@@ -48,7 +48,7 @@ impl Engine {
     
         // UNSAFE: Set the global state
         let engine = unsafe{ 
-            let mut window = WindowBuilder::new()
+            let window = WindowBuilder::new()
                 .title(name.clone())
                 .style(WindowStyle::CustomTitleBar{
                     border: 5.0,
@@ -57,15 +57,12 @@ impl Engine {
                 .spawn()
                 .unwrap();
 
-            window.maximize();
-
             ENGINE = Some(Engine{
                 name:       name,
                 modules:    HashMap::with_capacity(builder.entries.len()),
                 is_running: AtomicBool::new(true),
                 
-                ignore_drag: AtomicBool::new(false),
-                window:      window,
+                window:      Mutex::new(window),
             });
 
             ENGINE.as_mut().unwrap()
@@ -79,7 +76,11 @@ impl Engine {
         // Do post init
         builder.post_inits.drain(..).for_each(|init| init(engine));
 
-        engine.window.set_visible(true);
+        {
+            let mut window = engine.window();
+            window.set_visible(true);
+            window.maximize();
+        }
 
         let mut _fps = 0;
         let mut frame_count = 0;
@@ -100,19 +101,24 @@ impl Engine {
             }
             frame_count += 1;
 
-            for event in engine.window.poll_events(engine.ignore_drag.load(Ordering::Relaxed)) {
-                builder.process_input.iter().for_each(|process_input| process_input(engine, &event));
-
-                match event {
-                    WindowEvent::Closed => {
-                        engine.is_running.store(false, Ordering::Relaxed);
-                        break 'run;
+            {
+                let mut window = engine.window.lock().unwrap();
+    
+                for event in window.poll_events() {
+                    builder.process_input.iter().for_each(|process_input| process_input(engine, &window, &event));
+    
+                    match event {
+                        WindowEvent::Closed => {
+                            engine.is_running.store(false, Ordering::Relaxed);
+                            break 'run;
+                        },
+                        WindowEvent::Resizing(_, _) => {
+                            // builder.tick.iter().for_each(|tick| tick(engine, 0.0));
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
-
-            engine.ignore_drag.store(false, Ordering::Relaxed);
 
             builder.tick.iter().for_each(|tick| tick(engine, dt));
         }
@@ -153,12 +159,8 @@ impl Engine {
     }
 
     /// Returns the window that the engine draws into
-    pub fn window(&self) -> &Window {
-        &self.window
-    }
-
-    pub fn ignore_drag(&self) {
-        self.ignore_drag.store(true, Ordering::Relaxed);
+    pub fn window(&self) -> MutexGuard<Window> {
+        self.window.lock().unwrap()
     }
 
     pub fn shutdown(&self) {
@@ -172,7 +174,7 @@ struct EngineBuilderEntry {
 }
 
 pub trait PostInit      = FnOnce(&Engine) + 'static;
-pub trait ProcessInput  = Fn(&Engine, &WindowEvent) + 'static;
+pub trait ProcessInput  = Fn(&Engine, &Window, &WindowEvent) + 'static;
 pub trait Tick          = Fn(&Engine, f32) + 'static;
 pub trait PreShutdown   = FnOnce(&Engine) + 'static;
 
