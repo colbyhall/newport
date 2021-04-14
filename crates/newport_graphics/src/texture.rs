@@ -66,8 +66,8 @@ impl Asset for Texture {
                     image.height as u32,
                     1,
                     Wrap::Clamp,
-                    Filter::Nearest,
-                    Filter::Nearest
+                    Filter::Linear,
+                    Filter::Linear
                 ).unwrap();
 
                 let mut gfx = device.create_graphics_context().unwrap();

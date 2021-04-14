@@ -283,7 +283,11 @@ impl Window {
 
     /// Maximizes a window and updates the size
     pub fn maximize(&mut self) {
-        unsafe { ShowWindow(self.handle, 3) };
+        if self.is_maximized() {
+            unsafe { ShowWindow(self.handle, 9) };
+        } else {
+            unsafe { ShowWindow(self.handle, 3) };
+        }
         let mut viewport_size = RECT::default();
         unsafe { GetClientRect(self.handle, &mut viewport_size); }
         self.size.0 = viewport_size.right - viewport_size.left;

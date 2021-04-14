@@ -106,8 +106,31 @@ impl Egui {
 
         let pipeline = device.create_pipeline(pipeline_desc).unwrap();
 
+        let ctx = CtxRef::default();
+        let mut style: Style = (*ctx.style()).clone();
+
+        style.visuals.widgets.noninteractive.corner_radius = 0.0;
+        style.visuals.widgets.noninteractive.bg_fill = Color32::from_rgb(40, 40, 40);
+        style.visuals.widgets.noninteractive.fg_stroke.color = Color32::from_rgb(251, 241, 199);
+        style.visuals.widgets.noninteractive.bg_stroke.width = 0.0;
+
+        style.visuals.widgets.inactive.corner_radius = 0.0;
+        style.visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(251, 241, 199);
+
+        style.visuals.widgets.hovered.corner_radius = 0.0;
+        style.visuals.widgets.hovered.bg_fill = Color32::from_rgb(80, 73, 69);
+        style.visuals.widgets.hovered.fg_stroke.color = Color32::from_rgb(251, 241, 199);
+
+        style.visuals.widgets.active.corner_radius = 0.0;
+        style.visuals.widgets.active.bg_fill = Color32::from_rgb(80, 73, 69);
+        style.visuals.widgets.active.fg_stroke.color = Color32::from_rgb(251, 241, 199);
+
+        style.visuals.window_corner_radius = 0.0;
+
+        ctx.set_style(style);
+
         Self {
-            context: CtxRef::default(),
+            context: ctx,
             input:   None,
 
             pipeline: pipeline,

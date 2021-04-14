@@ -51,8 +51,8 @@ impl Engine {
             let window = WindowBuilder::new()
                 .title(name.clone())
                 .style(WindowStyle::CustomTitleBar{
-                    border: 5.0,
-                    drag:   20.0
+                    border: 3.0,
+                    drag:   32.0
                 })
                 .spawn()
                 .unwrap();
