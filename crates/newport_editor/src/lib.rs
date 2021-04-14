@@ -45,7 +45,7 @@ impl Editor {
 
                 let icon = assets.engine_icon.read();
 
-                ui.image(TextureId::User(icon.gpu().bindless().unwrap() as u64), vec2(15.0, 15.0));
+                ui.image(TextureId::User(icon.gpu().bindless().unwrap() as u64), vec2(30.0, 30.0));
 
                 menu::menu(ui, "File", |ui| {
                     if ui.button("Open").clicked() {
@@ -163,7 +163,7 @@ impl Module for Editor {
 
                 let mut editor_assets = editor.assets.write().unwrap();
                 *editor_assets = Some(EditorAssets{
-                    engine_icon: asset_manager.find("assets/branding/logo_white.tex").unwrap(),
+                    engine_icon: asset_manager.find("assets/branding/logo_white_small.tex").unwrap(),
                 });
             })
     }
