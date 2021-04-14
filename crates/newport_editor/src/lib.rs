@@ -34,6 +34,8 @@ impl EditorPage for HomePage {
         SidePanel::left("world", 300.0).show(ctx, |ui|{
             ui.heading("Hello World");
 
+            ui.separator();
+
             ui.button("Buttons").clicked();
         });
     }
@@ -92,6 +94,12 @@ impl Editor {
 
         let ctx = editor.gui.ctx().clone();
 
+        let mut style = (*ctx.style()).clone();
+        let og_style = style.clone();
+
+        style.visuals.widgets.noninteractive.bg_stroke.width = 0.0;
+        
+        ctx.set_style(style);
         TopPanel::top("title").show(&ctx, |ui|{
             menu::bar(ui, |ui|{
                 let original_width = ui.available_width();
@@ -177,8 +185,7 @@ impl Editor {
             })
         });
 
-        let mut frame = Frame::default();
-        frame.fill = Color32::from_rgb(52, 48, 47);
+        ctx.set_style(og_style);
 
         if editor.selected_page >= editor.pages.len() {
             editor.selected_page = 0;

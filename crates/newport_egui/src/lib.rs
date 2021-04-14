@@ -112,7 +112,6 @@ impl Egui {
         style.visuals.widgets.noninteractive.corner_radius = 0.0;
         style.visuals.widgets.noninteractive.bg_fill = Color32::from_rgb(40, 40, 40);
         style.visuals.widgets.noninteractive.fg_stroke.color = Color32::from_rgb(251, 241, 199);
-        style.visuals.widgets.noninteractive.bg_stroke.width = 0.0;
 
         style.visuals.widgets.inactive.corner_radius = 0.0;
         style.visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(251, 241, 199);
