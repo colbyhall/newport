@@ -52,7 +52,7 @@ impl Engine {
                 .title(name.clone())
                 .style(WindowStyle::CustomTitleBar{
                     border: 3.0,
-                    drag:   32.0
+                    drag:   Default::default(),
                 })
                 .spawn()
                 .unwrap();

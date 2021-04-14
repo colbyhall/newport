@@ -133,7 +133,7 @@ impl RECT {
 }   
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct POINT {
     pub x: LONG,
     pub y: LONG,

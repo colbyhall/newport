@@ -121,6 +121,16 @@ pub const MONITOR_DEFAULTTONULL     : DWORD = 0x00000000;
 pub const MONITOR_DEFAULTTOPRIMARY  : DWORD = 0x00000001;
 pub const MONITOR_DEFAULTTONEAREST  : DWORD = 0x00000002;
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct TRACKMOUSEEVENT {
+    pub cbSize:      DWORD,
+    pub dwFlags:     DWORD,
+    pub hwndTrack:   HWND,
+    pub dwHoverTime: DWORD,
+}
+pub type LPTRACKMOUSEEVENT = *mut TRACKMOUSEEVENT;
+
 #[link(name = "user32")]
 extern "stdcall" {
     pub fn GetCaretBlinkTime() -> UINT;
@@ -136,6 +146,7 @@ extern "stdcall" {
     pub fn GetClientRect(hWnd: HWND, lpRect: LPRECT) -> BOOL;
     pub fn GetWindowRect(hWnd: HWND, lpRect: LPRECT) -> BOOL;
     pub fn ScreenToClient(hWnd: HWND, lpPoint: LPPOINT) -> BOOL;
+    pub fn GetCursorPos(lpPoint: LPPOINT) -> BOOL;
 
     pub fn SetWindowLongPtrA(hWnd: HWND, nIndex: i32, dwNewLong: LONG_PTR) -> LONG_PTR;
     pub fn GetWindowLongPtrA(hWnd: HWND, nIndex: i32) -> LONG_PTR;
@@ -156,4 +167,6 @@ extern "stdcall" {
 
     pub fn IsZoomed(hwnd: HWND) -> BOOL;
     pub fn IsIconic(hwnd: HWND) -> BOOL;
+
+    pub fn TrackMouseEvent(lpEventTrack: LPTRACKMOUSEEVENT) -> BOOL;
 }

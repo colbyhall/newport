@@ -3,6 +3,7 @@ use newport_graphics::{ Graphics };
 pub use newport_egui::*;
 use newport_gpu as gpu;
 use newport_os as os;
+use newport_math as math;
 
 use std::sync::{ Mutex, MutexGuard };
 
@@ -149,8 +150,9 @@ impl Editor {
                     let og_style = (**ui.style()).clone();
 
                     let mut style = (**ui.style()).clone();
-                    style.visuals.widgets.hovered.bg_fill = Color32::from_rgb(204, 36, 29);
-                    style.visuals.widgets.active.bg_fill  = Color32::from_rgb(204, 36, 29);
+                    let close_color = Color32::from_rgb(204, 36, 29);
+                    style.visuals.widgets.hovered.bg_fill = close_color;
+                    style.visuals.widgets.active.bg_fill  = close_color;
                     ui.set_style(style);
 
                     if ui.button("🗙").clicked() {
@@ -169,8 +171,13 @@ impl Editor {
 
                     let right_used = size.x - ui.available_width();
                     
+                    // Grab the space left and update the engines window non client area for dragging
                     let space_left = ui.available_rect_before_wrap();
-                    window.set_ignore_drag(!ui.rect_contains_pointer(space_left));
+                    let drag_rect = math::Rect::from_min_max(
+                        (space_left.min.x, space_left.min.y).into(), 
+                        (space_left.max.x, space_left.max.y).into()
+                    );
+                    window.set_custom_drag(drag_rect);
 
                     let title = Label::new(format!("{} - Newport Editor", engine.name()));
                     // TODO: Properly calculate the text width

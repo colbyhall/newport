@@ -10,6 +10,8 @@ use crate::{ MAKEINTRESOURCEA, GET_WHEEL_DELTA_WPARAM, HIWORD, proc_address };
 use crate::library::Library;
 use crate::input::*;
 
+use newport_math::Rect;
+
 use lazy_static::lazy_static;
 
 use std::collections::VecDeque;
@@ -61,7 +63,7 @@ pub enum WindowStyle {
     Fullscreen,
     CustomTitleBar{
         border: f32,
-        drag:   f32,
+        drag:   Rect,
     }
 }
 
@@ -227,7 +229,21 @@ impl WindowBuilder {
                 return Err(WindowSpawnError::WindowCreateFailed);
             }
 
-            SetWindowTheme(handle, b"\0".as_ptr() as LPCWSTR, b"\0".as_ptr() as LPCWSTR);
+            // We have to do this to prevent weird bugs with top title bar showing
+            match &self.style {
+                WindowStyle::CustomTitleBar{ .. } => {
+                    SetWindowTheme(handle, b"\0".as_ptr() as LPCWSTR, b"\0".as_ptr() as LPCWSTR);
+                }
+                _ => {} 
+            }
+
+            let mut track = TRACKMOUSEEVENT{
+                cbSize:         size_of::<TRACKMOUSEEVENT>() as u32,
+                dwFlags:        0x00000002, // Mouse Leave
+                hwndTrack:      handle,
+                dwHoverTime:    0,
+            };
+            TrackMouseEvent(&mut track);
 
             let mut window = Window{
                 handle: handle,
@@ -235,7 +251,7 @@ impl WindowBuilder {
                 title:  self.title,
                 dpi:    dpi,
                 style:  self.style,
-                ignore_drag: false,
+                mouse_left: false,
             };
 
             window.center_in_window(); // TODO: Have some position in the builder with a center function
@@ -257,7 +273,8 @@ pub struct Window {
     title: String,
     dpi:   f32,
     style: WindowStyle,
-    ignore_drag: bool,
+    
+    mouse_left: bool,
 }
 
 #[cfg(target_os = "windows")]
@@ -339,11 +356,13 @@ impl Window {
                     y: 0
                 },
             };
+
+            // Poll window events and dispatch events through the window_callback
             while PeekMessageA(&mut msg, self.handle, 0, 0, PM_REMOVE) == 1 {
                 TranslateMessage(&msg);
                 DispatchMessageA(&msg);
             }
-    
+
             result
         }
     }
@@ -374,8 +393,13 @@ impl Window {
         unsafe{ IsIconic(self.handle) != 0 }
     }
 
-    pub fn set_ignore_drag(&mut self, ignore_drag: bool) {
-        self.ignore_drag = ignore_drag;
+    pub fn set_custom_drag(&mut self, new_drag: Rect) {
+        match &mut self.style {
+            WindowStyle::CustomTitleBar{ drag, .. } => {
+                *drag = new_drag;
+            },
+            _ => unreachable!()
+        }
     }
 }
 
@@ -516,9 +540,23 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
         },
         WM_MOUSEMOVE => {
             event = Some(WindowEvent::MouseMove(x, y));
+
+            if window.mouse_left {
+                window.mouse_left = false;
+
+                let mut track = TRACKMOUSEEVENT{
+                    cbSize:         size_of::<TRACKMOUSEEVENT>() as u32,
+                    dwFlags:        0x00000002, // Mouse Leave
+                    hwndTrack:      hWnd,
+                    dwHoverTime:    0,
+                };
+                unsafe { TrackMouseEvent(&mut track) };
+            }
         },
         WM_MOUSELEAVE => {
             event = Some(WindowEvent::MouseLeave);
+
+            window.mouse_left = true;
         },
 
         // NOTE: This is all the crazy style stuff
@@ -598,9 +636,15 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
                     }
 
                     if !client.point_in_rect(mouse) {
-                        println!("test");
                         return HTNOWHERE;
                     }
+
+                    let drag = RECT{
+                        left:  drag.min.x as u32,
+                        top:   drag.min.y as u32,
+                        bottom: drag.max.y as u32,
+                        right: drag.max.x as u32,
+                    };
         
                     let mut left = false;
                     let mut right = false;
@@ -634,7 +678,7 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
                     } else if bot {
                         result = HTBOTTOM;
                     } else {
-                        if client.top <= mouse.y && mouse.y < client.top + drag as u32 && !window.ignore_drag {
+                        if drag.point_in_rect(mouse) {
                             result = HTCAPTION;
                         } else {
                             result = HTCLIENT;
