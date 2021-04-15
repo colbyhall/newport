@@ -99,6 +99,13 @@ impl Editor {
         let og_style = style.clone();
 
         style.visuals.widgets.noninteractive.bg_stroke.width = 0.0;
+
+        let menu_background = Color32::from_rgb(29, 32, 33);
+        let active = Color32::from_rgb(60, 56, 54);
+        style.visuals.widgets.noninteractive.bg_fill = menu_background;
+        style.visuals.widgets.inactive.bg_fill = menu_background;
+        style.visuals.widgets.hovered.bg_fill = active;
+        style.visuals.widgets.active.bg_fill = active;
         ctx.set_style(style);
         
         TopPanel::top("title").show(&ctx, |ui|{
