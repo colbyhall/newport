@@ -99,8 +99,8 @@ impl Editor {
         let og_style = style.clone();
 
         style.visuals.widgets.noninteractive.bg_stroke.width = 0.0;
-        
         ctx.set_style(style);
+        
         TopPanel::top("title").show(&ctx, |ui|{
             menu::bar(ui, |ui|{
                 let original_width = ui.available_width();
@@ -173,10 +173,23 @@ impl Editor {
                     
                     // Grab the space left and update the engines window non client area for dragging
                     let space_left = ui.available_rect_before_wrap();
+
+                    let egui_drag_rect = {
+                        let scale = ctx.pixels_per_point();
+
+                        let width = space_left.width();
+                        let top_center = pos2(space_left.left() + width / 2.0, space_left.top());
+
+                        let min = pos2(top_center.x - width * scale, top_center.y);
+                        let max = pos2(top_center.x + width * scale, top_center.y + space_left.height() * scale);
+
+                        Rect::from_min_max(min, max)
+                    };
                     let drag_rect = math::Rect::from_min_max(
-                        (space_left.min.x, space_left.min.y).into(), 
-                        (space_left.max.x, space_left.max.y).into()
+                        (egui_drag_rect.min.x, egui_drag_rect.min.y).into(), 
+                        (egui_drag_rect.max.x, egui_drag_rect.max.y).into()
                     );
+
                     window.set_custom_drag(drag_rect);
 
                     let title = Label::new(format!("{} - Newport Editor", engine.name()));
