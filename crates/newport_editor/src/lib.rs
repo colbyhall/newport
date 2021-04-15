@@ -267,6 +267,13 @@ impl Module for Editor {
             })
             .tick(|engine: &Engine, dt: f32| {
                 let editor = engine.module::<Editor>().unwrap();
+
+                {
+                    let window = engine.window();
+                    if window.is_minimized() {
+                        return;
+                    }
+                }
                 editor.do_frame(dt);
             })
     }
