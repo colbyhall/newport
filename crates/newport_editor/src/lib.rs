@@ -178,13 +178,14 @@ impl Editor {
                         let scale = ctx.pixels_per_point();
 
                         let width = space_left.width();
-                        let top_center = pos2(space_left.left() + width / 2.0, space_left.top());
+                        let top_center = pos2(space_left.left() * scale + (width / 2.0) * scale, space_left.top() * scale);
 
-                        let min = pos2(top_center.x - width * scale, top_center.y);
-                        let max = pos2(top_center.x + width * scale, top_center.y + space_left.height() * scale);
-
+                        let min = pos2(top_center.x - (width / 2.0) * scale, top_center.y);
+                        let max = pos2(top_center.x + (width / 2.0) * scale, top_center.y + space_left.height() * scale);
+                        
                         Rect::from_min_max(min, max)
                     };
+
                     let drag_rect = math::Rect::from_min_max(
                         (egui_drag_rect.min.x, egui_drag_rect.min.y).into(), 
                         (egui_drag_rect.max.x, egui_drag_rect.max.y).into()
