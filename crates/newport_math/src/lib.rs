@@ -1,13 +1,5 @@
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_float_classify)]
-#![cfg_attr(target_arch = "spirv", feature(asm, register_attr, repr_simd))]
-#![no_std]
-
-#[cfg(target_arch = "spirv")]
-mod spirv;
-
-extern crate num_traits;
-pub use num_traits::*;
 
 pub const PI  : f32 = 3.141592;
 pub const TAU : f32 = PI * 2.0;

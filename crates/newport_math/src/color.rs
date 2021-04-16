@@ -1,11 +1,7 @@
-use core::convert::From;
+use std::convert::From;
 use crate::Vector4;
 
-#[allow(unused_imports)]
-use num_traits::*;
-
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
-#[cfg_attr(target_arch = "spirv", repr(simd))]
 pub struct Color {
     pub r: f32,
     pub g: f32,

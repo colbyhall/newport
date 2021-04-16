@@ -1,9 +1,6 @@
 use crate::Vector2;
 
-use core::convert::From;
-
-#[allow(unused_imports)]
-use num_traits::*;
+use std::convert::From;
 
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Rect {

@@ -8,9 +8,3 @@ repository = "https://github.com/colbyhall/newport"
 description = "Math library that also works with spirv shaders for Newport engine"
 categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
-
-[dependencies]
-num-traits = { version = "0.2.14", default-features = false, features = ["libm"] }
-
-[target.'cfg(target_arch = "spirv")'.dependencies]
-spirv-std = { version = "0.4.0-alpha.3", features = ["const-generics"] }

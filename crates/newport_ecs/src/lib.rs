@@ -7,3 +7,9 @@ pub mod query;
 
 #[cfg(test)]
 mod test;
+
+pub use crate::{
+    world::World,
+    entity::Entity,
+    component::Component
+};

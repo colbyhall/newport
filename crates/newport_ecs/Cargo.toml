@@ -7,6 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-newport_math = { path = "../newport_math", version = "0.0.1" }
+newport_math    = { path = "../newport_math", version = "0.0.1" }
+newport_codegen = { path = "../newport_codegen", version = "0.0.1" }
 
 slotmap = "1.0.3"

@@ -1,10 +1,7 @@
-use core::ops::{ Mul, MulAssign, };
+use std::ops::{ Mul, MulAssign, };
 
 use crate::Vector4;
 use crate::Vector3;
-
-#[allow(unused_imports)]
-use num_traits::*;
 
 #[derive(Copy, Clone, Default, PartialEq, PartialOrd, Debug)]
 pub struct Matrix4 {

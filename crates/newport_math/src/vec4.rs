@@ -1,4 +1,4 @@
-use core::ops::{ 
+use std::ops::{ 
     Add, 
     AddAssign, 
     
@@ -13,16 +13,12 @@ use core::ops::{
     
     Neg,
 };
-use core::convert::From;
-
-#[allow(unused_imports)]
-use num_traits::*;
+use std::convert::From;
 
 use crate::Vector3;
 use crate::Color;
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
-#[cfg_attr(target_arch = "spirv", repr(simd))]
 pub struct Vector4 {
     pub x: f32,
     pub y: f32,

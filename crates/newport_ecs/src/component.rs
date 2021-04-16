@@ -1,8 +1,8 @@
-pub trait Component = 'static + Send + Sync;
-
 use std::any::{ TypeId, Any };
 use std::boxed::Box;
 use std::collections::{ HashMap, VecDeque };
+
+pub trait Component = 'static + Send + Sync;
 
 #[derive(Copy, Clone)]
 pub(crate) struct ComponentId {
@@ -139,7 +139,7 @@ impl ComponentMap {
 
                 let entry = ComponentMapEntry{
                     storage: Box::new(ComponentStorage::<T>::new()),
-                    remove:  remove::<T>
+                    remove:  remove::<T>,
                 };
                 self.map.insert(variant, entry);
                 
