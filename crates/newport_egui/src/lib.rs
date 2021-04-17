@@ -365,7 +365,6 @@ impl Egui {
                 let r = srgb_to_linear(vertex.color.r() as f32 / 255.0);
                 let g = srgb_to_linear(vertex.color.g() as f32 / 255.0);
                 let b = srgb_to_linear(vertex.color.b() as f32 / 255.0);
-                let a = vertex.color.a() as f32 / 255.0;
                 let color = Color::new(r, g, b, 1.0);
 
                 vertices.push(GuiVertex{
