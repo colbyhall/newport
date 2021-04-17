@@ -22,6 +22,7 @@ newport_gpu       = { path = "crates/newport_gpu", version = "0.0.1" }
 newport_graphics  = { path = "crates/newport_graphics", version = "0.0.1" }
 newport_math      = { path = "crates/newport_math", version = "0.0.1" }
 newport_editor    = { path = "crates/newport_editor", version = "0.0.1" }
+newport_codegen   = { path = "crates/newport_codegen", version = "0.0.1" }
 
 # Serde sadly has to be included in the dependency list of every package that uses it
 serde = { version = "1.0.125", features = ["derive"] }

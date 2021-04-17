@@ -2,6 +2,7 @@ use crate::world::World;
 
 use newport_math::Vector3;
 
+#[cfg(editable)]
 use newport_editor::Editable;
 
 struct Test {
@@ -9,7 +10,7 @@ struct Test {
 }
 
 #[allow(dead_code)]
-#[derive(Editable)]
+#[cfg_attr(feature = "editable", derive(Editable))]
 struct Transform {
     position: Vector3,
 }
