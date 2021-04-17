@@ -220,10 +220,7 @@ impl ComponentMap {
         let entry = {
             let found = self.map.get_mut(&variant);
             if found.is_none() {
-
-
                 self.map.insert(variant, ComponentMapEntry::new::<T>());
-                
                 self.map.get_mut(&variant).unwrap()
             } else {
                 found.unwrap()
