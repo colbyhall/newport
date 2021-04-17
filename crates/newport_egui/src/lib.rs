@@ -5,7 +5,7 @@ use newport_gpu as gpu;
 use newport_os::input::*;
 use newport_os as os;
 
-use newport_math::{ Color, Matrix4, Vector2, Vector3, srgb_to_linear };
+use newport_math::{ Color, Matrix4, Vector2, Vector3, srgb_to_linear, Vector4 };
 
 pub use egui::*;
 
@@ -19,6 +19,7 @@ static SHADER_SOURCE: &str = "
     SamplerState      all_samplers[] : register(s2);
     struct Constants {
         float4x4 view;
+        float2   viewport;
     };
     [[vk::push_constant]] Constants constants;
 
@@ -26,12 +27,16 @@ static SHADER_SOURCE: &str = "
         float3 position : POSITION;
         float2 uv       : TEXCOORD;
         float4 color    : COLOR;
-        uint texture     : TEXTURE;
+        float4 scissor  : SCISSOR;
+        uint texture    : TEXTURE;
     };
+
     struct Vertex_Out {
         float2 uv       : TEXCOORD;
         float4 color    : COLOR;
-        uint texture     : TEXTURE;
+        float4 scissor  : SCISSOR;
+        float2 pos      : POS;
+        uint texture    : TEXTURE;
         
         float4 position : SV_POSITION;
     };
@@ -41,6 +46,8 @@ static SHADER_SOURCE: &str = "
         OUT.uv      = IN.uv;
         OUT.texture = IN.texture;
         OUT.color   = IN.color;
+        OUT.scissor = IN.scissor;
+        OUT.pos     = IN.position.xy;
 
         OUT.position = mul(constants.view, float4(IN.position, 1.0));
 
@@ -50,15 +57,21 @@ static SHADER_SOURCE: &str = "
     }
 
     struct Pixel_In {
-        float2 uv    : TEXCOORD;
-        float4 color : COLOR;
-        uint texture  : TEXTURE;
+        float2 uv      : TEXCOORD;
+        float4 color   : COLOR;
+        float4 scissor : SCISSOR;
+        float2 pos : POS;
+        uint texture   : TEXTURE;
     };
     float4 main_ps( Pixel_In IN) : SV_TARGET {
         Texture2D    my_texture = all_textures[IN.texture];
         SamplerState my_sampler = all_samplers[IN.texture];
+
+        if (IN.pos.x >= IN.scissor.x && IN.pos.y >= IN.scissor.y && IN.pos.x <= IN.scissor.z && IN.pos.y <= IN.scissor.w) {
+            return IN.color * my_texture.Sample(my_sampler, IN.uv, 0);
+        }
         
-        return IN.color * my_texture.Sample(my_sampler, IN.uv, 0);
+        return float4(0.0, 0.0, 0.0, 0.0);
     }
 ";
 
@@ -77,7 +90,8 @@ pub struct Egui {
 
 #[allow(dead_code)]
 struct DrawConstants {
-    view: Matrix4,
+    view:     Matrix4,
+    viewport: Vector2,
 }
 
 impl Egui {
@@ -371,6 +385,7 @@ impl Egui {
                     position: Vector2::new(vertex.pos.x, vertex.pos.y),
                     uv:       Vector2::new(vertex.uv.x,  vertex.uv.y),
                     color:    color,
+                    scissor:  Vector4::new(it.0.min.x, it.0.min.y, it.0.max.x, it.0.max.y),
                     tex:      tex,
                 });
             }
@@ -398,7 +413,8 @@ impl Egui {
         gfx.bind_vertex_buffer(&vertex_buffer);
         gfx.bind_index_buffer(&index_buffer);
         gfx.push_constants(DrawConstants{
-            view: proj * view,
+            view:     proj * view,
+            viewport: viewport,
         });
         gfx.draw_indexed(indices.len(), 0);
     }
@@ -413,6 +429,7 @@ struct GuiVertex {
     position: Vector2,
     uv:       Vector2,
     color:    Color,
+    scissor:  Vector4,
     tex:      u32,
 }
 
@@ -422,6 +439,7 @@ impl gpu::Vertex for GuiVertex {
             gpu::VertexAttribute::Vector2,
             gpu::VertexAttribute::Vector2,
             gpu::VertexAttribute::Color,
+            gpu::VertexAttribute::Vector4,
             gpu::VertexAttribute::Uint32,
         ]
     }

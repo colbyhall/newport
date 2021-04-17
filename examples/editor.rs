@@ -127,8 +127,6 @@ impl Page for WorldPage {
     }
 }
 
-
-
 impl Module for EditorExample {
     fn new() -> Self {
         let mut world = World::new();
