@@ -514,8 +514,8 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
 
             event = Some(WindowEvent::Char(std::char::from_u32(c).unwrap()));
         },
-        WM_MOUSEHWHEEL => {
-            let delta = GET_WHEEL_DELTA_WPARAM!(wParam);
+        WM_MOUSEWHEEL => {
+            let delta = GET_WHEEL_DELTA_WPARAM!(wParam) / 8;
             event = Some(WindowEvent::MouseWheel(delta));
         },
         WM_LBUTTONDOWN => {

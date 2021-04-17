@@ -91,7 +91,6 @@ pub const WM_MOUSEWHEEL     : u32 = 0x020A;
 pub const WM_XBUTTONDOWN    : u32 = 0x020B;
 pub const WM_XBUTTONUP      : u32 = 0x020C;
 pub const WM_XBUTTONDBLCLK  : u32 = 0x020D;
-pub const WM_MOUSEHWHEEL    : u32 = 0x020E;
 
 pub const WM_MOUSELEAVE : u32 = 0x02A3;
 

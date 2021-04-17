@@ -30,7 +30,7 @@ struct Named {
 }
 
 struct NonEditable {
-    foo: Vec<f32>,
+    _foo: Vec<f32>,
 }
 
 #[derive(Editable)]
@@ -203,7 +203,7 @@ impl Module for EditorExample {
                 color: Color::WHITE,
             })
             .with(NonEditable{
-                foo: Vec::new(),
+                _foo: Vec::new(),
             })
             .finish();
 

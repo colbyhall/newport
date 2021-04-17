@@ -260,7 +260,10 @@ impl Egui {
             },
             WindowEvent::MouseLeave => {
                 input.events.push(Event::PointerGone);
-            }
+            },
+            WindowEvent::MouseWheel(delta) => {
+                input.scroll_delta = vec2(0.0, *delta as f32);
+            },
             _ => {}
         }
     }
@@ -299,11 +302,7 @@ impl Egui {
 
             let mut pixels = Vec::with_capacity(texture.pixels.len());
             for it in texture.pixels.iter() {
-                let mut color: u32 = (*it as u32) << 24;
-                color |= (*it as u32) << 16;
-                color |= (*it as u32) << 8;
-                color |= *it as u32;
-
+                let color = Color32::from_white_alpha(*it);
 
                 pixels.push(color);
             }
