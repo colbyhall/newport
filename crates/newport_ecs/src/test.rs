@@ -2,11 +2,14 @@ use crate::world::World;
 
 use newport_math::Vector3;
 
+use newport_editor::Editable;
+
 struct Test {
     name: String,
 }
 
 #[allow(dead_code)]
+#[derive(Editable)]
 struct Transform {
     position: Vector3,
 }

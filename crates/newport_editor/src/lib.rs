@@ -1,3 +1,4 @@
+use math::Vector3;
 use newport_engine::{ Module, Engine, EngineBuilder, WindowEvent };
 use newport_graphics::{ Graphics };
 pub use newport_egui::*;
@@ -19,10 +20,13 @@ pub trait EditorPage {
 
     fn name(&self) -> &str;
 
-    fn show(&self, ctx: &CtxRef);
+    fn show(&mut self, ctx: &CtxRef);
 }
 
-struct HomePage;
+#[derive(Default)]
+struct HomePage {
+    test: Vector3,
+}
 
 impl EditorPage for HomePage {
     fn can_close(&self) -> bool {
@@ -33,13 +37,15 @@ impl EditorPage for HomePage {
         "Home"
     }
 
-    fn show(&self, ctx: &CtxRef) {
+    fn show(&mut self, ctx: &CtxRef) {
         SidePanel::left("world", 300.0).show(ctx, |ui|{
             ui.heading("Hello World");
 
             ui.separator();
 
             ui.button("Buttons").clicked();
+
+            self.test.edit("test", ui);
         });
     }
 }
@@ -57,7 +63,7 @@ impl EditorPage for TestPage {
         &self.name
     }
 
-    fn show(&self, ctx: &CtxRef) {
+    fn show(&mut self, ctx: &CtxRef) {
         Window::new("Settings").resizable(true).collapsible(true).show(ctx, |ui|{
             ScrollArea::auto_sized().show(ui, |ui|{
                 ctx.settings_ui(ui);
@@ -220,7 +226,10 @@ impl Editor {
         if editor.selected_page >= editor.pages.len() {
             editor.selected_page = 0;
         }
-        let page = &editor.pages[editor.selected_page];
+
+        let selected_page = editor.selected_page;
+
+        let page = &mut editor.pages[selected_page];
         page.show(&ctx);
 
         let (_, clipped_meshes) = editor.gui.end_frame();
@@ -246,7 +255,7 @@ impl Editor {
 
 impl Module for Editor {
     fn new() -> Self {
-        let home = Box::new(HomePage);
+        let home = Box::new(HomePage::default());
 
         let mut pages: Vec<Box<dyn EditorPage>> = Vec::with_capacity(32);
         pages.push(home);
@@ -289,5 +298,17 @@ impl Module for Editor {
 }
 
 pub trait Editable {
-    fn show(name: &str, ui: &mut Ui);
+    fn edit(&mut self, name: &str, ui: &mut Ui);
+}
+
+impl Editable for math::Vector3 {
+    fn edit(&mut self, name: &str, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.label(name);
+            ui.separator();
+            ui.add(DragValue::new(&mut self.x));
+            ui.add(DragValue::new(&mut self.y));
+            ui.add(DragValue::new(&mut self.z));
+        });
+    }
 }

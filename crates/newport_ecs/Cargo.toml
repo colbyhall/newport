@@ -8,4 +8,7 @@ edition = "2018"
 
 [dependencies]
 newport_math    = { path = "../newport_math", version = "0.0.1" }
+
+newport_editor = { path = "../newport_editor", version = "0.0.1" }
+
 slotmap = "1.0.3"
