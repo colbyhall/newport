@@ -7,6 +7,8 @@ use newport_math as math;
 
 use std::sync::{ Mutex, MutexGuard };
 
+pub use newport_codegen::Editable;
+
 mod menu_tab;
 use menu_tab::*;
 
@@ -284,4 +286,8 @@ impl Module for Editor {
                 editor.do_frame(dt);
             })
     }
+}
+
+pub trait Editable {
+    fn show(name: &str, ui: &mut Ui);
 }
