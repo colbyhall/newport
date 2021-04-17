@@ -2,6 +2,9 @@ use crate::entity::{ Entity, EntityData };
 use crate::component::{ ComponentMap, ComponentId, Component };
 use crate::query::{ QueryFromComponents, Query };
 
+#[cfg(feature = "editable")]
+use newport_editor::Ui;
+
 use std::any::TypeId;
 
 use slotmap::SlotMap;
@@ -93,5 +96,22 @@ impl World {
 
     pub fn query(&mut self) -> QueryFromComponents {
         Query::from_components(self)
+    }
+
+    #[cfg(feature = "editable")]
+    pub fn edit(&mut self, entity: Entity, ui: &mut Ui) {
+        let entity_data = self.entities.get_mut(entity);
+        if entity_data.is_none() {
+            return;
+        }
+
+        let entity_data = entity_data.unwrap();
+        for comp in entity_data.components.iter() {
+            self.components.edit(comp, ui);
+        }
+    }
+
+    pub fn entities(&self) -> Vec<Entity> {
+        self.entities.keys().collect()
     }
 }

@@ -25,3 +25,6 @@ pub use color::*;
 pub mod rect;
 pub use rect::*;
 
+pub mod quat;
+pub use quat::*;
+

@@ -36,3 +36,7 @@ pub mod editor {
 }
 
 pub use newport_codegen::Editable;
+
+pub mod ecs {
+    pub use newport_ecs::*;
+}

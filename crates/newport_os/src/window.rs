@@ -470,12 +470,16 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
             event = Some(WindowEvent::FocusLost);
         },
         WM_SYSKEYDOWN | WM_KEYDOWN => {
-            let key = Input::key_from_code(wParam as u8).unwrap();
-            event = Some(WindowEvent::Key{ key: key, pressed: true });
+            let key = Input::key_from_code(wParam as u8);
+            if key.is_some() {
+                event = Some(WindowEvent::Key{ key: key.unwrap(), pressed: true });
+            }
         },
         WM_SYSKEYUP | WM_KEYUP => {
-            let key = Input::key_from_code(wParam as u8).unwrap();
-            event = Some(WindowEvent::Key{ key: key, pressed: false });
+            let key = Input::key_from_code(wParam as u8);
+            if key.is_some() {
+                event = Some(WindowEvent::Key{ key: key.unwrap(), pressed: false });
+            }
         },
         WM_SIZING | WM_SIZE => {
             let mut viewport_size = RECT::default();

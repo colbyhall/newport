@@ -1,4 +1,3 @@
-use math::Vector3;
 use newport_engine::{ Module, Engine, EngineBuilder, WindowEvent };
 use newport_graphics::{ Graphics };
 pub use newport_egui::*;
@@ -13,7 +12,10 @@ pub use newport_codegen::Editable;
 mod menu_tab;
 use menu_tab::*;
 
-pub trait EditorPage {
+mod editable;
+pub use editable::*;
+
+pub trait Page {
     fn can_close(&self) -> bool {
         true
     }
@@ -23,70 +25,22 @@ pub trait EditorPage {
     fn show(&mut self, ctx: &CtxRef);
 }
 
-#[derive(Default)]
-struct HomePage {
-    test: Vector3,
-}
-
-impl EditorPage for HomePage {
-    fn can_close(&self) -> bool {
-        false
-    }
-
-    fn name(&self) -> &str {
-        "Home"
-    }
-
-    fn show(&mut self, ctx: &CtxRef) {
-        SidePanel::left("world", 300.0).show(ctx, |ui|{
-            ui.heading("Hello World");
-
-            ui.separator();
-
-            ui.button("Buttons").clicked();
-
-            self.test.edit("test", ui);
-        });
-    }
-}
-
-struct TestPage {
-    name: String
-}
-
-impl EditorPage for TestPage {
-    fn can_close(&self) -> bool {
-        true
-    }
-
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn show(&mut self, ctx: &CtxRef) {
-        Window::new("Settings").resizable(true).collapsible(true).show(ctx, |ui|{
-            ScrollArea::auto_sized().show(ui, |ui|{
-                ctx.settings_ui(ui);
-            })
-        });
-    }
-}
-
-struct EditorAssets {
-}
-
 #[allow(dead_code)]
 struct EditorInner {
     gui:    Egui,
-    assets: Option<EditorAssets>,
 
-    pages: Vec<Box<dyn EditorPage>>,
+    pages: Vec<Box<dyn Page>>,
     selected_page: usize,
 }
 
 pub struct Editor(Mutex<EditorInner>);
 
 impl Editor {
+    pub fn push_page(&self, page: Box<dyn Page>) {
+        let mut editor = self.lock();
+        editor.pages.push(page);
+    }
+
     fn lock(&self) -> MutexGuard<EditorInner> {
         self.0.lock().unwrap()
     }
@@ -255,23 +209,10 @@ impl Editor {
 
 impl Module for Editor {
     fn new() -> Self {
-        let home = Box::new(HomePage::default());
-
-        let mut pages: Vec<Box<dyn EditorPage>> = Vec::with_capacity(32);
-        pages.push(home);
-
-        for i in 0..5 {
-            let page = Box::new(TestPage{
-                name: format!("Test {}", i)
-            });
-            pages.push(page);
-        }
-
         Self(Mutex::new(EditorInner{
             gui:    Egui::new(),
-            assets: None,
 
-            pages: pages,
+            pages: Vec::with_capacity(32),
             selected_page: 0,
         }))
     }
@@ -294,21 +235,5 @@ impl Module for Editor {
                 }
                 editor.do_frame(dt);
             })
-    }
-}
-
-pub trait Editable {
-    fn edit(&mut self, name: &str, ui: &mut Ui);
-}
-
-impl Editable for math::Vector3 {
-    fn edit(&mut self, name: &str, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            ui.label(name);
-            ui.separator();
-            ui.add(DragValue::new(&mut self.x));
-            ui.add(DragValue::new(&mut self.y));
-            ui.add(DragValue::new(&mut self.z));
-        });
     }
 }

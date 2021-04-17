@@ -2,7 +2,7 @@ use crate::world::World;
 
 use newport_math::Vector3;
 
-#[cfg(editable)]
+#[cfg(feature = "editable")]
 use newport_editor::Editable;
 
 struct Test {

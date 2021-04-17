@@ -1,10 +1,44 @@
-use std::any::{ TypeId, Any };
+use std::any::{ TypeId, Any, type_name };
 use std::boxed::Box;
 use std::collections::{ HashMap, VecDeque };
 
-pub trait Component = 'static + Send + Sync;
+#[cfg(feature = "editable")]
+use newport_editor::{ Editable, Ui };
 
-#[derive(Copy, Clone)]
+pub trait Component: 'static + Send + Sync {
+    const TRANSIENT: bool;
+    
+    #[cfg(feature = "editable")]
+    const CAN_EDIT:  bool;
+
+    #[cfg(feature = "editable")]
+    fn edit(&mut self, name: &str, ui: &mut Ui);
+}
+
+impl<T> Component for T where T: Send + Sync + 'static {
+    default const TRANSIENT: bool = true;
+    
+    #[cfg(feature = "editable")]
+    default const CAN_EDIT:  bool = false;
+
+    #[cfg(feature = "editable")]
+    default fn edit(&mut self, _name: &str, _ui: &mut Ui) { }
+}
+
+#[cfg(feature = "editable")]
+impl<T> Component for T where T: Editable + Send + Sync + 'static {
+    const TRANSIENT: bool = true;
+
+    #[cfg(feature = "editable")]
+    default const CAN_EDIT:  bool = true;
+
+    #[cfg(feature = "editable")]
+    default fn edit(&mut self, name: &str, ui: &mut Ui) { 
+        self.edit(name, ui)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
 pub(crate) struct ComponentId {
     pub variant: TypeId,
     
@@ -110,6 +144,62 @@ impl<T: Component> ComponentStorage<T> {
 struct ComponentMapEntry {
     storage: Box<dyn Any>,
     remove:  fn(&mut Box<dyn Any>, &ComponentId) -> bool, // The api does not require that we know type of a component at removal so we must keep a ptr to the drop method
+
+    #[cfg(feature = "editable")]
+    edit: Option<fn(&mut Box<dyn Any>, &ComponentId, ui: &mut Ui)>,
+}
+
+impl ComponentMapEntry {
+    fn new<T: Component>() -> Self {
+        // We won't know the type of a component when its removed. So we cache a function that does it for us since we know the type now
+        fn remove<T: Component>(boxed_storage: &mut Box<dyn Any>, id: &ComponentId) -> bool {
+            let storage = boxed_storage.downcast_mut::<ComponentStorage<T>>().unwrap();
+            storage.remove(id).is_some()
+        }
+
+        #[cfg(feature = "editable")]
+        let edit = if T::CAN_EDIT {
+            fn edit<T: Component>(boxed_storage: &mut Box<dyn Any>, id: &ComponentId, ui: &mut Ui) {
+                let storage = boxed_storage.downcast_mut::<ComponentStorage<T>>().unwrap();
+                let it = storage.find_mut(id);
+                if it.is_none() {
+                    return;
+                }
+                let it = it.unwrap();
+
+                let name = type_name::<T>();
+                let names: Vec<&str> = name.rsplit("::").collect();
+                let name = names[0];
+                Component::edit(it, name, ui);
+            }
+            Some(edit::<T>)
+        } else {
+            None
+        };
+
+        #[cfg(feature = "editable")]
+        if edit.is_some() {
+            Self{
+                storage: Box::new(ComponentStorage::<T>::new()),
+                remove:  remove::<T>,
+
+                edit: Some(edit.unwrap()),
+            }
+        } else {
+            Self{
+                storage: Box::new(ComponentStorage::<T>::new()),
+                remove:  remove::<T>,
+
+                edit: None,
+            }
+        }
+
+        #[cfg(feature_not = "editable")]
+        Self{
+            storage: Box::new(ComponentStorage::<T>::new()),
+            remove:  remove::<T>,
+        }
+    }
 }
 
 pub(crate) struct ComponentMap {
@@ -131,17 +221,8 @@ impl ComponentMap {
             let found = self.map.get_mut(&variant);
             if found.is_none() {
 
-                // We won't know the type of a component when its removed. So we cache a function that does it for us since we know the type now
-                fn remove<T: Component>(boxed_storage: &mut Box<dyn Any>, id: &ComponentId) -> bool {
-                    let storage = boxed_storage.downcast_mut::<ComponentStorage<T>>().unwrap();
-                    storage.remove(id).is_some()
-                }
 
-                let entry = ComponentMapEntry{
-                    storage: Box::new(ComponentStorage::<T>::new()),
-                    remove:  remove::<T>,
-                };
-                self.map.insert(variant, entry);
+                self.map.insert(variant, ComponentMapEntry::new::<T>());
                 
                 self.map.get_mut(&variant).unwrap()
             } else {
@@ -184,5 +265,21 @@ impl ComponentMap {
 
         let storage = entry.storage.downcast_mut::<ComponentStorage<T>>().unwrap();
         storage.find_mut(id)
+    }
+
+    #[cfg(feature = "editable")]
+    pub fn edit(&mut self, id: &ComponentId, ui: &mut Ui) {
+        let entry = self.map.get_mut(&id.variant);
+        if entry.is_none() {
+            return;
+        }
+        let entry = entry.unwrap();
+
+        if entry.edit.is_none() {
+            return;
+        }
+
+        let edit = entry.edit.unwrap();
+        edit(&mut entry.storage, id, ui)
     }
 }

@@ -1,4 +1,6 @@
 #![feature(trait_alias)]
+#![feature(specialization)]
+#![allow(incomplete_features)]
 
 pub mod world;
 pub mod entity;
