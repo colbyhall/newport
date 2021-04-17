@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use syn::{ Data, DeriveInput, Fields, Ident, parse_macro_input, Generics };
-use quote::quote;
+use quote::{ quote, format_ident };
 
 #[proc_macro_derive(Editable)]
 pub fn derive_editable(input: TokenStream) -> TokenStream {
@@ -19,6 +19,8 @@ fn expand_derive_editable(input: &DeriveInput) -> TokenStream2 {
 fn implement_struct_editable(ident: &Ident, generics: &Generics, fields: &Fields) -> TokenStream2 {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+    let path = format_ident!("newport_editor");
+
     let mut tokens = Vec::new();
     match fields {
         Fields::Named(fields) => {
@@ -26,7 +28,7 @@ fn implement_struct_editable(ident: &Ident, generics: &Generics, fields: &Fields
                 match &field.ident {
                     Some(ident) => {
                         tokens.push(quote!{
-                            newport_editor::Editable::edit(&mut self.#ident, stringify!(#ident), ui);
+                            #path::Editable::edit(&mut self.#ident, stringify!(#ident), ui);
                         });
                     },
                     None => {}
@@ -37,9 +39,9 @@ fn implement_struct_editable(ident: &Ident, generics: &Generics, fields: &Fields
     }
 
     quote! {
-        impl #impl_generics newport_editor::Editable for #ident #ty_generics #where_clause {
-            fn edit(&mut self, name: &str, ui: &mut newport_editor::Ui) {
-                newport_editor::CollapsingHeader::new(name)
+        impl #impl_generics #path::Editable for #ident #ty_generics #where_clause {
+            fn edit(&mut self, name: &str, ui: &mut #path::Ui) {
+                #path::CollapsingHeader::new(name)
                     .default_open(true)
                     .show(ui, |ui|{
                         #(#tokens)*
