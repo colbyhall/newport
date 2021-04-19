@@ -1,0 +1,13 @@
+[package]
+name = "newport_imgui"
+version = "0.0.1"
+authors = ["Colby <me@cobeh.com>"]
+edition = "2018"
+
+[dependencies]
+newport_math      = { path = "../newport_math", version = "0.0.1" }
+newport_gpu       = { path = "../newport_gpu", version = "0.0.1" }
+newport_graphics  = { path = "../newport_graphics", version = "0.0.1" }
+newport_asset     = { path = "../newport_asset", version = "0.0.1" }
+newport_os        = { path = "../newport_os", version = "0.0.1" }
+newport_engine    = { path = "../newport_engine", version = "0.0.1" }

@@ -66,7 +66,6 @@ struct AssetEntry {
 /// # Todo
 ///
 /// * `AssetWeak<T: Asset>` for asset weak ptrs
-#[derive(Clone)]
 pub struct AssetRef<T: 'static> {
     arc:     Arc<RwLock<Option<Box<dyn Any>>>>,
     phantom: PhantomData<T>,
@@ -149,6 +148,17 @@ impl<T:'static> Drop for AssetRef<T> {
 
             let mut lock = self.arc.write().unwrap();
             (variant.unload)(lock.take().unwrap());
+        }
+    }
+}
+
+impl<T:'static> Clone for AssetRef<T> {
+    fn clone(&self) -> Self {
+        Self {
+            arc:        self.arc.clone(),
+            phantom:    PhantomData,
+            variant:    self.variant,
+            manager:    self.manager.clone(),
         }
     }
 }

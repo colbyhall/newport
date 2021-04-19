@@ -33,6 +33,22 @@ impl Rect {
         let y = self.min.y + self.height() / 2.0;
         Vector2::new(x, y)
     }
+
+    pub fn bottom_left(self) -> Vector2 {
+        self.min
+    }
+
+    pub fn top_right(self) -> Vector2 {
+        self.max
+    }
+
+    pub fn bottom_right(self) -> Vector2 {
+        (self.max.x, self.min.y).into()
+    }
+
+    pub fn top_left(self) -> Vector2 {
+        (self.min.x, self.max.y).into()
+    }
 }
 
 impl From<(Vector2, Vector2)> for Rect {

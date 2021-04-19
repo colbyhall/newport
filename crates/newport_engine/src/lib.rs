@@ -1,8 +1,8 @@
 #![feature(trait_alias)]
 
 use newport_core::containers::{ Box, HashMap };
-use newport_os::window::{ WindowBuilder, Window, WindowStyle };
-pub use newport_os::window::WindowEvent;
+use newport_os::window::{ WindowBuilder, WindowStyle };
+pub use newport_os::window::{ WindowEvent, Window };
 
 use std::any::TypeId;
 use std::sync::{ Mutex, MutexGuard };

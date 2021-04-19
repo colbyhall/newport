@@ -412,6 +412,7 @@ impl Drop for Window {
 }
 
 /// Different type of events that can occur to [`Window`]s
+#[derive(Copy, Clone)]
 pub enum WindowEvent {
     FocusGained,
     FocusLost,

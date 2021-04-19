@@ -26,7 +26,7 @@ Newport is a modular 2D and 3D game engine built in Rust for Rust. It is designe
 ## Dependencies
 Dependencies that couldn't be given up.
 
-* [rust-gpu](https://github.com/EmbarkStudios/rust-gpu)
+* [hassle-rs](https://github.com/Traverse-Research/hassle-rs)
 * [ash](https://github.com/MaikKlein/ash)
 * [serde](https://github.com/serde-rs/serde)
 * [ron](https://github.com/ron-rs/ron)
