@@ -40,3 +40,7 @@ pub use newport_codegen::Editable;
 pub mod ecs {
     pub use newport_ecs::*;
 }
+
+pub mod game {
+    pub use newport_game::*;
+}

@@ -1,6 +1,9 @@
-use std::any::{ TypeId, Any, type_name };
+use std::any::{ TypeId, Any };
 use std::boxed::Box;
 use std::collections::{ HashMap, VecDeque };
+
+#[cfg(feature = "editable")]
+use std::any::type_name;
 
 #[cfg(feature = "editable")]
 use newport_editor::{ Editable, Ui };
@@ -179,25 +182,20 @@ impl ComponentMapEntry {
 
         #[cfg(feature = "editable")]
         if edit.is_some() {
-            Self{
+            return Self{
                 storage: Box::new(ComponentStorage::<T>::new()),
                 remove:  remove::<T>,
 
                 edit: Some(edit.unwrap()),
-            }
-        } else {
-            Self{
-                storage: Box::new(ComponentStorage::<T>::new()),
-                remove:  remove::<T>,
-
-                edit: None,
-            }
+            };
         }
 
-        #[cfg(feature_not = "editable")]
         Self{
             storage: Box::new(ComponentStorage::<T>::new()),
             remove:  remove::<T>,
+
+            #[cfg(feature = "editable")]
+            edit: None,
         }
     }
 }

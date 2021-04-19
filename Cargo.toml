@@ -24,6 +24,7 @@ newport_math      = { path = "crates/newport_math", version = "0.0.1" }
 newport_editor    = { path = "crates/newport_editor", version = "0.0.1" }
 newport_codegen   = { path = "crates/newport_codegen", version = "0.0.1" }
 newport_ecs       = { path = "crates/newport_ecs", version = "0.0.1", features = ["editable"] }
+newport_game      = { path = "crates/newport_game", version = "0.0.1" }
 
 # Serde sadly has to be included in the dependency list of every package that uses it
 serde = { version = "1.0.125", features = ["derive"] }
@@ -35,6 +36,10 @@ path = "examples/hello_world.rs"
 [[example]]
 name = "editor"
 path = "examples/editor.rs"
+
+[[example]]
+name = "game"
+path = "examples/game.rs"
 
 [profile.dev]
 overflow-checks = false

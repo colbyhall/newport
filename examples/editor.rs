@@ -131,6 +131,7 @@ impl Module for EditorExample {
     fn new() -> Self {
         let mut world = World::new();
 
+        // This list of names is randomly generated :P
         let names = [
             "Arturo Wheeler",
             "Madilyn Simpson",
