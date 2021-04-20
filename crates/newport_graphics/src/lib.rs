@@ -1,5 +1,5 @@
 use newport_engine::{ Module, Engine, EngineBuilder };
-pub use newport_gpu as gpu;
+use newport_gpu as gpu;
 use gpu::{ Instance, Device, RenderPass, Format };
 use newport_asset::AssetManager;
 

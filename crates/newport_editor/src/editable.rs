@@ -49,19 +49,6 @@ impl Editable for math::Color {
         ui.horizontal(|ui| {
             ui.label(name);
             ui.separator();
-
-            let r = (self.r * 255.0) as u8 / 255;
-            let g = (self.g * 255.0) as u8 / 255;
-            let b = (self.b * 255.0) as u8 / 255;
-            let a = (self.a * 255.0) as u8 / 255;
-
-            let mut srgba = Color32::from_rgba_unmultiplied(r, g, b, a);
-            color_edit_button_srgba(ui, &mut srgba, Alpha::OnlyBlend);
-
-            self.r = srgba.r() as f32 / 255.0;
-            self.g = srgba.g() as f32 / 255.0;
-            self.b = srgba.b() as f32 / 255.0;
-            self.a = srgba.a() as f32 / 255.0;
         });
     }
 }

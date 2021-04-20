@@ -42,5 +42,9 @@ path = "examples/editor.rs"
 name = "game"
 path = "examples/game.rs"
 
+[[example]]
+name = "imgui"
+path = "examples/imgui.rs"
+
 [profile.dev]
 overflow-checks = false

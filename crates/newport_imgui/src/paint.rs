@@ -19,13 +19,18 @@ pub struct RectShape {
 }
 
 impl RectShape {
-    pub fn roundness(&mut self, corners: Rect) -> &mut Self {
-        self._roundness = corners;
+    pub fn scissor(&mut self, scissor: impl Into<Rect>) -> &mut Self {
+        self.scissor = scissor.into();
+        self
+    }
+    
+    pub fn roundness(&mut self, corners: impl Into<Rect>) -> &mut Self {
+        self._roundness = corners.into();
         self
     }
 
-    pub fn color(&mut self, color: Color) -> &mut Self {
-        self.color = color;
+    pub fn color(&mut self, color: impl Into<Color>) -> &mut Self {
+        self.color = color.into();
         self
     }
 
@@ -111,14 +116,16 @@ impl Painter {
         }
     }
 
-    pub fn rect(&mut self, bounds: Rect, scissor: Rect) -> &mut RectShape {
+    pub fn rect(&mut self, bounds: impl Into<Rect>) -> &mut RectShape {
+        let bounds = bounds.into();
+
         let shape = RectShape {
             bounds:     bounds,
-            scissor:    scissor,
+            scissor:    bounds,
 
             _roundness:  Rect::default(),
-            color:      Color::WHITE,
-            texture:    None,
+            color:       Color::WHITE,
+            texture:     None,
         };
         self.shapes.push(Shape::Rect(shape));
 
@@ -140,8 +147,8 @@ impl Painter {
 pub struct Vertex {
     pub position: Vector2,
     pub uv:       Vector2,
-    pub color:    Color,
     pub scissor:  Rect,
+    pub color:    Color,
     pub texture:  u32,
 }
 
@@ -150,13 +157,14 @@ impl gpu::Vertex for Vertex {
         vec![
             gpu::VertexAttribute::Vector2,
             gpu::VertexAttribute::Vector2,
-            gpu::VertexAttribute::Color,
             gpu::VertexAttribute::Vector4,
+            gpu::VertexAttribute::Color,
             gpu::VertexAttribute::Uint32,
         ]
     }
 }
 
+#[derive(Default)]
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices:  Vec<u32>,
@@ -174,10 +182,10 @@ static SHADER_SOURCE: &str = "
     [[vk::push_constant]] Constants constants;
 
     struct Vertex {
-        float3 position : POSITION;
+        float2 position : POSITION;
         float2 uv       : TEXCOORD;
-        float4 color    : COLOR;
         float4 scissor  : SCISSOR;
+        float4 color    : COLOR;
         uint texture    : TEXTURE;
     };
 
@@ -199,9 +207,7 @@ static SHADER_SOURCE: &str = "
         OUT.scissor = IN.scissor;
         OUT.pos     = IN.position.xy;
 
-        OUT.position = mul(constants.view, float4(IN.position, 1.0));
-
-        OUT.position.y = -OUT.position.y;
+        OUT.position = mul(constants.view, float4(IN.position, 10.0, 1.0));
 
         return OUT;
     }
@@ -218,7 +224,11 @@ static SHADER_SOURCE: &str = "
         SamplerState my_sampler = all_samplers[IN.texture];
 
         if (IN.pos.x >= IN.scissor.x && IN.pos.y >= IN.scissor.y && IN.pos.x <= IN.scissor.z && IN.pos.y <= IN.scissor.w) {
-            return IN.color * my_texture.Sample(my_sampler, IN.uv, 0);
+            if (IN.texture == NULL) {
+                return IN.color;
+            } else {
+                return IN.color * my_texture.Sample(my_sampler, IN.uv, 0);
+            }
         }
         
         return float4(0.0, 0.0, 0.0, 0.0);
@@ -229,6 +239,7 @@ pub struct DrawState {
     pipeline: gpu::Pipeline,
 }
 
+#[allow(dead_code)]
 struct DrawConstants {
     view:       Matrix4,
     viewport:   Vector2,

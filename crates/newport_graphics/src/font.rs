@@ -79,7 +79,10 @@ impl FontCollection {
                         let x = pen_x + col;
                         let y = pen_y - row;
 
-                        pixels[(y * tex_width + x) as usize] = bmp_buffer[(row * bmp_pitch + col) as usize] as u32;
+                        let alpha = bmp_buffer[(row * bmp_pitch + col) as usize];
+                        let color: u32 = 0xFFFFFF00 | (alpha as u32);
+
+                        pixels[(y * tex_width + x) as usize] = color;
                     }
                 }
     

@@ -346,10 +346,10 @@ impl VertexAttribute {
             VertexAttribute::Int32   => 4,
             VertexAttribute::Uint32  => 4,
             VertexAttribute::Float32 => 4,
+            VertexAttribute::Color   => 16,
             VertexAttribute::Vector2 => 8,
             VertexAttribute::Vector3 => 12,
             VertexAttribute::Vector4 => 16,
-            VertexAttribute::Color   => 16,
         }
     }
 }

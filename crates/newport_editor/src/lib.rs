@@ -194,7 +194,7 @@ impl Editor {
         gfx.begin();
         {
             gfx.begin_render_pass(&graphics.backbuffer_render_pass(), &[&backbuffer]);
-            gfx.clear((0.01, 0.01, 0.01, 1.0));
+            // gfx.clear((0.01, 0.01, 0.01, 1.0));
             editor.gui.draw(clipped_meshes, &mut gfx);
             gfx.end_render_pass();
         }

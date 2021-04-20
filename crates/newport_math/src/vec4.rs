@@ -16,7 +16,6 @@ use std::ops::{
 use std::convert::From;
 
 use crate::Vector3;
-use crate::Color;
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Vector4 {
@@ -242,11 +241,5 @@ impl From<(Vector3, f32)> for Vector4 {
     fn from(xyzw: (Vector3, f32)) -> Self {
         let (xyz, w) = xyzw;
         Vector4::new(xyz.x, xyz.y, xyz.z, w)
-    }
-}
-
-impl From<Color> for Vector4 {
-    fn from(rgba: Color) -> Self {
-        Vector4::new(rgba.r, rgba.g, rgba.b, rgba.a)
     }
 }
