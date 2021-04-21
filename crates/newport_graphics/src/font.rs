@@ -80,7 +80,7 @@ impl FontCollection {
                         let y = pen_y - row;
 
                         let alpha = bmp_buffer[(row * bmp_pitch + col) as usize];
-                        let color: u32 = 0xFFFFFF00 | (alpha as u32);
+                        let color: u32 = (alpha as u32) << 24 | (alpha as u32) << 16 | (alpha as u32) << 8 | (alpha as u32);
 
                         pixels[(y * tex_width + x) as usize] = color;
                     }

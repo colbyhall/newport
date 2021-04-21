@@ -521,30 +521,38 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
         },
         WM_LBUTTONDOWN => {
             unsafe { SetCapture(window.handle); }
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: true, position: (x, y) });
+            let (_, height) = window.size();
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: true, position: (x, height - y) });
         },
         WM_LBUTTONUP => {
             unsafe { ReleaseCapture(); }
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: false, position: (x, y) });
+            let (_, height) = window.size();
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: false, position: (x, height - y) });
         },
         WM_MBUTTONDOWN => {
             unsafe { SetCapture(window.handle); }
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: true, position: (x, y) });
+            let (_, height) = window.size();
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: true, position: (x, height - y) });
         },
         WM_MBUTTONUP => {
             unsafe { ReleaseCapture(); }
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: false, position: (x, y) });
+            let (_, height) = window.size();
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: false, position: (x, height - y) });
         },
         WM_RBUTTONDOWN => {
             unsafe { SetCapture(window.handle); }
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: true, position: (x, y) });
+            let (_, height) = window.size();
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: true, position: (x, height - y) });
         },
         WM_RBUTTONUP => {
             unsafe { ReleaseCapture(); }
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: false, position: (x, y) });
+            let (_, height) = window.size();
+            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: false, position: (x, height - y) });
         },
         WM_MOUSEMOVE => {
-            event = Some(WindowEvent::MouseMove(x, y));
+            let (_, height) = window.size();
+
+            event = Some(WindowEvent::MouseMove(x, height - y));
 
             if window.mouse_left {
                 window.mouse_left = false;

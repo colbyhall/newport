@@ -1,6 +1,6 @@
 use newport::*;
 use engine::{ Module, Engine, EngineBuilder, Window, WindowEvent };
-use imgui::{ DrawState, Painter, Mesh, RawInput };
+use imgui::{ DrawState, RawInput, Layout, LabelStyle };
 use math::Color;
 use graphics::*;
 
@@ -50,10 +50,32 @@ impl Module for ImguiExample {
                     
                     input.viewport = (0.0, 0.0, backbuffer.width() as f32, backbuffer.height() as f32).into();
                     input.dt = dt;
-                    input.dpi = 2.0;
+                    input.dpi = 1.0;
 
                     let mut gui = example.context.lock().unwrap();
                     gui.begin_frame(input);
+
+                    let mut builder = gui.builder("foo", Layout::down_to_up((100.0, 100.0, 500.0, 200.0)));
+
+                    let size = LabelStyle::min_size(&mut builder);
+                    let bounds = builder.layout.push_size(size);
+
+                    builder.layout(Layout::left_to_right(bounds), |builder| {
+                        builder.button("foo");
+                        builder.button("bar");
+                        builder.button("car");
+                    });
+
+                    let bounds = builder.layout.push_size(size);
+
+                    builder.layout(Layout::left_to_right(bounds), |builder| {
+                        builder.button("foo");
+                        builder.button("bar");
+                        builder.button("car");
+                    });
+
+                    builder.finish();
+
                     gui.end_frame()
                 };
 

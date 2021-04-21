@@ -386,8 +386,8 @@ impl PipelineBuilder {
             dst_alpha_blend_factor: BlendFactor::One,
             alpha_blend_op:         BlendOp::Add,
 
-            depth_test:    true, 
-            depth_write:   true,
+            depth_test:    false, 
+            depth_write:   false,
             depth_compare: CompareOp::Less,
 
             push_constant_size: 0,

@@ -38,11 +38,19 @@ impl Color {
             a: a as f32 / 255.0, 
         }
     }
-}
 
-impl From<i32> for Color {
-    fn from(color: i32) -> Self {
-        (color as u32).into()
+    pub fn from_srgb(hex: u32) -> Self {
+        let r = hex >> 24 & 0xFF;
+        let g = hex >> 16 & 0xFF;
+        let b = hex >> 8 & 0xFF;
+        let a = hex & 0xFF;
+
+        Self{
+            r: srgb_to_linear(r as f32 / 255.0), 
+            g: srgb_to_linear(g as f32 / 255.0), 
+            b: srgb_to_linear(b as f32 / 255.0), 
+            a: srgb_to_linear(a as f32 / 255.0), 
+        }
     }
 }
 

@@ -15,6 +15,8 @@ mod paint;
 mod layout;
 mod input;
 mod widgets;
+mod style;
+mod gruvbox;
 
 pub use builder::*;
 pub use context::*;
@@ -24,3 +26,5 @@ pub use paint::*;
 pub use layout::*;
 pub use input::*;
 pub use widgets::*;
+pub use style::*;
+pub use gruvbox::*;

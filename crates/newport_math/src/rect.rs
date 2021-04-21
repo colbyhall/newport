@@ -16,6 +16,12 @@ impl Rect {
         }
     }
 
+    pub fn from_pos_size(pos: Vector2, size: Vector2) -> Self {
+        let min = pos - size / 2.0;
+        let max = pos + size / 2.0;
+        Self{ min, max }
+    }
+
     pub fn width(self) -> f32 {
         self.max.x - self.min.x
     }
