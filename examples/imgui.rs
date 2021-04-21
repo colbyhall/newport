@@ -55,23 +55,22 @@ impl Module for ImguiExample {
                     let mut gui = example.context.lock().unwrap();
                     gui.begin_frame(input);
 
-                    let mut builder = gui.builder("foo", Layout::down_to_up((100.0, 100.0, 500.0, 200.0)));
+                    let mut builder = gui.builder("foo", Layout::down_to_up((100.0, 100.0, 1000.0, 200.0)));
 
                     let size = LabelStyle::min_size(&mut builder);
                     let bounds = builder.layout.push_size(size);
 
                     builder.layout(Layout::left_to_right(bounds), |builder| {
-                        builder.button("foo");
-                        builder.button("bar");
-                        builder.button("car");
+                        builder.label("foo");
                     });
-
+                    
                     let bounds = builder.layout.push_size(size);
-
+                    
                     builder.layout(Layout::left_to_right(bounds), |builder| {
-                        builder.button("foo");
-                        builder.button("bar");
-                        builder.button("car");
+                        builder.label("bar");
+                        builder.button("soo");
+                        builder.label("car");
+                        builder.button("dar");
                     });
 
                     builder.finish();

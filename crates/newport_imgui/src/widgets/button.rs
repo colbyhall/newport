@@ -44,33 +44,32 @@ impl Button {
             if builder.input().was_primary_clicked() {
                 builder.focus(self.id);
             }
-
-            if builder.input().was_primary_released() && builder.unfocus(self.id) {
-                response = ButtonResponse::Clicked(0);
-            }
         } else {
             builder.unhover(self.id);
         }
 
+        if builder.input().was_primary_released() {
+            if builder.unfocus(self.id) && is_over {
+                response = ButtonResponse::Clicked(0);
+            }
+        }
+
         let is_focused = builder.is_focused(self.id);
+        let is_hovered = builder.is_hovered(self.id);
         
         let (background_color, foreground_color) = {
-            let background_color = if is_over {
-                if is_focused {
-                    style.focused_background
-                } else {
-                    style.hovered_background
-                }
+            let background_color = if is_focused {
+                style.focused_background
+            } else if is_hovered {
+                style.hovered_background
             } else {
                 style.unhovered_background
             };
 
-            let foreground_color = if is_over {
-                if is_focused {
-                    style.focused_foreground
-                } else {
-                    style.hovered_foreground
-                }
+            let foreground_color = if is_focused {
+                style.focused_foreground
+            } else if is_hovered {
+                style.hovered_foreground
             } else {
                 style.unhovered_foreground
             };
@@ -102,6 +101,7 @@ impl Button {
 }
 
 #[derive(Copy, Clone)]
+#[must_use = "If a response is not being used then use a label"]
 pub enum ButtonResponse {
     None,
     Hovered,

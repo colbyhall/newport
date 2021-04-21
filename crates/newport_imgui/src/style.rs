@@ -2,10 +2,10 @@ use std::any::{ Any, TypeId };
 use std::collections::HashMap;
 
 use crate::graphics::FontCollection;
-use crate::math::{ Rect, Vector2 };
+use crate::math::{ Rect, Vector2, Color };
 use crate::engine::Engine;
 use crate::asset::{ AssetManager, AssetRef };
-use crate::Builder;
+use crate::{ Builder, DARK };
 
 pub trait Style = 'static + Default + Clone + Any;
 
@@ -83,6 +83,7 @@ pub struct TextStyle {
     pub font: AssetRef<FontCollection>,
     pub size: u32,
     pub alignment: Alignment,
+    pub color: Color,
 }
 
 #[derive(Clone)]
@@ -123,6 +124,7 @@ impl Default for LabelStyle {
             font: font,
             size: 12,
             alignment: Alignment::Center,
+            color: DARK.fg,
         })
     }
 }

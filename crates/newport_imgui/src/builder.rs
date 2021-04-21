@@ -1,4 +1,15 @@
-use crate::{ Painter, Context, Id, Layout, InputState, StyleMap, Button, ButtonResponse, Style };
+use crate::{ 
+    Painter, 
+    Context, 
+    Id, 
+    Layout, 
+    InputState, 
+    StyleMap, 
+    Button, 
+    ButtonResponse, 
+    Style,
+    Label
+};
 
 pub struct Builder<'a> {
     pub id:      Id,
@@ -69,6 +80,10 @@ impl<'a> Builder<'a> {
 
     pub fn button(&mut self, label: impl Into<String>) -> ButtonResponse {
         Button::new(label).build(self)
+    }
+
+    pub fn label(&mut self, label: impl Into<String>){
+        Label::new(label).build(self)
     }
 
     pub fn layout(&mut self, layout: Layout, content: impl FnOnce(&mut Builder)) {
