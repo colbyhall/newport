@@ -14,6 +14,7 @@ mod retained;
 mod paint;
 mod layout;
 mod input;
+mod widgets;
 
 pub use builder::*;
 pub use context::*;
@@ -22,3 +23,4 @@ pub use retained::*;
 pub use paint::*;
 pub use layout::*;
 pub use input::*;
+pub use widgets::*;

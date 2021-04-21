@@ -280,6 +280,10 @@ impl DrawState {
         let window = engine.window();
         let dpi    = window.dpi();
 
+        if mesh.vertices.len() == 0 {
+            return;
+        }
+
         let vertex_buffer = device.create_buffer(
             gpu::BufferUsage::VERTEX, 
             gpu::MemoryType::HostVisible, 

@@ -49,6 +49,10 @@ impl Rect {
     pub fn top_left(self) -> Vector2 {
         (self.min.x, self.max.y).into()
     }
+
+    pub fn point_overlap(self, point: Vector2) -> bool {
+        self.min.x <= point.x && self.max.x >= point.x && self.min.y <= point.y && self.max.y >= point.y
+    }
 }
 
 impl From<(Vector2, Vector2)> for Rect {

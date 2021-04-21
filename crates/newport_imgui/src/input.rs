@@ -1,13 +1,15 @@
 use crate::math::Rect;
-use crate::os::window::WindowEvent;
+pub use crate::os::window::WindowEvent as Event;
+pub use crate::os::input::*;
 
 use std::collections::VecDeque;
 
-pub struct Input {
+#[derive(Default, Clone)]
+pub struct RawInput {
     pub viewport: Rect,
 
     pub dt:  f32,
     pub dpi: f32,
 
-    pub events: VecDeque<WindowEvent>,
+    pub events: VecDeque<Event>,
 }

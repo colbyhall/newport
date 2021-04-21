@@ -1,6 +1,6 @@
 /// Variant enum for `Input` used to distinguish between input types
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum InputType {
+pub enum InputVariant {
     Key{ code: u8, symbol: char },
     MouseButton(u8),
     MouseAxis
@@ -10,14 +10,14 @@ pub enum InputType {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Input {
     pub display_name: &'static str,
-    pub variant: InputType,
+    pub variant: InputVariant,
 }
 
 impl Input {
     const fn key(display_name: &'static str, code: u8, symbol: char) -> Self {
         Self{
             display_name: display_name,
-            variant: InputType::Key{
+            variant: InputVariant::Key{
                 code: code,
                 symbol: symbol
             }
@@ -27,14 +27,14 @@ impl Input {
     const fn mouse_button(display_name: &'static str, index: u8) -> Self {
         Self{
             display_name: display_name,
-            variant: InputType::MouseButton(index)
+            variant: InputVariant::MouseButton(index)
         }
     }
     
     const fn mouse_axis(display_name: &'static str) -> Self {
         Self{
             display_name: display_name,
-            variant: InputType::MouseAxis
+            variant: InputVariant::MouseAxis
         }
     }
 
@@ -57,7 +57,7 @@ impl Input {
     pub fn key_from_code(in_code: u8) -> Option<Self> {
         for input in ALL_INPUTS.iter() {
             match input.variant {
-                InputType::Key{ code, symbol: _ } => {
+                InputVariant::Key{ code, symbol: _ } => {
                     if in_code == code {
                         return Some(*input);
                     }
@@ -67,6 +67,20 @@ impl Input {
         }
 
         None
+    }
+
+    pub fn as_key(self) -> (u8, char) {
+        match self.variant {
+            InputVariant::Key{ code, symbol } => (code, symbol),
+            _ => unreachable!()
+        }
+    }
+
+    pub fn as_mouse_button(self) -> u8 {
+        match self.variant {
+            InputVariant::MouseButton(code) => code,
+            _ => unreachable!()
+        }
     }
 }
 

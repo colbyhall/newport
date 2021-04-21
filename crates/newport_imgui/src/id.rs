@@ -1,4 +1,4 @@
 
 #[derive(Copy, Clone, PartialEq, PartialOrd)]
-pub struct Id(u64);
+pub struct Id(pub u64);
 

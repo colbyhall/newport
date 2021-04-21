@@ -1,20 +1,41 @@
 use crate::{ Id, Builder };
 
+use std::{collections::hash_map::DefaultHasher, hash::Hasher};
+use std::hash::Hash;
+
 pub struct Button {
-    id: Id,
-    label: String,
+    pub id: Id,
+    pub label: String,
 }
 
 impl Button {
-    pub fn build(&self, builder: &mut Builder) -> ButtonResponse {
+    pub fn new(label: impl Into<String>) -> Self {
+        let label = label.into();
         
+        let mut hasher = DefaultHasher::new();
+        Hash::hash(&label, &mut hasher);
+        let id = hasher.finish();
+
+        Self {
+            id: Id(id),
+            label: label,
+        }
+    }
+
+    pub fn build(self, builder: &mut Builder) -> ButtonResponse {
+        let bounds = builder.layout.push_size(30.0);
+
+        let is_over = builder.input().mouse_is_over(bounds);
+        
+
+        ButtonResponse::None
     }
 }
 
 pub enum ButtonResponse {
     None,
     Hovered,
-    Clicked,
+    Clicked(u8),
 }
 
 impl ButtonResponse {
@@ -27,7 +48,7 @@ impl ButtonResponse {
 
     pub fn clicked(&self) -> bool {
         match self {
-            ButtonResponse::Hovered => true,
+            ButtonResponse::Clicked(_) => true,
             _ => false,
         }
     }

@@ -1,4 +1,4 @@
-use crate::{ Painter, Context, Id, Layout };
+use crate::{ Painter, Context, Id, Layout, InputState };
 
 pub struct Builder<'a> {
     pub id:      Id,
@@ -11,5 +11,9 @@ pub struct Builder<'a> {
 impl<'a> Builder<'a> {
     pub fn finish(self) {
         self.context.push_layer(self.id, self.painter)
+    }
+
+    pub fn input(&self) -> &InputState {
+        self.context.input()
     }
 }

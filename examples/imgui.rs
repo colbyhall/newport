@@ -1,21 +1,25 @@
 use newport::*;
 use engine::{ Module, Engine, EngineBuilder, Window, WindowEvent };
-use imgui::{ DrawState, Painter, Mesh };
+use imgui::{ DrawState, Painter, Mesh, RawInput };
 use math::Color;
 use graphics::*;
 
 use std::sync::Mutex;
+use std::cell::RefCell;
 
 struct ImguiExample {
     draw_state: DrawState,
     context:    Mutex<imgui::Context>,
+    input:      RefCell<Option<RawInput>>,
+
 }
 
 impl Module for ImguiExample {
     fn new() -> Self {
         Self{
             draw_state: DrawState::new(),
-            context:    Mutex::new(imgui::Context::new())
+            context:    Mutex::new(imgui::Context::new()),
+            input:      RefCell::new(None),
         }
     }
 
@@ -24,22 +28,37 @@ impl Module for ImguiExample {
             .module::<graphics::Graphics>()
             .process_input(|engine: &Engine, _window: &Window, event: &WindowEvent| {
                 let example = engine.module::<ImguiExample>().unwrap();
-                let mut context = example.context.lock().unwrap();
+                let mut input = example.input.borrow_mut();
+                if input.is_none() {
+                    *input = Some(RawInput::default());
+                }
+                input.as_mut().unwrap().events.push_back(event.clone());
             })
-            .tick(|engine: &Engine, _dt: f32| {
+            .tick(|engine: &Engine, dt: f32| {
                 let graphics = engine.module::<Graphics>().unwrap();
                 let device = graphics.device();
 
+                let backbuffer = device.acquire_backbuffer();
+
                 let example = engine.module::<ImguiExample>().unwrap();
 
-                let mut mesh = Mesh::default();
-                let mut painter = Painter::new();
-                painter.rect((0.0, 0.0, 100.0, 100.0));
-                painter.tesselate(&mut mesh);
+                let mesh = {
+                    let mut input = {
+                        let mut input = example.input.borrow_mut();
+                        input.take()
+                    }.unwrap_or_default();
+                    
+                    input.viewport = (0.0, 0.0, backbuffer.width() as f32, backbuffer.height() as f32).into();
+                    input.dt = dt;
+                    input.dpi = 2.0;
+
+                    let mut gui = example.context.lock().unwrap();
+                    gui.begin_frame(input);
+                    gui.end_frame()
+                };
 
                 device.update_bindless();
 
-                let backbuffer = device.acquire_backbuffer();
                 let mut gfx = device.create_graphics_context().unwrap();
                 gfx.begin();
                 {
