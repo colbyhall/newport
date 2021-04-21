@@ -89,7 +89,7 @@ impl Button {
                 let bounds_width = bounds.width() - padding.min.x - padding.max.x;
                 let string_width = string_rect.width();
 
-                bounds.top_left() + Vector2::new(0.0, -padding.top_left().y) + Vector2::new((bounds_width - string_width) / 2.0, 0.0)
+                bounds.top_left() + Vector2::new(padding.top_left().x, -padding.top_left().y) + Vector2::new((bounds_width - string_width) / 2.0, 0.0)
             },
             _ => unimplemented!()
         };
