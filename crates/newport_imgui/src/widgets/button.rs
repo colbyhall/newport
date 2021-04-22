@@ -94,7 +94,7 @@ impl Button {
             _ => unimplemented!()
         };
 
-        builder.painter.text(self.label, at, &label_style.font, label_style.size).color(foreground_color).scissor(bounds);
+        builder.painter.text(self.label, at, &label_style.font, label_style.size, builder.input().dpi).color(foreground_color).scissor(bounds);
 
         response
     }

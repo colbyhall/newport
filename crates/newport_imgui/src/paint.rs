@@ -5,7 +5,7 @@ use crate::graphics::{ Texture, Graphics, FontCollection };
 use crate::asset::AssetRef;
 use crate::engine::Engine;
 
-use crate::gpu;
+use crate::{ gpu, Context };
 
 use std::mem::size_of;
 
@@ -109,6 +109,7 @@ pub struct TextShape {
 
     font: AssetRef<FontCollection>,
     size: u32,
+    dpi:  f32,
 
     color:      Color,
 }
@@ -177,7 +178,7 @@ impl TextShape {
         }
 
         let mut font_collection = self.font.write();
-        let font = font_collection.font_at_size(self.size, 1.0).unwrap(); // TODO: DPI
+        let font = font_collection.font_at_size(self.size, self.dpi).unwrap(); // TODO: DPI
 
         let mut pos = self.at;
         for c in self.text.chars() {
@@ -245,7 +246,7 @@ impl Painter {
         }
     }
 
-    pub fn text(&mut self, text: String, at: Vector2, font: &AssetRef<FontCollection>, size: u32) -> &mut TextShape {
+    pub fn text(&mut self, text: String, at: Vector2, font: &AssetRef<FontCollection>, size: u32, dpi: f32) -> &mut TextShape {
         let shape = TextShape{
             text: text,
 
@@ -254,6 +255,7 @@ impl Painter {
 
             font: font.clone(),
             size: size,
+            dpi: dpi,
 
             color: Color::WHITE,
         };
@@ -403,13 +405,9 @@ impl DrawState {
         Self { pipeline }
     }
 
-    pub fn draw(&self, mesh: Mesh, gfx: &mut GraphicsContext) {
-        let engine = Engine::as_ref();
-        let graphics = engine.module::<Graphics>().unwrap();
+    pub fn draw(&self, mesh: Mesh, gfx: &mut GraphicsContext, ctx: &Context) {
+        let graphics = Engine::as_ref().module::<Graphics>().unwrap();
         let device = graphics.device();
-
-        let window = engine.window();
-        let dpi    = window.dpi();
 
         if mesh.vertices.len() == 0 {
             return;
@@ -429,8 +427,7 @@ impl DrawState {
         ).unwrap();
         index_buffer.copy_to(&mesh.indices[..]);
 
-        let viewport = window.size();
-        let viewport = Vector2::new(viewport.0 as f32 / dpi, viewport.1 as f32 / dpi);
+        let viewport = ctx.input.viewport.size();
 
         let proj = Matrix4::ortho(viewport.x, viewport.y, 1000.0, 0.1);
         let view = Matrix4::translate(Vector3::new(-viewport.x / 2.0, -viewport.y / 2.0, 0.0));

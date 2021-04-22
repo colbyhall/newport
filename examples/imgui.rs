@@ -38,21 +38,23 @@ impl Module for ImguiExample {
                 let graphics = engine.module::<Graphics>().unwrap();
                 let device = graphics.device();
 
+                let dpi = engine.window().dpi();
+
                 let backbuffer = device.acquire_backbuffer();
 
                 let example = engine.module::<ImguiExample>().unwrap();
 
+                let mut gui = example.context.lock().unwrap();
                 let mesh = {
                     let mut input = {
                         let mut input = example.input.borrow_mut();
                         input.take()
                     }.unwrap_or_default();
                     
-                    input.viewport = (0.0, 0.0, backbuffer.width() as f32, backbuffer.height() as f32).into();
+                    input.viewport = (0.0, 0.0, backbuffer.width() as f32 / dpi, backbuffer.height() as f32 / dpi).into();
                     input.dt = dt;
                     input.dpi = 1.0;
 
-                    let mut gui = example.context.lock().unwrap();
                     gui.begin_frame(input);
 
                     let mut builder = gui.builder("foo", Layout::down_to_up((100.0, 100.0, 1000.0, 200.0)));
@@ -85,7 +87,7 @@ impl Module for ImguiExample {
                 {
                     gfx.begin_render_pass(&graphics.backbuffer_render_pass(), &[&backbuffer]);
                     gfx.clear(Color::BLACK);
-                    example.draw_state.draw(mesh, &mut gfx);
+                    example.draw_state.draw(mesh, &mut gfx, &gui);
                     gfx.end_render_pass();
                 }
                 gfx.resource_barrier_texture(&backbuffer, gpu::Layout::ColorAttachment, gpu::Layout::Present);

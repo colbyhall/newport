@@ -79,7 +79,7 @@ impl Engine {
         {
             let mut window = engine.window();
             window.set_visible(true);
-            window.maximize();
+            // window.maximize();
         }
 
         let mut _fps = 0;

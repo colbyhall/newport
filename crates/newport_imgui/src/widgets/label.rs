@@ -46,6 +46,6 @@ impl Label {
             _ => unimplemented!()
         };
 
-        builder.painter.text(self.label, at, &label_style.font, label_style.size).color(self.color.unwrap_or(label_style.color)).scissor(bounds);
+        builder.painter.text(self.label, at, &label_style.font, label_style.size, builder.input().dpi).color(self.color.unwrap_or(label_style.color)).scissor(bounds);
     }
 }

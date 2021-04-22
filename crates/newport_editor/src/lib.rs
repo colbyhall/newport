@@ -24,7 +24,7 @@ pub trait Page {
 
     fn name(&self) -> &str;
 
-    fn show(&mut self, ctx: &Context);
+    fn show(&mut self, ctx: &mut Context);
 }
 
 #[allow(dead_code)]
@@ -99,7 +99,7 @@ impl Editor {
         {
             gfx.begin_render_pass(&graphics.backbuffer_render_pass(), &[&backbuffer]);
             gfx.clear(Color::BLACK);
-            editor.draw_state.draw(mesh, &mut gfx);
+            editor.draw_state.draw(mesh, &mut gfx, &editor.gui);
             gfx.end_render_pass();
         }
         gfx.resource_barrier_texture(&backbuffer, gpu::Layout::ColorAttachment, gpu::Layout::Present);
