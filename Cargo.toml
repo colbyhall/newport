@@ -35,10 +35,6 @@ name = "hello_world"
 path = "examples/hello_world.rs"
 
 [[example]]
-name = "editor"
-path = "examples/editor.rs"
-
-[[example]]
 name = "game"
 path = "examples/game.rs"
 

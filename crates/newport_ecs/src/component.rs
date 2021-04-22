@@ -6,7 +6,7 @@ use std::collections::{ HashMap, VecDeque };
 use std::any::type_name;
 
 #[cfg(feature = "editable")]
-use newport_editor::{ Editable, Ui };
+use newport_editor::{ Editable, Builder };
 
 pub trait Component: 'static + Send + Sync {
     const TRANSIENT: bool;
@@ -15,7 +15,7 @@ pub trait Component: 'static + Send + Sync {
     const CAN_EDIT:  bool;
 
     #[cfg(feature = "editable")]
-    fn edit(&mut self, name: &str, ui: &mut Ui);
+    fn edit(&mut self, name: &str, ui: &mut Builder);
 }
 
 impl<T> Component for T where T: Send + Sync + 'static {
@@ -25,7 +25,7 @@ impl<T> Component for T where T: Send + Sync + 'static {
     default const CAN_EDIT:  bool = false;
 
     #[cfg(feature = "editable")]
-    default fn edit(&mut self, _name: &str, _ui: &mut Ui) { }
+    default fn edit(&mut self, _name: &str, _builder: &mut Builder) { }
 }
 
 #[cfg(feature = "editable")]
@@ -36,8 +36,8 @@ impl<T> Component for T where T: Editable + Send + Sync + 'static {
     default const CAN_EDIT:  bool = true;
 
     #[cfg(feature = "editable")]
-    default fn edit(&mut self, name: &str, ui: &mut Ui) { 
-        self.edit(name, ui)
+    default fn edit(&mut self, name: &str, builder: &mut Builder) { 
+        self.edit(name, builder)
     }
 }
 
@@ -149,7 +149,7 @@ struct ComponentMapEntry {
     remove:  fn(&mut Box<dyn Any>, &ComponentId) -> bool, // The api does not require that we know type of a component at removal so we must keep a ptr to the drop method
 
     #[cfg(feature = "editable")]
-    edit: Option<fn(&mut Box<dyn Any>, &ComponentId, ui: &mut Ui)>,
+    edit: Option<fn(&mut Box<dyn Any>, &ComponentId, ui: &mut Builder)>,
 }
 
 impl ComponentMapEntry {
@@ -162,7 +162,7 @@ impl ComponentMapEntry {
 
         #[cfg(feature = "editable")]
         let edit = if T::CAN_EDIT {
-            fn edit<T: Component>(boxed_storage: &mut Box<dyn Any>, id: &ComponentId, ui: &mut Ui) {
+            fn edit<T: Component>(boxed_storage: &mut Box<dyn Any>, id: &ComponentId, ui: &mut Builder) {
                 let storage = boxed_storage.downcast_mut::<ComponentStorage<T>>().unwrap();
                 let it = storage.find_mut(id);
                 if it.is_none() {
@@ -263,7 +263,7 @@ impl ComponentMap {
     }
 
     #[cfg(feature = "editable")]
-    pub fn edit(&mut self, id: &ComponentId, ui: &mut Ui) {
+    pub fn edit(&mut self, id: &ComponentId, builder: &mut Builder) {
         let entry = self.map.get_mut(&id.variant);
         if entry.is_none() {
             return;
@@ -275,6 +275,6 @@ impl ComponentMap {
         }
 
         let edit = entry.edit.unwrap();
-        edit(&mut entry.storage, id, ui)
+        edit(&mut entry.storage, id, builder)
     }
 }

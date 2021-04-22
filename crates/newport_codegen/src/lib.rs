@@ -40,12 +40,12 @@ fn implement_struct_editable(ident: &Ident, generics: &Generics, fields: &Fields
 
     quote! {
         impl #impl_generics #path::Editable for #ident #ty_generics #where_clause {
-            fn edit(&mut self, name: &str, ui: &mut #path::Ui) {
-                #path::CollapsingHeader::new(name)
-                    .default_open(true)
-                    .show(ui, |ui|{
-                        #(#tokens)*
-                    });
+            fn edit(&mut self, name: &str, builder: &mut #path::Builder) {
+                // #path::CollapsingHeader::new(name)
+                    // .default_open(true)
+                    // .show(ui, |ui|{
+                        // #(#tokens)*
+                    // });
             }
         }
     }

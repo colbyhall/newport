@@ -1,16 +1,18 @@
-use newport_engine::{ Module, Engine, EngineBuilder, WindowEvent };
-use newport_graphics::{ Graphics };
-pub use newport_egui::*;
-use newport_gpu as gpu;
-use newport_os as os;
-use newport_math as math;
+pub use newport_imgui::*;
+
+pub(crate) use newport_gpu as gpu;
+pub(crate) use newport_os as os;
+pub(crate) use newport_math as math;
+pub(crate) use newport_engine as engine;
+pub(crate) use newport_graphics as graphics;
+
+use engine::{ Module, Engine, EngineBuilder, WindowEvent };
+use graphics::{ Graphics };
+use math::Color;
 
 use std::sync::{ Mutex, MutexGuard };
 
 pub use newport_codegen::Editable;
-
-mod menu_tab;
-use menu_tab::*;
 
 mod editable;
 pub use editable::*;
@@ -22,12 +24,14 @@ pub trait Page {
 
     fn name(&self) -> &str;
 
-    fn show(&mut self, ctx: &CtxRef);
+    fn show(&mut self, ctx: &Context);
 }
 
 #[allow(dead_code)]
 struct EditorInner {
-    gui:    Egui,
+    gui:    Context,
+    input:  Option<RawInput>,
+    draw_state: DrawState,
 
     pages: Vec<Box<dyn Page>>,
     selected_page: usize,
@@ -53,149 +57,49 @@ impl Editor {
 
         let mut editor = self.lock();
 
-        editor.gui.begin_frame(dt);
+        let backbuffer = device.acquire_backbuffer();
 
-        let ctx = editor.gui.ctx().clone();
+        let mesh = {
+            let mut input = editor.input.take().unwrap_or_default();
+            
+            input.viewport = (0.0, 0.0, backbuffer.width() as f32, backbuffer.height() as f32).into();
+            input.dt = dt;
+            input.dpi = 1.0;
 
-        let mut style = (*ctx.style()).clone();
-        let og_style = style.clone();
+            let gui = &mut editor.gui;
+            gui.begin_frame(input);
 
-        style.visuals.widgets.noninteractive.bg_stroke.width = 0.0;
+            let mut builder = gui.builder("foo", Layout::down_to_up((100.0, 100.0, 1000.0, 200.0)));
 
-        let menu_background = Color32::from_rgb(29, 32, 33);
-        let active = Color32::from_rgb(60, 56, 54);
-        style.visuals.widgets.noninteractive.bg_fill = menu_background;
-        style.visuals.widgets.inactive.bg_fill = menu_background;
-        style.visuals.widgets.hovered.bg_fill = active;
-        style.visuals.widgets.active.bg_fill = active;
-        ctx.set_style(style);
-        
-        TopPanel::top("title").show(&ctx, |ui|{
-            menu::bar(ui, |ui|{
-                let original_width = ui.available_width();
+            let size = LabelStyle::min_size(&mut builder);
+            let bounds = builder.layout.push_size(size);
 
-                let padding_y = 8.0;
+            builder.layout(Layout::left_to_right(bounds), |builder| {
+                builder.label("foo");
+            });
+            
+            let bounds = builder.layout.push_size(size);
+            
+            builder.layout(Layout::left_to_right(bounds), |builder| {
+                builder.label("bar");
+                builder.button("soo");
+                builder.label("car");
+                builder.button("dar");
+            });
 
-                let mut style = (**ui.style()).clone();
-                style.spacing.item_spacing = vec2(4.0, 0.0);
-                style.spacing.button_padding = vec2(padding_y, padding_y);
-                ui.set_style(style);
+            builder.finish();
 
-                let mut new_page = editor.selected_page;
-                let mut remove_page = None;
-                for (index, page) in editor.pages.iter().enumerate() {
-                    let tab = MenuTab::new(index == editor.selected_page, page.name());
+            gui.end_frame()
+        };
 
-                    let response = ui.add(tab);
-
-                    if response.clicked() {
-                        new_page = index;
-                    } else if response.middle_clicked() && page.can_close() {
-                        remove_page = Some(index);
-                        new_page = editor.selected_page - 1;
-                    }
-                }
-                editor.selected_page = new_page;
-                match remove_page {
-                    Some(page) => {
-                        editor.pages.remove(page);
-                    },
-                    None => { }
-                }
-
-                let mut style = (**ui.style()).clone();
-                style.spacing.button_padding = vec2(padding_y + 5.0, padding_y);
-                ui.set_style(style);
-
-                // Take full width and fixed height:
-                let height = ui.available_size().y;
-                let size = vec2(ui.available_width() + 6.0, height);
-
-                let used = original_width - size.x;
-
-                ui.allocate_ui_with_layout(size, Layout::right_to_left(), |ui| {
-                    let mut window = engine.window();
-                    
-                    let og_style = (**ui.style()).clone();
-
-                    let mut style = (**ui.style()).clone();
-                    let close_color = Color32::from_rgb(204, 36, 29);
-                    style.visuals.widgets.hovered.bg_fill = close_color;
-                    style.visuals.widgets.active.bg_fill  = close_color;
-                    ui.set_style(style);
-
-                    if ui.button("🗙").clicked() {
-                        engine.shutdown();
-                    }
-
-                    ui.set_style(og_style);
-
-                    if ui.button("🗖").clicked() {
-                        window.maximize();
-                    }
-
-                    if ui.button("🗕").clicked() {
-                        window.minimize();
-                    }
-
-                    let right_used = size.x - ui.available_width();
-                    
-                    // Grab the space left and update the engines window non client area for dragging
-                    let space_left = ui.available_rect_before_wrap();
-
-                    let egui_drag_rect = {
-                        let scale = ctx.pixels_per_point();
-
-                        let width = space_left.width();
-                        let top_center = pos2(space_left.left() * scale + (width / 2.0) * scale, space_left.top() * scale);
-
-                        let min = pos2(top_center.x - (width / 2.0) * scale, top_center.y);
-                        let max = pos2(top_center.x + (width / 2.0) * scale, top_center.y + space_left.height() * scale);
-                        
-                        Rect::from_min_max(min, max)
-                    };
-
-                    let drag_rect = math::Rect::from_min_max(
-                        (egui_drag_rect.min.x, egui_drag_rect.min.y).into(), 
-                        (egui_drag_rect.max.x, egui_drag_rect.max.y).into()
-                    );
-
-                    window.set_custom_drag(drag_rect);
-
-                    let title = Label::new(format!("{} - Newport Editor", engine.name()));
-                    // TODO: Properly calculate the text width
-                    if space_left.size().x >= 500.0 {
-                        ui.add_space(used - right_used);
-                    }
-
-                    ui.centered_and_justified(|ui| {
-                        ui.add(title);
-                    });
-                })
-            })
-        });
-
-        ctx.set_style(og_style);
-
-        if editor.selected_page >= editor.pages.len() {
-            editor.selected_page = 0;
-        }
-
-        let selected_page = editor.selected_page;
-
-        let page = &mut editor.pages[selected_page];
-        page.show(&ctx);
-
-        let (_, clipped_meshes) = editor.gui.end_frame();
         device.update_bindless();
 
-        let backbuffer = device.acquire_backbuffer();
         let mut gfx = device.create_graphics_context().unwrap();
         gfx.begin();
         {
             gfx.begin_render_pass(&graphics.backbuffer_render_pass(), &[&backbuffer]);
-            // gfx.clear((0.01, 0.01, 0.01, 1.0));
-            editor.gui.draw(clipped_meshes, &mut gfx);
+            gfx.clear(Color::BLACK);
+            editor.draw_state.draw(mesh, &mut gfx);
             gfx.end_render_pass();
         }
         gfx.resource_barrier_texture(&backbuffer, gpu::Layout::ColorAttachment, gpu::Layout::Present);
@@ -210,7 +114,9 @@ impl Editor {
 impl Module for Editor {
     fn new() -> Self {
         Self(Mutex::new(EditorInner{
-            gui:    Egui::new(),
+            gui:    Context::new(),
+            input:  None,
+            draw_state: DrawState::new(),
 
             pages: Vec::with_capacity(32),
             selected_page: 0,
@@ -222,7 +128,11 @@ impl Module for Editor {
             .module::<Graphics>()
             .process_input(|engine: &Engine, window: &os::window::Window, event: &WindowEvent| {
                 let mut editor = engine.module::<Editor>().unwrap().lock(); // SPEED: Maybe this will be too slow????
-                editor.gui.process_input(window, event);
+
+                if editor.input.is_none() {
+                    editor.input = Some(RawInput::default());
+                }
+                editor.input.as_mut().unwrap().events.push_back(event.clone());
             })
             .tick(|engine: &Engine, dt: f32| {
                 let editor = engine.module::<Editor>().unwrap();

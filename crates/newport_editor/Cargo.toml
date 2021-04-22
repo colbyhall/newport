@@ -8,8 +8,8 @@ edition = "2018"
 newport_engine   = { path = "../newport_engine", version = "0.0.1" }
 newport_gpu      = { path = "../newport_gpu", version = "0.0.1" }
 newport_graphics = { path = "../newport_graphics", version = "0.0.1" }
-newport_math = { path = "../newport_math", version = "0.0.1" }
-newport_egui = { path = "../newport_egui", version = "0.0.1" }
-newport_os = { path = "../newport_os", version = "0.0.1" }
-newport_asset = { path = "../newport_asset", version = "0.0.1" }
-newport_codegen = { path = "../newport_codegen", version = "0.0.1" }
+newport_math     = { path = "../newport_math", version = "0.0.1" }
+newport_imgui    = { path = "../newport_imgui", version = "0.0.1" }
+newport_os       = { path = "../newport_os", version = "0.0.1" }
+newport_asset    = { path = "../newport_asset", version = "0.0.1" }
+newport_codegen  = { path = "../newport_codegen", version = "0.0.1" }

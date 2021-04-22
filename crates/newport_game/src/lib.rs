@@ -22,7 +22,7 @@ impl Module for Game {
             .module::<Editor>()
             .post_init(|engine: &Engine| {
                 let editor = engine.module::<Editor>().unwrap();
-                editor.push_page(Box::new(editor::WorldPage::default()));
+                // editor.push_page(Box::new(editor::WorldPage::default()));
             })
     }
 
