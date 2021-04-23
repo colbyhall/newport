@@ -1,5 +1,3 @@
-use newport_os::input::KEY_SPACE;
-
 use crate::{ Builder };
 
 use crate::math::{ Color, Vector2, Rect };
@@ -8,8 +6,8 @@ pub struct Label {
     label: String,
 
     color:  Option<Color>,
-    size:   Option<u32>,
-    bounds: Option<Rect>,
+    _size:   Option<u32>,
+    _bounds: Option<Rect>,
 }
 
 impl Label {
@@ -20,8 +18,8 @@ impl Label {
             label: label,
             
             color:  None,
-            size:   None,
-            bounds: None,
+            _size:   None,
+            _bounds: None,
         }
     }
 }
@@ -29,12 +27,12 @@ impl Label {
 impl Label {
     pub fn build(self, builder: &mut Builder) {
         let style = builder.style();
-        let spacing = builder.spacing();
-
+        let organization = builder.organization();
+        
         let label_rect = style.string_rect(&self.label, style.label_size, None);
-        let size = label_rect.size() + spacing.padding.min + spacing.padding.max;
-
-        let layout_rect = builder.layout.push_size(size + spacing.margin.min + spacing.margin.max);
+        let size = organization.content_size(label_rect.size(), builder.layout.space_left());
+        
+        let layout_rect = builder.layout.push_size(organization.spacing_size(size));
         let bounds = Rect::from_pos_size(layout_rect.pos(), size);
 
         let at = Rect::from_pos_size(bounds.pos(), label_rect.size()).top_left();

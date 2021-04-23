@@ -1,6 +1,6 @@
 use newport::*;
 use engine::{ Module, Engine, EngineBuilder, Window, WindowEvent };
-use imgui::{ DrawState, Panel, RawInput, Layout };
+use imgui::{Button, DrawState, Layout, Panel, RawInput, Organization};
 use math::Color;
 use graphics::*;
 
@@ -70,7 +70,10 @@ impl Module for ImguiExample {
                                 window.maximize();
                             }
 
-                            if builder.button("Minimize").clicked() {
+                            let response = Button::new("Minimize")
+                                .build(builder);
+
+                            if response.clicked() {
                                 window.minimize();
                             }
 

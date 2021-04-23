@@ -1,15 +1,4 @@
-use crate::{ 
-    Painter, 
-    Context, 
-    Id, 
-    Layout, 
-    InputState, 
-    Button, 
-    ButtonResponse, 
-    Style,
-    Label,
-    Spacing
-};
+use crate::{Button, ButtonResponse, Context, Id, InputState, Label, Layout, Organization, Painter, Style};
 
 pub struct Builder<'a> {
     pub id:      Id,
@@ -96,7 +85,7 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub fn spacing(&self) -> Spacing {
-        self.context.spacing.clone()
+    pub fn organization(&self) -> Organization {
+        self.context.organization.clone()
     }
 }

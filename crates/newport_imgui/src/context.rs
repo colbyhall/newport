@@ -1,16 +1,4 @@
-use crate::{ 
-    Builder, 
-    Event, 
-    Id, 
-    Input, 
-    Layout, 
-    Mesh, 
-    Painter, 
-    RawInput, 
-    Retained, 
-    Spacing, 
-    Style, 
-};
+use crate::{Builder, Event, Id, Input, Layout, Mesh, Organization, Painter, RawInput, Retained, Style};
 use crate::math::{ Vector2, Rect };
 
 use std::collections::HashMap;
@@ -85,7 +73,7 @@ pub struct Context {
     pub(crate) focused: Option<Id>,
 
     pub(crate) style: Option<Style>, // HACK: Style refers to assets and theyre not loaded most of the time a context is created
-    pub(crate) spacing: Spacing,
+    pub(crate) organization: Organization,
 
     canvas: Rect,
 }
@@ -114,10 +102,7 @@ impl Context {
             focused: None,
 
             style: None,
-            spacing: Spacing {
-                margin:  (5.0, 5.0, 5.0, 5.0).into(),
-                padding: (5.0, 5.0, 5.0, 5.0).into()
-            },
+            organization: Organization::default(),
 
             canvas: Rect::default(),
         }

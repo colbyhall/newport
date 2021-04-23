@@ -1,9 +1,11 @@
-use crate::{ Id, Builder, ButtonResponse, button_control };
+use crate::{Builder, ButtonResponse, Id, Organization, ToId, button_control};
 use crate::math::Rect;
 
 pub struct Button {
-    pub id: Id,
-    pub label: String,
+    id: Id,
+    label: String,
+    
+    organization: Option<Organization>
 }
 
 impl Button {
@@ -13,18 +15,31 @@ impl Button {
         Self {
             id:    Id::from(&label),
             label: label,
+
+            organization: None,
         }
     }
 
+    pub fn id(mut self, id: impl ToId) -> Self {
+        self.id = id.to_id();
+        self
+    }
+
+    pub fn organization(mut self, organization: Organization) -> Self {
+        self.organization = Some(organization);
+        self
+    }
+}
+
+impl Button {
     pub fn build(self, builder: &mut Builder) -> ButtonResponse {
-        
-        let style = builder.style().clone();
-        let spacing = builder.spacing().clone();
+        let style = builder.style();
+        let organization = self.organization.unwrap_or(builder.organization());
         
         let label_rect = style.string_rect(&self.label, style.label_size, None);
-        let size = label_rect.size() + spacing.padding.min + spacing.padding.max;
+        let size = organization.content_size(label_rect.size(), builder.layout.space_left());
         
-        let layout_rect = builder.layout.push_size(size + spacing.margin.min + spacing.margin.max);
+        let layout_rect = builder.layout.push_size(organization.spacing_size(size));
         let bounds = Rect::from_pos_size(layout_rect.pos(), size);
         
         let response = button_control(self.id, bounds, builder);
