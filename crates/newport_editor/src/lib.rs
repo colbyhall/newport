@@ -69,26 +69,6 @@ impl Editor {
             let gui = &mut editor.gui;
             gui.begin_frame(input);
 
-            let mut builder = gui.builder("foo", Layout::down_to_up((100.0, 100.0, 1000.0, 200.0)));
-
-            let size = LabelStyle::min_size(&mut builder);
-            let bounds = builder.layout.push_size(size);
-
-            builder.layout(Layout::left_to_right(bounds), |builder| {
-                builder.label("foo");
-            });
-            
-            let bounds = builder.layout.push_size(size);
-            
-            builder.layout(Layout::left_to_right(bounds), |builder| {
-                builder.label("bar");
-                builder.button("soo");
-                builder.label("car");
-                builder.button("dar");
-            });
-
-            builder.finish();
-
             gui.end_frame()
         };
 
@@ -126,7 +106,7 @@ impl Module for Editor {
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
             .module::<Graphics>()
-            .process_input(|engine: &Engine, window: &os::window::Window, event: &WindowEvent| {
+            .process_input(|engine: &Engine, _window: &os::window::Window, event: &WindowEvent| {
                 let mut editor = engine.module::<Editor>().unwrap().lock(); // SPEED: Maybe this will be too slow????
 
                 if editor.input.is_none() {

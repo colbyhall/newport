@@ -38,7 +38,9 @@ impl Module for ImguiExample {
                 let graphics = engine.module::<Graphics>().unwrap();
                 let device = graphics.device();
 
-                let dpi = engine.window().dpi();
+                let mut window = engine.window();
+
+                let dpi = window.dpi();
 
                 let backbuffer = device.acquire_backbuffer();
 
@@ -69,6 +71,9 @@ impl Module for ImguiExample {
                         if builder.button("dar").clicked() {
                             println!("dar");
                         }
+
+                        let drag = builder.layout.available_rect();
+                        window.set_custom_drag(drag);
                     });
 
                     gui.end_frame()

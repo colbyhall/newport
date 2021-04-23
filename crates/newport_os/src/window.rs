@@ -652,11 +652,14 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
                         return HTNOWHERE;
                     }
 
-                    let drag = RECT{
-                        left:  drag.min.x as u32,
-                        top:   drag.min.y as u32,
-                        bottom: drag.max.y as u32,
-                        right: drag.max.x as u32,
+                    // Convert newport rect into windows RECT
+                    let height = client.bottom;
+                    let drag = RECT {
+                        top:    height - drag.max.y as u32,
+                        bottom: height - drag.min.y as u32,
+
+                        left:   drag.min.x as u32,
+                        right:  drag.max.x as u32,
                     };
         
                     let mut left = false;

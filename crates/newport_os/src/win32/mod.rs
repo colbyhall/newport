@@ -117,7 +117,7 @@ pub union ULARGE_INTEGER {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct RECT {
     pub left:   LONG,
     pub top:    LONG,

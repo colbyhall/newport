@@ -109,7 +109,7 @@ impl LabelStyle {
         let mut fc = style.0.font.write();
         let font = fc.font_at_size(style.0.size, builder.input().dpi).unwrap();
 
-        font.string_rect(label, builder.layout.available_width())
+        font.string_rect(label, builder.layout.space_left().x)
     }
 }
 
