@@ -1,6 +1,5 @@
-use crate::{ Id, Builder, DARK, Padding, Margin, LabelStyle, Alignment };
-
-use crate::math::{ Color, Vector2 };
+use crate::{ Id, Builder, ButtonResponse, button_control };
+use crate::math::Rect;
 
 pub struct Button {
     pub id: Id,
@@ -18,41 +17,17 @@ impl Button {
     }
 
     pub fn build(self, builder: &mut Builder) -> ButtonResponse {
-        let padding = builder.style().get::<Padding>().0;
-        let margin  = builder.style().get::<Margin>().0;
-        let style   = builder.style().get::<ButtonStyle>();
-
-        let string_rect = LabelStyle::string_rect(builder, &self.label);
-
-        let size = string_rect.size() + padding.min + padding.max + margin.min + margin.max;
-        let bounds = builder.layout.push_size(size);
-        let bounds = {
-            let min = bounds.min + margin.min;
-            let max = bounds.max - margin.max;
-            (min, max).into()
-        };
-
-        let mut response = ButtonResponse::None;
-
-        let is_over = builder.input().mouse_is_over(bounds);
-        if is_over {
-            if !builder.is_hovered(self.id) {
-                response = ButtonResponse::Hovered;
-            }
-            builder.hover(self.id);
-
-            if builder.input().was_primary_clicked() {
-                builder.focus(self.id);
-            }
-        } else {
-            builder.unhover(self.id);
-        }
-
-        if builder.input().was_primary_released() {
-            if builder.unfocus(self.id) && is_over {
-                response = ButtonResponse::Clicked(0);
-            }
-        }
+        
+        let style = builder.style().clone();
+        let spacing = builder.spacing().clone();
+        
+        let label_rect = style.string_rect(&self.label, style.label_size, None);
+        let size = label_rect.size() + spacing.padding.min + spacing.padding.max;
+        
+        let layout_rect = builder.layout.push_size(size + spacing.margin.min + spacing.margin.max);
+        let bounds = Rect::from_pos_size(layout_rect.pos(), size);
+        
+        let response = button_control(self.id, bounds, builder);
 
         let is_focused = builder.is_focused(self.id);
         let is_hovered = builder.is_hovered(self.id);
@@ -78,74 +53,13 @@ impl Button {
         };
 
         builder.painter.rect(bounds).color(background_color);
-
-        let label_style = builder.style().get::<LabelStyle>().0;
-
-        let at = match label_style.alignment {
-            Alignment::Left => {
-                bounds.top_left() + Vector2::new(padding.top_left().x, -padding.top_left().y)
-            },
-            Alignment::Center => {
-                let bounds_width = bounds.width() - padding.min.x - padding.max.x;
-                let string_width = string_rect.width();
-
-                bounds.top_left() + Vector2::new(padding.top_left().x, -padding.top_left().y) + Vector2::new((bounds_width - string_width) / 2.0, 0.0)
-            },
-            _ => unimplemented!()
-        };
-
-        builder.painter.text(self.label, at, &label_style.font, label_style.size, builder.input().dpi).color(foreground_color).scissor(bounds);
+        
+        let at = Rect::from_pos_size(bounds.pos(), label_rect.size()).top_left();
+        builder.painter
+            .text(self.label, at, &style.font, style.label_size, builder.input().dpi)
+            .color(foreground_color)
+            .scissor(bounds);
 
         response
-    }
-}
-
-#[derive(Copy, Clone)]
-#[must_use = "If a response is not being used then use a label"]
-pub enum ButtonResponse {
-    None,
-    Hovered,
-    Clicked(u8),
-}
-
-impl ButtonResponse {
-    pub fn hovered(self) -> bool {
-        match self {
-            ButtonResponse::Hovered => true,
-            _ => false,
-        }
-    }
-
-    pub fn clicked(self) -> bool {
-        match self {
-            ButtonResponse::Clicked(_) => true,
-            _ => false,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct ButtonStyle {
-    pub unhovered_background: Color,
-    pub unhovered_foreground: Color,
-
-    pub hovered_background:   Color,
-    pub hovered_foreground:   Color,
-
-    pub focused_background:   Color,
-    pub focused_foreground:   Color,
-}
-
-impl Default for ButtonStyle {
-    fn default() -> Self {
-        Self {           
-            unhovered_background: DARK.bg,
-            hovered_background:   DARK.bg1,
-            focused_background:   DARK.bg2,
-
-            unhovered_foreground: DARK.fg,
-            hovered_foreground:   DARK.fg2,
-            focused_foreground:   DARK.fg3,
-        }
     }
 }

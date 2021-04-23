@@ -1,4 +1,16 @@
-use crate::{ Retained, Id, Builder, Painter, Layout, RawInput, Input, Mesh, Event, StyleMap };
+use crate::{ 
+    Builder, 
+    Event, 
+    Id, 
+    Input, 
+    Layout, 
+    Mesh, 
+    Painter, 
+    RawInput, 
+    Retained, 
+    Spacing, 
+    Style, 
+};
 use crate::math::{ Vector2, Rect };
 
 use std::collections::HashMap;
@@ -72,7 +84,8 @@ pub struct Context {
     pub(crate) hovered: Option<Id>,
     pub(crate) focused: Option<Id>,
 
-    pub(crate) style: StyleMap,
+    pub(crate) style: Option<Style>, // HACK: Style refers to assets and theyre not loaded most of the time a context is created
+    pub(crate) spacing: Spacing,
 
     canvas: Rect,
 }
@@ -100,7 +113,11 @@ impl Context {
             hovered: None,
             focused: None,
 
-            style: StyleMap::new(),
+            style: None,
+            spacing: Spacing {
+                margin:  (5.0, 5.0, 5.0, 5.0).into(),
+                padding: (5.0, 5.0, 5.0, 5.0).into()
+            },
 
             canvas: Rect::default(),
         }
@@ -122,6 +139,10 @@ impl Context {
 
     pub fn begin_frame(&mut self, mut input: RawInput) {
         let mut input_state = self.input;
+
+        if self.style.is_none() {
+            self.style = Some(Style::default());
+        }
 
         input_state.last_key_down = input_state.key_down;
         input_state.last_mouse_button_down = input_state.mouse_button_down;

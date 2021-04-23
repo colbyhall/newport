@@ -195,7 +195,7 @@ impl TextShape {
                 _ => {
                     let g = font.glyph_from_char(c).unwrap();
 
-                    let xy = Vector2::new(pos.x, pos.y - self.size as f32 + font.descent);
+                    let xy = Vector2::new(pos.x, pos.y - self.size as f32);
                     
                     let x0 = xy.x + g.bearing_x;
                     let y1 = xy.y + g.bearing_y;

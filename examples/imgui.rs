@@ -1,6 +1,6 @@
 use newport::*;
 use engine::{ Module, Engine, EngineBuilder, Window, WindowEvent };
-use imgui::{DrawState, Panel, RawInput};
+use imgui::{ DrawState, Panel, RawInput, Layout };
 use math::Color;
 use graphics::*;
 
@@ -59,21 +59,24 @@ impl Module for ImguiExample {
 
                     gui.begin_frame(input);
 
-                    Panel::top("menu_bar", 38.0).build(&mut gui, |builder| {
-                        builder.label("bar");
-                        
-                        if builder.button("soo").clicked() {
-                            println!("soo");
-                        }
-                        
-                        builder.label("car");
-                        
-                        if builder.button("dar").clicked() {
-                            println!("dar");
-                        }
+                    Panel::top("menu_bar", 90.0).build(&mut gui, |builder| {
+                        let bounds = builder.layout.push_size(builder.layout.space_left());
+                        builder.layout(Layout::right_to_left(bounds), |builder| {
+                            if builder.button("Close").clicked() {
+                                engine.shutdown();
+                            }
 
-                        let drag = builder.layout.available_rect();
-                        window.set_custom_drag(drag);
+                            if builder.button("Maxmize").clicked() {
+                                window.maximize();
+                            }
+
+                            if builder.button("Minimize").clicked() {
+                                window.minimize();
+                            }
+
+                            let drag = builder.layout.available_rect();
+                            window.set_custom_drag(drag);
+                        });
                     });
 
                     gui.end_frame()

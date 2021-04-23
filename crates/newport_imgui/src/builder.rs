@@ -4,11 +4,11 @@ use crate::{
     Id, 
     Layout, 
     InputState, 
-    StyleMap, 
     Button, 
     ButtonResponse, 
     Style,
-    Label
+    Label,
+    Spacing
 };
 
 pub struct Builder<'a> {
@@ -26,10 +26,6 @@ impl<'a> Builder<'a> {
 
     pub fn input(&self) -> &InputState {
         &self.context.input
-    }
-
-    pub fn style(&mut self) -> &mut StyleMap {
-        &mut self.context.style
     }
 
     pub fn is_focused(&self, id: Id) -> bool {
@@ -93,9 +89,14 @@ impl<'a> Builder<'a> {
         self.layout = current;
     }
 
-    pub fn scoped_style<T: Style>(&mut self, in_style: T, contents: impl FnOnce(&mut Builder)) {
-        self.style().push(in_style);
-        contents(self);
-        self.style().pop::<T>();
+    pub fn style(&self) -> Style {
+        match &self.context.style {
+            Some(it) => it.clone(),
+            None => Style::default(),
+        }
+    }
+
+    pub fn spacing(&self) -> Spacing {
+        self.context.spacing.clone()
     }
 }
