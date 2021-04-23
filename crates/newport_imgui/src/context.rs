@@ -4,7 +4,6 @@ use crate::math::{ Vector2, Rect };
 use std::collections::HashMap;
 
 struct Layer {
-    id:      Id,
     painter: Painter,
 }
 
@@ -117,8 +116,8 @@ impl Context {
         }
     }
 
-    pub(crate) fn push_layer(&mut self, id: Id, painter: Painter) {
-        self.layers.push(Layer{ id, painter });
+    pub(crate) fn push_layer(&mut self, painter: Painter) {
+        self.layers.push(Layer{ painter });
     }
 
     pub fn begin_frame(&mut self, mut input: RawInput) {

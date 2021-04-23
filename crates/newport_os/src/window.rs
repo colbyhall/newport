@@ -572,7 +572,6 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
             window.mouse_left = true;
         },
 
-        // NOTE: This is all the crazy style stuff
         WM_DWMCOMPOSITIONCHANGED => {
             match window.style {
                 WindowStyle::CustomTitleBar{ .. } => {
@@ -672,7 +671,7 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
                         bot = client.bottom - border as u32 <= mouse.y && mouse.y < client.bottom;
                         top = client.top <= mouse.y && mouse.y < client.top + border as u32;
                     }
-        
+                    
                     if left {
                         if top {
                             result = HTTOPLEFT;

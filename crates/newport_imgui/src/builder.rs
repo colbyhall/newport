@@ -21,7 +21,7 @@ pub struct Builder<'a> {
 
 impl<'a> Builder<'a> {
     pub fn finish(self) {
-        self.context.push_layer(self.id, self.painter)
+        self.context.push_layer(self.painter)
     }
 
     pub fn input(&self) -> &InputState {
