@@ -1,6 +1,6 @@
 use crate::math::{ Rect, Vector2 };
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Direction {
     LeftToRight,
     RightToLeft,
@@ -8,7 +8,7 @@ pub enum Direction {
     DownToUp,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Layout {
     bounds:     Rect,
     direction:  Direction,
@@ -50,6 +50,10 @@ impl Layout {
             Direction::LeftToRight|Direction::RightToLeft => self.bounds.width() - self.cursor,
             Direction::UpToDown|Direction::DownToUp => self.bounds.height() - self.cursor,
         }
+    }
+
+    pub fn bounds(&self) -> Rect {
+        self.bounds
     }
 
     pub fn down_to_up(bounds: impl Into<Rect>) -> Layout {

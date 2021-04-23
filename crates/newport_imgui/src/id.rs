@@ -4,6 +4,19 @@ use std::hash::{ Hasher, Hash };
 #[derive(Copy, Clone, PartialEq, PartialOrd)]
 pub struct Id(u64);
 
+pub trait ToId {
+    fn to_id(&self) -> Id;
+}
+
+impl<T: Hash + ?Sized> ToId for T {
+    fn to_id(&self) -> Id {
+        let mut hasher = DefaultHasher::new();
+        Hash::hash(self, &mut hasher);
+        let id = hasher.finish();
+        Id(id)
+    }
+}
+
 impl<T: Hash + ?Sized> From<&T> for Id {
     fn from(t: &T) -> Id {
         let mut hasher = DefaultHasher::new();

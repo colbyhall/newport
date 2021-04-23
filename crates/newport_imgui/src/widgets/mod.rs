@@ -3,3 +3,6 @@ pub use button::*;
 
 mod label;
 pub use label::*;
+
+mod panel;
+pub use panel::*;

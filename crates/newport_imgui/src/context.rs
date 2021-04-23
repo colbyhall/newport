@@ -68,12 +68,14 @@ impl InputState {
 pub struct Context {
     pub(crate) input:      InputState,
     layers:     Vec<Layer>,
-    retained:   HashMap<Id, Box<dyn Retained>>,
+    _retained:   HashMap<Id, Box<dyn Retained>>,
 
     pub(crate) hovered: Option<Id>,
     pub(crate) focused: Option<Id>,
 
     pub(crate) style: StyleMap,
+
+    canvas: Rect,
 }
 
 impl Context {
@@ -94,12 +96,14 @@ impl Context {
                 viewport: Rect::default(),
             },
             layers:     Vec::with_capacity(32),
-            retained:   HashMap::with_capacity(128),
+            _retained:   HashMap::with_capacity(128),
             
             hovered: None,
             focused: None,
 
             style: StyleMap::new(),
+
+            canvas: Rect::default(),
         }
     }
 
@@ -146,6 +150,7 @@ impl Context {
         input_state.dpi = input.dpi;
 
         self.input = input_state;
+        self.canvas = self.input.viewport;
     }
 
     pub fn end_frame(&mut self) -> Mesh {
@@ -157,5 +162,17 @@ impl Context {
         self.layers.drain(..).for_each(|it| it.painter.tesselate(&mut mesh));
         
         mesh
+    }
+}
+
+impl Context {
+    pub fn split_canvas_top(&mut self, size: f32) -> Rect {
+        let max = self.canvas.max;
+        
+        self.canvas.max.y -= size;
+
+        let min = Vector2::new(self.canvas.min.x, self.canvas.max.y);
+
+        (min, max).into()
     }
 }
