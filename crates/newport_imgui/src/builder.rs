@@ -1,11 +1,23 @@
-use crate::{Button, ButtonResponse, Context, Id, InputState, Label, Layout, Organization, Painter, Style};
+use crate::{
+    Button, 
+    ButtonResponse, 
+    Context, 
+    Id, 
+    InputState, 
+    Label, 
+    Layout, 
+    Painter, 
+    Style
+};
+
+use crate::math::{ Vector2, Rect };
 
 pub struct Builder<'a> {
     pub id:      Id,
     pub layout:  Layout,
 
     pub painter: Painter,
-    pub context: &'a mut Context,
+    pub(crate) context: &'a mut Context,
 }
 
 impl<'a> Builder<'a> {
@@ -63,6 +75,7 @@ impl<'a> Builder<'a> {
         false
     }
 
+    #[must_use = "If a response is not being used then use a label"]
     pub fn button(&mut self, label: impl Into<String>) -> ButtonResponse {
         Button::new(label).build(self)
     }
@@ -78,14 +91,26 @@ impl<'a> Builder<'a> {
         self.layout = current;
     }
 
-    pub fn style(&self) -> Style {
-        match &self.context.style {
-            Some(it) => it.clone(),
-            None => Style::default(),
-        }
+    pub fn available_rect(&self) -> Rect {
+        self.layout.available_rect()
     }
 
-    pub fn organization(&self) -> Organization {
-        self.context.organization.clone()
+    pub fn style(&self) -> Style {
+        self.context.style()
+    }
+
+    pub fn set_style(&mut self, style: Style) {
+        self.context.set_style(style);
+    }
+
+    pub fn content_bounds(&mut self, space_needed: Vector2) -> Rect {
+        let style = self.style();
+
+        let space_available = self.layout.space_left();
+        let content_size = style.content_size(space_needed, space_available);
+
+        let layout_rect = self.layout.push_size(style.spacing_size(content_size));
+        
+        Rect::from_pos_size(layout_rect.pos(), content_size)
     }
 }

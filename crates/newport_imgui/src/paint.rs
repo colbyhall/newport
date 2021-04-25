@@ -251,11 +251,11 @@ impl Painter {
             text: text,
 
             at: at,
-            scissor: (-1000.0, -1000.0, 100000000.0, 100000000.0).into(), // TODO: Infinite Rects
+            scissor: (-f32::INFINITY, -f32::INFINITY, f32::INFINITY, f32::INFINITY).into(),
 
             font: font.clone(),
             size: size,
-            dpi: dpi,
+            dpi:  dpi,
 
             color: Color::WHITE,
         };

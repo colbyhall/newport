@@ -1,40 +1,47 @@
-use crate::{Builder, ButtonResponse, Id, ToId, button_control};
-use crate::math::Rect;
+use crate::{
+    Builder,
+    ButtonResponse,
+    Id,
+    ToId,
+    button_control,
+};
 
-pub struct Button {
+use crate::math::{ Rect, Vector2 };
+
+pub struct Checkbox<'a> {
     id: Id,
-    label: String,
+    is_checked: &'a mut bool,
 }
 
-impl Button {
-    pub fn new(label: impl Into<String>) -> Self {
-        let label = label.into();
-
-        Self {
-            id:    Id::from(&label),
-            label: label,
+impl<'a> Checkbox<'a> {
+    pub fn new(id: impl ToId, is_checked: &'a mut bool) -> Self {
+        Self{
+            id: id.to_id(),
+            is_checked: is_checked,
         }
     }
-
-    pub fn id(mut self, id: impl ToId) -> Self {
-        self.id = id.to_id();
-        self
-    }
 }
 
-impl Button {
-    #[must_use = "If a response is not being used then use a label"]
+impl<'a> Checkbox<'a> {
     pub fn build(self, builder: &mut Builder) -> ButtonResponse {
         let style = builder.style();
 
-        let label_rect = style.string_rect(&self.label, style.label_size, None).size();
-        let bounds = builder.content_bounds(label_rect);
-        
+        let size = style.label_height();
+
+        let checkbox_size = Vector2::new(size, size);
+        let check_size = (size / 3.0, size / 3.0).into();
+
+        let bounds = Rect::from_pos_size(builder.content_bounds(checkbox_size).pos(), checkbox_size);
+
         let response = button_control(self.id, bounds, builder);
+
+        if response.clicked() {
+            *self.is_checked = !*self.is_checked;
+        }
         
         let is_focused = builder.is_focused(self.id);
         let is_hovered = builder.is_hovered(self.id);
-        
+
         let (background_color, foreground_color) = {
             let background_color = if is_focused {
                 style.focused_background
@@ -56,12 +63,11 @@ impl Button {
         };
 
         builder.painter.rect(bounds).color(background_color);
-        
-        let at = Rect::from_pos_size(bounds.pos(), label_rect).top_left();
-        builder.painter
-            .text(self.label, at, &style.font, style.label_size, builder.input().dpi)
-            .color(foreground_color)
-            .scissor(bounds);
+
+        if *self.is_checked {
+            let check_bounds = Rect::from_pos_size(bounds.pos(), check_size);
+            builder.painter.rect(check_bounds).color(foreground_color);
+        }
 
         response
     }

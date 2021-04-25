@@ -6,3 +6,6 @@ pub use label::*;
 
 mod panel;
 pub use panel::*;
+
+mod checkbox;
+pub use checkbox::*;

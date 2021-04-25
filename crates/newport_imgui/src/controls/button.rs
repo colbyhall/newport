@@ -2,7 +2,6 @@ use crate::{ Builder, Id };
 use crate::math::Rect;
 
 #[derive(Copy, Clone)]
-#[must_use = "If a response is not being used then use a label"]
 pub enum ButtonResponse {
     None,
     Hovered,

@@ -1,4 +1,15 @@
-use crate::{Builder, Event, Id, Input, Layout, Mesh, Organization, Painter, RawInput, Retained, Style};
+use crate::{
+    Builder, 
+    Event, 
+    Id, 
+    Input, 
+    Layout, 
+    Mesh, 
+    Painter, 
+    RawInput, 
+    Retained, 
+    Style
+};
 use crate::math::{ Vector2, Rect };
 
 use std::collections::HashMap;
@@ -73,7 +84,6 @@ pub struct Context {
     pub(crate) focused: Option<Id>,
 
     pub(crate) style: Option<Style>, // HACK: Style refers to assets and theyre not loaded most of the time a context is created
-    pub(crate) organization: Organization,
 
     canvas: Rect,
 }
@@ -102,7 +112,6 @@ impl Context {
             focused: None,
 
             style: None,
-            organization: Organization::default(),
 
             canvas: Rect::default(),
         }
@@ -167,6 +176,17 @@ impl Context {
         self.layers.drain(..).for_each(|it| it.painter.tesselate(&mut mesh));
         
         mesh
+    }
+
+    pub fn style(&self) -> Style {
+        match &self.style {
+            Some(it) => it.clone(),
+            None => Style::default(),
+        }
+    }
+
+    pub fn set_style(&mut self, style: Style) {
+        self.style = Some(style);
     }
 }
 

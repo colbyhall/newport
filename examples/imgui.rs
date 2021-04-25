@@ -1,7 +1,7 @@
 use newport::*;
 use engine::{ Module, Engine, EngineBuilder, Window, WindowEvent };
-use imgui::{Button, DrawState, Layout, Panel, RawInput, Organization};
-use math::Color;
+use imgui::{Button, DrawState, Layout, Panel, RawInput, Checkbox, DARK };
+use math::{ Color, Rect };
 use graphics::*;
 
 use std::sync::Mutex;
@@ -11,7 +11,6 @@ struct ImguiExample {
     draw_state: DrawState,
     context:    Mutex<imgui::Context>,
     input:      RefCell<Option<RawInput>>,
-
 }
 
 impl Module for ImguiExample {
@@ -59,23 +58,43 @@ impl Module for ImguiExample {
 
                     gui.begin_frame(input);
 
-                    Panel::top("menu_bar", 90.0).build(&mut gui, |builder| {
+                    let mut style = gui.style();
+                    style.padding = (10.0, 10.0, 10.0, 10.0).into();
+                    style.margin = Rect::default();
+                    let height = style.label_height() + style.padding.min.y + style.padding.max.y;
+
+                    gui.set_style(style);
+
+                    Panel::top("menu_bar", height).build(&mut gui, |builder| {
                         let bounds = builder.layout.push_size(builder.layout.space_left());
                         builder.layout(Layout::right_to_left(bounds), |builder| {
-                            if builder.button("Close").clicked() {
-                                engine.shutdown();
+                            {
+                                let og = builder.style();
+                                let mut new = og.clone();
+                                new.hovered_background = DARK.red0;
+                                new.hovered_foreground = DARK.fg;
+                                new.focused_background = DARK.red0;
+                                new.focused_foreground = DARK.fg;
+                                builder.set_style(new);
+                                
+                                if builder.button("Close").clicked() {
+                                    engine.shutdown();
+                                }
+
+                                builder.set_style(og);
                             }
 
-                            if builder.button("Maxmize").clicked() {
+                            if builder.button("Max").clicked() {
                                 window.maximize();
                             }
 
-                            let response = Button::new("Minimize")
+                            let response = Button::new("Min")
                                 .build(builder);
 
                             if response.clicked() {
                                 window.minimize();
                             }
+
 
                             let drag = builder.layout.available_rect();
                             window.set_custom_drag(drag);

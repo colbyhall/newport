@@ -27,15 +27,11 @@ impl Label {
 impl Label {
     pub fn build(self, builder: &mut Builder) {
         let style = builder.style();
-        let organization = builder.organization();
         
-        let label_rect = style.string_rect(&self.label, style.label_size, None);
-        let size = organization.content_size(label_rect.size(), builder.layout.space_left());
-        
-        let layout_rect = builder.layout.push_size(organization.spacing_size(size));
-        let bounds = Rect::from_pos_size(layout_rect.pos(), size);
+        let label_rect = style.string_rect(&self.label, style.label_size, None).size();
+        let bounds = builder.content_bounds(label_rect);
 
-        let at = Rect::from_pos_size(bounds.pos(), label_rect.size()).top_left();
+        let at = Rect::from_pos_size(bounds.pos(), label_rect).top_left();
 
         builder.painter
             .text(self.label, at, &style.font, style.label_size, builder.input().dpi)
