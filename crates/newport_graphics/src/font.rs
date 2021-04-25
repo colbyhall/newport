@@ -71,7 +71,7 @@ impl FontCollection {
     
                 if pen_x + bmp_width >= tex_width {
                     pen_x = 0;
-                    pen_y -= (size_metrics.height >> 6) + 1;
+                    pen_y -= (size_metrics.height >> 6) + 4;
                 }
     
                 for row in 0..bmp_rows {
@@ -108,7 +108,7 @@ impl FontCollection {
                     uv: (uv0, uv1).into(),
                 };
     
-                pen_x += bmp_width + 1;
+                pen_x += bmp_width + 4;
             }
     
             let ascent  = (self.face.ascender() >> 6) as f32;

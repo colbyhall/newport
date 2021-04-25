@@ -3,9 +3,10 @@
 use newport_core::containers::{ Box, HashMap };
 use newport_os::window::{ WindowBuilder, WindowStyle };
 pub use newport_os::window::{ WindowEvent, Window };
+use newport_math::Rect;
 
 use std::any::TypeId;
-use std::sync::{ Mutex, MutexGuard };
+use std::sync::{ Mutex };
 use std::sync::atomic::{ AtomicBool, Ordering };
 use std::any::Any;
 use std::time::Instant;
@@ -21,8 +22,13 @@ pub struct Engine {
     modules: HashMap<TypeId, Box<dyn Any>>, 
 
     is_running: AtomicBool,
+    fps:        i32,
     
-    window:      Mutex<Window>,
+    window:   Window,
+    minimize: AtomicBool,
+    maximize: AtomicBool,
+    drag:     Mutex<Rect>,
+    dpi:      f32,
 }
 
 impl Engine {
@@ -57,12 +63,20 @@ impl Engine {
                 .spawn()
                 .unwrap();
 
+            let dpi = window.dpi();
+
             ENGINE = Some(Engine{
                 name:       name,
                 modules:    HashMap::with_capacity(builder.entries.len()),
                 is_running: AtomicBool::new(true),
+                fps:        0,
                 
-                window:      Mutex::new(window),
+                window:   window,
+                minimize: AtomicBool::new(false),
+                maximize: AtomicBool::new(false),
+
+                drag: Mutex::new(Rect::default()),
+                dpi:  dpi,
             });
 
             ENGINE.as_mut().unwrap()
@@ -76,13 +90,8 @@ impl Engine {
         // Do post init
         builder.post_inits.drain(..).for_each(|init| init(engine));
 
-        {
-            let mut window = engine.window();
-            window.set_visible(true);
-            // window.maximize();
-        }
+        engine.window.set_visible(true);
 
-        let mut _fps = 0;
         let mut frame_count = 0;
         let mut time = 0.0;
 
@@ -96,16 +105,14 @@ impl Engine {
             time += dt;
             if time >= 1.0 {
                 time = 0.0;
-                _fps = frame_count;
+                engine.fps = frame_count;
                 frame_count = 0;
             }
             frame_count += 1;
 
-            {
-                let mut window = engine.window.lock().unwrap();
-    
-                for event in window.poll_events() {
-                    builder.process_input.iter().for_each(|process_input| process_input(engine, &window, &event));
+            {    
+                for event in engine.window.poll_events() {
+                    builder.process_input.iter().for_each(|process_input| process_input(engine, &engine.window, &event));
     
                     match event {
                         WindowEvent::Closed => {
@@ -113,7 +120,7 @@ impl Engine {
                             break 'run;
                         },
                         WindowEvent::Resizing(_, _) => {
-                            // builder.tick.iter().for_each(|tick| tick(engine, 0.0));
+                            builder.tick.iter().for_each(|tick| tick(engine, 0.0));
                         }
                         _ => {}
                     }
@@ -121,6 +128,21 @@ impl Engine {
             }
 
             builder.tick.iter().for_each(|tick| tick(engine, dt));
+
+            if engine.maximize.load(Ordering::Relaxed) {
+                engine.window.maximize();
+                engine.maximize.store(false, Ordering::Relaxed)
+            }
+
+            if engine.minimize.load(Ordering::Relaxed) {
+                engine.window.minimize();
+                engine.minimize.store(false, Ordering::Relaxed)
+            }
+
+            {
+                let drag = engine.drag.lock().unwrap();
+                engine.window.set_custom_drag(*drag);
+            }
         }
 
         // Do pre shutdowns
@@ -159,12 +181,33 @@ impl Engine {
     }
 
     /// Returns the window that the engine draws into
-    pub fn window(&self) -> MutexGuard<Window> {
-        self.window.lock().unwrap()
+    pub fn window(&self) -> &Window {
+        &self.window
     }
 
     pub fn shutdown(&self) {
         self.is_running.store(false, Ordering::Relaxed);
+    }
+
+    pub fn fps(&self) -> i32 {
+        self.fps
+    }
+
+    pub fn maximize(&self) {
+        self.maximize.store(true, Ordering::Relaxed);
+    }
+
+    pub fn minimize(&self) {
+        self.minimize.store(true, Ordering::Relaxed);
+    }
+
+    pub fn set_custom_drag(&self, drag: Rect) {
+        let mut self_drag = self.drag.lock().unwrap();
+        *self_drag = drag;
+    }
+
+    pub fn dpi(&self) -> f32 {
+        self.dpi
     }
 }
 

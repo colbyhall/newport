@@ -154,7 +154,10 @@ impl Context {
                 },
                 Event::MouseMove(x, y) => {
                     input_state.mouse_location = Some((x as f32, y as f32).into());
-                }
+                },
+                Event::MouseLeave => {
+                    input_state.mouse_location = None;
+                },
                 _ => { }
             }
         });
@@ -165,6 +168,7 @@ impl Context {
 
         self.input = input_state;
         self.canvas = self.input.viewport;
+        self.style = Some(Style::default());
     }
 
     pub fn end_frame(&mut self) -> Mesh {
@@ -197,6 +201,16 @@ impl Context {
         self.canvas.max.y -= size;
 
         let min = Vector2::new(self.canvas.min.x, self.canvas.max.y);
+
+        (min, max).into()
+    }
+
+    pub fn split_canvas_bottom(&mut self, size: f32) -> Rect {
+        let min = self.canvas.min;
+        
+        self.canvas.min.y += size;
+
+        let max = Vector2::new(self.canvas.max.x, self.canvas.min.y);
 
         (min, max).into()
     }

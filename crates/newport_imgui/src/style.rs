@@ -74,7 +74,7 @@ impl Style {
     pub fn label_height(&self) -> f32 {
         let mut fc = self.font.write();
         let font = fc.font_at_size(self.label_size, 1.0).unwrap(); // NOTE: I don't think DPI matters here
-        font.height
+        font.ascent - font.descent
     }
 }
 
@@ -82,7 +82,7 @@ impl Default for Style {
     fn default() -> Self {
         let asset_manager = Engine::as_ref().module::<AssetManager>().unwrap();
 
-        let font = asset_manager.find("assets/fonts/menlo_regular.ttf").unwrap();
+        let font = asset_manager.find("assets/fonts/consola.ttf").unwrap();
 
         Self {
             inactive_background: DARK.bg_s,
@@ -101,8 +101,8 @@ impl Default for Style {
             selected_foreground: DARK.bg1,
 
             font: font,
-            label_size:  10,
-            header_size: 12,
+            label_size:  12,
+            header_size: 16,
 
             margin:  (5.0, 5.0, 5.0, 5.0).into(),
             padding: (5.0, 5.0, 5.0, 5.0).into(),

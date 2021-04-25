@@ -195,7 +195,7 @@ impl TextShape {
                 _ => {
                     let g = font.glyph_from_char(c).unwrap();
 
-                    let xy = Vector2::new(pos.x, pos.y - self.size as f32);
+                    let xy = Vector2::new(pos.x, pos.y - (font.height + font.descent));
                     
                     let x0 = xy.x + g.bearing_x;
                     let y1 = xy.y + g.bearing_y;
@@ -397,7 +397,7 @@ impl DrawState {
             .shaders(vec![vertex_shader, pixel_shader])
             .vertex::<Vertex>()
             .enable_blend()
-            .dst_alpha_blend(gpu::BlendFactor::OneMinusSrcAlpha)
+            .dst_color_blend(gpu::BlendFactor::OneMinusSrcAlpha)
             .push_constant_size::<DrawConstants>()
             .build();
 

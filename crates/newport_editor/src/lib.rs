@@ -8,7 +8,7 @@ pub(crate) use newport_graphics as graphics;
 
 use engine::{ Module, Engine, EngineBuilder, WindowEvent };
 use graphics::{ Graphics };
-use math::Color;
+use math::{ Color, Rect };
 
 use std::sync::{ Mutex, MutexGuard };
 
@@ -55,21 +55,90 @@ impl Editor {
         let graphics = engine.module::<Graphics>().unwrap();
         let device = graphics.device();
 
-        let mut editor = self.lock();
-
+        let dpi = engine.dpi();
         let backbuffer = device.acquire_backbuffer();
+
+        let mut editor = self.lock();
 
         let mesh = {
             let mut input = editor.input.take().unwrap_or_default();
             
-            input.viewport = (0.0, 0.0, backbuffer.width() as f32, backbuffer.height() as f32).into();
+            input.viewport = (0.0, 0.0, backbuffer.width() as f32 / dpi, backbuffer.height() as f32 / dpi).into();
             input.dt = dt;
             input.dpi = 1.0;
 
-            let gui = &mut editor.gui;
-            gui.begin_frame(input);
+            editor.gui.begin_frame(input);
 
-            gui.end_frame()
+            // Top title bar which holds the pages, title, and window buttons
+            {
+                let mut style = editor.gui.style();
+                style.padding = (10.0, 10.0, 10.0, 10.0).into();
+                style.margin = Rect::default();
+                style.inactive_background = DARK.bg_h;
+                style.unhovered_background = DARK.bg;
+                let height = style.label_height() + style.padding.min.y + style.padding.max.y;
+    
+                editor.gui.set_style(style);
+    
+                Panel::top("menu_bar", height).build(&mut editor.gui, |builder| {
+                    let bounds = builder.layout.push_size(builder.layout.space_left());
+                    builder.layout(Layout::right_to_left(bounds), |builder| {
+                        {
+                            let og = builder.style();
+                            let mut new = og.clone();
+                            new.hovered_background = DARK.red0;
+                            new.hovered_foreground = DARK.fg;
+                            new.focused_background = DARK.red0;
+                            new.focused_foreground = DARK.fg;
+                            builder.set_style(new);
+                            
+                            if builder.button("Close").clicked() {
+                                engine.shutdown();
+                            }
+    
+                            builder.set_style(og);
+                        }
+    
+                        if builder.button("Max").clicked() {
+                            engine.maximize();
+                        }
+    
+                        let response = Button::new("Min")
+                            .build(builder);
+    
+                        if response.clicked() {
+                            engine.minimize();
+                        }
+    
+    
+                        let drag = builder.layout.available_rect();
+                        engine.set_custom_drag(drag);
+                    });
+                });
+            }
+
+            // Bottom bar
+            {
+                let mut style = Style::default();
+                style.padding = (2.0, 2.0, 2.0, 2.0).into();
+                style.inactive_background = DARK.yellow1;
+                style.inactive_foreground = DARK.bg;
+
+                let height = style.label_height() + style.padding.min.y + style.padding.max.y;
+    
+                editor.gui.set_style(style);
+
+                Panel::bottom("bottom_bar", height).build(&mut editor.gui, |builder| {
+                    builder.label(format!("{} - Newport Engine", engine.name()));
+
+                    let bounds = builder.layout.push_size(builder.layout.space_left());
+                    builder.layout(Layout::right_to_left(bounds), |builder| {
+                        builder.label(format!("{:.2}ms Idle", dt * 1000.0));
+                    });
+                });
+            }
+
+            editor.gui.end_frame()
         };
 
         device.update_bindless();
@@ -117,12 +186,10 @@ impl Module for Editor {
             .tick(|engine: &Engine, dt: f32| {
                 let editor = engine.module::<Editor>().unwrap();
 
-                {
-                    let window = engine.window();
-                    if window.is_minimized() {
-                        return;
-                    }
+                if engine.window().is_minimized() {
+                    return;
                 }
+            
                 editor.do_frame(dt);
             })
     }

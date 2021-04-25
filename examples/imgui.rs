@@ -1,6 +1,6 @@
 use newport::*;
 use engine::{ Module, Engine, EngineBuilder, Window, WindowEvent };
-use imgui::{Button, DrawState, Layout, Panel, RawInput, Checkbox, DARK };
+use imgui::{Button, DrawState, Layout, Panel, RawInput, DARK };
 use math::{ Color, Rect };
 use graphics::*;
 
@@ -38,9 +38,7 @@ impl Module for ImguiExample {
                 let device = graphics.device();
 
                 let mut window = engine.window();
-
                 let dpi = window.dpi();
-
                 let backbuffer = device.acquire_backbuffer();
 
                 let example = engine.module::<ImguiExample>().unwrap();
@@ -85,19 +83,19 @@ impl Module for ImguiExample {
                             }
 
                             if builder.button("Max").clicked() {
-                                window.maximize();
+                                engine.maximize();
                             }
 
                             let response = Button::new("Min")
                                 .build(builder);
 
                             if response.clicked() {
-                                window.minimize();
+                                engine.minimize();
                             }
 
 
                             let drag = builder.layout.available_rect();
-                            window.set_custom_drag(drag);
+                            engine.set_custom_drag(drag);
                         });
                     });
 

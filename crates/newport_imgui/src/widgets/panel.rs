@@ -9,6 +9,7 @@ use crate::{
 
 pub enum PanelVariant {
     Top,
+    Bottom,
 }
 
 pub struct Panel {
@@ -25,6 +26,14 @@ impl Panel {
             size:    size,
         }
     }
+
+    pub fn bottom(id: impl ToId, size: f32) -> Self {
+        Self {
+            id:      id.to_id(),
+            variant: PanelVariant::Bottom,
+            size:    size,
+        }
+    }
 }
 
 impl Panel {
@@ -34,10 +43,15 @@ impl Panel {
                 let rect = ctx.split_canvas_top(self.size);
                 Layout::left_to_right(rect)
             },
+            PanelVariant::Bottom => {
+                let rect = ctx.split_canvas_bottom(self.size);
+                Layout::left_to_right(rect)
+            },
         };
 
         let mut builder = ctx.builder(self.id, layout);
-        builder.painter.rect(layout.bounds()).color(DARK.bg);
+        let style = builder.style();
+        builder.painter.rect(layout.bounds()).color(style.inactive_background);
         contents(&mut builder);
         builder.finish();
     }

@@ -575,20 +575,20 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
         WM_DWMCOMPOSITIONCHANGED => {
             match window.style {
                 WindowStyle::CustomTitleBar{ .. } => {
-                    let mut margins = MARGINS::default();
+                    // let mut margins = MARGINS::default();
         
-                    if window.is_maximized() {
-                        let x_push = unsafe{ GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
-                        let y_push = unsafe{ GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
+                    // if window.is_maximized() {
+                    //     let x_push = unsafe{ GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
+                    //     let y_push = unsafe{ GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
         
-                        margins.cxLeftWidth = x_push;
-                        margins.cxRightWidth = x_push;
+                    //     margins.cxLeftWidth = x_push;
+                    //     margins.cxRightWidth = x_push;
         
-                        margins.cyTopHeight = y_push;
-                        margins.cyBottomHeight = y_push;
-                    }
+                    //     margins.cyTopHeight = y_push;
+                    //     margins.cyBottomHeight = y_push;
+                    // }
         
-                    unsafe{ DwmExtendFrameIntoClientArea(hWnd, &margins) };
+                    // unsafe{ DwmExtendFrameIntoClientArea(hWnd, &margins) };
                 },
                 _ => { }
             }
