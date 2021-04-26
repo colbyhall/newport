@@ -74,8 +74,8 @@ impl Editor {
                 let mut style = editor.gui.style();
                 style.padding = (12.0, 10.0, 12.0, 10.0).into();
                 style.margin = Rect::default();
-                style.inactive_background = DARK.bg_h;
-                style.unhovered_background = DARK.bg;
+                // style.inactive_background = DARK.bg_h;
+                style.unhovered_background = DARK.bg_s;
                 let height = style.label_height() + style.padding.min.y + style.padding.max.y;
     
                 editor.gui.set_style(style);
