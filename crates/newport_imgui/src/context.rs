@@ -141,6 +141,8 @@ impl Context {
         input_state.last_key_down = input_state.key_down;
         input_state.last_mouse_button_down = input_state.mouse_button_down;
 
+        let dpi = input.dpi;
+
         input.events.drain(..).for_each(|event| {
             match event {
                 Event::Key{ key, pressed } => {
@@ -150,10 +152,10 @@ impl Context {
                 Event::MouseButton{ mouse_button, pressed, position } => {
                     let code = mouse_button.as_mouse_button();
                     input_state.mouse_button_down[code as usize] = pressed;
-                    input_state.mouse_location = Some((position.0 as f32, position.1 as f32).into());
+                    input_state.mouse_location = Some((position.0 as f32 / dpi, position.1 as f32 / dpi).into());
                 },
                 Event::MouseMove(x, y) => {
-                    input_state.mouse_location = Some((x as f32, y as f32).into());
+                    input_state.mouse_location = Some((x as f32 / dpi, y as f32 / dpi).into());
                 },
                 Event::MouseLeave => {
                     input_state.mouse_location = None;
@@ -162,9 +164,9 @@ impl Context {
             }
         });
 
-        input_state.viewport = input.viewport;
+        input_state.viewport = (input.viewport.min / dpi, input.viewport.max / dpi).into();
         input_state.dt = input.dt;
-        input_state.dpi = input.dpi;
+        input_state.dpi = dpi;
 
         self.input = input_state;
         self.canvas = self.input.viewport;

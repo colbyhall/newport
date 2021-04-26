@@ -63,16 +63,16 @@ impl Editor {
         let mesh = {
             let mut input = editor.input.take().unwrap_or_default();
             
-            input.viewport = (0.0, 0.0, backbuffer.width() as f32 / dpi, backbuffer.height() as f32 / dpi).into();
+            input.viewport = (0.0, 0.0, backbuffer.width() as f32, backbuffer.height() as f32).into();
             input.dt = dt;
-            input.dpi = 1.0;
+            input.dpi = dpi;
 
             editor.gui.begin_frame(input);
 
             // Top title bar which holds the pages, title, and window buttons
             {
                 let mut style = editor.gui.style();
-                style.padding = (10.0, 10.0, 10.0, 10.0).into();
+                style.padding = (12.0, 10.0, 12.0, 10.0).into();
                 style.margin = Rect::default();
                 style.inactive_background = DARK.bg_h;
                 style.unhovered_background = DARK.bg;
@@ -102,16 +102,13 @@ impl Editor {
                         if builder.button("Max").clicked() {
                             engine.maximize();
                         }
-    
-                        let response = Button::new("Min")
-                            .build(builder);
-    
-                        if response.clicked() {
+
+                        if builder.button("Min").clicked() {
                             engine.minimize();
                         }
     
-    
                         let drag = builder.layout.available_rect();
+                        let drag = Rect::from_pos_size(drag.pos() * builder.input().dpi, drag.size() * builder.input().dpi);
                         engine.set_custom_drag(drag);
                     });
                 });
