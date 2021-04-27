@@ -1,6 +1,6 @@
-use crate::{ Builder };
+use crate::Builder;
 
-use crate::math::{ Color, Vector2, Rect };
+use crate::math::{ Color, Rect };
 
 pub struct Label {
     label: String,

@@ -4,7 +4,6 @@ use crate::{
     ToId,
     Builder,
     Layout,
-    DARK,
 };
 
 pub enum PanelVariant {

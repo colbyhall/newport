@@ -17,6 +17,7 @@ use std::marker::PhantomData;
 use std::ops::{ Deref, DerefMut };
 use std::fmt;
 use std::convert::Into;
+use std::time::Instant;
 
 /// Trait alis for what an `Asset` can be
 pub trait Asset: Sized + 'static {
@@ -71,6 +72,7 @@ pub struct AssetRef<T: 'static> {
     phantom: PhantomData<T>,
     variant: usize, // Index into AssetManager::variants
     manager: AssetManager, 
+    path:    PathBuf,
 }
 
 impl<T: 'static> AssetRef<T> {
@@ -148,6 +150,7 @@ impl<T:'static> Drop for AssetRef<T> {
 
             let mut lock = self.arc.write().unwrap();
             (variant.unload)(lock.take().unwrap());
+            info!("[AssetManager] Unloading asset {:?}", self.path)
         }
     }
 }
@@ -159,6 +162,7 @@ impl<T:'static> Clone for AssetRef<T> {
             phantom:    PhantomData,
             variant:    self.variant,
             manager:    self.manager.clone(),
+            path:       self.path.clone(),
         }
     }
 }
@@ -290,17 +294,24 @@ impl AssetManager {
             phantom: PhantomData,
             variant: entry.variant,
             manager: self.clone(),
+            path:    PathBuf::from(p.as_ref()),
         };
 
         // If we're the first reference the load the asset
         if result.strong_count() == 1 {
             let mut lock = entry.asset.write().unwrap();
-            let result = (variant.load)(&entry.path);
+            let (result, dur) = {
+                let now = Instant::now();
+                let result = (variant.load)(&entry.path);
+                let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
+                (result, dur)
+            };
             if result.is_err() {
                 let err = result.err().unwrap();
                 error!("[AssetManager] Failed to load {:?} due to {:?}", p, err);
             } else {
                 *lock = Some(result.unwrap());
+                info!("[AssetManager] Loaded asset {:?} in {:.2}ms", p, dur);
             }
         }
 

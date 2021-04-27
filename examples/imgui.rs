@@ -37,7 +37,7 @@ impl Module for ImguiExample {
                 let graphics = engine.module::<Graphics>().unwrap();
                 let device = graphics.device();
 
-                let mut window = engine.window();
+                let window = engine.window();
                 let dpi = window.dpi();
                 let backbuffer = device.acquire_backbuffer();
 

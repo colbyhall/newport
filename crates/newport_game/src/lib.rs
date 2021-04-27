@@ -1,8 +1,15 @@
-use newport_engine::{ Module, EngineBuilder };
-use newport_ecs::World;
-use newport_editor::Editor;
+pub(crate) use newport_engine as engine;
+pub(crate) use newport_ecs as ecs;
+pub(crate) use newport_editor as editor;
+
+use engine::{ Module, EngineBuilder };
+use ecs::World;
+use editor::Editor;
 
 use std::sync::Mutex;
+
+mod level_editor;
+use level_editor::*;
 
 pub struct Game {
     pub world: Mutex<World>,

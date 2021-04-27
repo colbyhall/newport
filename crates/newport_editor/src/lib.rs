@@ -130,7 +130,7 @@ impl Editor {
 
                     let bounds = builder.layout.push_size(builder.layout.space_left());
                     builder.layout(Layout::right_to_left(bounds), |builder| {
-                        builder.label(format!("{:.2}ms Idle", dt * 1000.0));
+                        builder.label(format!("{:.2}ms [{} FPS] | Idle", dt * 1000.0, engine.fps()));
                     });
                 });
             }
