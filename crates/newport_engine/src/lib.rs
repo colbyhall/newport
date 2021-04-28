@@ -91,6 +91,7 @@ impl Engine {
         builder.post_inits.drain(..).for_each(|init| init(engine));
 
         engine.window.set_visible(true);
+        engine.window.maximize();
 
         let mut frame_count = 0;
         let mut time = 0.0;

@@ -35,6 +35,10 @@ impl Vector2 {
         Self{ x: x, y: y }
     }
 
+    pub fn from_rad(theta: f32) -> Self {
+        Self{ x: theta.sin(), y: theta.cos() }
+    }
+
     pub const fn dot(self, rhs: Self) -> f32 {
         self.x * rhs.x + self.y * rhs.y
     }

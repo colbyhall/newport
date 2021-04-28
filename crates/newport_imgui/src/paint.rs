@@ -4,16 +4,63 @@ use crate::math::{ Rect, Color, Vector2, Matrix4, Vector3 };
 use crate::graphics::{ Texture, Graphics, FontCollection };
 use crate::asset::AssetRef;
 use crate::engine::Engine;
+use crate::math;
 
 use crate::{ gpu, Context };
 
 use std::mem::size_of;
 
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
+pub struct Roundness {
+    pub bottom_left:  f32,
+    pub bottom_right: f32, 
+    pub top_left:  f32,
+    pub top_right: f32, 
+}
+
+impl Roundness {
+    pub fn max(self) -> f32 {
+        let mut max = self.bottom_left;
+        if max < self.bottom_right {
+            max = self.bottom_right;
+        }
+        if max < self.top_left {
+            max = self.top_left;
+        }
+        if max < self.top_right {
+            max = self.top_right;
+        }
+        max
+    }
+}
+
+impl From<f32> for Roundness {
+    fn from(rad: f32) -> Self {
+        Self{
+            bottom_left:  rad,
+            bottom_right: rad,
+            top_left:  rad,
+            top_right: rad,
+        }
+    }
+}
+
+impl From<(f32, f32, f32, f32)> for Roundness {
+    fn from(xyzw: (f32, f32, f32, f32)) -> Self {
+        Self{
+            bottom_left:  xyzw.0,
+            bottom_right: xyzw.1,
+            top_left:  xyzw.2,
+            top_right: xyzw.3,
+        }
+    }
+}
+
 pub struct RectShape {
     bounds:     Rect,
     scissor:    Rect,
 
-    _roundness:  Rect, // TODO: Rounded rects
+    roundness:  Roundness,
     color:      Color,
     texture:    Option<AssetRef<Texture>>,
 }
@@ -24,8 +71,8 @@ impl RectShape {
         self
     }
     
-    pub fn roundness(&mut self, corners: impl Into<Rect>) -> &mut Self {
-        self._roundness = corners.into();
+    pub fn roundness(&mut self, corners: impl Into<Roundness>) -> &mut Self {
+        self.roundness = corners.into();
         self
     }
 
@@ -40,16 +87,6 @@ impl RectShape {
     }
 
     fn tesselate(&self, canvas: &mut Mesh) {
-        let top_left_pos  = self.bounds.top_left();
-        let top_right_pos = self.bounds.top_right();
-        let bot_left_pos  = self.bounds.bottom_left();
-        let bot_right_pos = self.bounds.bottom_right();
-
-        let top_left_uv  = (0.0, 1.0).into();
-        let top_right_uv = (1.0, 1.0).into();
-        let bot_left_uv  = (0.0, 0.0).into();
-        let bot_right_uv = (1.0, 0.0).into();
-
         let texture = {
             match &self.texture {
                 Some(texture) => {
@@ -60,44 +97,153 @@ impl RectShape {
             }
         };
 
-        let indices_start = canvas.vertices.len() as u32;
+        let max = self.roundness.max();
+        if max <= 0.0 {
+            canvas.rect(self.bounds, (0.0, 0.0, 1.0, 1.0).into(), self.scissor, self.color, texture);
+            return;
+        }
+
+        let size = self.bounds.size();
+        let radius = math::min(max, math::min(size.x, size.y) / 2.0);
 
         canvas.vertices.push(Vertex{
-            position:   top_left_pos,
-            uv:         top_left_uv,
+            position:   self.bounds.pos(),
+            uv:         Vector2::ZERO,
             color:      self.color,
             scissor:    self.scissor,
             texture:    texture,
         });
-        canvas.vertices.push(Vertex{
-            position:   top_right_pos,
-            uv:         top_right_uv,
-            color:      self.color,
-            scissor:    self.scissor,
-            texture:    texture,
-        });
-        canvas.vertices.push(Vertex{
-            position:   bot_left_pos,
-            uv:         bot_left_uv,
-            color:      self.color,
-            scissor:    self.scissor,
-            texture:    texture,
-        });
-        canvas.vertices.push(Vertex{
-            position:   bot_right_pos,
-            uv:         bot_right_uv,
-            color:      self.color,
-            scissor:    self.scissor,
-            texture:    texture,
-        });
+        let center_index = canvas.vertices.len() as u32 - 1;
 
-        canvas.indices.push(indices_start + 2);
-        canvas.indices.push(indices_start + 0);
-        canvas.indices.push(indices_start + 1);
+        let mut corner = |low: f32, high: f32, at: Vector2, r: f32|{
+            let denom = math::PI / 50.0;
+            let count = ((high - low) / denom) as usize;
+            
+            canvas.vertices.push(Vertex{
+                position:   at + Vector2::new(low.sin(), low.cos()) * r,
+                uv:         Vector2::ZERO,
+                color:      self.color,
+                scissor:    self.scissor,
+                texture:    texture,
+            });
 
-        canvas.indices.push(indices_start + 2);
-        canvas.indices.push(indices_start + 1);
-        canvas.indices.push(indices_start + 3);
+            let first = canvas.vertices.len() as u32 - 1;
+
+            for i in 0..count {
+                canvas.indices.push(center_index);
+                canvas.indices.push(canvas.vertices.len() as u32 - 1);
+
+                let theta = (i + 1) as f32 * denom + low;
+                canvas.vertices.push(Vertex{
+                    position:   at + Vector2::new(theta.sin(), theta.cos()) * r,
+                    uv:         Vector2::ZERO,
+                    color:      self.color,
+                    scissor:    self.scissor,
+                    texture:    texture,
+                }); 
+                canvas.indices.push(canvas.vertices.len() as u32 - 1);
+            }
+
+            let first = canvas.vertices[first as usize].position;
+            let second = canvas.vertices.last().unwrap().position;
+            (first, second)
+        };
+
+        let top_right_radius = math::min(self.roundness.top_right, radius);
+        let top_right = self.bounds.top_right() - top_right_radius;
+        let (top_right_first, top_right_second) = corner(0.0, math::PI / 2.0, top_right, top_right_radius);
+
+        let top_left_radius = math::min(self.roundness.top_left, radius);
+        let top_left = self.bounds.top_left() + Vector2::new(top_left_radius, -top_left_radius);
+        let (top_left_first, top_left_second) = corner(math::PI * 1.5, math::TAU, top_left, top_left_radius);
+
+        let bottom_left_radius = math::min(self.roundness.bottom_left, radius);
+        let bottom_left = self.bounds.bottom_left() + bottom_left_radius;
+        let (bottom_left_first, bottom_left_second) = corner(math::PI, math::PI * 1.5, bottom_left, bottom_left_radius);
+        
+        let bottom_right_radius = math::min(self.roundness.bottom_right, radius);
+        let bottom_right = self.bounds.bottom_right() + Vector2::new(-bottom_right_radius, bottom_right_radius);
+        let (bottom_right_first, bottom_right_second) = corner(math::PI / 2.0, math::PI, bottom_right, bottom_right_radius);
+
+        // Top triangle
+        let at = canvas.vertices.len() as u32;
+        canvas.vertices.push(Vertex{
+            position:   top_left_second,
+            uv:         Vector2::ZERO,
+            color:      self.color,
+            scissor:    self.scissor,
+            texture:    texture,
+        }); 
+        canvas.vertices.push(Vertex{
+            position:   top_right_first,
+            uv:         Vector2::ZERO,
+            color:      self.color,
+            scissor:    self.scissor,
+            texture:    texture,
+        });
+        canvas.indices.push(center_index);
+        canvas.indices.push(at + 0);
+        canvas.indices.push(at + 1);
+
+        // Right triangle
+        let at = canvas.vertices.len() as u32;
+        canvas.vertices.push(Vertex{
+            position:   top_right_second,
+            uv:         Vector2::ZERO,
+            color:      self.color,
+            scissor:    self.scissor,
+            texture:    texture,
+        }); 
+        canvas.vertices.push(Vertex{
+            position:   bottom_right_first,
+            uv:         Vector2::ZERO,
+            color:      self.color,
+            scissor:    self.scissor,
+            texture:    texture,
+        });
+        canvas.indices.push(center_index);
+        canvas.indices.push(at + 0);
+        canvas.indices.push(at + 1);
+
+        // Bottom triangle
+        let at = canvas.vertices.len() as u32;
+        canvas.vertices.push(Vertex{
+            position:   bottom_right_second,
+            uv:         Vector2::ZERO,
+            color:      self.color,
+            scissor:    self.scissor,
+            texture:    texture,
+        }); 
+        canvas.vertices.push(Vertex{
+            position:   bottom_left_first,
+            uv:         Vector2::ZERO,
+            color:      self.color,
+            scissor:    self.scissor,
+            texture:    texture,
+        });
+        canvas.indices.push(center_index);
+        canvas.indices.push(at + 0);
+        canvas.indices.push(at + 1);
+
+        // Left triangle
+        let at = canvas.vertices.len() as u32;
+        canvas.vertices.push(Vertex{
+            position:   bottom_left_second,
+            uv:         Vector2::ZERO,
+            color:      self.color,
+            scissor:    self.scissor,
+            texture:    texture,
+        }); 
+        canvas.vertices.push(Vertex{
+            position:   top_left_first,
+            uv:         Vector2::ZERO,
+            color:      self.color,
+            scissor:    self.scissor,
+            texture:    texture,
+        });
+        canvas.indices.push(center_index);
+        canvas.indices.push(at + 0);
+        canvas.indices.push(at + 1);
     }
 }
 
@@ -126,57 +272,6 @@ impl TextShape {
     }
 
     pub fn tesselate(&self, canvas: &mut Mesh) {
-        fn rect(canvas: &mut Mesh, bounds: Rect, uv: Rect, scissor: Rect, color: Color, texture: u32) {
-            let top_left_pos  = bounds.top_left();
-            let top_right_pos = bounds.top_right();
-            let bot_left_pos  = bounds.bottom_left();
-            let bot_right_pos = bounds.bottom_right();
-
-            let top_left_uv  = uv.top_left();
-            let top_right_uv = uv.top_right();
-            let bot_left_uv  = uv.bottom_left();
-            let bot_right_uv = uv.bottom_right();
-
-            let indices_start = canvas.vertices.len() as u32;
-
-            canvas.vertices.push(Vertex{
-                position:   top_left_pos,
-                uv:         top_left_uv,
-                color:      color,
-                scissor:    scissor,
-                texture:    texture,
-            });
-            canvas.vertices.push(Vertex{
-                position:   top_right_pos,
-                uv:         top_right_uv,
-                color:      color,
-                scissor:    scissor,
-                texture:    texture,
-            });
-            canvas.vertices.push(Vertex{
-                position:   bot_left_pos,
-                uv:         bot_left_uv,
-                color:      color,
-                scissor:    scissor,
-                texture:    texture,
-            });
-            canvas.vertices.push(Vertex{
-                position:   bot_right_pos,
-                uv:         bot_right_uv,
-                color:      color,
-                scissor:    scissor,
-                texture:    texture,
-            });
-
-            canvas.indices.push(indices_start + 2);
-            canvas.indices.push(indices_start + 0);
-            canvas.indices.push(indices_start + 1);
-
-            canvas.indices.push(indices_start + 2);
-            canvas.indices.push(indices_start + 1);
-            canvas.indices.push(indices_start + 3);
-        }
-
         let mut font_collection = self.font.write();
         let font = font_collection.font_at_size(self.size, self.dpi).unwrap(); // TODO: DPI
 
@@ -203,7 +298,7 @@ impl TextShape {
                     let y0 = y1 - g.height;
                     let bounds = (x0, y0, x1, y1).into();
 
-                    rect(canvas, bounds, g.uv, self.scissor, self.color, font.atlas.bindless().unwrap_or_default());
+                    canvas.rect(bounds, g.uv, self.scissor, self.color, font.atlas.bindless().unwrap_or_default());
                     pos.x += g.advance;
                 }
             }
@@ -234,7 +329,7 @@ impl Painter {
             bounds:     bounds,
             scissor:    bounds,
 
-            _roundness:  Rect::default(),
+            roundness:   Roundness::default(),
             color:       Color::WHITE,
             texture:     None,
         };
@@ -301,6 +396,64 @@ impl gpu::Vertex for Vertex {
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices:  Vec<u32>,
+}
+
+impl Mesh {
+    fn rect(self: &mut Self, bounds: Rect, uv: Rect, scissor: Rect, color: Color, texture: u32) {
+        let size = bounds.size();
+        if size.x <= 0.0 || size.y <= 0.0 {
+            return;
+        }
+
+        let top_left_pos  = bounds.top_left();
+        let top_right_pos = bounds.top_right();
+        let bot_left_pos  = bounds.bottom_left();
+        let bot_right_pos = bounds.bottom_right();
+
+        let top_left_uv  = uv.top_left();
+        let top_right_uv = uv.top_right();
+        let bot_left_uv  = uv.bottom_left();
+        let bot_right_uv = uv.bottom_right();
+
+        let indices_start = self.vertices.len() as u32;
+
+        self.vertices.push(Vertex{
+            position:   top_left_pos,
+            uv:         top_left_uv,
+            color:      color,
+            scissor:    scissor,
+            texture:    texture,
+        });
+        self.vertices.push(Vertex{
+            position:   top_right_pos,
+            uv:         top_right_uv,
+            color:      color,
+            scissor:    scissor,
+            texture:    texture,
+        });
+        self.vertices.push(Vertex{
+            position:   bot_left_pos,
+            uv:         bot_left_uv,
+            color:      color,
+            scissor:    scissor,
+            texture:    texture,
+        });
+        self.vertices.push(Vertex{
+            position:   bot_right_pos,
+            uv:         bot_right_uv,
+            color:      color,
+            scissor:    scissor,
+            texture:    texture,
+        });
+
+        self.indices.push(indices_start + 2);
+        self.indices.push(indices_start + 0);
+        self.indices.push(indices_start + 1);
+
+        self.indices.push(indices_start + 2);
+        self.indices.push(indices_start + 1);
+        self.indices.push(indices_start + 3);
+    }
 }
 
 static SHADER_SOURCE: &str = "

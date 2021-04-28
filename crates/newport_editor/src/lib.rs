@@ -35,6 +35,8 @@ struct EditorInner {
 
     pages: Vec<Box<dyn Page>>,
     selected_page: usize,
+
+    time: f32, // TEMP
 }
 
 pub struct Editor(Mutex<EditorInner>);
@@ -68,6 +70,10 @@ impl Editor {
             input.dpi = dpi;
 
             editor.gui.begin_frame(input);
+
+            editor.time += dt;
+
+            let roundness: Roundness = ((editor.time + 23.5).sin().abs() * 100.0, (editor.time * 0.2).sin().abs() * 25.0, (editor.time * 0.5 + 103.5).sin().abs() * 200.0, editor.time.sin() * 100.0).into();
 
             // Top title bar which holds the pages, title, and window buttons
             {
@@ -128,6 +134,8 @@ impl Editor {
                 Panel::bottom("bottom_bar", height).build(&mut editor.gui, |builder| {
                     builder.label(format!("{} - Newport Engine", engine.name()));
 
+                    builder.painter.rect((200.0, 200.0, 600.0, 600.0)).roundness(roundness).color(0xFFFFFF33);
+
                     let bounds = builder.layout.push_size(builder.layout.space_left());
                     builder.layout(Layout::right_to_left(bounds), |builder| {
                         builder.label(format!("{:.2}ms [{} FPS] | Idle", dt * 1000.0, engine.fps()));
@@ -166,6 +174,8 @@ impl Module for Editor {
 
             pages: Vec::with_capacity(32),
             selected_page: 0,
+
+            time: 0.0,
         }))
     }
 
