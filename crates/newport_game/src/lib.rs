@@ -1,8 +1,9 @@
 pub(crate) use newport_engine as engine;
 pub(crate) use newport_ecs as ecs;
 pub(crate) use newport_editor as editor;
+pub(crate) use newport_math as math;
 
-use engine::{ Module, EngineBuilder };
+use engine::{ Module, EngineBuilder, Engine };
 use ecs::World;
 use editor::Editor;
 
@@ -17,6 +18,9 @@ pub struct Game {
 
 impl Module for Game {
     fn new() -> Self {
+        let editor = Engine::as_ref().module::<Editor>().unwrap();
+        editor.push_page(Box::new(LevelEditor));
+        
         Self{ 
             world: Mutex::new(World::new())
         }

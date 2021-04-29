@@ -8,3 +8,4 @@ edition = "2018"
 newport_engine = { path = "../newport_engine", version = "0.0.1" }
 newport_editor = { path = "../newport_editor", version = "0.0.1" }
 newport_ecs    = { path = "../newport_ecs",    version = "0.0.1", features = ["editable"] }
+newport_math   = { path = "../newport_math",   version = "0.0.1" }

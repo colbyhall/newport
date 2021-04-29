@@ -113,4 +113,8 @@ impl<'a> Builder<'a> {
         
         Rect::from_pos_size(layout_rect.pos(), content_size)
     }
+
+    pub fn add_spacing(&mut self, amount: f32) {
+        self.layout.push_size(Vector2::new(amount, amount));
+    }
 }
