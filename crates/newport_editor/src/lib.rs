@@ -17,15 +17,8 @@ pub use newport_codegen::Editable;
 mod editable;
 pub use editable::*;
 
-pub trait Page {
-    fn can_close(&self) -> bool {
-        true
-    }
-
-    fn name(&self) -> &str;
-
-    fn show(&mut self, ctx: &mut Context);
-}
+mod split_view;
+use split_view::*;
 
 #[allow(dead_code)]
 struct EditorInner {
@@ -33,18 +26,12 @@ struct EditorInner {
     input:  Option<RawInput>,
     draw_state: DrawState,
 
-    pages: Vec<Box<dyn Page>>,
-    selected_page: usize,
+    main_view: SplitView,
 }
 
 pub struct Editor(Mutex<EditorInner>);
 
 impl Editor {
-    pub fn push_page(&self, page: Box<dyn Page>) {
-        let mut editor = self.lock();
-        editor.pages.push(page);
-    }
-
     fn lock(&self) -> MutexGuard<EditorInner> {
         self.0.lock().unwrap()
     }
@@ -63,8 +50,7 @@ impl Editor {
             gui,
             input,
             draw_state,
-            pages,
-            selected_page
+            main_view
         } = &mut *editor;
 
         let mesh = {
@@ -77,88 +63,68 @@ impl Editor {
             gui.begin_frame(input);
 
             // Top title bar which holds the pages, title, and window buttons
-            {
-                let mut style = gui.style();
-                style.padding = (12.0, 5.0, 12.0, 5.0).into();
-                style.margin = Rect::default();
-                style.inactive_background = DARK.bg_h;
-                style.unhovered_background = DARK.bg_h;
-                let height = style.label_height_with_padding();
-    
-                gui.set_style(style);
-    
-                Panel::top("menu_bar", height).build(gui, |builder| {
-                    builder.add_spacing(5.0);
+            let mut style = gui.style();
+            style.padding = (12.0, 8.0, 12.0, 8.0).into();
+            style.margin = Rect::default();
+            style.inactive_background = DARK.bg_h;
+            style.unhovered_background = DARK.bg_h;
+            let height = style.label_height_with_padding();
 
-                    for (index, it) in pages.iter().enumerate() {
-                        let is_selected = index == *selected_page;
-                        if MenuButton::new(it.name(), it.can_close(), is_selected).build(builder).clicked() {
-                            if is_selected {
-                                *selected_page = 0;
-                            } else {
-                                *selected_page = index;
-                            }
-                        }
+            gui.set_style(style);
+
+            Panel::top("menu_bar", height).build(gui, |builder| {
+                let space = builder.available_rect();
+
+                builder.button("File").clicked();
+                builder.button("Edit").clicked();
+                builder.button("View").clicked();
+                builder.button("Run").clicked();
+                builder.button("Help").clicked();
+
+                let bounds = builder.layout.push_size(builder.layout.space_left());
+                builder.layout(Layout::right_to_left(bounds), |builder| {
+                    let og = builder.style();
+                    let mut new = og.clone();
+                    new.hovered_background = DARK.red0;
+                    new.hovered_foreground = DARK.fg;
+                    new.focused_background = DARK.red0;
+                    new.focused_foreground = DARK.fg;
+                    builder.set_style(new);
+                    
+                    if builder.button("Close").clicked() {
+                        engine.shutdown();
                     }
 
-                    let bounds = builder.layout.push_size(builder.layout.space_left());
-                    builder.layout(Layout::right_to_left(bounds), |builder| {
-                        let og = builder.style();
-                        let mut new = og.clone();
-                        new.hovered_background = DARK.red0;
-                        new.hovered_foreground = DARK.fg;
-                        new.focused_background = DARK.red0;
-                        new.focused_foreground = DARK.fg;
+                    builder.set_style(og);
+
+                    if builder.button("Max").clicked() {
+                        engine.maximize();
+                    }
+
+                    if builder.button("Min").clicked() {
+                        engine.minimize();
+                    }
+
+                    let drag = builder.layout.available_rect();
+                    let drag = Rect::from_pos_size(drag.pos() * builder.input().dpi, drag.size() * builder.input().dpi);
+                    engine.set_custom_drag(drag);
+
+                    builder.layout(Layout::left_to_right(space), |builder| {
+                        let mut new = Style::default();
+                        new.sizing = Sizing::Fill(true, true);
                         builder.set_style(new);
-                        
-                        if builder.button("Close").clicked() {
-                            engine.shutdown();
-                        }
 
-                        builder.set_style(og);
-    
-                        if builder.button("Max").clicked() {
-                            engine.maximize();
-                        }
-
-                        if builder.button("Min").clicked() {
-                            engine.minimize();
-                        }
-    
-                        let drag = builder.layout.available_rect();
-                        let drag = Rect::from_pos_size(drag.pos() * builder.input().dpi, drag.size() * builder.input().dpi);
-                        engine.set_custom_drag(drag);
+                        builder.label(format!("{} - Newport Editor", Engine::as_ref().name()));
                     });
                 });
-            }
+            });
 
-            // Bottom bar
-            {
-                let mut style = Style::default();
-                style.padding = (2.0, 2.0, 2.0, 2.0).into();
-                style.inactive_background = DARK.yellow1;
-                style.inactive_foreground = DARK.bg;
-
-                let height = style.label_height_with_padding();
-    
-                gui.set_style(style);
-
-                Panel::bottom("bottom_bar", height).build(gui, |builder| {
-                    builder.label(format!("{} - Newport Engine", engine.name()));
-
-                    let bounds = builder.layout.push_size(builder.layout.space_left());
-                    builder.layout(Layout::right_to_left(bounds), |builder| {
-                        builder.label(format!("{:.2}ms [{} FPS] | Idle", dt * 1000.0, engine.fps()));
-                    });
-                });
-            }
-
-            if *selected_page >= pages.len() {
-                *selected_page = 0;
-            }
-
-            let page = &mut pages[*selected_page];
-            page.show(gui);
+            let mut style = gui.style();
+            style.inactive_background = DARK.bg_h;
+            style.focused_background = style.unhovered_background;
+            style.focused_foreground = style.unhovered_foreground;
+            style.unhovered_background = DARK.bg_h;
+            main_view.build(gui);
 
             gui.end_frame()
         };
@@ -189,8 +155,7 @@ impl Module for Editor {
             input:  None,
             draw_state: DrawState::new(),
 
-            pages: Vec::with_capacity(32),
-            selected_page: 0,
+            main_view: SplitView::new("main_menu"),
         }))
     }
 
@@ -214,75 +179,5 @@ impl Module for Editor {
             
                 editor.do_frame(dt);
             })
-    }
-}
-
-pub struct MenuButton {
-    id:        Id,
-    label:     String,
-    can_close: bool,
-    selected:  bool,
-}
-
-impl MenuButton {
-    pub fn new(label: impl Into<String>, can_close: bool, selected: bool) -> Self {
-        let label = label.into();
-
-        Self {
-            id:         Id::from(&label),
-            label:      label,
-            can_close:  can_close,
-            selected:   selected,
-        }
-    }
-
-    pub fn id(mut self, id: impl ToId) -> Self {
-        self.id = id.to_id();
-        self
-    }
-}
-
-impl MenuButton {
-    #[must_use = "If a response is not being used then use a label"]
-    pub fn build(self, builder: &mut Builder) -> ButtonResponse {
-        let style = builder.style();
-
-        let label_rect = style.string_rect(&self.label, style.label_size, None).size();
-        let bounds = builder.content_bounds(label_rect);
-        
-        let response = button_control(self.id, bounds, builder);
-        
-        let is_focused = self.selected;
-        let is_hovered = builder.is_hovered(self.id);
-        
-        let (background_color, foreground_color) = {
-            let background_color = if is_focused {
-                DARK.bg_s
-            } else if is_hovered {
-                style.hovered_background
-            } else {
-                style.unhovered_background
-            };
-
-            let foreground_color = if is_focused {
-                style.inactive_foreground
-            } else if is_hovered {
-                style.hovered_foreground
-            } else {
-                style.unhovered_foreground
-            };
-
-            (background_color, foreground_color)
-        };
-
-        builder.painter.rect(bounds).color(background_color).roundness((0.0, 0.0, 5.0, 5.0));
-        
-        let at = Rect::from_pos_size(bounds.pos(), label_rect).top_left();
-        builder.painter
-            .text(self.label, at, &style.font, style.label_size, builder.input().dpi)
-            .color(foreground_color)
-            .scissor(bounds);
-
-        response
     }
 }

@@ -59,6 +59,46 @@ impl Rect {
     pub fn point_overlap(self, point: Vector2) -> bool {
         self.min.x <= point.x && self.max.x >= point.x && self.min.y <= point.y && self.max.y >= point.y
     }
+
+    pub fn split_top(&mut self, size: f32) -> Rect {
+        let max = self.max;
+        
+        self.max.y -= size;
+
+        let min = Vector2::new(self.min.x, self.max.y);
+
+        (min, max).into()
+    }
+
+    pub fn split_bottom(&mut self, size: f32) -> Rect {
+        let min = self.min;
+        
+        self.min.y += size;
+
+        let max = Vector2::new(self.max.x, self.min.y);
+
+        (min, max).into()
+    }
+
+    pub fn split_left(&mut self, size: f32) -> Rect {
+        let min = self.min;
+        
+        self.min.x += size;
+
+        let max = Vector2::new(self.min.x, self.max.y);
+
+        (min, max).into()
+    }
+
+    pub fn split_right(&mut self, size: f32) -> Rect {
+        let max = self.max;
+        
+        self.max.x -= size;
+
+        let min = Vector2::new(self.max.x, self.min.y);
+
+        (min, max).into()
+    }
 }
 
 impl From<(Vector2, Vector2)> for Rect {

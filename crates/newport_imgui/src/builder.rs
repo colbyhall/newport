@@ -87,7 +87,9 @@ impl<'a> Builder<'a> {
     pub fn layout(&mut self, layout: Layout, content: impl FnOnce(&mut Builder)) {
         let current = self.layout;
         self.layout = layout;
+        let style = self.style();
         content(self);
+        self.set_style(style);
         self.layout = current;
     }
 

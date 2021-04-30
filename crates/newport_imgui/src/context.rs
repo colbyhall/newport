@@ -216,4 +216,10 @@ impl Context {
 
         (min, max).into()
     }
+
+    pub fn take_canvas(&mut self) -> Rect {
+        let result = self.canvas;
+        self.canvas = Default::default();
+        result
+    }
 }
