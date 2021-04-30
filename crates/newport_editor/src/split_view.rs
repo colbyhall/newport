@@ -21,12 +21,30 @@ pub struct SplitView {
     view: View,
 }
 
+const SPACING: f32 = 5.0;
+
 impl SplitView {
     pub fn new(id: impl ToId) -> Self {
         let mut view = View::new("main_view", 1.0);
-        view.add_tab(TestTab1);
-        view.add_tab(TestTab2);
-        view.add_tab(TestTab3);
+
+        let mut a = View::new("a", 0.5);
+        a.add_tab(TestTab(1));
+        a.add_tab(TestTab(2));
+        
+        
+        let mut b = View::new("b", 0.5);
+        b.add_tab(TestTab(3));
+        b.add_tab(TestTab(253));
+
+        let mut c = View::new("c", 0.5);
+        c.add_tab(TestTab(3243));
+        c.add_tab(TestTab(252343));
+
+        let d = View::new_views("d", 0.5, vec![b, c], Direction::Vertical);
+        
+        view.add_view(a);
+        view.add_view(d);
+
         Self{
             id:   id.to_id(),
             view: view
@@ -41,7 +59,7 @@ impl SplitView {
         let style = builder.style();
         builder.painter.rect(bounds).color(style.inactive_background);
 
-        let bounds = Rect::from_min_max(bounds.min + 5.0, bounds.max - 5.0);
+        let bounds = Rect::from_min_max(bounds.min + SPACING, bounds.max - SPACING);
         builder.layout(Layout::up_to_down(bounds), |builder| {
             self.view.build(builder);
         });
@@ -50,10 +68,15 @@ impl SplitView {
     }
 }
 
+pub enum Direction {
+    Horizontal,
+    Vertical,
+}
+
 enum ViewChildren {
     None,
-    Views{
-        view:      Vec<View>,
+    Views {
+        views: Vec<View>,
         direction: Direction,
     },
     Tabs{
@@ -62,13 +85,8 @@ enum ViewChildren {
     }
 }
 
-pub enum Direction {
-    Horizontal,
-    Vertical,
-}
-
 pub struct View {
-    id:        Id,
+    _id:        Id,
     children:  ViewChildren,
     percent:   f32,
 }
@@ -76,8 +94,16 @@ pub struct View {
 impl View {
     pub fn new(id: impl ToId, percent: f32) -> Self {
         Self {
-            id: id.to_id(),
+            _id: id.to_id(),
             children: ViewChildren::None,
+            percent:  percent,
+        }
+    }
+
+    pub fn new_views(id: impl ToId, percent: f32, views: Vec<View>, direction: Direction) -> Self {
+        Self {
+            _id: id.to_id(),
+            children: ViewChildren::Views{ views, direction },
             percent:  percent,
         }
     }
@@ -95,6 +121,23 @@ impl View {
             ViewChildren::Tabs { tabs, selected } => {
                 tabs.push(Box::new(tab));
                 *selected = tabs.len() - 1;
+            },
+            _ => unreachable!()
+        }
+    }
+
+    pub fn add_view(&mut self, view: View) {
+        match &mut self.children {
+            ViewChildren::None => {
+                let mut views = Vec::with_capacity(1);
+                views.push(view);
+                self.children = ViewChildren::Views{
+                    views: views,
+                    direction: Direction::Horizontal,
+                }
+            },
+            ViewChildren::Views { views, .. } => {
+                views.push(view);
             },
             _ => unreachable!()
         }
@@ -122,13 +165,13 @@ impl View {
 
                 let layout = Layout::left_to_right(builder.layout.push_size(Vector2::new(0.0, style.label_height_with_padding())));
                 builder.layout(layout, |builder|{
-                    fn menu_button(builder: &mut Builder, label: &str, selected: bool) -> ButtonResponse {
+                    fn menu_button(builder: &mut Builder, label: String, selected: bool) -> ButtonResponse {
                         let style = builder.style();
 
-                        let label_rect = style.string_rect(label, style.label_size, None).size();
+                        let label_rect = style.string_rect(&label, style.label_size, None).size();
                         let bounds = builder.content_bounds(label_rect);
                         
-                        let id = Id::from(label);
+                        let id = Id::from(&label);
 
                         let response = button_control(id, bounds, builder);
                         
@@ -158,7 +201,7 @@ impl View {
                         builder.painter.rect(bounds).color(background_color);
                         let at = Rect::from_pos_size(bounds.pos(), label_rect).top_left();
                         builder.painter
-                            .text(label.to_string(), at, &style.font, style.label_size, builder.input().dpi)
+                            .text(label, at, &style.font, style.label_size, builder.input().dpi)
                             .color(foreground_color)
                             .scissor(bounds);
 
@@ -175,7 +218,7 @@ impl View {
                 let style = Style::default();
                 builder.set_style(style.clone());
 
-                let available_size = builder.available_rect().size() * self.percent;
+                let available_size = builder.available_rect().size();
                 let bounds = builder.layout.push_size(available_size);
                 builder.painter.rect(bounds).color(style.inactive_background);
                 builder.layout(Layout::up_to_down(bounds), |builder| {
@@ -183,46 +226,47 @@ impl View {
                 });
 
             }
-            _ => unimplemented!()
+            ViewChildren::Views { views, direction } => {
+                let available_size = builder.available_rect().size();
+                let bounds = builder.layout.push_size(available_size);
+                
+                let layout = match direction {
+                    Direction::Horizontal => {
+                        Layout::left_to_right(bounds)
+                    },
+                    Direction::Vertical => {
+                        Layout::up_to_down(bounds)
+                    },
+                };
+
+                builder.layout(layout, |builder| {
+                    for it in views {
+                        let size = builder.layout.bounds().size() * it.percent - SPACING / 2.0;
+                        let bounds = builder.layout.push_size(size);
+                        builder.layout(Layout::up_to_down(bounds), |builder| {
+                            it.build(builder);
+                        });
+                        builder.add_spacing(SPACING);
+                    }
+                });
+            },
         }
     }
 }
 
 pub trait Tab {
-    fn name(&self) -> &str;
+    fn name(&self) -> String;
 
     fn build(&mut self, builder: &mut Builder);
 }
 
-pub struct TestTab1;
-impl Tab for TestTab1 {
-    fn name(&self) -> &str {
-        "Test1"
+pub struct TestTab(i32);
+impl Tab for TestTab {
+    fn name(&self) -> String {
+        format!("Test {}", self.0)
     }
 
     fn build(&mut self, builder: &mut Builder) {
-        builder.label("Test1");
-    }
-}
-
-pub struct TestTab2;
-impl Tab for TestTab2 {
-    fn name(&self) -> &str {
-        "Test2"
-    }
-
-    fn build(&mut self, builder: &mut Builder) {
-        builder.label("Test2");
-    }
-}
-
-pub struct TestTab3;
-impl Tab for TestTab3 {
-    fn name(&self) -> &str {
-        "Test3"
-    }
-
-    fn build(&mut self, builder: &mut Builder) {
-        builder.label("Test3");
+        builder.label(self.name());
     }
 }

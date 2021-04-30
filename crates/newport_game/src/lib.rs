@@ -3,7 +3,7 @@ pub(crate) use newport_ecs as ecs;
 pub(crate) use newport_editor as editor;
 // pub(crate) use newport_math as math;
 
-use engine::{ Module, EngineBuilder, Engine };
+use engine::{ Module, EngineBuilder };
 use ecs::World;
 use editor::Editor;
 
