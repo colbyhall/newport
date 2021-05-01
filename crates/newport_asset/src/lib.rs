@@ -127,6 +127,10 @@ impl<T: 'static> AssetRef<T> {
     pub fn weak_count(&self) -> usize {
         Arc::weak_count(&self.arc)
     }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
 }
 
 impl<T:'static + fmt::Debug> fmt::Debug for AssetRef<T> {

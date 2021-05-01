@@ -16,6 +16,48 @@ pub struct Layout {
 }
 
 impl Layout {
+    pub fn up_to_down(bounds: impl Into<Rect>) -> Layout {
+        Layout {
+            bounds: bounds.into(),
+            direction: Direction::UpToDown,
+            cursor: 0.0
+        }
+    }
+    
+    pub fn down_to_up(bounds: impl Into<Rect>) -> Layout {
+        Layout {
+            bounds: bounds.into(),
+            direction: Direction::DownToUp,
+            cursor: 0.0
+        }
+    }
+
+    pub fn left_to_right(bounds: impl Into<Rect>) -> Layout {
+        Layout {
+            bounds: bounds.into(),
+            direction: Direction::LeftToRight,
+            cursor: 0.0
+        }
+    }
+
+    pub fn right_to_left(bounds: impl Into<Rect>) -> Layout {
+        Layout {
+            bounds: bounds.into(),
+            direction: Direction::RightToLeft,
+            cursor: 0.0
+        }
+    }
+
+    pub fn new(bounds: impl Into<Rect>, direction: Direction) -> Self {
+        Layout {
+            bounds: bounds.into(),
+            direction: direction,
+            cursor: 0.0
+        }
+    }
+}
+
+impl Layout {
     pub fn push_size(&mut self, size: Vector2) -> Rect {
         match &self.direction {
             Direction::LeftToRight => {
@@ -54,38 +96,6 @@ impl Layout {
 
     pub fn bounds(&self) -> Rect {
         self.bounds
-    }
-
-    pub fn down_to_up(bounds: impl Into<Rect>) -> Layout {
-        Layout {
-            bounds: bounds.into(),
-            direction: Direction::DownToUp,
-            cursor: 0.0
-        }
-    }
-
-    pub fn up_to_down(bounds: impl Into<Rect>) -> Layout {
-        Layout {
-            bounds: bounds.into(),
-            direction: Direction::UpToDown,
-            cursor: 0.0
-        }
-    }
-
-    pub fn left_to_right(bounds: impl Into<Rect>) -> Layout {
-        Layout {
-            bounds: bounds.into(),
-            direction: Direction::LeftToRight,
-            cursor: 0.0
-        }
-    }
-
-    pub fn right_to_left(bounds: impl Into<Rect>) -> Layout {
-        Layout {
-            bounds: bounds.into(),
-            direction: Direction::RightToLeft,
-            cursor: 0.0
-        }
     }
 
     pub fn available_rect(&self) -> Rect {

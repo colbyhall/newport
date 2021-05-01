@@ -1,7 +1,6 @@
 use crate::{
     Id,
     ToId,
-    Context,
     Layout,
     Builder,
     Sizing,
@@ -9,6 +8,7 @@ use crate::{
     button_control,
     DARK,
     Style,
+    Direction,
 };
 
 use crate::math::{
@@ -16,62 +16,7 @@ use crate::math::{
     Rect,
 };
 
-pub struct SplitView {
-    id: Id,
-    view: View,
-}
-
-const SPACING: f32 = 5.0;
-
-impl SplitView {
-    pub fn new(id: impl ToId) -> Self {
-        let mut view = View::new("main_view", 1.0);
-
-        let mut a = View::new("a", 0.5);
-        a.add_tab(TestTab(1));
-        a.add_tab(TestTab(2));
-        
-        
-        let mut b = View::new("b", 0.5);
-        b.add_tab(TestTab(3));
-        b.add_tab(TestTab(253));
-
-        let mut c = View::new("c", 0.5);
-        c.add_tab(TestTab(3243));
-        c.add_tab(TestTab(252343));
-
-        let d = View::new_views("d", 0.5, vec![b, c], Direction::Vertical);
-        
-        view.add_view(a);
-        view.add_view(d);
-
-        Self{
-            id:   id.to_id(),
-            view: view
-        }
-    }
-}
-
-impl SplitView {
-    pub fn build(&mut self, ctx: &mut Context) {
-        let bounds = ctx.take_canvas();
-        let mut builder = ctx.builder(self.id, Layout::up_to_down(bounds));
-        let style = builder.style();
-        builder.painter.rect(bounds).color(style.inactive_background);
-
-        let bounds = Rect::from_min_max(bounds.min + SPACING, bounds.max - SPACING);
-        builder.layout(Layout::up_to_down(bounds), |builder| {
-            self.view.build(builder);
-        });
-
-        builder.finish();
-    }
-}
-
-pub enum Direction {
-    Horizontal,
-    Vertical,
-}
+pub const SPACING: f32 = 5.0;
 
 enum ViewChildren {
     None,
@@ -133,7 +78,7 @@ impl View {
                 views.push(view);
                 self.children = ViewChildren::Views{
                     views: views,
-                    direction: Direction::Horizontal,
+                    direction: Direction::LeftToRight,
                 }
             },
             ViewChildren::Views { views, .. } => {
@@ -230,14 +175,7 @@ impl View {
                 let available_size = builder.available_rect().size();
                 let bounds = builder.layout.push_size(available_size);
                 
-                let layout = match direction {
-                    Direction::Horizontal => {
-                        Layout::left_to_right(bounds)
-                    },
-                    Direction::Vertical => {
-                        Layout::up_to_down(bounds)
-                    },
-                };
+                let layout = Layout::new(bounds, *direction);
 
                 builder.layout(layout, |builder| {
                     for it in views {
@@ -260,7 +198,7 @@ pub trait Tab {
     fn build(&mut self, builder: &mut Builder);
 }
 
-pub struct TestTab(i32);
+pub struct TestTab(pub i32);
 impl Tab for TestTab {
     fn name(&self) -> String {
         format!("Test {}", self.0)
