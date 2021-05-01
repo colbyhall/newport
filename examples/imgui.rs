@@ -1,5 +1,5 @@
 use newport::*;
-use engine::{ Module, Engine, EngineBuilder, Window, WindowEvent };
+use engine::{ Module, Engine, EngineBuilder, Window, InputEvent };
 use imgui::{Button, DrawState, Layout, Panel, RawInput, DARK };
 use math::{ Color, Rect };
 use graphics::*;
@@ -25,7 +25,7 @@ impl Module for ImguiExample {
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
             .module::<graphics::Graphics>()
-            .process_input(|engine: &Engine, _window: &Window, event: &WindowEvent| {
+            .process_input(|engine: &Engine, _window: &Window, event: &InputEvent| {
                 let example = engine.module::<ImguiExample>().unwrap();
                 let mut input = example.input.borrow_mut();
                 if input.is_none() {

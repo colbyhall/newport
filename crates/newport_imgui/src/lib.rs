@@ -17,7 +17,6 @@ mod input;
 mod widgets;
 mod style;
 mod gruvbox;
-mod controls;
 
 pub use builder::*;
 pub use context::*;
@@ -29,4 +28,3 @@ pub use input::*;
 pub use widgets::*;
 pub use style::*;
 pub use gruvbox::*;
-pub use controls::*;

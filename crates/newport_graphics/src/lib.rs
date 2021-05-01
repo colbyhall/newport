@@ -1,7 +1,10 @@
-use newport_engine::{ Module, Engine, EngineBuilder };
-use newport_gpu as gpu;
+pub(crate) use newport_engine as engine;
+pub(crate) use newport_gpu as gpu;
+pub(crate) use newport_asset as asset;
+
+use engine::{ Module, Engine, EngineBuilder };
 use gpu::{ Instance, Device, RenderPass, Format };
-use newport_asset::AssetManager;
+use asset::{ AssetManager, AssetVariant };
 
 mod font;
 pub use font::*;
@@ -31,11 +34,6 @@ impl Module for Graphics {
         let instance = Instance::new().unwrap();
         let device = instance.create_device(Some(engine.window().handle())).unwrap();
 
-        let asset_manager = engine.module::<AssetManager>().unwrap();
-        asset_manager
-            .register_variant::<FontCollection>()
-            .register_variant::<Texture>();
-
         let backbuffer_render_pass = device.create_render_pass(vec![Format::BGR_U8_SRGB], None).unwrap();
 
         Self { device, backbuffer_render_pass }
@@ -44,6 +42,9 @@ impl Module for Graphics {
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
             .module::<AssetManager>()
+            .register(AssetVariant::new::<Texture>())
+            .register(AssetVariant::new::<FontCollection>())
+
     }
 }
 

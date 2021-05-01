@@ -1,9 +1,7 @@
 use crate::{
     Builder, 
-    ButtonResponse, 
     Id, 
     ToId, 
-    button_control,
 
     math,
     asset,
@@ -13,6 +11,55 @@ use crate::{
 use math::{ Rect, Vector2 };
 use asset::AssetRef;
 use graphics::Texture;
+
+
+#[derive(Copy, Clone)]
+pub enum ButtonResponse {
+    None,
+    Hovered,
+    Clicked(u8),
+}
+
+impl ButtonResponse {
+    pub fn hovered(self) -> bool {
+        match self {
+            ButtonResponse::Hovered => true,
+            _ => false,
+        }
+    }
+
+    pub fn clicked(self) -> bool {
+        match self {
+            ButtonResponse::Clicked(_) => true,
+            _ => false,
+        }
+    }
+}
+
+pub fn button_control(id: Id, bounds: Rect, builder: &mut Builder) -> ButtonResponse {
+    let mut response = ButtonResponse::None;
+    let is_over = builder.input().mouse_is_over(bounds);
+    if is_over {
+        if !builder.is_hovered(id) {
+            response = ButtonResponse::Hovered;
+        }
+        builder.hover(id);
+
+        if builder.input().was_primary_clicked() {
+            builder.focus(id);
+        }
+    } else {
+        builder.unhover(id);
+    }
+
+    if builder.input().was_primary_released() {
+        if builder.unfocus(id) && is_over {
+            response = ButtonResponse::Clicked(0);
+        }
+    }
+
+    response
+}
 
 pub struct Button {
     id: Id,
@@ -87,16 +134,21 @@ pub struct ImageButton {
 }
 
 impl ImageButton {
-    pub fn new(image: AssetRef<Texture>) -> Self {
+    pub fn new(image: &AssetRef<Texture>) -> Self {
         Self {
             id:    Id::from(image.path()),
-            image: image,
+            image: image.clone(),
             size:  None,
         }
     }
 
     pub fn id(mut self, id: impl ToId) -> Self {
         self.id = id.to_id();
+        self
+    }
+
+    pub fn size(mut self, size: impl Into<Vector2>) -> Self {
+        self.size = Some(size.into());
         self
     }
 }

@@ -1,8 +1,3 @@
-// Fundamental types used in all newport packages
-pub mod core {
-    pub use newport_core::*;
-}
-
 // Runnable structure 
 pub mod engine {
     pub use newport_engine::*;

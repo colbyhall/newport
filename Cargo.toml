@@ -13,7 +13,6 @@ keywords = ["game", "engine", "gamedev", "newport"]
 members = ["crates/*"]
 
 [dependencies]
-newport_core      = { path = "crates/newport_core", version = "0.0.1" }
 newport_os        = { path = "crates/newport_os", version = "0.0.1" }
 newport_asset     = { path = "crates/newport_asset", version = "0.0.1" }
 newport_log       = { path = "crates/newport_log", version = "0.0.1" }

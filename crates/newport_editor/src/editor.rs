@@ -1,5 +1,5 @@
 use crate::*;
-use engine::{ Module, Engine, EngineBuilder, WindowEvent };
+use engine::{ Module, Engine, EngineBuilder, InputEvent };
 use graphics::{ Graphics, Texture };
 use math::{ Color, Rect };
 use asset::{ AssetRef, AssetManager };
@@ -7,24 +7,25 @@ use asset::{ AssetRef, AssetManager };
 use std::sync::{ Mutex, MutexGuard };
 
 struct EditorAssets {
-    close_button: AssetRef<Texture>,
+    _close_button: AssetRef<Texture>,
 }
 
 impl EditorAssets {
     fn new() -> Self {
         let asset_manager = Engine::as_ref().module::<AssetManager>().unwrap();
         Self{
-            close_button: asset_manager.find("assets/editor/close_button.tex").unwrap(),
+            _close_button: asset_manager.find("assets/editor/close_button.tex").unwrap(),
         }
     }
 }
 
 #[allow(dead_code)]
 struct EditorInner {
-    gui:    Context,
-    input:  Option<RawInput>,
+    gui:   Context,
+    input: Option<RawInput>,
+
     draw_state: DrawState,
-    assets: EditorAssets,
+    assets:     EditorAssets,
 
     main_view: View,
 }
@@ -51,7 +52,7 @@ impl Editor {
             input,
             draw_state,
             main_view,
-            assets,
+            ..
         } = &mut *editor;
 
         let mesh = {
@@ -189,7 +190,7 @@ impl Module for Editor {
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
             .module::<Graphics>()
-            .process_input(|engine: &Engine, _window: &os::window::Window, event: &WindowEvent| {
+            .process_input(|engine: &Engine, _window: &os::window::Window, event: &InputEvent| {
                 let mut editor = engine.module::<Editor>().unwrap().lock(); // SPEED: Maybe this will be too slow????
 
                 if editor.input.is_none() {

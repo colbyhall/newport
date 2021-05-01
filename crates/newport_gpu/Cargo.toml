@@ -10,7 +10,6 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-newport_core   = { path = "../newport_core", version = "0.0.1" }
 newport_engine = { path = "../newport_engine", version = "0.0.1" }
 newport_log    = { path = "../newport_log", version = "0.0.1" }
 newport_asset  = { path = "../newport_asset", version = "0.0.1" }
