@@ -1,16 +1,48 @@
-use newport_gpu::*;
-use newport_math::*;
-use newport_asset::*;
-use newport_engine::Engine;
+use crate::{
+    gpu,
+    math,
+    asset,
+    engine::Engine,
 
-use crate::Graphics;
+    Graphics,
+};
 
-use std::{mem::size_of, thread_local};
-use std::collections::HashMap;
-use std::fs;
+use math::{
+    Vector2,
+    Rect,
+};
 
-use freetype::{ Library, Face };
-use freetype::face::LoadFlag;
+use gpu::{
+    BufferUsage,
+    MemoryType,
+    TextureUsage,
+    Wrap,
+    Filter,
+    Layout,
+    Format,
+    Texture,
+};
+
+use asset::{
+    Asset,
+    LoadError,
+};
+
+use std::{
+    mem::size_of, 
+    collections::HashMap,
+    path::Path,
+
+    thread_local,
+    fs,
+};
+
+use freetype::{ 
+    Library, 
+    Face,
+
+    face::LoadFlag,
+};
 
 thread_local! {
     static FREETYPE_LIB: Library = Library::init().unwrap();

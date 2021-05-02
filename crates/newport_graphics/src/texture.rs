@@ -1,15 +1,39 @@
-use newport_asset::{ Asset, LoadError, de };
-use crate::{ gpu, Graphics };
-use gpu::{ BufferUsage, MemoryType, TextureUsage, Format, Wrap, Filter, Layout };
-use newport_log::error;
-use newport_engine::Engine;
+use crate::{
+    asset,
+    gpu,
+    log::error,
+    engine::Engine,
+
+    Graphics,
+};
+
+use asset::{
+    Asset,
+    LoadError,
+    de,
+};
+
+use gpu::{ 
+    BufferUsage, 
+    MemoryType, 
+    TextureUsage, 
+    Format, 
+    Wrap, 
+    Filter, 
+    Layout 
+};
+
 
 use serde::{ Serialize, Deserialize };
-use stb_image::image;
-use image::LoadResult;
+use stb_image::{
+    image,
+    image::LoadResult,
+};
 
-use std::path::{ PathBuf, Path };
-use std::fs;
+use std::{
+    path::{ PathBuf, Path },
+    fs,
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct Texture {
