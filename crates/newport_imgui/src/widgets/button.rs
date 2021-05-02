@@ -194,8 +194,13 @@ impl ImageButton {
 
         builder.painter.rect(bounds).color(background_color);
         
+        let gpu_texture = {
+            let texture = self.image.read();
+            texture.gpu().clone()
+        };
+
         let bounds = Rect::from_pos_size(bounds.pos(), size);
-        builder.painter.rect(bounds).color(foreground_color).texture(&self.image);
+        builder.painter.rect(bounds).color(foreground_color).texture(&gpu_texture);
 
         response
     }

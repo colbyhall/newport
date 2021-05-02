@@ -166,10 +166,10 @@ impl View {
                 let available_size = builder.available_rect().size();
                 let bounds = builder.layout.push_size(available_size);
                 builder.painter.rect(bounds).color(style.inactive_background);
+                let bounds = Rect::from_min_max(bounds.min + SPACING, bounds.max - SPACING);
                 builder.layout(Layout::up_to_down(bounds), |builder| {
                     tabs[*selected].build(builder);
                 });
-
             }
             ViewChildren::Views { views, direction } => {
                 let available_size = builder.available_rect().size();

@@ -1,12 +1,31 @@
-use gpu::GraphicsContext;
+use crate::{
+    gpu,
+    math,
+    graphics,
+    asset::AssetRef,
+    engine::Engine,
 
-use crate::math::{ Rect, Color, Vector2, Matrix4, Vector3 };
-use crate::graphics::{ Texture, Graphics, FontCollection };
-use crate::asset::AssetRef;
-use crate::engine::Engine;
-use crate::math;
+    Context,
+};
 
-use crate::{ gpu, Context };
+use gpu::{
+    GraphicsContext,
+    Texture,
+};
+
+use graphics::{
+    FontCollection,
+    Graphics,
+};
+
+use math::{
+    Rect, 
+    Color, 
+    Vector2, 
+    Matrix4, 
+    Vector3
+};
+
 
 use std::mem::size_of;
 
@@ -62,7 +81,7 @@ pub struct RectShape {
 
     roundness:  Roundness,
     color:      Color,
-    texture:    Option<AssetRef<Texture>>,
+    texture:    Option<Texture>,
 }
 
 impl RectShape {
@@ -81,7 +100,7 @@ impl RectShape {
         self
     }
 
-    pub fn texture(&mut self, texture: &AssetRef<Texture>) -> &mut Self {
+    pub fn texture(&mut self, texture: &Texture) -> &mut Self {
         self.texture = Some(texture.clone());
         self
     }
@@ -89,10 +108,7 @@ impl RectShape {
     fn tesselate(&self, canvas: &mut Mesh) {
         let texture = {
             match &self.texture {
-                Some(texture) => {
-                    let texture = texture.read();
-                    texture.gpu().bindless().unwrap()
-                },
+                Some(texture) => texture.bindless().unwrap_or(0),
                 None => 0,
             }
         };
@@ -273,7 +289,7 @@ impl TextShape {
 
     pub fn tesselate(&self, canvas: &mut Mesh) {
         let mut font_collection = self.font.write();
-        let font = font_collection.font_at_size(self.size, self.dpi).unwrap(); // TODO: DPI
+        let font = font_collection.font_at_size(self.size, self.dpi).unwrap();
 
         let mut pos = self.at;
         for c in self.text.chars() {
