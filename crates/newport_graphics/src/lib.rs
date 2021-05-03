@@ -8,8 +8,10 @@ mod font;
 mod texture;
 mod graphics;
 mod scene;
+mod mesh;
 
 pub use font::*;
 pub use texture::*;
 pub use graphics::*;
 pub use scene::*;
+pub use mesh::*;

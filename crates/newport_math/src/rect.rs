@@ -2,7 +2,9 @@ use crate::Vector2;
 
 use std::convert::From;
 
-#[derive(Copy, Clone, Default, Debug)]
+use serde::{ Serialize, Deserialize };
+
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Rect {
     pub min: Vector2,
     pub max: Vector2,

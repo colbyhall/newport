@@ -1,5 +1,6 @@
 use crate::{
     math,
+    ecs::Entity,
 };
 
 use math::{
@@ -25,4 +26,12 @@ impl From<Matrix4> for Transform {
     fn from(_m: Matrix4) -> Transform {
         todo!()
     }
+}
+
+pub struct Link {
+    pub parent: Option<Entity>,
+}
+
+pub struct Named {
+    pub name: String,
 }

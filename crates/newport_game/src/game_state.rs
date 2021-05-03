@@ -2,7 +2,9 @@ use crate::{
     RenderState, 
     ecs::World, 
     engine::Engine,
-    components::Transform,
+
+    Transform,
+    Named
 };
 
 use std::{
@@ -31,8 +33,34 @@ pub struct GameState {
 impl GameState {
     pub fn new() -> Self {
         let systems = Engine::as_ref().register().unwrap_or_default();
+        let mut world = World::new(systems);
+
+        world.create()
+            .with(Named{
+                name: "Hello World".into(),
+            })
+            .finish();
+
+        world.create()
+            .with(Named{
+                name: "Foo".into(),
+            })
+            .finish();
+
+        world.create()
+            .with(Named{
+                name: "Bar".into(),
+            })
+            .finish();
+
+        world.create()
+            .with(Named{
+                name: "Car".into(),
+            })
+            .finish();
+
         Self{
-            world:     World::new(systems),
+            world: world,
 
             last_viewport_id: 0,
             viewports:        HashMap::new(),

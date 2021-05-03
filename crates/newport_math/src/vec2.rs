@@ -16,7 +16,9 @@ use std::ops::{
 
 use std::convert::From;
 
-#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
+use serde::{ Serialize, Deserialize };
+
+#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Vector2 {
     pub x: f32,
     pub y: f32,

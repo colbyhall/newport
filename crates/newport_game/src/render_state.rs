@@ -15,8 +15,6 @@ use std::{
 pub struct RenderState {
     pub viewports: HashMap<ViewportId, Viewport>,
 
-
-    // SOA structure for best interaction with gpu api
     pub primitives: Vec<Box<dyn Primitive>>,
     pub primitive_transforms: Vec<Matrix4>,
 }

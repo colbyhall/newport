@@ -16,11 +16,6 @@ use crate::{
     Style,
     Sizing,
     SPACING,
-    Viewport,
-    Direction,
-    Details,
-    AssetBrowser,
-    Outliner,
 };
 use engine::{ Module, Engine, EngineBuilder, InputEvent };
 use graphics::{ Graphics, Texture };
@@ -49,12 +44,17 @@ struct EditorInner {
 
     draw_state: DrawState,
     assets:     EditorAssets,
-    main_view:  View,
+    view:       View,
 }
 
 pub struct Editor(Mutex<EditorInner>);
 
 impl Editor {
+    pub fn set_view(&self, view: View) {
+        let mut editor = self.lock();
+        editor.view = view;
+    }
+
     fn lock(&self) -> MutexGuard<EditorInner> {
         self.0.lock().unwrap()
     }
@@ -73,7 +73,7 @@ impl Editor {
             gui,
             input,
             draw_state,
-            main_view,
+            view,
             ..
         } = &mut *editor;
 
@@ -151,7 +151,7 @@ impl Editor {
 
             let bounds = Rect::from_min_max(bounds.min + SPACING, bounds.max - SPACING);
             builder.layout(Layout::up_to_down(bounds), |builder| {
-                main_view.build(builder);
+                view.build(builder);
             });
             
             builder.finish();
@@ -180,24 +180,6 @@ impl Editor {
 
 impl Module for Editor {
     fn new() -> Self {
-        let mut details_view = View::new("details_view", 0.2);
-        details_view.add_tab(Details::new());
-
-        let mut asset_browser = View::new("asset_browser", 0.4);
-        asset_browser.add_tab(AssetBrowser::new());
-
-        let mut level = View::new("level", 0.8);
-        level.add_tab(Viewport::new());
-
-        let mut level_outline = View::new("level_outline", 0.2);
-        level_outline.add_tab(Outliner::new());
-
-        let level_and_outliner = View::new_views("level_and_outliner", 0.6, vec![level, level_outline], Direction::RightToLeft);
-
-        let level_and_asset_browser = View::new_views("scene_and_asset_browser", 0.8, vec![asset_browser, level_and_outliner], Direction::DownToUp);
-        
-        let view = View::new_views("main", 1.0, vec![details_view, level_and_asset_browser], Direction::RightToLeft);
-
         Self(Mutex::new(EditorInner{
             gui:    Context::new(),
             input:  None,
@@ -205,7 +187,7 @@ impl Module for Editor {
             draw_state: DrawState::new(),
             assets:     EditorAssets::new(),
 
-            main_view: view,
+            view: View::new("main", 1.0),
         }))
     }
 

@@ -3,7 +3,7 @@ use crate:: {
     RenderState,
 
     engine::{ Module, EngineBuilder, Engine },
-    editor::Editor,
+    editor::GameEditor,
 };
 
 use std::sync::{ Mutex, RwLock };
@@ -37,7 +37,7 @@ impl Module for Game {
                     *render_state = Some(new_render_state);
                 }               
             })
-            .module::<Editor>()
+            .module::<GameEditor>()
     }
 
 }

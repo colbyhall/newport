@@ -17,7 +17,9 @@ use std::convert::From;
 
 use crate::Vector3;
 
-#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
+use serde::{ Serialize, Deserialize };
+
+#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Vector4 {
     pub x: f32,
     pub y: f32,

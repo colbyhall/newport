@@ -77,6 +77,23 @@ impl GraphicsContext {
         };
     }
 
+    pub fn copy_buffer_to_buffer(&mut self, dst: Arc<Buffer>, src: Arc<Buffer>) {
+        assert_eq!(dst.size, src.size);
+
+        let region = vk::BufferCopy::builder()
+            .size(dst.size as u64)
+            .build();
+
+        unsafe{ 
+            self.owner.logical.cmd_copy_buffer(
+                self.command_buffer, 
+                src.handle, 
+                dst.handle, 
+                &[region]
+            )
+        };
+    }
+
     pub fn resource_barrier_texture(&mut self, texture: Arc<Texture>, old_layout: Layout, new_layout: Layout) {
         let mut barrier = vk::ImageMemoryBarrier::builder()
             .old_layout(layout_to_image_layout(old_layout))

@@ -540,6 +540,10 @@ impl GraphicsContext {
         self.0.copy_buffer_to_texture(dst.0.clone(), src.0.clone());
     }
 
+    pub fn copy_buffer_to_buffer(&mut self, dst: &Buffer, src: &Buffer) {
+        self.0.copy_buffer_to_buffer(dst.0.clone(), src.0.clone());
+    }
+
     pub fn begin_render_pass(&mut self, render_pass: &RenderPass, attachments: &[&Texture]) {
         let mut a = Vec::with_capacity(attachments.len());
         attachments.iter().for_each(|e| a.push(e.0.clone()) );

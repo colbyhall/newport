@@ -1,4 +1,4 @@
-use crate::{
+use newport_editor::{
     Tab,
     Builder,
 };

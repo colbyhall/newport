@@ -3,7 +3,9 @@ use std::ops::{ Mul, MulAssign, };
 use crate::Vector4;
 use crate::Vector3;
 
-#[derive(Copy, Clone, Default, PartialEq, PartialOrd, Debug)]
+use serde::{ Serialize, Deserialize };
+
+#[derive(Copy, Clone, Default, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Matrix4 {
     pub x_axis: Vector4,
     pub y_axis: Vector4,
