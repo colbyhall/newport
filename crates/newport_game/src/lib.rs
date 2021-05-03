@@ -1,29 +1,19 @@
-pub(crate) use newport_engine as engine;
-pub(crate) use newport_ecs as ecs;
-pub(crate) use newport_editor as editor;
-// pub(crate) use newport_math as math;
+pub(crate) use {
+    newport_engine as engine,
+    newport_ecs as ecs,
+    newport_editor as editor,
+    newport_math as math,
+    newport_gpu as gpu,
+};
 
-use engine::{ Module, EngineBuilder };
-use ecs::World;
-use editor::Editor;
+mod game_state;
+mod components;
+mod game;
+mod render_state;
 
-use std::sync::Mutex;
-
-
-pub struct Game {
-    pub world: Mutex<World>,
-}
-
-impl Module for Game {
-    fn new() -> Self {
-        Self{ 
-            world: Mutex::new(World::new())
-        }
-    }
-
-    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
-        builder
-            .module::<Editor>()
-    }
-
-}
+pub use {
+    game_state::*,
+    components::*,
+    game::*,
+    render_state::*,
+};

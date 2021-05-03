@@ -1,11 +1,18 @@
-use crate::entity::{ Entity, EntityData };
-use crate::component::{ ComponentMap, ComponentId, Component };
-use crate::query::{ QueryFromComponents, Query };
+use crate::{
+    entity::{ Entity, EntityData },
+    component::{ ComponentMap, ComponentId, Component },
+    query::{ QueryFromComponents, Query },
+
+    system::SystemRegister,
+};
 
 #[cfg(feature = "editable")]
 use newport_editor::Builder;
 
-use std::any::TypeId;
+use std::{
+    any::TypeId,
+    cmp::Ordering,
+};
 
 use slotmap::SlotMap;
 
@@ -36,15 +43,31 @@ impl<'a> EntityBuilder<'a> {
 }
 
 pub struct World {
-    pub(crate) entities:   SlotMap<Entity, EntityData>,
+    pub(crate) entities: SlotMap<Entity, EntityData>,
     components: ComponentMap,
+    systems:    Vec<SystemRegister>
 }
 
 impl World {
-    pub fn new() -> Self {
+    pub fn new(mut systems: Vec<SystemRegister>) -> Self {
+        systems.sort_by(|a, b|{
+            let a_depends_on_b = a.depends_on.iter().find(|name| **name == b.name).is_some();
+            let b_depends_on_a = b.depends_on.iter().find(|name| **name == a.name).is_some();
+
+            assert_ne!(a_depends_on_b, b_depends_on_a, "Circular dependency");
+            if a_depends_on_b {
+                Ordering::Less
+            } else if b_depends_on_a {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        });
+
         Self {
             entities:   SlotMap::with_key(),
             components: ComponentMap::new(),
+            systems:    systems,
         }
     }
 
@@ -113,5 +136,14 @@ impl World {
 
     pub fn entities(&self) -> Vec<Entity> {
         self.entities.keys().collect()
+    }
+
+    pub fn simulate(&mut self, dt: f32) {
+        let systems = self.systems.clone();
+        for it in systems.iter() {
+            if it.active {
+                (it.func)(self, dt);
+            }
+        }
     }
 }

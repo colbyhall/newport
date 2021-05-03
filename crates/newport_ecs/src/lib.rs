@@ -6,6 +6,7 @@ pub mod world;
 pub mod entity;
 pub mod component;
 pub mod query;
+pub mod system;
 
 #[cfg(test)]
 mod test;
@@ -13,5 +14,6 @@ mod test;
 pub use crate::{
     world::World,
     entity::Entity,
-    component::Component
+    component::Component,
+    system::System,
 };

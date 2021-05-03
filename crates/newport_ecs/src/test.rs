@@ -17,7 +17,7 @@ struct Transform {
 
 #[test]
 fn query() {
-    let mut world = World::new();
+    let mut world = World::new(Default::default());
 
     world.create()
         .with(Test{
@@ -40,7 +40,7 @@ fn query() {
 
 #[test]
 fn hello_world() {
-    let mut world = World::new();
+    let mut world = World::new(Default::default());
 
     let test = world.create()
         .with(Test{
