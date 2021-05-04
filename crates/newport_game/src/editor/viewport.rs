@@ -18,6 +18,6 @@ impl Tab for Viewport {
 
     fn build(&mut self, builder: &mut Builder) {
         let bounds = builder.layout.bounds();
-        builder.painter.rect(bounds).color(0x000000FF);
+        // builder.painter.rect(bounds).color(0x000000FF);
     }
 }

@@ -8,7 +8,7 @@ use crate::{
     Painter, 
     RawInput, 
     Retained, 
-    Style
+    StyleMap,
 };
 use crate::math::{ Vector2, Rect };
 
@@ -78,12 +78,12 @@ impl InputState {
 pub struct Context {
     pub(crate) input:      InputState,
     layers:     Vec<Layer>,
-    _retained:   HashMap<Id, Box<dyn Retained>>,
+    retained:   HashMap<Id, Box<dyn Retained>>,
 
     pub(crate) hovered: Option<Id>,
     pub(crate) focused: Option<Id>,
 
-    pub(crate) style: Option<Style>, // HACK: Style refers to assets and theyre not loaded most of the time a context is created
+    pub(crate) style: StyleMap,
 
     canvas: Rect,
 }
@@ -106,23 +106,25 @@ impl Context {
                 viewport: Rect::default(),
             },
             layers:     Vec::with_capacity(32),
-            _retained:   HashMap::with_capacity(128),
+            retained:   HashMap::with_capacity(128),
             
             hovered: None,
             focused: None,
 
-            style: None,
+            style: StyleMap::new(),
 
             canvas: Rect::default(),
         }
     }
 
     pub fn builder(&mut self, id: impl Into<Id>, layout: Layout) -> Builder {
+        let mut painter = Painter::new();
+        painter.push_scissor(layout.bounds());
         Builder{
             id:     id.into(),
             layout: layout,
 
-            painter: Painter::new(),
+            painter: painter,
             context: self,
         }
     }
@@ -133,10 +135,6 @@ impl Context {
 
     pub fn begin_frame(&mut self, mut input: RawInput) {
         let mut input_state = self.input;
-
-        if self.style.is_none() {
-            self.style = Some(Style::default());
-        }
 
         input_state.last_key_down = input_state.key_down;
         input_state.last_mouse_button_down = input_state.mouse_button_down;
@@ -170,7 +168,6 @@ impl Context {
 
         self.input = input_state;
         self.canvas = self.input.viewport;
-        self.style = Some(Style::default());
     }
 
     pub fn end_frame(&mut self) -> Mesh {
@@ -184,15 +181,8 @@ impl Context {
         mesh
     }
 
-    pub fn style(&self) -> Style {
-        match &self.style {
-            Some(it) => it.clone(),
-            None => Style::default(),
-        }
-    }
-
-    pub fn set_style(&mut self, style: Style) {
-        self.style = Some(style);
+    pub fn style(&mut self) -> &mut StyleMap {
+        &mut self.style
     }
 }
 
@@ -221,5 +211,25 @@ impl Context {
         let result = self.canvas;
         self.canvas = Default::default();
         result
+    }
+}
+
+impl Context {
+    pub fn retained<T: Retained + Default + Clone>(&mut self, id: Id) -> T {
+        let retained = {
+            let entry = self.retained.get_mut(&id);
+            if entry.is_none() {
+                self.retained.insert(id, Box::new(T::default()));
+                self.retained.get_mut(&id).unwrap()
+            } else {
+                entry.unwrap()
+            }
+        };
+        
+        retained.as_any_mut().downcast_mut::<T>().unwrap().clone()
+    }
+
+    pub fn set_retained<T: Retained>(&mut self, id: Id, t: T) {
+        self.retained.insert(id, Box::new(t));
     }
 }

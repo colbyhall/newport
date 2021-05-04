@@ -4,6 +4,9 @@ use crate::{
     Id,
     ToId,
     button_control,
+    ColorStyle,
+    TextStyle,
+    Shape,
 };
 
 use crate::math::{ Rect, Vector2 };
@@ -24,9 +27,10 @@ impl<'a> Checkbox<'a> {
 
 impl<'a> Checkbox<'a> {
     pub fn build(self, builder: &mut Builder) -> ButtonResponse {
-        let style = builder.style();
+        let color: ColorStyle = builder.style().get();
+        let text: TextStyle = builder.style().get();
 
-        let size = style.label_height();
+        let size = text.label_height();
 
         let checkbox_size = Vector2::new(size, size);
         let check_size = (size / 3.0, size / 3.0).into();
@@ -44,29 +48,29 @@ impl<'a> Checkbox<'a> {
 
         let (background_color, foreground_color) = {
             let background_color = if is_focused {
-                style.focused_background
+                color.focused_background
             } else if is_hovered {
-                style.hovered_background
+                color.hovered_background
             } else {
-                style.unhovered_background
+                color.unhovered_background
             };
 
             let foreground_color = if is_focused {
-                style.focused_foreground
+                color.focused_foreground
             } else if is_hovered {
-                style.hovered_foreground
+                color.hovered_foreground
             } else {
-                style.unhovered_foreground
+                color.unhovered_foreground
             };
 
             (background_color, foreground_color)
         };
 
-        builder.painter.rect(bounds).color(background_color);
+        builder.painter.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
 
         if *self.is_checked {
             let check_bounds = Rect::from_pos_size(bounds.pos(), check_size);
-            builder.painter.rect(check_bounds).color(foreground_color);
+            builder.painter.push_shape(Shape::solid_rect(check_bounds, foreground_color, 100.0));
         }
 
         response

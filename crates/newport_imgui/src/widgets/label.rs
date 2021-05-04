@@ -1,4 +1,9 @@
-use crate::Builder;
+use crate::{
+    Builder,
+    ColorStyle,
+    TextStyle,
+    Shape
+};
 
 use crate::math::{ Color, Rect };
 
@@ -26,16 +31,23 @@ impl Label {
 
 impl Label {
     pub fn build(self, builder: &mut Builder) {
-        let style = builder.style();
+        let color: ColorStyle = builder.style().get();
+        let text: TextStyle = builder.style().get();
         
-        let label_rect = style.string_rect(&self.label, style.label_size, None).size();
+        let label_rect = text.string_rect(&self.label, text.label_size, None).size();
         let bounds = builder.content_bounds(label_rect);
 
         let at = Rect::from_pos_size(bounds.pos(), label_rect).top_left();
 
-        builder.painter
-            .text(self.label, at, &style.font, style.label_size, builder.input().dpi)
-            .color(self.color.unwrap_or(style.inactive_foreground))
-            .scissor(bounds);
+        builder.painter.push_shape(
+            Shape::text(
+                self.label, 
+                at, 
+                &text.font, 
+                text.label_size, 
+                builder.input().dpi, 
+                color.inactive_foreground
+            )
+        );
     }
 }

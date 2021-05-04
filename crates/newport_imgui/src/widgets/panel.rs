@@ -4,6 +4,8 @@ use crate::{
     ToId,
     Builder,
     Layout,
+    ColorStyle,
+    Shape,
 };
 
 pub enum PanelVariant {
@@ -49,8 +51,8 @@ impl Panel {
         };
 
         let mut builder = ctx.builder(self.id, layout);
-        let style = builder.style();
-        builder.painter.rect(layout.bounds()).color(style.inactive_background);
+        let color: ColorStyle = builder.style().get();
+        builder.painter.push_shape(Shape::solid_rect(layout.bounds(), color.inactive_background, 0.0));
         contents(&mut builder);
         builder.finish();
     }

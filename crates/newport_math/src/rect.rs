@@ -11,6 +11,17 @@ pub struct Rect {
 }
 
 impl Rect {
+    pub const INFINITY: Rect = Rect{ 
+        min: Vector2{ 
+            x: -f32::INFINITY, 
+            y: -f32::INFINITY 
+        }, 
+        max: Vector2{ 
+            x: f32::INFINITY, 
+            y: f32::INFINITY 
+        } 
+    };
+
     pub fn from_min_max(min: Vector2, max: Vector2) -> Self {
         Self{
             min: min,

@@ -16,6 +16,10 @@ use crate::{
     Style,
     Sizing,
     SPACING,
+    ColorStyle,
+    LayoutStyle,
+    Shape,
+    TextStyle,
 };
 use engine::{ Module, Engine, EngineBuilder, InputEvent };
 use graphics::{ Graphics, Texture };
@@ -87,15 +91,19 @@ impl Editor {
             gui.begin_frame(input);
 
             // Top title bar which holds the pages, title, and window buttons
-            let mut style = gui.style();
-            style.padding = (12.0, 8.0, 12.0, 8.0).into();
-            style.margin = Rect::default();
-            style.inactive_background = DARK.bg_h;
-            style.unhovered_background = DARK.bg_h;
-            let height = style.label_height_with_padding();
+            let mut layout_style: LayoutStyle = gui.style().get();
+            layout_style.padding = (12.0, 8.0, 12.0, 8.0).into();
+            layout_style.margin = Rect::default();
+            gui.style().push(layout_style);
 
-            gui.set_style(style);
+            let mut color: ColorStyle = gui.style().get();
+            color.inactive_background = DARK.bg_h;
+            color.unhovered_background = DARK.bg_h;
+            gui.style().push(color);
 
+            let text_style: TextStyle = gui.style().get();
+            
+            let height = text_style.label_height() + layout_style.padding.min.y + layout_style.padding.max.y;
             Panel::top("menu_bar", height).build(gui, |builder| {
                 let space = builder.available_rect();
 
@@ -107,19 +115,16 @@ impl Editor {
 
                 let bounds = builder.layout.push_size(builder.layout.space_left());
                 builder.layout(Layout::right_to_left(bounds), |builder| {
-                    let og = builder.style();
-                    let mut new = og.clone();
-                    new.hovered_background = DARK.red0;
-                    new.hovered_foreground = DARK.fg;
-                    new.focused_background = DARK.red0;
-                    new.focused_foreground = DARK.fg;
-                    builder.set_style(new);
-                    
-                    if builder.button("Close").clicked() {
-                        engine.shutdown();
-                    }
-
-                    builder.set_style(og);
+                    let mut color: ColorStyle = builder.style().get();
+                    color.hovered_background = DARK.red0;
+                    color.hovered_foreground = DARK.fg;
+                    color.focused_background = DARK.red0;
+                    color.focused_foreground = DARK.fg;
+                    builder.scoped_style(color, |builder| {
+                        if builder.button("Close").clicked() {
+                            engine.shutdown();
+                        }
+                    });
 
                     if builder.button("Max").clicked() {
                         engine.maximize();
@@ -134,24 +139,28 @@ impl Editor {
                     engine.set_custom_drag(drag);
 
                     builder.layout(Layout::left_to_right(space), |builder| {
-                        let mut new = Style::default();
-                        new.sizing = Sizing::Fill(true, true);
-                        builder.set_style(new);
-
-                        builder.label(format!("{} - Newport Editor", Engine::as_ref().name()));
+                        let mut layout_style: LayoutStyle = builder.style().get();
+                        layout_style.width_sizing = Sizing::Fill;
+                        layout_style.height_sizing = Sizing::Fill;
+                        builder.scoped_style(layout_style, |builder| builder.label(format!("{} - Newport Editor", Engine::as_ref().name())));
                     });
                 });
             });
 
+            gui.style().pop::<ColorStyle>();
+
             // Main view which all views are built off of
             let bounds = gui.take_canvas();
             let mut builder = gui.builder("view", Layout::up_to_down(bounds));
-            let style = builder.style();
-            builder.painter.rect(bounds).color(style.inactive_background);
+            let mut color: ColorStyle = builder.style().get();
+            builder.painter.push_shape(Shape::solid_rect(bounds, color.inactive_background, 0.0));
 
-            let bounds = Rect::from_min_max(bounds.min + SPACING, bounds.max - SPACING);
-            builder.layout(Layout::up_to_down(bounds), |builder| {
-                view.build(builder);
+            color.inactive_background = DARK.bg_s;
+            builder.scoped_style(color, |builder| {
+                let bounds = Rect::from_min_max(bounds.min + SPACING, bounds.max - SPACING);
+                builder.layout(Layout::up_to_down(bounds), |builder| {
+                    view.build(builder);
+                });
             });
             
             builder.finish();

@@ -76,35 +76,15 @@ impl From<(f32, f32, f32, f32)> for Roundness {
 }
 
 pub struct RectShape {
-    bounds:     Rect,
-    scissor:    Rect,
+    bounds:  Rect,
+    scissor: Rect,
 
     roundness:  Roundness,
     color:      Color,
     texture:    Option<Texture>,
 }
 
-impl RectShape {
-    pub fn scissor(&mut self, scissor: impl Into<Rect>) -> &mut Self {
-        self.scissor = scissor.into();
-        self
-    }
-    
-    pub fn roundness(&mut self, corners: impl Into<Roundness>) -> &mut Self {
-        self.roundness = corners.into();
-        self
-    }
-
-    pub fn color(&mut self, color: impl Into<Color>) -> &mut Self {
-        self.color = color.into();
-        self
-    }
-
-    pub fn texture(&mut self, texture: &Texture) -> &mut Self {
-        self.texture = Some(texture.clone());
-        self
-    }
-
+impl RectShape {  
     fn tesselate(&self, canvas: &mut Mesh) {
         let texture = {
             match &self.texture {
@@ -265,9 +245,9 @@ impl RectShape {
 
 pub struct TextShape {
     text: String,
+    at: Vector2,
 
-    at:         Vector2,
-    scissor:    Rect,
+    scissor: Rect,
 
     font: AssetRef<FontCollection>,
     size: u32,
@@ -277,16 +257,6 @@ pub struct TextShape {
 }
 
 impl TextShape {
-    pub fn color(&mut self, color: impl Into<Color>) -> &mut Self {
-        self.color = color.into();
-        self
-    }
-
-    pub fn scissor(&mut self, scissor: impl Into<Rect>) -> &mut Self {
-        self.scissor = scissor.into();
-        self
-    }
-
     pub fn tesselate(&self, canvas: &mut Mesh) {
         let mut font_collection = self.font.write();
         let font = font_collection.font_at_size(self.size, self.dpi).unwrap();
@@ -322,60 +292,85 @@ impl TextShape {
     }
 }
 
-enum Shape {
+pub enum Shape {
     Rect(RectShape),
     Text(TextShape),
 }
 
+impl Shape {
+    pub fn solid_rect(bounds: impl Into<Rect>, color: impl Into<Color>, roundness: impl Into<Roundness>) -> Self {
+        Self::Rect(RectShape{
+            bounds:    bounds.into(),
+            scissor:   Rect::INFINITY,
+
+            roundness: roundness.into(),
+            color:     color.into(),
+            texture:   None,
+        })
+    }
+
+    pub fn textured_rect(bounds: impl Into<Rect>, color: impl Into<Color>, roundness: impl Into<Roundness>, texture: &Texture) -> Self {
+        Self::Rect(RectShape{
+            bounds:    bounds.into(),
+            scissor:   Rect::INFINITY,
+
+            roundness: roundness.into(),
+            color:     color.into(),
+            texture:   Some(texture.clone()),
+        })
+    }
+
+    pub fn text(text: impl Into<String>, at: impl Into<Vector2>, font: &AssetRef<FontCollection>, size: u32, dpi: f32, color: impl Into<Color>) -> Self {
+        Self::Text(TextShape{
+            text: text.into(),
+            at:   at.into(),
+
+            scissor:   Rect::INFINITY,
+
+            font: font.clone(),
+            size: size,
+            dpi: dpi,
+            color: color.into(),
+        })
+    }
+
+    fn set_scissor(&mut self, scissor: Rect) {
+        match self {
+            Shape::Text(shape) => shape.scissor = scissor,
+            Shape::Rect(shape) => shape.scissor = scissor,
+        }
+    }
+}
+
 pub struct Painter {
-    shapes: Vec<Shape>,
+    shapes:  Vec<Shape>,
+    scissors: Vec<Rect>,
 }
 
 impl Painter {
     pub fn new() -> Self {
+        let mut scissors = Vec::new();
+        scissors.push(Rect::INFINITY);
         Self {
-            shapes: Vec::with_capacity(128)
+            shapes:   Vec::with_capacity(128),
+            scissors: scissors,
         }
     }
 
-    pub fn rect(&mut self, bounds: impl Into<Rect>) -> &mut RectShape {
-        let bounds = bounds.into();
-
-        let shape = RectShape {
-            bounds:     bounds,
-            scissor:    bounds,
-
-            roundness:   Roundness::default(),
-            color:       Color::WHITE,
-            texture:     None,
-        };
-        self.shapes.push(Shape::Rect(shape));
-
-        match self.shapes.last_mut().unwrap() {
-            Shape::Rect(result) => result,
-            _ => unimplemented!()
-        }
+    pub fn num_shapes(&self) -> usize {
+        self.shapes.len()
     }
 
-    pub fn text(&mut self, text: String, at: Vector2, font: &AssetRef<FontCollection>, size: u32, dpi: f32) -> &mut TextShape {
-        let shape = TextShape{
-            text: text,
+    pub fn push_shape(&mut self, mut shape: Shape) {
+        let scissor = *self.scissors.last().unwrap();
+        shape.set_scissor(scissor);
+        self.shapes.push(shape);
+    }
 
-            at: at,
-            scissor: (-f32::INFINITY, -f32::INFINITY, f32::INFINITY, f32::INFINITY).into(),
-
-            font: font.clone(),
-            size: size,
-            dpi:  dpi,
-
-            color: Color::WHITE,
-        };
-        self.shapes.push(Shape::Text(shape));
-        
-        match self.shapes.last_mut().unwrap() {
-            Shape::Text(result) => result,
-            _ => unimplemented!()
-        }
+    pub fn insert_shape(&mut self, index: usize, mut shape: Shape) {
+        let scissor = *self.scissors.last().unwrap();
+        shape.set_scissor(scissor);
+        self.shapes.insert(index, shape);
     }
 
     pub fn tesselate(mut self, canvas: &mut Mesh) {
@@ -385,6 +380,14 @@ impl Painter {
                 Shape::Text(text) => text.tesselate(canvas),
             }
         })
+    }
+
+    pub fn push_scissor(&mut self, scissor: Rect) {
+        self.scissors.push(scissor);
+    }
+
+    pub fn pop_scissor(&mut self) {
+        self.scissors.pop();
     }
 }
 

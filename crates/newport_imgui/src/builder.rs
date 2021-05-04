@@ -7,7 +7,11 @@ use crate::{
     Label, 
     Layout, 
     Painter, 
-    Style
+    StyleMap,
+    Retained,
+    Style,
+    LayoutStyle,
+    TextStyle,
 };
 
 use crate::math::{ Vector2, Rect };
@@ -87,9 +91,9 @@ impl<'a> Builder<'a> {
     pub fn layout(&mut self, layout: Layout, content: impl FnOnce(&mut Builder)) {
         let current = self.layout;
         self.layout = layout;
-        let style = self.style();
+        self.painter.push_scissor(layout.bounds());
         content(self);
-        self.set_style(style);
+        self.painter.pop_scissor();
         self.layout = current;
     }
 
@@ -97,16 +101,8 @@ impl<'a> Builder<'a> {
         self.layout.available_rect()
     }
 
-    pub fn style(&self) -> Style {
-        self.context.style()
-    }
-
-    pub fn set_style(&mut self, style: Style) {
-        self.context.set_style(style);
-    }
-
     pub fn content_bounds(&mut self, space_needed: Vector2) -> Rect {
-        let style = self.style();
+        let style: LayoutStyle = self.style().get();
 
         let space_available = self.layout.space_left();
         let content_size = style.content_size(space_needed, space_available);
@@ -118,5 +114,30 @@ impl<'a> Builder<'a> {
 
     pub fn add_spacing(&mut self, amount: f32) {
         self.layout.push_size(Vector2::new(amount, amount));
+    }
+
+    pub fn retained<T: Retained + Default + Clone>(&mut self, id: Id) -> T {
+        self.context.retained::<T>(id)
+    }
+
+    pub fn set_retained<T: Retained>(&mut self, id: Id, t: T) {
+        self.context.set_retained(id, t);
+    }
+
+    pub fn style(&mut self) -> &mut StyleMap {
+        &mut self.context.style
+    }
+
+    pub fn scoped_style<T: Style>(&mut self, in_style: T, contents: impl FnOnce(&mut Builder)) {
+        self.style().push(in_style);
+        contents(self);
+        self.style().pop::<T>();
+    }
+
+    pub fn label_height_with_padding(&mut self) -> f32 {
+        let layout_style: LayoutStyle = self.style().get();
+        let text_style: TextStyle = self.style().get();
+
+        text_style.label_height() + layout_style.padding.min.y + layout_style.padding.max.y
     }
 }

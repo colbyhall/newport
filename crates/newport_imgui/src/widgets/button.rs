@@ -2,6 +2,9 @@ use crate::{
     Builder, 
     Id, 
     ToId, 
+    ColorStyle,
+    TextStyle,
+    Shape,
 
     math,
     asset,
@@ -85,9 +88,10 @@ impl Button {
 impl Button {
     #[must_use = "If a response is not being used then use a label"]
     pub fn build(self, builder: &mut Builder) -> ButtonResponse {
-        let style = builder.style();
+        let color: ColorStyle = builder.style().get();
+        let text: TextStyle = builder.style().get();
 
-        let label_rect = style.string_rect(&self.label, style.label_size, None).size();
+        let label_rect = text.string_rect(&self.label, text.label_size, None).size();
         let bounds = builder.content_bounds(label_rect);
         
         let response = button_control(self.id, bounds, builder);
@@ -97,31 +101,37 @@ impl Button {
         
         let (background_color, foreground_color) = {
             let background_color = if is_focused {
-                style.focused_background
+                color.focused_background
             } else if is_hovered {
-                style.hovered_background
+                color.hovered_background
             } else {
-                style.unhovered_background
+                color.unhovered_background
             };
 
             let foreground_color = if is_focused {
-                style.focused_foreground
+                color.focused_foreground
             } else if is_hovered {
-                style.hovered_foreground
+                color.hovered_foreground
             } else {
-                style.unhovered_foreground
+                color.unhovered_foreground
             };
 
             (background_color, foreground_color)
         };
 
-        builder.painter.rect(bounds).color(background_color);
+        builder.painter.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
         
         let at = Rect::from_pos_size(bounds.pos(), label_rect).top_left();
-        builder.painter
-            .text(self.label, at, &style.font, style.label_size, builder.input().dpi)
-            .color(foreground_color)
-            .scissor(bounds);
+        builder.painter.push_shape(
+            Shape::text(
+                self.label, 
+                at, 
+                &text.font, 
+                text.label_size, 
+                builder.input().dpi, 
+                foreground_color
+            )
+        );
 
         response
     }
@@ -156,7 +166,7 @@ impl ImageButton {
 impl ImageButton {
     #[must_use = "If a response is not being used then use an image"]
     pub fn build(self, builder: &mut Builder) -> ButtonResponse {
-        let style = builder.style();
+        let color: ColorStyle = builder.style().get();
 
         let size = match self.size {
             Some(size) => size,
@@ -174,25 +184,25 @@ impl ImageButton {
         
         let (background_color, foreground_color) = {
             let background_color = if is_focused {
-                style.focused_background
+                color.focused_background
             } else if is_hovered {
-                style.hovered_background
+                color.hovered_background
             } else {
-                style.unhovered_background
+                color.unhovered_background
             };
 
             let foreground_color = if is_focused {
-                style.focused_foreground
+                color.focused_foreground
             } else if is_hovered {
-                style.hovered_foreground
+                color.hovered_foreground
             } else {
-                style.unhovered_foreground
+                color.unhovered_foreground
             };
 
             (background_color, foreground_color)
         };
 
-        builder.painter.rect(bounds).color(background_color);
+        builder.painter.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
         
         let gpu_texture = {
             let texture = self.image.read();
@@ -200,7 +210,7 @@ impl ImageButton {
         };
 
         let bounds = Rect::from_pos_size(bounds.pos(), size);
-        builder.painter.rect(bounds).color(foreground_color).texture(&gpu_texture);
+        builder.painter.push_shape(Shape::textured_rect(bounds, foreground_color, 0.0, &gpu_texture));
 
         response
     }
