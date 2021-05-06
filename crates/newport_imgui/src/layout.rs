@@ -55,6 +55,11 @@ impl Layout {
             cursor: 0.0
         }
     }
+
+    pub fn with_cursor(mut self, cursor: f32) -> Self {
+        self.cursor = cursor;
+        self
+    }
 }
 
 impl Layout {
@@ -121,5 +126,9 @@ impl Layout {
                 Rect::from_min_max(min, max)
             },
         }
+    }
+
+    pub fn cursor(&self) -> f32 {
+        self.cursor
     }
 }

@@ -7,6 +7,8 @@ pub const TAU : f32 = PI * 2.0;
 pub const TO_RAD : f32 = PI / 180.0;
 pub const TO_DEG : f32 = 180.0 / PI;
 
+pub const SMALL_NUMBER : f32 = 1.0e-8;
+
 pub mod vec2;
 pub use vec2::*;
 
@@ -28,18 +30,20 @@ pub use rect::*;
 pub mod quat;
 pub use quat::*;
 
-pub fn min(a: f32, b: f32) -> f32 {
-    if a < b {
-        a
-    } else {
-        b
-    }
+pub trait InterpTo {
+    fn interp_to(self, target: Self, dt: f32, speed: f32) -> Self;
 }
 
-pub fn max(a: f32, b: f32) -> f32 {
-    if a > b {
-        a
-    } else {
-        b
+impl InterpTo for f32 {
+    fn interp_to(self, target: Self, dt: f32, speed: f32) -> Self {
+        if speed <= 0.0 { return target; }
+
+        let distance = target - self;
+        if distance * distance < SMALL_NUMBER {
+            return target;
+        }
+
+        let delta = distance * (dt * speed).max(0.0).min(1.0);
+        self + delta
     }
 }

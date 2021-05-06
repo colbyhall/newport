@@ -88,13 +88,15 @@ impl<'a> Builder<'a> {
         Label::new(label).build(self)
     }
 
-    pub fn layout(&mut self, layout: Layout, content: impl FnOnce(&mut Builder)) {
+    pub fn layout(&mut self, layout: Layout, content: impl FnOnce(&mut Builder)) -> Layout {
         let current = self.layout;
         self.layout = layout;
         self.painter.push_scissor(layout.bounds());
         content(self);
         self.painter.pop_scissor();
+        let result = self.layout;
         self.layout = current;
+        result
     }
 
     pub fn available_rect(&self) -> Rect {

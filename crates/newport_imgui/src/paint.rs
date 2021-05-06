@@ -100,7 +100,7 @@ impl RectShape {
         }
 
         let size = self.bounds.size();
-        let radius = math::min(max, math::min(size.x, size.y) / 2.0);
+        let radius = max.min(size.x.min(size.y) / 2.0);
 
         canvas.vertices.push(Vertex{
             position:   self.bounds.pos(),
@@ -145,19 +145,19 @@ impl RectShape {
             (first, second)
         };
 
-        let top_right_radius = math::min(self.roundness.top_right, radius);
+        let top_right_radius = self.roundness.top_right.min(radius);
         let top_right = self.bounds.top_right() - top_right_radius;
         let (top_right_first, top_right_second) = corner(0.0, math::PI / 2.0, top_right, top_right_radius);
 
-        let top_left_radius = math::min(self.roundness.top_left, radius);
+        let top_left_radius = self.roundness.top_left.min(radius);
         let top_left = self.bounds.top_left() + Vector2::new(top_left_radius, -top_left_radius);
         let (top_left_first, top_left_second) = corner(math::PI * 1.5, math::TAU, top_left, top_left_radius);
 
-        let bottom_left_radius = math::min(self.roundness.bottom_left, radius);
+        let bottom_left_radius = self.roundness.bottom_left.min(radius);
         let bottom_left = self.bounds.bottom_left() + bottom_left_radius;
         let (bottom_left_first, bottom_left_second) = corner(math::PI, math::PI * 1.5, bottom_left, bottom_left_radius);
         
-        let bottom_right_radius = math::min(self.roundness.bottom_right, radius);
+        let bottom_right_radius = self.roundness.bottom_right.min(radius);
         let bottom_right = self.bounds.bottom_right() + Vector2::new(-bottom_right_radius, bottom_right_radius);
         let (bottom_right_first, bottom_right_second) = corner(math::PI / 2.0, math::PI, bottom_right, bottom_right_radius);
 

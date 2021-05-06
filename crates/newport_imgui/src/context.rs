@@ -2,7 +2,7 @@ use crate::{
     Builder, 
     Event, 
     Id, 
-    Input, 
+    InputState,
     Layout, 
     Mesh, 
     Painter, 
@@ -18,65 +18,9 @@ struct Layer {
     painter: Painter,
 }
 
-#[derive(Copy, Clone)]
-pub struct InputState {
-    pub mouse_location: Option<Vector2>,
-
-    pub dt:  f32,
-    pub dpi: f32,
-
-    pub key_down: [bool; 256],
-    pub last_key_down: [bool; 256],
-
-    pub mouse_button_down: [bool; 3],
-    pub last_mouse_button_down: [bool; 3],
-
-    pub viewport: Rect,
-}
-
-impl InputState {
-    pub fn was_key_pressed(&self, key: Input) -> bool {
-        self.key_down[key.as_key().0 as usize] && !self.last_key_down[key.as_key().0 as usize]
-    }
-
-    pub fn was_key_released(&self, key: Input) -> bool {
-        !self.key_down[key.as_key().0 as usize] && self.last_key_down[key.as_key().0 as usize]
-    }
-
-    pub fn was_primary_clicked(&self) -> bool {
-        self.mouse_button_down[0] && !self.last_mouse_button_down[0]
-    }
-
-    pub fn was_middle_clicked(&self) -> bool {
-        self.mouse_button_down[1] && !self.last_mouse_button_down[0]
-    }
-
-    pub fn was_secondary_clicked(&self) -> bool {
-        self.mouse_button_down[2] && !self.last_mouse_button_down[0]
-    }
-
-    pub fn was_primary_released(&self) -> bool {
-        !self.mouse_button_down[0] && self.last_mouse_button_down[0]
-    }
-
-    pub fn was_middle_released(&self) -> bool {
-        !self.mouse_button_down[1] && self.last_mouse_button_down[0]
-    }
-
-    pub fn was_secondary_released(&self) -> bool {
-        !self.mouse_button_down[2] && self.last_mouse_button_down[0]
-    }
-
-    pub fn mouse_is_over(&self, rect: Rect) -> bool {
-        match self.mouse_location {
-            Some(loc) => rect.point_overlap(loc),
-            None => false
-        }
-    }
-}
 
 pub struct Context {
-    pub(crate) input:      InputState,
+    pub(crate) input: InputState,
     layers:     Vec<Layer>,
     retained:   HashMap<Id, Box<dyn Retained>>,
 
@@ -92,7 +36,8 @@ impl Context {
     pub fn new() -> Self {
         Self {
             input: InputState{
-                mouse_location: None,
+                mouse_location:      None,
+                last_mouse_location: None,
                 
                 dt:  0.0,
                 dpi: 0.0,
@@ -102,6 +47,8 @@ impl Context {
                 
                 mouse_button_down: [false; 3],
                 last_mouse_button_down: [false; 3],
+
+                scroll: 0.0,
 
                 viewport: Rect::default(),
             },
@@ -138,6 +85,8 @@ impl Context {
 
         input_state.last_key_down = input_state.key_down;
         input_state.last_mouse_button_down = input_state.mouse_button_down;
+        input_state.scroll = 0.0;
+        input_state.last_mouse_location = input_state.mouse_location;
 
         let dpi = input.dpi;
 
@@ -157,6 +106,9 @@ impl Context {
                 },
                 Event::MouseLeave => {
                     input_state.mouse_location = None;
+                },
+                Event::MouseWheel(scroll) => {
+                    input_state.scroll = -scroll as f32;
                 },
                 _ => { }
             }

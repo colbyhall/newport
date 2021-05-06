@@ -131,10 +131,15 @@ impl View {
                 let bounds = builder.layout.push_size(available_size);
                 let color: ColorStyle = builder.style().get();
                 builder.painter.push_shape(Shape::solid_rect(bounds, color.inactive_background, 0.0));
-                
-                let bounds = Rect::from_min_max(bounds.min + SPACING, bounds.max - SPACING);
-                builder.layout(Layout::up_to_down(bounds), |builder| {
-                    tabs[*selected].build(builder);
+
+                let mut color: ColorStyle = builder.style().get();
+                color.inactive_background = DARK.bg_h;
+
+                builder.scoped_style(color, |builder| {
+                    let bounds = Rect::from_min_max(bounds.min + SPACING, bounds.max - SPACING);
+                    builder.layout(Layout::up_to_down(bounds), |builder| {
+                        tabs[*selected].build(builder);
+                    });
                 });
             }
             ViewChildren::Views { views, direction } => {
