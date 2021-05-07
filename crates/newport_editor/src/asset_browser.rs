@@ -5,13 +5,39 @@ use crate::{
     Layout,
     Scrollbox,
     Direction,
+
+    engine::Engine,
+    asset::AssetManager,
 };
 
-pub struct AssetBrowser;
+use std::{
+    path::PathBuf,
+};
+
+enum BrowserEntry {
+    Directory{
+        path:    PathBuf,
+        entries: Vec<BrowserEntry>
+    },
+    Asset(PathBuf),
+}
+
+pub struct AssetBrowser {
+    entries: Vec<BrowserEntry>,
+}
 
 impl AssetBrowser {
     pub fn new() -> Self {
-        Self
+        let asset_manager = Engine::as_ref().module::<AssetManager>().unwrap();
+
+        let assets = asset_manager.assets();
+        for entry in assets.iter() {
+
+        }
+
+        Self {
+            entries: Vec::new(), // TEMP
+        }
     }
 }
 

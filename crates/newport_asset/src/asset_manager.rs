@@ -11,7 +11,7 @@ use crate::{
 use std::{
     any::{ TypeId, Any },
     path::{ Path, PathBuf },
-    sync::{ Arc, RwLock },
+    sync::{ Arc, RwLock, RwLockReadGuard },
     time::{ SystemTime, Instant },
     ffi::OsStr,
     marker::PhantomData,
@@ -48,6 +48,10 @@ pub struct AssetManagerInner {
 pub struct AssetManager(pub(crate) Arc<AssetManagerInner>);
 
 impl AssetManager {
+    pub fn assets(&self) -> RwLockReadGuard<Vec<AssetEntry>> {
+        self.0.assets.read().unwrap()
+    }
+
     /// Discovers all assets using the registered collection and variants
     pub fn discover(&self) {
         let collections = &self.0.collections;
