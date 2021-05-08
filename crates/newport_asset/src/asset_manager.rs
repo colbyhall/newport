@@ -52,6 +52,10 @@ impl AssetManager {
         self.0.assets.read().unwrap()
     }
 
+    pub fn collections(&self) -> &Vec<AssetCollection> {
+        &self.0.collections
+    }
+
     /// Discovers all assets using the registered collection and variants
     pub fn discover(&self) {
         let collections = &self.0.collections;

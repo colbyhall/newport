@@ -50,4 +50,8 @@ impl AssetCollection {
             path: path.into(),
         }
     }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
 }
