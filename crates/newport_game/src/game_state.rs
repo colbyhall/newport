@@ -96,4 +96,8 @@ impl GameState {
     pub fn viewport_mut(&mut self, id: ViewportId) -> Option<&mut Viewport> {
         self.viewports.get_mut(&id)
     }
+
+    pub fn world(&self) -> &World {
+        &self.world
+    }
 }
