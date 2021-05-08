@@ -292,8 +292,31 @@ impl TextShape {
     }
 }
 
+pub struct TriangleShape {
+    points: [Vector2; 3],
+    scissor: Rect,
+
+    color: Color,
+}
+
+impl TriangleShape {
+    pub fn tesselate(&self, canvas: &mut Mesh) {
+        for point in self.points.iter() {
+            canvas.vertices.push(Vertex{
+                position:   *point,
+                uv:         Vector2::ZERO,
+                color:      self.color,
+                scissor:    self.scissor,
+                texture:    0,
+            });
+            canvas.indices.push((canvas.vertices.len() - 1) as u32);
+        }
+    }
+}
+
 pub enum Shape {
     Rect(RectShape),
+    Triangle(TriangleShape),
     Text(TextShape),
 }
 
@@ -306,6 +329,15 @@ impl Shape {
             roundness: roundness.into(),
             color:     color.into(),
             texture:   None,
+        })
+    }
+
+    pub fn solid_triangle(points: [Vector2; 3], color: impl Into<Color>) -> Self {
+        Self::Triangle(TriangleShape{
+            points:  points,
+            scissor: Rect::INFINITY,
+
+            color:   color.into(),
         })
     }
 
@@ -338,6 +370,7 @@ impl Shape {
         match self {
             Shape::Text(shape) => shape.scissor = scissor,
             Shape::Rect(shape) => shape.scissor = scissor,
+            Shape::Triangle(shape) => shape.scissor = scissor,
         }
     }
 }
@@ -378,6 +411,7 @@ impl Painter {
             match it {
                 Shape::Rect(rect) => rect.tesselate(canvas),
                 Shape::Text(text) => text.tesselate(canvas),
+                Shape::Triangle(triangle) => triangle.tesselate(canvas),
             }
         })
     }

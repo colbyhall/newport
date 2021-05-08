@@ -19,6 +19,7 @@ use crate::{
 
     Shape,
     Sizing,
+    SPACING,
 
     engine::Engine,
     asset::AssetManager,
@@ -35,11 +36,26 @@ enum BrowserEntry {
         path:    String,
         entries: Vec<BrowserEntry>,
         id: u64,
+        has_sub: bool,
     },
     Asset(String),
 }
 
 impl BrowserEntry {
+    fn path(&self) -> &str {
+        match self {
+            BrowserEntry::Directory { path, .. } => path,
+            BrowserEntry::Asset(path) => path,
+        }
+    }
+
+    fn entries(&self) -> &Vec<BrowserEntry> {
+        match self {
+            BrowserEntry::Directory{ entries, .. } => entries,
+            _ => unreachable!()
+        }
+    }
+
     fn insert(&mut self, path: &Path, id: &mut u64) {
         let root = match path.iter().next() {
             Some(root) => root,
@@ -47,7 +63,7 @@ impl BrowserEntry {
         }.to_str().unwrap();
 
         match self {
-            BrowserEntry::Directory { entries, .. } => {
+            BrowserEntry::Directory { entries, has_sub, .. } => {
                 let found = entries.iter_mut().find(|it| {
                     match it {
                         BrowserEntry::Directory { path, .. } => &root == path,
@@ -67,7 +83,8 @@ impl BrowserEntry {
                         if is_file {
                             entries.push(BrowserEntry::Asset(root.to_string()));
                         } else {
-                            entries.push(BrowserEntry::Directory{ path: root.to_string(), entries: Vec::new(), id: *id });
+                            *has_sub = true;
+                            entries.push(BrowserEntry::Directory{ path: root.to_string(), entries: Vec::new(), id: *id, has_sub: false });
                             *id += 1;
                             entries.last_mut().unwrap().insert(Path::new(path.strip_prefix(root).unwrap()), id);
                         }
@@ -76,6 +93,28 @@ impl BrowserEntry {
             },
             BrowserEntry::Asset(_) => {
                 return;
+            }
+        }
+    }
+
+    fn find(&self, find_id: u64) -> Option<&BrowserEntry> {
+         match self {
+            BrowserEntry::Directory { id, entries, .. } => {
+                if find_id == *id {
+                    return Some(self);
+                }
+                
+                for entry in entries.iter() {
+                    let result = entry.find(find_id);
+                    if result.is_some() {
+                        return result;
+                    }
+                }
+
+                None
+            },
+            BrowserEntry::Asset(_) => {
+                None
             }
         }
     }
@@ -94,10 +133,11 @@ impl AssetBrowser {
             path: "Assets".into(),
             entries: Vec::new(),
             id: 0,
+            has_sub: true,
         };
 
         let assets = asset_manager.assets();
-        let mut id = 0;
+        let mut id = 1;
         for entry in assets.iter() {
             let path = &entry.path;
             entries.insert(path, &mut id);
@@ -105,7 +145,7 @@ impl AssetBrowser {
 
         Self {
             entries: entries,
-            selected_entry: 0,
+            selected_entry: 1,
         }
     }
 }
@@ -120,17 +160,17 @@ impl Tab for AssetBrowser {
             let bounds = builder.layout.bounds();
 
             let size = (300.0, bounds.height()).into();
-            Scrollbox::new("test", builder.layout.push_size(size), Direction::UpToDown)
+            Scrollbox::new("asset_browser_directories", builder.layout.push_size(size), Direction::UpToDown)
             .build(builder, |builder| {
                 let mut layout_style: LayoutStyle = builder.style().get();
                 layout_style.width_sizing = Sizing::Fill;
                 builder.scoped_style(layout_style, |builder| {
                     fn build_entry(builder: &mut Builder, entry: &BrowserEntry, selected: &mut u64) {
                         match entry {
-                            BrowserEntry::Directory{ path, entries, id } => {
+                            BrowserEntry::Directory{ path, entries, id, has_sub } => {
                                 let entry = SelectableCollapsingEntry::new(id, path, *id == *selected);
 
-                                if entry.build(builder, entries.len() > 0, |builder| {
+                                if entry.build(builder, *has_sub, |builder| {
                                     for entry in entries.iter() {
                                         build_entry(builder, entry, selected);
                                     }
@@ -152,6 +192,21 @@ impl Tab for AssetBrowser {
                     }
 
                 });
+            });
+
+            builder.add_spacing(SPACING);
+
+            Scrollbox::new("assets", builder.layout.push_size(builder.layout.space_left()), Direction::UpToDown)
+            .build(builder, |builder| {
+                match self.entries.find(self.selected_entry) {
+                    Some(entry) => {
+                        for entry in entry.entries().iter() {
+                            builder.label(entry.path());
+                        }
+                    },
+                    _ => {}
+                }
+                
             });
         });
     }
@@ -249,14 +304,22 @@ impl SelectableCollapsingEntry {
 
         builder.painter.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
 
-        let roundness = if retained.is_open {
-            0.0
-        } else {
-            3.0
-        };
-
         if has_contents {
-            builder.painter.push_shape(Shape::solid_rect(collapse_button_bounds, color.inactive_foreground, roundness));
+            if retained.is_open {
+                let points = [
+                    collapse_button_bounds.top_left(),
+                    collapse_button_bounds.top_right(),
+                    collapse_button_bounds.bottom_left() + Vector2::new(collapse_button_size.x / 2.0, 0.0),
+                ];
+                builder.painter.push_shape(Shape::solid_triangle(points, color.inactive_foreground));
+            } else {
+                let points = [
+                    collapse_button_bounds.bottom_left(),
+                    collapse_button_bounds.top_left(),
+                    collapse_button_bounds.bottom_right() + Vector2::new(0.0, collapse_button_size.y / 2.0),
+                ];
+                builder.painter.push_shape(Shape::solid_triangle(points, color.inactive_foreground));
+            }
         }
 
         let at = Vector2::new(cursor_x, Rect::from_pos_size(bounds.pos(), label_rect).top_left().y);
