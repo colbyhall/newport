@@ -422,6 +422,17 @@ impl <'a> TextEdit<'a> {
                         }
                     }
                 }
+            } else {
+                builder.painter.push_shape(
+                    Shape::text(
+                        self.text.clone(), 
+                        at, 
+                        &text.font, 
+                        text.label_size, 
+                        builder.input().dpi, 
+                        foreground_color
+                    )
+                );
             }
         } else {
             if is_focused {
