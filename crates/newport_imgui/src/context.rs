@@ -42,6 +42,7 @@ impl Context {
                 dt:  0.0,
                 dpi: 0.0,
 
+                key_pressed: [false; 256],
                 key_down: [false; 256],
                 last_key_down: [false; 256],
                 
@@ -51,6 +52,8 @@ impl Context {
                 scroll: 0.0,
 
                 viewport: Rect::default(),
+
+                text_input: String::new(),
             },
             layers:     Vec::with_capacity(32),
             retained:   HashMap::with_capacity(128),
@@ -81,12 +84,14 @@ impl Context {
     }
 
     pub fn begin_frame(&mut self, mut input: RawInput) {
-        let mut input_state = self.input;
+        let mut input_state = self.input.clone();
 
         input_state.last_key_down = input_state.key_down;
         input_state.last_mouse_button_down = input_state.mouse_button_down;
         input_state.scroll = 0.0;
         input_state.last_mouse_location = input_state.mouse_location;
+        input_state.text_input = String::new();
+        input_state.key_pressed = [false; 256];
 
         let dpi = input.dpi;
 
@@ -95,6 +100,9 @@ impl Context {
                 Event::Key{ key, pressed } => {
                     let (key_code, _) = key.as_key();
                     input_state.key_down[key_code as usize] = pressed;
+                    if pressed {
+                        input_state.key_pressed[key_code as usize] = true;
+                    }
                 },
                 Event::MouseButton{ mouse_button, pressed, position } => {
                     let code = mouse_button.as_mouse_button();
@@ -110,6 +118,9 @@ impl Context {
                 Event::MouseWheel(scroll) => {
                     input_state.scroll = -scroll as f32;
                 },
+                Event::Char(c) => {
+                    input_state.text_input.push(c);
+                }
                 _ => { }
             }
         });

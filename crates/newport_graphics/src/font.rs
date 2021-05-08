@@ -35,6 +35,8 @@ use std::{
 
     thread_local,
     fs,
+
+    iter::Iterator,
 };
 
 use freetype::{ 
@@ -268,6 +270,14 @@ impl Font {
         let max = Vector2::new(width, 0.0);
         Rect::from_min_max(min, max)
     }
+
+    pub fn bounds_iter<'a>(&'a self, text: &'a str, at: Vector2) -> BoundsIter<'a> {
+        BoundsIter{
+            font: self,
+            text,
+            at,
+        }
+    }
 }
 
 #[derive(Default, Clone, Copy, Debug)]
@@ -280,4 +290,32 @@ pub struct Glyph {
     pub advance:   f32,
 
     pub uv: Rect,
+}
+
+pub struct BoundsIter<'a> {
+    font: &'a Font,
+    text: &'a str,
+    at:   Vector2,
+}
+
+impl<'a> Iterator for BoundsIter<'a> {
+    type Item = Rect;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let c = self.text.chars().next()?;
+        let g = self.font.glyph_from_char(c)?;
+
+        let xy = Vector2::new(self.at.x, self.at.y - self.font.height);
+        
+        let x0 = xy.x;
+        let y0 = xy.y;
+        let x1 = x0 + g.advance;
+        let y1 = y0 + self.font.height;
+        let bounds = (x0, y0, x1, y1).into();
+        self.at.x += g.advance;
+
+        self.text = self.text.split_at(1).1;
+
+        Some(bounds)
+    }
 }

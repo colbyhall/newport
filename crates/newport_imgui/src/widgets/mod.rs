@@ -1,14 +1,15 @@
 mod button;
-pub use button::*;
-
 mod label;
-pub use label::*;
-
 mod panel;
-pub use panel::*;
-
 mod checkbox;
-pub use checkbox::*;
-
 mod scrollbox;
-pub use scrollbox::*;
+mod text_edit;
+
+pub use {
+    button::*,
+    label::*,
+    panel::*,
+    checkbox::*,
+    scrollbox::*,
+    text_edit::*,
+};

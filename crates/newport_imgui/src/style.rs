@@ -192,7 +192,7 @@ impl Default for ColorStyle {
             focused_background: DARK.bg2,
             focused_foreground: DARK.fg3,
 
-            selected_background: DARK.blue1,
+            selected_background: DARK.yellow1,
             selected_foreground: DARK.bg1,
         }
     }

@@ -14,6 +14,8 @@ use crate::{
     ButtonResponse,
     button_control,
 
+    TextEdit,
+
     TextStyle,
     ColorStyle,
 
@@ -123,6 +125,7 @@ impl BrowserEntry {
 pub struct AssetBrowser {
     entries: BrowserEntry,
     selected_entry: u64,
+    directory_search: String,
 }
 
 impl AssetBrowser {
@@ -146,6 +149,7 @@ impl AssetBrowser {
         Self {
             entries: entries,
             selected_entry: 1,
+            directory_search: String::new(),
         }
     }
 }
@@ -158,41 +162,54 @@ impl Tab for AssetBrowser {
     fn build(&mut self, builder: &mut Builder) {
         builder.layout(Layout::left_to_right(builder.layout.bounds()), |builder| {
             let bounds = builder.layout.bounds();
-
-            let size = (300.0, bounds.height()).into();
-            Scrollbox::new("asset_browser_directories", builder.layout.push_size(size), Direction::UpToDown)
-            .build(builder, |builder| {
+            let bounds = builder.layout.push_size((300.0, bounds.height()).into());
+            builder.layout(Layout::up_to_down(bounds), |builder| {
                 let mut layout_style: LayoutStyle = builder.style().get();
                 layout_style.width_sizing = Sizing::Fill;
                 builder.scoped_style(layout_style, |builder| {
-                    fn build_entry(builder: &mut Builder, entry: &BrowserEntry, selected: &mut u64) {
-                        match entry {
-                            BrowserEntry::Directory{ path, entries, id, has_sub } => {
-                                let entry = SelectableCollapsingEntry::new(id, path, *id == *selected);
+                    TextEdit::singleline(&mut self.directory_search)
+                    .hint("Search")
+                    .build(builder);
+                });
 
-                                if entry.build(builder, *has_sub, |builder| {
-                                    for entry in entries.iter() {
-                                        build_entry(builder, entry, selected);
+                builder.add_spacing(SPACING);
+
+                let space_left = builder.layout.space_left();
+                let bounds = builder.layout.push_size(space_left);
+                Scrollbox::new("asset_browser_directories", bounds, Direction::UpToDown)
+                .build(builder, |builder| {
+                    let mut layout_style: LayoutStyle = builder.style().get();
+                    layout_style.width_sizing = Sizing::Fill;
+                    builder.scoped_style(layout_style, |builder| {
+                        fn build_entry(builder: &mut Builder, entry: &BrowserEntry, selected: &mut u64) {
+                            match entry {
+                                BrowserEntry::Directory{ path, entries, id, has_sub } => {
+                                    let entry = SelectableCollapsingEntry::new(id, path, *id == *selected);
+    
+                                    if entry.build(builder, *has_sub, |builder| {
+                                        for entry in entries.iter() {
+                                            build_entry(builder, entry, selected);
+                                        }
+                                    }).clicked() {
+                                        *selected = *id;
                                     }
-                                }).clicked() {
-                                    *selected = *id;
+                                },
+                                _ => return
+                            }
+                        }
+    
+                        match &self.entries {
+                            BrowserEntry::Directory{ entries, .. } => {
+                                for entry in entries.iter() {
+                                    build_entry(builder, entry, &mut self.selected_entry);
                                 }
                             },
-                            _ => return
+                            _ => {}
                         }
-                    }
-
-                    match &self.entries {
-                        BrowserEntry::Directory{ entries, .. } => {
-                            for entry in entries.iter() {
-                                build_entry(builder, entry, &mut self.selected_entry);
-                            }
-                        },
-                        _ => {}
-                    }
-
+                    });
                 });
             });
+
 
             builder.add_spacing(SPACING);
 
@@ -206,7 +223,6 @@ impl Tab for AssetBrowser {
                     },
                     _ => {}
                 }
-                
             });
         });
     }
@@ -261,11 +277,11 @@ impl SelectableCollapsingEntry {
         let collapse_button_bounds = if has_contents {
             let min = Vector2::new(cursor_x, bounds.min.y + bounds.height() / 2.0 - collapse_button_size.y / 2.0);
             let max = min + collapse_button_size;
-            cursor_x += collapse_button_size.x + 5.0;
             Rect::from_min_max(min, max)
         } else {
             Rect::default()
         };
+        cursor_x += collapse_button_size.x + 5.0;
 
         let toggle_id = (self.id, builder as *mut Builder).to_id();
         if button_control(toggle_id, collapse_button_bounds, builder).clicked() && has_contents {
@@ -311,14 +327,14 @@ impl SelectableCollapsingEntry {
                     collapse_button_bounds.top_right(),
                     collapse_button_bounds.bottom_left() + Vector2::new(collapse_button_size.x / 2.0, 0.0),
                 ];
-                builder.painter.push_shape(Shape::solid_triangle(points, color.inactive_foreground));
+                builder.painter.push_shape(Shape::solid_triangle(points, foreground_color));
             } else {
                 let points = [
                     collapse_button_bounds.bottom_left(),
                     collapse_button_bounds.top_left(),
                     collapse_button_bounds.bottom_right() + Vector2::new(0.0, collapse_button_size.y / 2.0),
                 ];
-                builder.painter.push_shape(Shape::solid_triangle(points, color.inactive_foreground));
+                builder.painter.push_shape(Shape::solid_triangle(points, foreground_color));
             }
         }
 

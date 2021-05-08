@@ -14,7 +14,7 @@ pub struct RawInput {
     pub events: VecDeque<Event>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct InputState {
     pub mouse_location: Option<Vector2>,
     pub last_mouse_location: Option<Vector2>,
@@ -22,6 +22,7 @@ pub struct InputState {
     pub dt:  f32,
     pub dpi: f32,
 
+    pub key_pressed: [bool; 256],
     pub key_down: [bool; 256],
     pub last_key_down: [bool; 256],
 
@@ -31,11 +32,13 @@ pub struct InputState {
     pub scroll: f32,
 
     pub viewport: Rect,
+
+    pub text_input: String,
 }
 
 impl InputState {
     pub fn was_key_pressed(&self, key: Input) -> bool {
-        self.key_down[key.as_key().0 as usize] && !self.last_key_down[key.as_key().0 as usize]
+        self.key_pressed[key.as_key().0 as usize]
     }
 
     pub fn was_key_released(&self, key: Input) -> bool {
