@@ -3,12 +3,14 @@ use newport_editor::{
     Builder,
 
     LayoutStyle,
+    TextStyle,
     Sizing,
 
     TextEdit,
     Layout,
     Scrollbox,
     Direction,
+    Alignment,
 
     SPACING,
 };
@@ -97,7 +99,17 @@ impl Tab for Outliner {
                     });
                 }
 
-                entries.drain(..).rev().for_each(|it| builder.label(it));
+                let mut text_style: TextStyle = builder.style().get();
+                text_style.alignment = Alignment::Left;
+
+                let mut layout_style: LayoutStyle = builder.style().get();
+                layout_style.width_sizing = Sizing::Fill;
+
+                builder.scoped_style(layout_style, |builder| {
+                    builder.scoped_style(text_style, |builder| {
+                        entries.drain(..).rev().for_each(|it| builder.label(it));
+                    });
+                });
             });
         });
     }

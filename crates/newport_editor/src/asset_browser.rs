@@ -282,14 +282,14 @@ impl SelectableCollapsingEntry {
             Rect::default()
         };
         cursor_x += collapse_button_size.x + 5.0;
+        
+        let response = button_control(self.id, bounds, builder);
 
         let toggle_id = (self.id, builder as *mut Builder).to_id();
         if button_control(toggle_id, collapse_button_bounds, builder).clicked() && has_contents {
             retained.is_open = !retained.is_open;
             builder.set_retained(self.id, retained.clone());
         }
-
-        let response = button_control(self.id, bounds, builder);
 
         let is_focused = builder.is_focused(self.id);
         let is_hovered = builder.is_hovered(self.id);

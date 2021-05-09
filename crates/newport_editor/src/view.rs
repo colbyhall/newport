@@ -126,6 +126,9 @@ impl View {
                 builder.style().pop::<LayoutStyle>();
                 builder.style().pop::<ColorStyle>();
 
+                layout_style.padding = (8.0, 8.0, 8.0, 8.0).into();
+                builder.style().push(layout_style);
+
                 let available_size = builder.available_rect().size();
                 
                 let bounds = builder.layout.push_size(available_size);
@@ -141,6 +144,8 @@ impl View {
                         tabs[*selected].build(builder);
                     });
                 });
+
+                builder.style().pop::<LayoutStyle>();
             }
             ViewChildren::Views { views, direction } => {
                 let available_size = builder.available_rect().size();

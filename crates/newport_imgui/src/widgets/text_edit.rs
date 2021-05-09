@@ -361,7 +361,7 @@ impl <'a> TextEdit<'a> {
 
         builder.painter.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
 
-        let cursor_width = 3.0;
+        let cursor_width = 2.0;
 
         if self.text.len() > 0 {
             // Show the blinking caret if we're focused

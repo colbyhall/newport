@@ -2,17 +2,17 @@ use crate::{
     Builder,
     ColorStyle,
     TextStyle,
-    Shape
+    Shape,
+    Alignment,
+    LayoutStyle,
+
+    math,
 };
 
-use crate::math::{ Color, Rect };
+use math::{ Rect, Vector2 };
 
 pub struct Label {
     label: String,
-
-    color:  Option<Color>,
-    _size:   Option<u32>,
-    _bounds: Option<Rect>,
 }
 
 impl Label {
@@ -21,10 +21,6 @@ impl Label {
 
         Self {
             label: label,
-            
-            color:  None,
-            _size:   None,
-            _bounds: None,
         }
     }
 }
@@ -33,11 +29,16 @@ impl Label {
     pub fn build(self, builder: &mut Builder) {
         let color: ColorStyle = builder.style().get();
         let text: TextStyle = builder.style().get();
+        let layout_style: LayoutStyle = builder.style().get();
         
         let label_rect = text.string_rect(&self.label, text.label_size, None).size();
         let bounds = builder.content_bounds(label_rect);
 
-        let at = Rect::from_pos_size(bounds.pos(), label_rect).top_left();
+        let at = match text.alignment {
+            Alignment::Left   => bounds.top_left() + Vector2::new(layout_style.padding.top_left().x, -layout_style.padding.top_left().y),
+            Alignment::Center => Rect::from_pos_size(bounds.pos(), label_rect).top_left(),
+            Alignment::Right  => bounds.top_right() - layout_style.padding.top_right(),
+        };
 
         builder.painter.push_shape(
             Shape::text(
