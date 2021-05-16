@@ -1,0 +1,9 @@
+[package]
+name = "newport_serde"
+version = "0.0.1"
+authors = ["Colby <me@cobeh.com>"]
+edition = "2018"
+
+[dependencies]
+ron = "0.6.4" # RON format for assets
+serde = { version = "1.0.125", features = ["derive"] }
