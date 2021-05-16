@@ -141,13 +141,15 @@ pub struct POINT {
 pub type LPPOINT = *mut POINT;
 
 pub mod user32;
-pub use user32::*;
-
 pub mod kernel32;
-pub use kernel32::*;
-
 pub mod dwmapi;
-pub use dwmapi::*;
-
 pub mod uxtheme;
-pub use uxtheme::*;
+pub mod comdlg;
+
+pub use {
+    user32::*,
+    kernel32::*,
+    dwmapi::*,
+    uxtheme::*,
+    comdlg::*,
+};

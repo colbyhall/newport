@@ -131,7 +131,7 @@ extern "stdcall" {
     fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);
     fn GetLogicalProcessorInformation(Buffer: PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, ReturnedLength: PDWORD) -> BOOL;
 
-    fn GetLastError() -> DWORD;
+    pub fn GetLastError() -> DWORD;
 
     pub fn GetLocalTime(lpSystemTime: LPSYSTEMTIME);
 
