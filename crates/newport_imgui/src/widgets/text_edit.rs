@@ -299,6 +299,10 @@ impl <'a> TextEdit<'a> {
                 builder.unfocus(self.id);
             }
 
+            if builder.input().was_key_pressed(os::input::KEY_ESCAPE) { 
+                builder.unfocus(self.id);
+            }
+
             if builder.input().was_primary_clicked() {
                 for (index, bounds) in font.bounds_iter(self.text, at).enumerate() {
                     if builder.input().mouse_is_over(bounds) {

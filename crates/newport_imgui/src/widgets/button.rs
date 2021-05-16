@@ -49,7 +49,7 @@ pub fn button_control(id: Id, bounds: Rect, builder: &mut Builder) -> ButtonResp
         builder.hover(id);
 
         if builder.input().was_primary_clicked() {
-            builder.force_focus(id);
+            builder.focus(id);
         }
     } else {
         builder.unhover(id);

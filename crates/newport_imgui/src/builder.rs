@@ -12,6 +12,7 @@ use crate::{
     Style,
     LayoutStyle,
     TextStyle,
+    Sizing,
 };
 
 use crate::math::{ Vector2, Rect };
@@ -47,18 +48,10 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub fn focus(&mut self, id: Id) -> bool {
-        if self.context.focused.is_none() {
-            self.context.focused = Some(id);
-            return true;
-        }
-        false
-    }
-
-    pub fn force_focus(&mut self, id: Id) {
+    pub fn focus(&mut self, id: Id) {
         self.context.focused = Some(id);
     }
-
+    
     pub fn unfocus(&mut self, id: Id) -> bool{
         if self.is_focused(id) {
             self.context.focused = None;
@@ -141,5 +134,11 @@ impl<'a> Builder<'a> {
         let text_style: TextStyle = self.style().get();
 
         text_style.label_height() + layout_style.padding.min.y + layout_style.padding.max.y
+    }
+
+    pub fn fill(&mut self, contents: impl FnOnce(&mut Builder)) {
+        let mut layout_style: LayoutStyle = self.style().get();
+        layout_style.width_sizing = Sizing::Fill;
+        self.scoped_style(layout_style, contents);
     }
 }
