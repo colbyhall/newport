@@ -19,7 +19,7 @@ newport_math   = { path = "../newport_math", version = "0.0.1" }
 ash  = "0.32.0"
 bitflags = "1.2"
 
-hassle-rs = "0.4.0"
+hassle-rs = "0.5.2"
 
 [features]
 default = ["vulkan"]
