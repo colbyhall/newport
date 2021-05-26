@@ -9,7 +9,7 @@ use std::{
 pub struct DialogBuilder<'a> {
     window: &'a Window,
 
-    title: Option<String>,
+    _title: Option<String>,
 
     extensions:        Vec<(String, String)>,
     default_extension: usize,
@@ -20,7 +20,7 @@ impl<'a> DialogBuilder<'a> {
         let result = Self{
             window,
 
-            title: None,
+            _title: None,
             extensions: Vec::new(),
             default_extension: 0,
         };
@@ -29,7 +29,7 @@ impl<'a> DialogBuilder<'a> {
     }
 
     pub fn title(mut self, title: impl Into<String>) -> Self {
-        self.title = Some(title.into());
+        self._title = Some(title.into());
         self
     }
 
@@ -43,7 +43,7 @@ impl<'a> DialogBuilder<'a> {
 }
 
 pub struct DialogResult {
-    entry: String,
+    _entry: String,
 }
 
 impl<'a> DialogBuilder<'a> {
@@ -94,7 +94,5 @@ impl<'a> DialogBuilder<'a> {
 
         // NOT FINISHED
         todo!();
-
-        None
     }
 }

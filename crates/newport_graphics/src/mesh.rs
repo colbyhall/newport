@@ -71,8 +71,8 @@ impl gpu::Vertex for Vertex {
 }
 
 pub struct Mesh {
-    vertex_buffer: Buffer,
-    index_buffer:  Buffer,
+    pub vertex_buffer: Buffer,
+    pub index_buffer:  Buffer,
 }
 
 #[derive(Serialize, Deserialize)]
