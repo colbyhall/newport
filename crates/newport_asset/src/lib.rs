@@ -7,6 +7,7 @@
 
 pub(crate) use newport_engine as engine;
 pub(crate) use newport_log as log;
+pub(crate) use newport_cache as cache;
 
 pub use std::path::{ Path, PathBuf };
 

@@ -1,11 +1,28 @@
 use crate::{
+    engine, 
+    log,
+    cache,
+
     Asset, 
     AssetCollection, 
     AssetRef, 
     AssetVariant, 
+};
 
-    engine::{ Module, Engine, EngineBuilder }, 
-    log::{ info, error, Logger }
+use engine::{ 
+    Module, 
+    Engine, 
+    EngineBuilder
+};
+
+use log::{ 
+    info, 
+    error, 
+    Logger
+};
+
+use cache::{
+    CacheManager,
 };
 
 use std::{
@@ -177,6 +194,7 @@ impl Module for AssetManager {
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
             .module::<Logger>()
+            .module::<CacheManager>()
             .register(AssetCollection::new("assets/"))
     }
 }
