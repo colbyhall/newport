@@ -109,7 +109,6 @@ impl EngineBuilder {
         self
     }
 
-    /// Adds a post initialization closure to the list
     pub fn process_input<F: ProcessInput>(mut self, f: F) -> Self {
         self.process_input.push(Box::new(f));
         self
