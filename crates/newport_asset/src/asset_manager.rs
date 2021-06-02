@@ -7,6 +7,7 @@ use crate::{
     AssetCollection, 
     AssetRef, 
     AssetVariant, 
+    AssetCache
 };
 
 use engine::{ 
@@ -17,12 +18,13 @@ use engine::{
 
 use log::{ 
     info, 
-    error, 
+    // error, 
     Logger
 };
 
 use cache::{
     CacheManager,
+    CacheRegister
 };
 
 use std::{
@@ -102,7 +104,7 @@ impl AssetManager {
                     
                     // Find variant from extension
                     let v = variants.iter().enumerate()
-                        .find(|v| v.1.extension == ext.to_str().unwrap());
+                        .find(|v| v.1.extensions.contains(&ext.to_str().unwrap()));
                     if v.is_none() { continue; }
                     let (v_index, _) = v.unwrap();
 
@@ -140,33 +142,34 @@ impl AssetManager {
         let variant = &self.0.variants[entry.variant];
         assert!(TypeId::of::<T>() == variant.type_id);
         
-        let result = AssetRef { 
-            arc:     entry.asset.clone(), // Increment ref count
-            phantom: PhantomData,
-            variant: entry.variant,
-            manager: self.clone(),
-            path:    PathBuf::from(p.as_ref()),
-        };
+        // let result = AssetRef { 
+        //     arc:     entry.asset.clone(), // Increment ref count
+        //     phantom: PhantomData,
+        //     variant: entry.variant,
+        //     manager: self.clone(),
+        //     path:    PathBuf::from(p.as_ref()),
+        // };
 
-        // If we're the first reference the load the asset
-        if result.strong_count() == 1 {
-            let mut lock = entry.asset.write().unwrap();
-            let (result, dur) = {
-                let now = Instant::now();
-                let result = (variant.load)(&entry.path);
-                let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
-                (result, dur)
-            };
-            if result.is_err() {
-                let err = result.err().unwrap();
-                error!("[AssetManager] Failed to load {:?} due to {:?}", p, err);
-            } else {
-                *lock = Some(result.unwrap());
-                info!("[AssetManager] Loaded asset {:?} in {:.2}ms", p, dur);
-            }
-        }
+        // // If we're the first reference the load the asset
+        // if result.strong_count() == 1 {
+        //     let mut lock = entry.asset.write().unwrap();
+        //     let (result, dur) = {
+        //         let now = Instant::now();
+        //         let result = (variant.deserialize)(&entry.path);
+        //         let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
+        //         (result, dur)
+        //     };
+        //     if result.is_err() {
+        //         let err = result.err().unwrap();
+        //         error!("[AssetManager] Failed to load {:?} due to {:?}", p, err);
+        //     } else {
+        //         *lock = Some(result.unwrap());
+        //         info!("[AssetManager] Loaded asset {:?} in {:.2}ms", p, dur);
+        //     }
+        // }
 
-        Some(result)
+        // Some(result)
+        None
     }
 }
 
@@ -195,6 +198,7 @@ impl Module for AssetManager {
         builder
             .module::<Logger>()
             .module::<CacheManager>()
+            .register(CacheRegister::new::<AssetCache>("assets"))
             .register(AssetCollection::new("assets/"))
     }
 }

@@ -106,8 +106,8 @@ impl<T:'static> Drop for AssetRef<T> {
             let variant = &self.manager.0.variants[self.variant];
 
             let mut lock = self.arc.write().unwrap();
-            (variant.unload)(lock.take().unwrap());
-            info!("[AssetManager] Unloading asset {:?}", self.path)
+            *lock = None;
+            info!("[AssetManager] Unloaded asset {:?}", self.path)
         }
     }
 }

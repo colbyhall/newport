@@ -27,6 +27,7 @@ pub use {
     asset_manager::*,
     asset_ref::*,
     registers::*,
-    asset_cache::*,
     uuid::*,
 };
+
+pub(crate) use asset_cache::*;

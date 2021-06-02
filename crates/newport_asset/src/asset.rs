@@ -1,16 +1,18 @@
-use std::path::Path;
+use crate::{
+    serde
+};
 
-/// Trait alis for what an `Asset` can be
-pub trait Asset: Sized + 'static {
-    fn load(path: &Path) -> Result<Self, LoadError>;
-    fn unload(_asset: Self) { }
-    fn extension() -> &'static str;
+use serde::{
+    Serialize, 
+    de::DeserializeOwned,
+};
+
+pub trait Asset: Serialize + DeserializeOwned + Sized + 'static {
+    fn post_load(&mut self);
 }
 
-/// Enum for asset load errors
-#[derive(Debug)]
-pub enum LoadError {
-    FileNotFound,
-    ParseError,
-    DataError
+impl<T: Serialize + DeserializeOwned + Sized + 'static> Asset for T {
+    fn post_load(&mut self) {
+        // Do nothing
+    }
 }

@@ -13,7 +13,7 @@ use serde::{
 
 use std::fmt;
 
-#[derive(Copy, Clone, PartialEq, PartialOrd, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Hash, Debug)]
 pub struct UUID {
     a: u32,
     b: u16,

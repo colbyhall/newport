@@ -1,7 +1,12 @@
 use crate::{
-    LoadError,
-    Asset
+    serde,
+    
+    Asset,
+    AssetFile,
+    UUID,
 };
+
+use serde::ron;
 
 use std::{
     any::{ Any, TypeId },
@@ -11,30 +16,33 @@ use std::{
 #[derive(Clone)]
 pub struct AssetVariant {
     pub(crate) type_id:    TypeId,
-    pub(crate) extension:  &'static str,
-    
-    pub(crate) load:     fn(&Path) -> Result<Box<dyn Any>, LoadError>,
-    pub(crate) unload:   fn(Box<dyn Any>)
+    pub(crate) extensions: Vec<&'static str>,
+
+    pub(crate) deserialize: fn(&str) -> Box<dyn Any>,
+    pub(crate) deserialize_uuid: fn(&str) -> UUID,
 }
 
 impl AssetVariant {
-    pub fn new<T: Asset>() -> AssetVariant {
-        fn load<T: Asset>(path: &Path) -> Result<Box<dyn Any>, LoadError> {
-            let t = T::load(path)?;
-            Ok(Box::new(t))
+    pub fn new<T: Asset>(extensions: &[&'static str]) -> AssetVariant {
+        fn deserialize<T: Asset>(contents: &str) -> Box<dyn Any> {
+            let mut t: AssetFile<T> = ron::from_str(contents).expect("Failed to deserialize asset");
+            t.asset.post_load();
+
+            Box::new(t)
         }
 
-        fn unload<T: Asset>(asset: Box<dyn Any>) {
-            let t = asset.downcast::<T>().unwrap();
-            T::unload(*t);
+        fn deserialize_uuid<T: Asset>(contents: &str) -> UUID {
+            let t: AssetFile<T> = ron::from_str(contents).expect("Failed to deserialize asset");
+
+            t.id
         }
 
         AssetVariant{
             type_id:    TypeId::of::<T>(),
+            extensions: extensions.to_vec(),
 
-            extension:  T::extension(),
-            load:       load::<T>,
-            unload:     unload::<T>,
+            deserialize: deserialize::<T>,
+            deserialize_uuid: deserialize_uuid::<T>,
         }
     }
 }
