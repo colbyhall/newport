@@ -220,9 +220,7 @@ impl Asset for FontCollection {
     fn load(bytes: &[u8], path: &Path) -> (UUID, Self) {
         let (id, file): (UUID, FontFile) = deserialize(bytes).unwrap();
         
-        let mut raw_path = PathBuf::from(path);
-        raw_path.parent().unwrap();
-        raw_path.push(file.raw);
+        let raw_path = path.with_file_name(file.raw);
 
         let font_file = fs::read(raw_path).unwrap();
         (id, FontCollection::new(font_file).unwrap())

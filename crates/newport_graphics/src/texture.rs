@@ -67,9 +67,7 @@ impl Asset for Texture {
     fn load(bytes: &[u8], path: &Path) -> (UUID, Self) {
         let (id, texture): (UUID, TextureFile) = deserialize(bytes).unwrap();
 
-        let mut raw_path = PathBuf::from(path);
-        raw_path.parent().unwrap();
-        raw_path.push(texture.raw);
+        let raw_path = path.with_file_name(texture.raw);
 
         let raw = fs::read(&raw_path).unwrap();
 
