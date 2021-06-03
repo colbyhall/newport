@@ -1,12 +1,7 @@
 use crate::{
-    serde,
-    
     Asset,
-    AssetFile,
     UUID,
 };
-
-use serde::ron;
 
 use std::{
     any::{ Any, TypeId },
@@ -18,23 +13,14 @@ pub struct AssetVariant {
     pub(crate) type_id:    TypeId,
     pub(crate) extensions: Vec<&'static str>,
 
-    pub(crate) deserialize: fn(&str) -> Box<dyn Any>,
-    pub(crate) deserialize_uuid: fn(&str) -> UUID,
+    pub(crate) deserialize: fn(&[u8]) -> (UUID, Box<dyn Any>),
 }
 
 impl AssetVariant {
     pub fn new<T: Asset>(extensions: &[&'static str]) -> AssetVariant {
-        fn deserialize<T: Asset>(contents: &str) -> Box<dyn Any> {
-            let mut t: AssetFile<T> = ron::from_str(contents).expect("Failed to deserialize asset");
-            t.asset.post_load();
-
-            Box::new(t)
-        }
-
-        fn deserialize_uuid<T: Asset>(contents: &str) -> UUID {
-            let t: AssetFile<T> = ron::from_str(contents).expect("Failed to deserialize asset");
-
-            t.id
+        fn deserialize<T: Asset>(contents: &[u8]) -> (UUID, Box<dyn Any>) {
+            let (id, t) = T::load(contents);
+            (id, Box::new(t))
         }
 
         AssetVariant{
@@ -42,7 +28,6 @@ impl AssetVariant {
             extensions: extensions.to_vec(),
 
             deserialize: deserialize::<T>,
-            deserialize_uuid: deserialize_uuid::<T>,
         }
     }
 }

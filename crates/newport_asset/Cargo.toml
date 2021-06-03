@@ -14,5 +14,3 @@ newport_log    = { path = "../newport_log", version = "0.0.1" }
 newport_engine = { path = "../newport_engine", version = "0.0.1" }
 newport_cache  = { path = "../newport_cache", version = "0.0.1" }
 newport_serde  = { path = "../newport_serde", version = "0.0.1" }
-
-ron = "0.6.4" #TODO: Remove this

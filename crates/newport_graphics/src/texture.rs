@@ -1,7 +1,8 @@
 use crate::{
     asset,
     gpu,
-    log::error,
+    serde,
+
     engine::Engine,
 
     Graphics,
@@ -9,8 +10,8 @@ use crate::{
 
 use asset::{
     Asset,
-    LoadError,
-    de,
+    deserialize,
+    UUID,
 };
 
 use gpu::{ 
@@ -24,43 +25,53 @@ use gpu::{
 };
 
 
-use serde::{ Serialize, Deserialize };
+use serde::{ 
+    Serialize, 
+    Deserialize 
+};
 use stb_image::{
     image,
     image::LoadResult,
 };
 
 use std::{
-    path::{ PathBuf, Path },
+    path::PathBuf,
     fs,
 };
 
-#[derive(Serialize, Deserialize)]
+
 pub struct Texture {
-    raw:  PathBuf,
     srgb: bool,
 
-    #[serde(skip)]
-    gpu:  Option<gpu::Texture>,
+    gpu:  gpu::Texture,
 }
 
 impl Texture {
+    pub fn srgb(&self) -> bool {
+        self.srgb
+    }
+    
     pub fn gpu(&self) -> &gpu::Texture {
-        self.gpu.as_ref().unwrap()
+        &self.gpu
     }
 }
 
-impl Asset for Texture {
-    fn load(path: &Path) -> Result<Self, LoadError> {
-        let file = fs::read_to_string(path).map_err(|_| LoadError::FileNotFound)?;
-        let mut texture: Self = de::from_str(&file).map_err(|_| LoadError::DataError)?;
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "self::serde", rename = "Texture")]
+struct TextureFile {
+    raw:  PathBuf,
+    srgb: bool,
+}
 
-        let raw = fs::read(&texture.raw).map_err(|_| LoadError::FileNotFound)?;
+impl Asset for Texture {
+    fn load(bytes: &[u8]) -> (UUID, Self) {
+        let (id, texture): (UUID, TextureFile) = deserialize(bytes).unwrap();
+
+        let raw = fs::read(&texture.raw).unwrap();
 
         let raw_texture = match image::load_from_memory(&raw[..]) {
             LoadResult::Error(err) => {
-                error!("Failed to load texture from file due to {}", err);
-                return Err(LoadError::DataError);
+                panic!("Failed to load texture from file due to {}", err);
             },
             LoadResult::ImageU8(image) => {
                 let engine = Engine::as_ref();
@@ -111,15 +122,9 @@ impl Asset for Texture {
             _ => unimplemented!()
         };
 
-        texture.gpu = Some(raw_texture);
-        Ok(texture)
-    }
-
-    fn unload(_asset: Self) {
-        
-    }
-
-    fn extension() -> &'static str {
-        "tex"
+        (id, Texture{
+            srgb: texture.srgb,
+            gpu: raw_texture
+        })
     }
 }

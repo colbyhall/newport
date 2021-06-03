@@ -1,5 +1,7 @@
 use crate::{
-    serde
+    serde,
+    UUID,
+    deserialize
 };
 
 use serde::{
@@ -7,12 +9,12 @@ use serde::{
     de::DeserializeOwned,
 };
 
-pub trait Asset: Serialize + DeserializeOwned + Sized + 'static {
-    fn post_load(&mut self);
+pub trait Asset: Sized + 'static {
+    fn load(bytes: &[u8]) -> (UUID, Self);
 }
 
 impl<T: Serialize + DeserializeOwned + Sized + 'static> Asset for T {
-    fn post_load(&mut self) {
-        // Do nothing
+    fn load(bytes: &[u8]) -> (UUID, Self) {
+        deserialize(bytes).expect("Failed to deserialize asset")
     }
 }

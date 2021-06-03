@@ -36,7 +36,7 @@ impl EditorAssets {
     fn new() -> Self {
         let asset_manager = Engine::as_ref().module::<AssetManager>().unwrap();
         Self{
-            _close_button: asset_manager.find("assets/editor/close_button.tex").unwrap(),
+            _close_button: asset_manager.find("{ce163885-9cd7-4103-b865-3e41df21ba13}").unwrap(),
         }
     }
 }
@@ -203,6 +203,7 @@ impl Module for Editor {
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
             .module::<Graphics>()
+            .module::<AssetManager>()
             .process_input(|engine: &Engine, _window: &os::window::Window, event: &InputEvent| {
                 let mut editor = engine.module::<Editor>().unwrap().lock(); // SPEED: Maybe this will be too slow????
 

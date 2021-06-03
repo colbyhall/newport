@@ -103,8 +103,6 @@ impl<T:'static> Drop for AssetRef<T> {
     fn drop(&mut self) {
         // If we're the last unload the asset
         if self.strong_count() == 1 {
-            let variant = &self.manager.0.variants[self.variant];
-
             let mut lock = self.arc.write().unwrap();
             *lock = None;
             info!("[AssetManager] Unloaded asset {:?}", self.path)

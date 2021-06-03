@@ -4,7 +4,6 @@ use crate::{
     engine,
     log::info,
 
-    Asset,
     UUID,
     AssetCollection,
     AssetVariant
@@ -15,7 +14,6 @@ use cache::Cache;
 use serde::{
     Serialize,
     Deserialize,
-    Deserializer
 };
 
 use engine::Engine;
@@ -26,25 +24,10 @@ use std::{
     fs
 };
 
-#[derive(Serialize)]
-#[serde(crate = "self::serde")]
-pub struct AssetFile<T: Asset> {
-    pub id: UUID,
-    pub asset: T,
-}
-
-impl<'de, T: Asset> Deserialize<'de> for AssetFile<T> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-            D: Deserializer<'de> {
-        Deserialize::deserialize(deserializer)
-    }
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "self::serde")]
 pub struct AssetCache {
-    uuid_to_path: HashMap<UUID, PathBuf>,
+    pub uuid_to_path: HashMap<UUID, PathBuf>,
 }
 
 impl Cache for AssetCache {
@@ -78,8 +61,8 @@ impl Cache for AssetCache {
                     let variant = variants.iter().find(|v| v.extensions.contains(&ext.to_str().unwrap()));
                     match variant {
                         Some(variant) => {
-                            let contents = fs::read_to_string(&path).unwrap();
-                            let uuid = (variant.deserialize_uuid)(&contents);
+                            let contents = fs::read(&path).unwrap();
+                            let uuid = (variant.deserialize)(&contents).0;
 
                             uuid_to_path.insert(uuid, path);
                         },

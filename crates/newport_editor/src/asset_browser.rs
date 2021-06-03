@@ -139,12 +139,14 @@ impl AssetBrowser {
             has_sub: true,
         };
 
-        let assets = asset_manager.assets();
-        let mut id = 1;
-        for entry in assets.iter() {
-            let path = &entry.path;
-            entries.insert(path, &mut id);
-        }
+        // let cache_manager = engine.module::<CacheManager>().unwrap();
+        // let asset_cache = cache_manager.cache::<AssetCache>().unwrap();
+
+        // let mut id = 1;
+        // for entry in assets.iter() {
+        //     // let path = &entry.path;
+        //     // entries.insert(path, &mut id);
+        // }
 
         Self {
             entries: entries,

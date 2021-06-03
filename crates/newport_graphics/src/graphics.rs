@@ -54,8 +54,7 @@ impl Module for Graphics {
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder
-            .module::<AssetManager>()
-            .register(AssetVariant::new::<Texture>())
-            .register(AssetVariant::new::<FontCollection>())
+            .register(AssetVariant::new::<Texture>(&["texture", "tex"]))
+            .register(AssetVariant::new::<FontCollection>(&["font"]))
     }
 }

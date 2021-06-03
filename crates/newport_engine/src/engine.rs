@@ -13,6 +13,7 @@ use std::{
     collections::HashMap,
     any::{ TypeId, Any },
     time::Instant,
+    process,
 };
 
 pub use crate::os::window::{
@@ -159,6 +160,8 @@ impl Engine {
 
         // Do pre shutdowns
         builder.pre_shutdown.drain(..).for_each(|shutdown| shutdown(engine));
+
+        process::exit(0);
     }
 
     /// Returns the global [`Engine`] as a ref

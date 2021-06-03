@@ -3,14 +3,15 @@ use crate::{
     gpu,
     math,
     engine,
+    serde,
 
     Graphics,
 };
 
 use asset::{
     Asset,
-    Path,
-    LoadError,
+    deserialize,
+    UUID,
 };
 
 use gpu::{
@@ -30,13 +31,16 @@ use math::{
 };
 
 use std::{
-    fs,
     mem::size_of,
 };
 
-use serde::{ Serialize, Deserialize, };
+use serde::{ 
+    Serialize, 
+    Deserialize, 
+};
 
 #[derive(Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
 pub struct Vertex {
     pub position:  Vector3,
 
@@ -76,16 +80,15 @@ pub struct Mesh {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(rename = "Mesh")]
+#[serde(rename = "Mesh", crate = "self::serde")]
 struct MeshFile {
     vertices: Vec<Vertex>,
     indices:  Vec<u32>,
 }
 
 impl Asset for Mesh {
-    fn load(path: &Path) -> Result<Self, LoadError> {
-        let file = fs::read_to_string(path).map_err(|_| LoadError::FileNotFound)?;
-        let mesh_file: MeshFile = asset::de::from_str(&file).map_err(|_| LoadError::DataError)?;
+    fn load(bytes: &[u8]) -> (UUID, Self) {
+        let (id, mesh_file): (UUID, MeshFile) = deserialize(bytes).unwrap();
 
         let engine = Engine::as_ref();
         let graphics = engine.module::<Graphics>().unwrap();
@@ -128,10 +131,6 @@ impl Asset for Mesh {
         let receipt = device.submit_graphics(vec![gfx], &[]);
         receipt.wait();
 
-        Ok(Self{ vertex_buffer, index_buffer })
-    }
-
-    fn extension() -> &'static str {
-        "mesh"
+        (id, Self{ vertex_buffer, index_buffer })
     }
 }

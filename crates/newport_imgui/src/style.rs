@@ -132,7 +132,7 @@ pub struct TextStyle {
 impl Default for TextStyle {
     fn default() -> Self {
         let asset_manager = Engine::as_ref().module::<AssetManager>().unwrap();
-        let font = asset_manager.find("assets/fonts/consola.ttf").unwrap();
+        let font = asset_manager.find("{cdb5cd33-004d-4518-ab20-93475b735cfa}").unwrap();
 
         Self {
             font:      font,

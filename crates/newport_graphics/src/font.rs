@@ -3,6 +3,7 @@ use crate::{
     math,
     asset,
     engine::Engine,
+    serde,
 
     Graphics,
 };
@@ -25,13 +26,19 @@ use gpu::{
 
 use asset::{
     Asset,
-    LoadError,
+    deserialize,
+    UUID,
+};
+
+use serde::{
+    Serialize,
+    Deserialize,
 };
 
 use std::{
     mem::size_of, 
     collections::HashMap,
-    path::Path,
+    path::PathBuf,
 
     thread_local,
     fs,
@@ -203,14 +210,17 @@ impl FontCollection {
     }
 }
 
-impl Asset for FontCollection {
-    fn load(path: &Path) -> Result<Self, LoadError> {
-        let font_file = fs::read(path).map_err(|_| LoadError::FileNotFound)?;
-        FontCollection::new(font_file).map_err(|_| LoadError::DataError)
-    }
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "Font", crate = "self::serde")]
+struct FontFile {
+    raw: PathBuf,
+}
 
-    fn extension() -> &'static str {
-        "ttf"
+impl Asset for FontCollection {
+    fn load(bytes: &[u8]) -> (UUID, Self) {
+        let (id, file): (UUID, FontFile) = deserialize(bytes).unwrap();
+        let font_file = fs::read(file.raw).unwrap();
+        (id, FontCollection::new(font_file).unwrap())
     }
 }
 

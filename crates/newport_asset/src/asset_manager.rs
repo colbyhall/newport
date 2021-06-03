@@ -1,13 +1,13 @@
 use crate::{
-    engine, 
-    log,
-    cache,
-
     Asset, 
+    AssetCache, 
     AssetCollection, 
     AssetRef, 
     AssetVariant, 
-    AssetCache
+    UUID, 
+    cache, 
+    engine, 
+    log
 };
 
 use engine::{ 
@@ -18,7 +18,6 @@ use engine::{
 
 use log::{ 
     info, 
-    // error, 
     Logger
 };
 
@@ -29,18 +28,17 @@ use cache::{
 
 use std::{
     any::{ TypeId, Any },
-    path::{ Path, PathBuf },
     sync::{ Arc, RwLock, RwLockReadGuard },
-    time::{ SystemTime, Instant },
-    ffi::OsStr,
-    marker::PhantomData,
+    time::SystemTime,
     fs,
-    fmt,
+    collections::HashMap,
+    marker::PhantomData,
+    time::Instant,
+    path::Path
 };
 
 #[derive(Debug)]
 pub struct AssetEntry {
-    pub path:       PathBuf,
     pub variant:    usize, // Index into AssetManager::variants
     pub write_time: SystemTime,
 
@@ -59,7 +57,7 @@ pub struct AssetManagerInner {
     /// # Todo
     ///
     /// * Faster asset lookup
-    pub assets: RwLock<Vec<AssetEntry>>,
+    pub assets: RwLock<HashMap<UUID, AssetEntry>>,
 }
 
 /// Manager that handles assets across multiple threads. 
@@ -67,7 +65,7 @@ pub struct AssetManagerInner {
 pub struct AssetManager(pub(crate) Arc<AssetManagerInner>);
 
 impl AssetManager {
-    pub fn assets(&self) -> RwLockReadGuard<Vec<AssetEntry>> {
+    pub fn assets(&self) -> RwLockReadGuard<HashMap<UUID, AssetEntry>> {
         self.0.assets.read().unwrap()
     }
 
@@ -75,126 +73,89 @@ impl AssetManager {
         &self.0.collections
     }
 
-    /// Discovers all assets using the registered collection and variants
-    pub fn discover(&self) {
-        let collections = &self.0.collections;
-        // Start off by making sure every collection exist
-        for it in collections.iter() {
-            if !it.path.exists() {
-                fs::create_dir(&it.path).unwrap();
-                info!("[AssetManager] Created collection directory {:?}", it.path);
-            }
-        }
-
-        // Recursive file directory lookup. Sending members instead of AssetManager is due to RWLock on assets
-        fn discover(mut path: PathBuf, assets: &mut Vec<AssetEntry>, variants: &Vec<AssetVariant>) -> PathBuf {
-            // Iterate through every entry in a directory
-            for entry in fs::read_dir(path.as_path()).unwrap() {
-                let entry = entry.unwrap();
-                let file_type = entry.file_type().unwrap();
-                
-                // If the entry is a directory then recurse through it
-                if file_type.is_dir() {
-                    path.push(entry.file_name());
-                    path = discover(path, assets, variants);
-                    path.pop();
-                } else {
-                    let path = entry.path();
-                    let ext = path.extension().unwrap_or(OsStr::new(""));
-                    
-                    // Find variant from extension
-                    let v = variants.iter().enumerate()
-                        .find(|v| v.1.extensions.contains(&ext.to_str().unwrap()));
-                    if v.is_none() { continue; }
-                    let (v_index, _) = v.unwrap();
-
-                    // Build the asset entry and push to assets vector
-                    let write_time = entry.metadata().unwrap().modified().unwrap();
-                    assets.push(AssetEntry{
-                        path:       path,
-                        variant:    v_index,
-                        
-                        asset:      Arc::new(RwLock::new(None)),
-                        write_time: write_time,
-                    });
-                }
-            }
-            
-            path
-        }
-        
-        let variants = &self.0.variants;
-
-        // Run through each collection recursively discovering assets
-        let mut assets_lock = self.0.assets.write().unwrap();
-        for it in collections.iter() { 
-            info!("[AssetManager] Discovering assets in {:?}", it.path);
-            discover(it.path.clone(), &mut *assets_lock, &variants); 
-        }
-    }
-
     /// TODO
-    pub fn find<P: AsRef<Path> + fmt::Debug, T: Asset>(&self, p: P) -> Option<AssetRef<T>> {
+    pub fn find<T: Asset>(&self, id: impl Into<UUID>) -> Option<AssetRef<T>> {
+        let id = id.into();
+
         let read_lock = self.0.assets.read().unwrap();
-        let entry = read_lock.iter().find(|it| it.path == p.as_ref())?;
+        let entry = read_lock.get(&id)?;
 
         // Assert if the type is incorrect
         let variant = &self.0.variants[entry.variant];
         assert!(TypeId::of::<T>() == variant.type_id);
+
+        let engine = Engine::as_ref();
+
+        let cache_manager = engine.module::<CacheManager>().unwrap();
+        let asset_cache = cache_manager.cache::<AssetCache>().unwrap();
+
+        let path = asset_cache.uuid_to_path.get(&id)?;
         
-        // let result = AssetRef { 
-        //     arc:     entry.asset.clone(), // Increment ref count
-        //     phantom: PhantomData,
-        //     variant: entry.variant,
-        //     manager: self.clone(),
-        //     path:    PathBuf::from(p.as_ref()),
-        // };
+        let result = AssetRef { 
+            arc:     entry.asset.clone(), // Increment ref count
+            phantom: PhantomData,
+            variant: entry.variant,
+            manager: self.clone(),
+            path:    path.clone(),
+        };
 
-        // // If we're the first reference the load the asset
-        // if result.strong_count() == 1 {
-        //     let mut lock = entry.asset.write().unwrap();
-        //     let (result, dur) = {
-        //         let now = Instant::now();
-        //         let result = (variant.deserialize)(&entry.path);
-        //         let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
-        //         (result, dur)
-        //     };
-        //     if result.is_err() {
-        //         let err = result.err().unwrap();
-        //         error!("[AssetManager] Failed to load {:?} due to {:?}", p, err);
-        //     } else {
-        //         *lock = Some(result.unwrap());
-        //         info!("[AssetManager] Loaded asset {:?} in {:.2}ms", p, dur);
-        //     }
-        // }
+        // If we're the first reference the load the asset
+        if result.strong_count() == 1 {
+            let mut lock = entry.asset.write().unwrap();
+            let (result, dur) = {
+                let file = fs::read(path).ok()?;
 
-        // Some(result)
-        None
-    }
-}
+                let now = Instant::now();
+                let result = (variant.deserialize)(&file);
+                let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
+                (result, dur)
+            };
 
-impl AssetManager {
-    pub fn new(variants: Vec<AssetVariant>, collections: Vec<AssetCollection>) -> Self {
-        Self(Arc::new(AssetManagerInner{
-            variants:    variants,
-            collections: collections,
-            assets:      RwLock::new(Vec::new()),
-        }))
+            *lock = Some(result.1);
+            info!("[AssetManager] Loaded asset {:?} in {:.2}ms", path, dur);
+        }
+
+        Some(result)
     }
 }
 
 impl Module for AssetManager {
     fn new() -> Self {
         let engine = Engine::as_ref();
+        
+        let cache_manager = engine.module::<CacheManager>().unwrap();
+        let asset_cache = cache_manager.cache::<AssetCache>().unwrap();
+        
+        let mut assets = HashMap::with_capacity(asset_cache.uuid_to_path.len());
 
         let variants = engine.register::<AssetVariant>().unwrap_or_default();
+        for (id, path) in asset_cache.uuid_to_path.iter() {
+            let ext = path.extension().unwrap_or_default();
+
+            let (index, _) = variants.iter().enumerate().find(|(_, v)| v.extensions.contains(&ext.to_str().unwrap())).unwrap();
+            let write_time = fs::metadata(path).unwrap().modified().unwrap();
+
+            assets.insert(*id, AssetEntry{
+                variant: index,
+                write_time,
+
+                asset: Arc::new(RwLock::new(None))
+            });
+        }
+
         let collections = engine.register::<AssetCollection>().unwrap_or_default();
-        let result = AssetManager::new(variants, collections);
-        result.discover();
-        result
+
+        Self(Arc::new(AssetManagerInner{
+            variants:    variants,
+            collections: collections,
+            assets:      RwLock::new(assets),
+        }))
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+        let file = Path::new(file!()).parent().unwrap().parent().unwrap();
+        println!("{:?}", file);
+
         builder
             .module::<Logger>()
             .module::<CacheManager>()

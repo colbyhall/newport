@@ -1,0 +1,6 @@
+Asset(
+    id: "{cdb5cd33-004d-4518-ab20-93475b735cfa}",
+    asset: Font(
+        raw:  "assets/fonts/consola.ttf",
+    )
+)

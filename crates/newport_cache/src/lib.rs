@@ -20,9 +20,11 @@ use std::{
         Any,
     },
     collections::HashMap,
-    path::PathBuf,
+    path::{ PathBuf, Path },
     fs,
-    sync::RwLock,
+    sync::{ RwLock, RwLockReadGuard },
+    marker::PhantomData,
+    ops::Deref,
 };
 
 static CACHE_PATH: &'static str = "cache/";
@@ -32,9 +34,39 @@ pub struct CacheManager {
     caches:    HashMap<TypeId, RwLock<Box<dyn Any>>>,
 }
 
+pub struct CacheViewer<'a, T: Cache> {
+    phantom: PhantomData<T>,
+    lock:    RwLockReadGuard<'a, Box<dyn Any>>,
+}
+
+impl<'a, T: Cache> Deref for CacheViewer<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        self.lock.downcast_ref().unwrap()
+    }
+}
+
+impl CacheManager {
+    pub fn cache<T: Cache>(&self) -> Option<CacheViewer<T>> {
+        let id = TypeId::of::<T>();
+
+        let cache = self.caches.get(&id)?;
+        let lock = cache.read().ok()?;
+        Some(CacheViewer{
+            phantom: PhantomData,
+            lock,
+        })
+    }
+}
+
 impl Module for CacheManager {
     fn new() -> Self {
         let engine = Engine::as_ref();
+
+        let path = Path::new(CACHE_PATH);
+        if !path.exists() {
+            fs::create_dir(path).unwrap();
+        }
 
         let mut cache_registers: Vec<CacheRegister> = engine.register().unwrap_or_default();
         let mut registers = HashMap::with_capacity(cache_registers.len());
@@ -50,7 +82,12 @@ impl Module for CacheManager {
                 let file = fs::read(path).unwrap();
                 (register.deserialize)(file)
             } else {
-                (register.new)()
+                let cache = (register.new)();
+
+                let contents = (register.serialize)(&cache);
+                fs::write(path, contents).unwrap();
+
+                cache
             };
 
             caches.insert(*id, RwLock::new(cache));
@@ -73,6 +110,9 @@ impl Module for CacheManager {
                     let register = cache_manager.registers.get(id).unwrap();
                     if (register.needs_reload)(&cache) {
                         *cache = (register.new)();
+
+                        let contents = (register.serialize)(&cache);
+                        fs::write(register.path(), contents).unwrap();
                     }
                 }
             })
