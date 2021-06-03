@@ -25,6 +25,5 @@ pub use {
     registers::*,
     uuid::*,
     de::*,
+    asset_cache::*,
 };
-
-pub(crate) use asset_cache::*;

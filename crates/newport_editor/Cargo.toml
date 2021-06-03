@@ -13,3 +13,4 @@ newport_imgui    = { path = "../newport_imgui", version = "0.0.1" }
 newport_os       = { path = "../newport_os", version = "0.0.1" }
 newport_asset    = { path = "../newport_asset", version = "0.0.1" }
 newport_codegen  = { path = "../newport_codegen", version = "0.0.1" }
+newport_cache    = { path = "../newport_cache", version = "0.0.1" }

@@ -24,8 +24,14 @@ use crate::{
     SPACING,
 
     engine::Engine,
-    asset::AssetManager,
+    asset::AssetCache,
     math::{ Rect, Vector2 },
+
+    cache,
+};
+
+use cache::{
+    CacheManager
 };
 
 use std::{
@@ -130,8 +136,6 @@ pub struct AssetBrowser {
 
 impl AssetBrowser {
     pub fn new() -> Self {
-        let asset_manager = Engine::as_ref().module::<AssetManager>().unwrap();
-
         let mut entries = BrowserEntry::Directory{
             path: "Assets".into(),
             entries: Vec::new(),
@@ -139,14 +143,14 @@ impl AssetBrowser {
             has_sub: true,
         };
 
-        // let cache_manager = engine.module::<CacheManager>().unwrap();
-        // let asset_cache = cache_manager.cache::<AssetCache>().unwrap();
+        let engine = Engine::as_ref();
+        let cache_manager = engine.module::<CacheManager>().unwrap();
+        let asset_cache = cache_manager.cache::<AssetCache>().unwrap();
 
-        // let mut id = 1;
-        // for entry in assets.iter() {
-        //     // let path = &entry.path;
-        //     // entries.insert(path, &mut id);
-        // }
+        let mut id = 1;
+        for path in asset_cache.uuid_to_path.values() {
+            entries.insert(path, &mut id);
+        }
 
         Self {
             entries: entries,

@@ -6,6 +6,7 @@ pub(crate) use newport_math     as math;
 pub(crate) use newport_engine   as engine;
 pub(crate) use newport_graphics as graphics;
 pub(crate) use newport_asset    as asset;
+pub(crate) use newport_cache    as cache;
 
 mod editable;
 mod view;

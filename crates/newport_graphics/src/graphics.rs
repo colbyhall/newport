@@ -20,8 +20,7 @@ use gpu::{
     Format
 };
 
-use asset::{ 
-    AssetManager, 
+use asset::{  
     AssetVariant 
 };
 
