@@ -34,7 +34,7 @@ use std::{
     collections::HashMap,
     marker::PhantomData,
     time::Instant,
-    path::Path
+    path::{ Path, PathBuf }
 };
 
 #[derive(Debug)]
@@ -153,13 +153,14 @@ impl Module for AssetManager {
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
-        let file = Path::new(file!()).parent().unwrap().parent().unwrap();
-        println!("{:?}", file);
+        let base = Path::new(file!()).parent().unwrap().parent().unwrap().parent().unwrap().parent().unwrap();
+        let mut engine_assets = PathBuf::from(base);
+        engine_assets.push("assets/");
 
         builder
             .module::<Logger>()
             .module::<CacheManager>()
             .register(CacheRegister::new::<AssetCache>("assets"))
-            .register(AssetCollection::new("assets/"))
+            .register(AssetCollection::new(engine_assets))
     }
 }
