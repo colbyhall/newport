@@ -68,7 +68,6 @@ impl Asset for Texture {
         let (id, texture): (UUID, TextureFile) = deserialize(bytes).unwrap();
 
         let raw_path = path.with_file_name(texture.raw);
-
         let raw = fs::read(&raw_path).unwrap();
 
         let raw_texture = match image::load_from_memory(&raw[..]) {
