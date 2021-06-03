@@ -62,7 +62,7 @@ impl Cache for AssetCache {
                     match variant {
                         Some(variant) => {
                             let contents = fs::read(&path).unwrap();
-                            let uuid = (variant.deserialize)(&contents).0;
+                            let uuid = (variant.deserialize)(&contents, &path).0;
 
                             uuid_to_path.insert(uuid, path);
                         },

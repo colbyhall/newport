@@ -32,6 +32,7 @@ use math::{
 
 use std::{
     mem::size_of,
+    path::Path,
 };
 
 use serde::{ 
@@ -87,7 +88,7 @@ struct MeshFile {
 }
 
 impl Asset for Mesh {
-    fn load(bytes: &[u8]) -> (UUID, Self) {
+    fn load(bytes: &[u8], _path: &Path) -> (UUID, Self) {
         let (id, mesh_file): (UUID, MeshFile) = deserialize(bytes).unwrap();
 
         let engine = Engine::as_ref();

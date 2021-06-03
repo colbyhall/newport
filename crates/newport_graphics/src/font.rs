@@ -38,7 +38,7 @@ use serde::{
 use std::{
     mem::size_of, 
     collections::HashMap,
-    path::PathBuf,
+    path::{ PathBuf, Path },
 
     thread_local,
     fs,
@@ -217,9 +217,14 @@ struct FontFile {
 }
 
 impl Asset for FontCollection {
-    fn load(bytes: &[u8]) -> (UUID, Self) {
+    fn load(bytes: &[u8], path: &Path) -> (UUID, Self) {
         let (id, file): (UUID, FontFile) = deserialize(bytes).unwrap();
-        let font_file = fs::read(file.raw).unwrap();
+        
+        let mut raw_path = PathBuf::from(path);
+        raw_path.parent().unwrap();
+        raw_path.push(file.raw);
+
+        let font_file = fs::read(raw_path).unwrap();
         (id, FontCollection::new(font_file).unwrap())
     }
 }

@@ -106,7 +106,7 @@ impl AssetManager {
                 let file = fs::read(path).ok()?;
 
                 let now = Instant::now();
-                let result = (variant.deserialize)(&file);
+                let result = (variant.deserialize)(&file, &path);
                 let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
                 (result, dur)
             };

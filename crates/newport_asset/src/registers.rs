@@ -13,13 +13,13 @@ pub struct AssetVariant {
     pub(crate) type_id:    TypeId,
     pub(crate) extensions: Vec<&'static str>,
 
-    pub(crate) deserialize: fn(&[u8]) -> (UUID, Box<dyn Any>),
+    pub(crate) deserialize: fn(&[u8], &Path) -> (UUID, Box<dyn Any>),
 }
 
 impl AssetVariant {
     pub fn new<T: Asset>(extensions: &[&'static str]) -> AssetVariant {
-        fn deserialize<T: Asset>(contents: &[u8]) -> (UUID, Box<dyn Any>) {
-            let (id, t) = T::load(contents);
+        fn deserialize<T: Asset>(contents: &[u8], path: &Path) -> (UUID, Box<dyn Any>) {
+            let (id, t) = T::load(contents, path);
             (id, Box::new(t))
         }
 

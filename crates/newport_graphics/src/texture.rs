@@ -35,7 +35,7 @@ use stb_image::{
 };
 
 use std::{
-    path::PathBuf,
+    path::{ PathBuf, Path },
     fs,
 };
 
@@ -64,10 +64,14 @@ struct TextureFile {
 }
 
 impl Asset for Texture {
-    fn load(bytes: &[u8]) -> (UUID, Self) {
+    fn load(bytes: &[u8], path: &Path) -> (UUID, Self) {
         let (id, texture): (UUID, TextureFile) = deserialize(bytes).unwrap();
 
-        let raw = fs::read(&texture.raw).unwrap();
+        let mut raw_path = PathBuf::from(path);
+        raw_path.parent().unwrap();
+        raw_path.push(texture.raw);
+
+        let raw = fs::read(&raw_path).unwrap();
 
         let raw_texture = match image::load_from_memory(&raw[..]) {
             LoadResult::Error(err) => {
