@@ -14,11 +14,14 @@ use newport_math::Rect;
 
 use lazy_static::lazy_static;
 
-use std::collections::VecDeque;
-use std::mem::size_of;
-use std::ptr::{null_mut, null, NonNull};
-use std::ffi::CString;
-use std::num::Wrapping;
+use std::{
+    collections::VecDeque,
+    mem::size_of,
+    ptr::{null_mut, null, NonNull},
+    ffi::{ CString, OsString },
+    num::Wrapping,
+    os::windows::ffi::OsStrExt,
+};
 
 #[repr(C)]
 #[allow(non_camel_case_types)]
@@ -234,7 +237,12 @@ impl WindowBuilder {
                 WindowStyle::CustomTitleBar{ .. } => {
                     SetWindowTheme(handle, b"\0".as_ptr() as LPCWSTR, b"\0".as_ptr() as LPCWSTR);
                 }
-                _ => {} 
+                _ => {
+                    let dark_mode = OsString::from("DarkMode_Explorer\0");
+                    let _dark_mode_wide: Vec<u16> = dark_mode.encode_wide().collect();
+
+                    // SetWindowTheme(handle, dark_mode_wide.as_ptr() as LPCWSTR, b"\0".as_ptr() as LPCWSTR);
+                } 
             }
 
             let mut track = TRACKMOUSEEVENT{
@@ -590,7 +598,7 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
         
                     // unsafe{ DwmExtendFrameIntoClientArea(hWnd, &margins) };
                 },
-                _ => { }
+                _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
             }
         },
         WM_NCACTIVATE => {
@@ -602,7 +610,7 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
                         result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) };
                     }
                 },
-                _ => { }
+                _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
             }
         },
         WM_NCCALCSIZE => {
@@ -630,7 +638,7 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
         
                     unsafe{ DwmExtendFrameIntoClientArea(hWnd, &margins) };
                 },
-                _ => { }
+                _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
             }
         },
         WM_NCHITTEST => {
@@ -700,9 +708,8 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
                         }
                     }
                 },
-                _ => { }
+                _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
             }
-
         },
         _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
     }

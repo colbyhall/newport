@@ -5,8 +5,9 @@ authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
 
 [dependencies]
-newport_engine = { path = "../newport_engine", version = "0.0.1" }
-newport_editor = { path = "../newport_editor", version = "0.0.1" }
-newport_ecs    = { path = "../newport_ecs",    version = "0.0.1", features = ["editable"] }
-newport_math   = { path = "../newport_math",   version = "0.0.1" }
-newport_gpu    = { path = "../newport_gpu",   version = "0.0.1" }
+newport_engine   = { path = "../newport_engine", version = "0.0.1" }
+newport_ecs      = { path = "../newport_ecs",    version = "0.0.1", features = ["editable"] }
+newport_math     = { path = "../newport_math",   version = "0.0.1" }
+newport_gpu      = { path = "../newport_gpu",    version = "0.0.1" }
+newport_graphics = { path = "../newport_graphics", version = "0.0.1" }
+newport_asset    = { path = "../newport_asset", version = "0.0.1" }

@@ -3,7 +3,16 @@ use crate:: {
     RenderState,
 
     engine::{ Module, EngineBuilder, Engine },
-    editor::GameEditor,
+    graphics,
+    asset,
+};
+
+use graphics::{
+    Graphics,
+};
+
+use asset::{
+    AssetManager,
 };
 
 use std::sync::{ Mutex, RwLock };
@@ -37,7 +46,8 @@ impl Module for Game {
                     *render_state = Some(new_render_state);
                 }               
             })
-            .module::<GameEditor>()
+            .module::<Graphics>()
+            .module::<AssetManager>()
     }
 
 }
