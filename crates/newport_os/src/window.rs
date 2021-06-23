@@ -398,7 +398,7 @@ impl Window {
             WindowStyle::CustomTitleBar{ drag, .. } => {
                 *drag = new_drag;
             },
-            _ => unreachable!()
+            _ => { }, // Do nothing. This kind of sucks
         }
     }
 }
