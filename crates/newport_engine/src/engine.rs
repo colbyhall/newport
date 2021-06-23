@@ -64,12 +64,21 @@ impl Engine {
     
         // UNSAFE: Set the global state
         let engine = unsafe{ 
+            let id = TypeId::of::<WindowStyle>();
+            let styles: Vec<WindowStyle> = match builder.registers.get(&id) {
+                Some(any_vec) => {
+                    any_vec.downcast_ref::<Vec<WindowStyle>>().unwrap().clone()
+                },
+                None => Vec::default()
+            };
+            let style = match styles.last() {
+                Some(style) => *style,
+                None => WindowStyle::Windowed,
+            };
+
             let window = WindowBuilder::new()
                 .title(name.clone())
-                .style(WindowStyle::CustomTitleBar{
-                    border: 5.0,
-                    drag:   Default::default(),
-                })
+                .style(style)
                 .spawn()
                 .unwrap();
 

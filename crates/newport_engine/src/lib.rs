@@ -7,6 +7,8 @@ mod engine;
 mod module;
 mod builder;
 
-pub use engine::*;
-pub use module::*;
-pub use builder::*;
+pub use {
+    engine::*,
+    module::*,
+    builder::*
+};

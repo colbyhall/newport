@@ -25,6 +25,7 @@ use engine::{ Module, Engine, EngineBuilder, InputEvent };
 use graphics::{ Graphics, Texture };
 use math::{ Color, Rect };
 use asset::{ AssetRef, AssetManager };
+use os::window::WindowStyle;
 
 use std::sync::{ Mutex, MutexGuard };
 
@@ -204,6 +205,10 @@ impl Module for Editor {
         builder
             .module::<Graphics>()
             .module::<AssetManager>()
+            .register(WindowStyle::CustomTitleBar{
+                border: 5.0,
+                drag:   Default::default(),
+            })
             .process_input(|engine: &Engine, _window: &os::window::Window, event: &InputEvent| {
                 let mut editor = engine.module::<Editor>().unwrap().lock(); // SPEED: Maybe this will be too slow????
 
