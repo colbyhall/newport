@@ -2,6 +2,8 @@ use std::ops::{ Mul, MulAssign, };
 
 use crate::Vector4;
 use crate::Vector3;
+use crate::PI;
+use crate::Quaternion;
 
 use serde::{ Serialize, Deserialize };
 
@@ -73,9 +75,57 @@ impl Matrix4 {
         result
     }
 
+    pub fn perspective(fov: f32, aspect_ratio: f32, far: f32, near: f32) -> Self {
+        let cotangent = 1.0 / f32::tan(fov * (PI / 360.0));
+        
+        let mut result = Matrix4::IDENTITY;
+        result.x_axis.x = cotangent / aspect_ratio;
+        result.y_axis.y = cotangent;
+        result.z_axis.w = -1.0;
+
+        result.z_axis.z = far / (near - far);
+        result.w_axis.z = -(far * near) / (far - near);
+        
+        result.w_axis.w = 0.0;
+
+        result
+    }
+
     pub fn translate(xyz: impl Into<Vector3>) -> Matrix4 {
         let mut result = Matrix4::IDENTITY;
         result.w_axis = (xyz.into(), 1.0).into();
+        result
+    }
+
+    pub fn rotate(quat: impl Into<Quaternion>) -> Matrix4 {
+        let normalized = quat.into().norm();
+
+        let mut result = Matrix4::IDENTITY;
+        
+        let xx = normalized.x * normalized.x;
+        let xy = normalized.x * normalized.y;
+        let xz = normalized.x * normalized.z;
+        let xw = normalized.x * normalized.w;
+
+        let yy = normalized.y * normalized.y;
+        let yz = normalized.y * normalized.z;
+
+        let yw = normalized.y * normalized.w;
+        let zz = normalized.z * normalized.z;
+        let zw = normalized.z * normalized.w;
+
+        result.x_axis.x = 1.0 - 2.0 * (yy + zz);
+        result.x_axis.y = 2.0 * (xy + zw);
+        result.x_axis.z = 2.0 * (xz - yw);
+
+        result.y_axis.x = 2.0 * (xy - zw);
+        result.y_axis.y = 1.0 - 2.0 * (xx + zz);
+        result.y_axis.z = 2.0 * (yz + xw);
+
+        result.z_axis.x = 2.0 * (xz + yw);
+        result.z_axis.y = 2.0 * (yz - xw);
+        result.z_axis.z = 1.0 - 2.0 * (xx + yy);
+
         result
     }
 }

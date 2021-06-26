@@ -32,7 +32,7 @@ use math::{
 
 use std::{
     mem::size_of,
-    path::Path,
+    path::{ Path, PathBuf },
 };
 
 use serde::{ 
@@ -40,7 +40,9 @@ use serde::{
     Deserialize, 
 };
 
-#[derive(Serialize, Deserialize)]
+use gltf;
+
+#[derive(Serialize, Deserialize, Default)]
 #[serde(crate = "self::serde")]
 pub struct Vertex {
     pub position:  Vector3,
@@ -76,6 +78,9 @@ impl gpu::Vertex for Vertex {
 }
 
 pub struct Mesh {
+    pub vertices: Vec<Vertex>,
+    pub indices:  Vec<u32>,
+
     pub vertex_buffer: Buffer,
     pub index_buffer:  Buffer,
 }
@@ -83,13 +88,55 @@ pub struct Mesh {
 #[derive(Serialize, Deserialize)]
 #[serde(rename = "Mesh", crate = "self::serde")]
 struct MeshFile {
-    vertices: Vec<Vertex>,
-    indices:  Vec<u32>,
+    raw: PathBuf,
 }
 
 impl Asset for Mesh {
-    fn load(bytes: &[u8], _path: &Path) -> (UUID, Self) {
+    fn load(bytes: &[u8], path: &Path) -> (UUID, Self) {
         let (id, mesh_file): (UUID, MeshFile) = deserialize(bytes).unwrap();
+
+        let raw_path = path.with_file_name(mesh_file.raw);
+
+        let (gltf, buffers, _images) = gltf::import(raw_path).unwrap();
+
+        let mut vertex_count = 0;
+        let mut index_count = 0;
+
+        let mesh = gltf.meshes().nth(0).unwrap();
+        for primitive in mesh.primitives() {
+            let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
+
+            vertex_count += reader.read_positions().unwrap().count();
+            index_count += match reader.read_indices().unwrap() {
+                gltf::mesh::util::ReadIndices::U8(iter) => iter.count(),
+                gltf::mesh::util::ReadIndices::U16(iter) => iter.count(),
+                gltf::mesh::util::ReadIndices::U32(iter) => iter.count(),
+            };
+        }
+
+        let mut vertices = Vec::with_capacity(vertex_count);
+        let mut indices = Vec::with_capacity(index_count);
+        
+        for primitive in mesh.primitives() {
+            let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
+
+            let base = vertices.len() as u32;
+            for index in reader.read_indices().unwrap().into_u32() {
+                indices.push(base + index);
+            }
+            
+            let positions  = reader.read_positions().unwrap();
+            let mut normals = reader.read_normals().unwrap();
+            for position in positions {
+                let normal = normals.next().unwrap_or_default();
+
+                vertices.push(Vertex{
+                    position: position.into(),
+                    normal:   normal.into(),
+                    ..Default::default()
+                });
+            }
+        }
 
         let engine = Engine::as_ref();
         let graphics = engine.module::<Graphics>().unwrap();
@@ -98,27 +145,27 @@ impl Asset for Mesh {
         let transfer_vertex = device.create_buffer(
             BufferUsage::TRANSFER_SRC, 
             MemoryType::HostVisible, 
-            mesh_file.vertices.len() * size_of::<Vertex>(),
+            vertices.len() * size_of::<Vertex>(),
         ).unwrap();
-        transfer_vertex.copy_to(&mesh_file.vertices[..]);
+        transfer_vertex.copy_to(&vertices[..]);
 
         let transfer_index = device.create_buffer(
             BufferUsage::TRANSFER_SRC, 
             MemoryType::HostVisible, 
-            mesh_file.indices.len() * size_of::<u32>(),
+            indices.len() * size_of::<u32>(),
         ).unwrap();
-        transfer_index.copy_to(&mesh_file.indices[..]);
+        transfer_index.copy_to(&indices[..]);
 
         let vertex_buffer = device.create_buffer(
             BufferUsage::TRANSFER_DST | BufferUsage::VERTEX, 
             MemoryType::DeviceLocal, 
-            mesh_file.vertices.len() * size_of::<Vertex>(),
+            vertices.len() * size_of::<Vertex>(),
         ).unwrap();
 
         let index_buffer = device.create_buffer(
             BufferUsage::TRANSFER_DST | BufferUsage::INDEX, 
             MemoryType::DeviceLocal, 
-            mesh_file.indices.len() * size_of::<u32>(),
+            indices.len() * size_of::<u32>(),
         ).unwrap();
 
         let mut gfx = device.create_graphics_context().unwrap();
@@ -132,6 +179,6 @@ impl Asset for Mesh {
         let receipt = device.submit_graphics(vec![gfx], &[]);
         receipt.wait();
 
-        (id, Self{ vertex_buffer, index_buffer })
+        (id, Self{ vertices, indices, vertex_buffer, index_buffer })
     }
 }

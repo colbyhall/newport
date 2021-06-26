@@ -326,3 +326,9 @@ impl From<(Vector2, f32)> for Vector3 {
         Self::new(xy.x, xy.y, z)
     }
 }
+
+impl From<[f32; 3]> for Vector3 {
+    fn from(xyz: [f32; 3]) -> Self {
+        Self::new(xyz[0], xyz[1], xyz[2])
+    }
+}
