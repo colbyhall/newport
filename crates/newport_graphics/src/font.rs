@@ -59,7 +59,7 @@ thread_local! {
 
 pub struct FontCollection {
     face:  Face,
-    fonts: HashMap<u32, Font>,
+    fonts: HashMap<(u32, u32), Font>,
 }
 
 impl FontCollection {
@@ -81,7 +81,7 @@ impl FontCollection {
     }
 
     pub fn font_at_size(&mut self, size: u32, dpi: f32) -> Option<&Font> {
-        let font = self.fonts.get(&size);
+        let font = self.fonts.get(&(size, (dpi * 96.0) as u32));
         if font.is_none() {
             let resolution = (96.0 * dpi) as u32;
     
@@ -127,13 +127,13 @@ impl FontCollection {
                     }
                 }
     
-                let x0 = pen_x;
-                let y0 = pen_y - bmp_rows;
-                let x1 = pen_x + bmp_width;
-                let y1 = pen_y + 2;
+                let x0 = pen_x - 1;
+                let y0 = pen_y - bmp_rows - 1;
+                let x1 = pen_x + bmp_width + 1;
+                let y1 = pen_y + 1;
 
-                let width = (x1 - x0) as f32;
-                let height = (y1 - y0) as f32;
+                let width = (x1 - x0) as f32 / dpi;
+                let height = (y1 - y0) as f32 / dpi;
     
                 let uv0 = Vector2::new(x0 as f32 / tex_width as f32, y0 as f32 / tex_height as f32);
                 let uv1 = Vector2::new(x1 as f32 / tex_width as f32, y1 as f32 / tex_height as f32);
@@ -142,9 +142,9 @@ impl FontCollection {
                     width: width,
                     height: height,
     
-                    bearing_x:  (glyph.bitmap_left()) as _,
-                    bearing_y:  (glyph.bitmap_top()) as _,
-                    advance:    (glyph.advance().x >> 6) as _,
+                    bearing_x:  (glyph.bitmap_left()) as f32 / dpi,
+                    bearing_y:  (glyph.bitmap_top()) as f32 / dpi,
+                    advance:    (glyph.advance().x >> 6) as f32 / dpi,
     
                     uv: (uv0, uv1).into(),
                 };
@@ -152,9 +152,9 @@ impl FontCollection {
                 pen_x += bmp_width + 4;
             }
     
-            let ascent  = (self.face.ascender() >> 6) as f32;
-            let descent = (self.face.descender() >> 6) as f32;
-            let height  = (size_metrics.height >> 6) as f32;
+            let ascent  = (self.face.ascender() >> 6) as f32 / dpi;
+            let descent = (self.face.descender() >> 6) as f32 / dpi;
+            let height  = (size_metrics.height >> 6) as f32 / dpi;
     
             let scale   = height / (ascent - descent);
             let ascent  = ascent * scale;
@@ -194,7 +194,7 @@ impl FontCollection {
             let receipt = device.submit_graphics(vec![gfx], &[]);
             receipt.wait();
     
-            self.fonts.insert(size, Font{
+            self.fonts.insert((size, (dpi * 96.0) as u32), Font{
                 size,
     
                 ascent,
@@ -206,7 +206,7 @@ impl FontCollection {
             });
         }
 
-        self.fonts.get(&size)
+        self.fonts.get(&(size, (dpi * 96.0) as u32))
     }
 }
 

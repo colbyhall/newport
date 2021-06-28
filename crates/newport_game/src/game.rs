@@ -6,6 +6,8 @@ use crate:: {
     graphics,
     asset,
 };
+#[cfg(feature = "editor")]
+use crate::editor::GameEditor;
 
 use graphics::{
     Graphics,
@@ -31,7 +33,7 @@ impl Module for Game {
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
-        builder
+        let result = builder
             .tick(|engine: &Engine, dt: f32| {
                 let game = engine.module::<Game>().unwrap();
 
@@ -47,7 +49,12 @@ impl Module for Game {
                 }               
             })
             .module::<Graphics>()
-            .module::<AssetManager>()
+            .module::<AssetManager>();
+
+        #[cfg(feature = "editor")]
+        let result = result.module::<GameEditor>();
+
+        result
     }
 
 }

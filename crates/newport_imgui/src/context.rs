@@ -4,7 +4,7 @@ use crate::{
     Id, 
     InputState,
     Layout, 
-    Mesh, 
+    Canvas, 
     Painter, 
     RawInput, 
     Retained, 
@@ -133,10 +133,13 @@ impl Context {
         self.canvas = self.input.viewport;
     }
 
-    pub fn end_frame(&mut self) -> Mesh {
-        let mut mesh = Mesh{
+    pub fn end_frame(&mut self) -> Canvas {
+        let mut mesh = Canvas{
             vertices: Vec::with_capacity(2048),
             indices: Vec::with_capacity(2048),
+
+            width:  (self.input.viewport.width() * self.input.dpi) as u32,
+            height: (self.input.viewport.height() * self.input.dpi) as u32,
         };
 
         self.layers.drain(..).for_each(|it| it.painter.tesselate(&mut mesh));

@@ -1,6 +1,7 @@
 use newport::*;
 use engine::{ Module, Engine, EngineBuilder };
 use game::Game;
+use math::Color;
 
 struct GameExample;
 

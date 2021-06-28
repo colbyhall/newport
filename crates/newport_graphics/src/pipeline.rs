@@ -22,8 +22,6 @@ use engine::{
     Engine,
 };
 
-use newport_log::info;
-
 use std::path::Path;
 
 #[derive(Serialize, Deserialize)]
@@ -193,9 +191,18 @@ impl ItemVariant {
 
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
+pub enum SystemSemantics {
+    VertexId,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
 pub struct VertexShader {
     #[serde(default)]
     pub attributes: Vec<Item>,
+    #[serde(default)]
+    pub system_semantics: Vec<SystemSemantics>,
+
     #[serde(default)]
     pub exports:    Vec<Item>,
     pub code:       String,
@@ -204,7 +211,7 @@ pub struct VertexShader {
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
 pub struct PixelShader {
-    pub exports: Vec<Item>,
+    pub exports: Vec<(String, gpu::Format)>,
     pub code:    String,
 }
 
@@ -308,15 +315,7 @@ impl Asset for Pipeline {
             result
         };
 
-        let colors = pixel_shader.exports.iter().map(|Item(_, variant)|{
-            match variant {
-                // ItemVariant::Float32
-                // ItemVariant::Vector2
-                ItemVariant::Vector3 => gpu::Format::BGR_U8_SRGB,
-                ItemVariant::Vector4 => gpu::Format::RGBA_U8_SRGB,
-                _ => unreachable!(),
-            }
-        }).collect();
+        let colors = pixel_shader.exports.iter().map(|(_, format)|*format).collect();
 
         let render_pass = device.create_render_pass(colors, None).unwrap();
 
@@ -360,13 +359,18 @@ impl Asset for Pipeline {
             let mut source = header.clone();
 
             source.push_str("struct PixelOutput {\n");
-            for (index, Item(name, variant)) in exports.iter().enumerate() {
+            for (index, (name, format)) in exports.iter().enumerate() {
                 let mut name_uppercase = name.clone();
                 name_uppercase.make_ascii_uppercase();
 
+                let variant = match format {
+                        gpu::Format::BGR_U8_SRGB|gpu::Format::RGBA_F16|gpu::Format::RGB_U8|gpu::Format::RGB_U8_SRGB|gpu::Format::RGBA_U8|gpu::Format::RGBA_U8_SRGB => "float4",
+                        _ => unreachable!(),
+                    };
+
                 let line= format!(
                     "    {} {} : SV_TARGET{};\n", 
-                    variant.into_type_string(), 
+                    variant, 
                     name, 
                     index
                 );
@@ -412,6 +416,7 @@ impl Asset for Pipeline {
         let vertex_shader = {
             let VertexShader {
                 attributes,
+                system_semantics,
                 exports,
                 code,
             } = vertex_shader;
@@ -437,7 +442,7 @@ impl Asset for Pipeline {
             source.push_str("};\n\n");
 
             // Generate the VertexInput based off of attributes
-            if attributes.len() > 0 {
+            if attributes.len() > 0 || system_semantics.len() > 0{
                 source.push_str("struct VertexInput {\n");
                 for Item(name, variant) in attributes.iter() {
                     let mut name_uppercase = name.clone();
@@ -451,6 +456,13 @@ impl Asset for Pipeline {
                     );
                     source.push_str(&line);
                 }
+
+                for semantic in system_semantics.iter() {
+                    let line = match semantic {
+                        SystemSemantics::VertexId => "uint vertex_id : SV_VertexID;\n"
+                    };
+                    source.push_str(line);
+                }
                 source.push_str("};\n\n");
 
                 source.push_str("VertexOutput main( VertexInput input ) {\n");
@@ -460,8 +472,6 @@ impl Asset for Pipeline {
             }
             source.push_str(&code);
             source.push_str("\n}\n");
-
-            info!("{}", source);
 
             // Compile to binary and then pass to device
             let binary = gpu::shaders::compile("vertex.hlsl", &source, "main", gpu::ShaderVariant::Vertex).unwrap();
@@ -520,7 +530,7 @@ impl Asset for Pipeline {
             depth_compare: depth_stencil_states.depth_compare,
 
             push_constant_size: 4,
-        }; 
+        };
 
         let pipeline = device.create_pipeline(gpu::PipelineDescription::Graphics(pipeline_desc)).unwrap();
 

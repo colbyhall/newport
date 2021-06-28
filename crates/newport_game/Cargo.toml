@@ -11,3 +11,8 @@ newport_math     = { path = "../newport_math",   version = "0.0.1" }
 newport_gpu      = { path = "../newport_gpu",    version = "0.0.1" }
 newport_graphics = { path = "../newport_graphics", version = "0.0.1" }
 newport_asset    = { path = "../newport_asset", version = "0.0.1" }
+
+newport_editor   = { path = "../newport_editor", version = "0.0.1", optional = true }
+
+[features]
+editor = ["newport_editor"]

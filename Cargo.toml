@@ -43,3 +43,7 @@ path = "examples/imgui.rs"
 
 [profile.dev]
 overflow-checks = false
+
+[features]
+default = ["editor"]
+editor = ["newport_game/editor"]

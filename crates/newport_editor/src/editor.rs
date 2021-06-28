@@ -22,7 +22,7 @@ use crate::{
     TextStyle,
 };
 use engine::{ Module, Engine, EngineBuilder, InputEvent };
-use graphics::{ Graphics, Texture };
+use graphics::{ Graphics, Texture, Pipeline };
 use math::{ Color, Rect };
 use asset::{ AssetRef, AssetManager };
 use os::window::WindowStyle;
@@ -30,7 +30,8 @@ use os::window::WindowStyle;
 use std::sync::{ Mutex, MutexGuard };
 
 struct EditorAssets {
-    _close_button: AssetRef<Texture>,
+    _close_button:    AssetRef<Texture>,
+    present_pipeline: AssetRef<Pipeline>,
 }
 
 impl EditorAssets {
@@ -38,6 +39,7 @@ impl EditorAssets {
         let asset_manager = Engine::as_ref().module::<AssetManager>().unwrap();
         Self{
             _close_button: asset_manager.find("{ce163885-9cd7-4103-b865-3e41df21ba13}").unwrap(),
+            present_pipeline: asset_manager.find("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}").unwrap()
         }
     }
 }
@@ -79,10 +81,10 @@ impl Editor {
             input,
             draw_state,
             view,
-            ..
+            assets,
         } = &mut *editor;
 
-        let mesh = {
+        let canvas = {
             let mut input = input.take().unwrap_or_default();
             
             input.viewport = (0.0, 0.0, backbuffer.width() as f32, backbuffer.height() as f32).into();
@@ -171,15 +173,33 @@ impl Editor {
 
         device.update_bindless();
 
+        let present_pipeline = assets.present_pipeline.read();
+
         let mut gfx = device.create_graphics_context().unwrap();
         gfx.begin();
         {
+            let imgui = draw_state.record(canvas, &mut gfx, gui).unwrap();
             gfx.begin_render_pass(&graphics.backbuffer_render_pass(), &[&backbuffer]);
-            gfx.clear(Color::BLACK);
-            draw_state.draw(mesh, &mut gfx, gui);
+            gfx.bind_pipeline(&present_pipeline.gpu);
+            
+            struct Import {
+                _texture: u32,
+            }
+            let import_buffer = device.create_buffer(
+                gpu::BufferUsage::CONSTANTS, 
+                gpu::MemoryType::HostVisible, 
+                std::mem::size_of::<Import>()
+            ).unwrap();
+            import_buffer.copy_to(&[Import{
+                _texture: imgui.bindless().unwrap(),
+            }]);
+
+            gfx.bind_constant_buffer(&import_buffer);
+            gfx.draw(3, 0);
             gfx.end_render_pass();
+
+            gfx.resource_barrier_texture(&backbuffer, gpu::Layout::ColorAttachment, gpu::Layout::Present);
         }
-        gfx.resource_barrier_texture(&backbuffer, gpu::Layout::ColorAttachment, gpu::Layout::Present);
         gfx.end();
         
         let receipt = device.submit_graphics(vec![gfx], &[]);

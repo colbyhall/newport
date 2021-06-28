@@ -132,6 +132,10 @@ impl GraphicsContext {
                 src_stage = vk::PipelineStageFlags::TRANSFER;
                 dst_stage = vk::PipelineStageFlags::FRAGMENT_SHADER;
             },
+            (Layout::ColorAttachment, Layout::ShaderReadOnly) => {
+                src_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;
+                dst_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;
+            },
             (Layout::ColorAttachment, Layout::Present) => {
                 src_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;
                 dst_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;

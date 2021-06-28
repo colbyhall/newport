@@ -27,6 +27,8 @@
 use newport_os::window::WindowHandle;
 use newport_math::{ Rect, Color };
 
+use newport_serde::{self as serde, Serialize, Deserialize};
+
 use std::sync::{ Arc };
 use std::convert::Into;
 use std::fmt;
@@ -172,7 +174,8 @@ pub enum ResourceCreateError {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
 pub enum Format {
     Undefined,
     

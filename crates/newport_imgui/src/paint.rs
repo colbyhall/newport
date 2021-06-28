@@ -86,7 +86,7 @@ pub struct RectShape {
 }
 
 impl RectShape {  
-    fn tesselate(&self, canvas: &mut Mesh) {
+    fn tesselate(&self, canvas: &mut Canvas) {
         let texture = {
             match &self.texture {
                 Some(texture) => texture.bindless().unwrap_or(0),
@@ -258,7 +258,7 @@ pub struct TextShape {
 }
 
 impl TextShape {
-    pub fn tesselate(&self, canvas: &mut Mesh) {
+    pub fn tesselate(&self, canvas: &mut Canvas) {
         let mut font_collection = self.font.write();
         let font = font_collection.font_at_size(self.size, self.dpi).unwrap();
 
@@ -301,7 +301,7 @@ pub struct TriangleShape {
 }
 
 impl TriangleShape {
-    pub fn tesselate(&self, canvas: &mut Mesh) {
+    pub fn tesselate(&self, canvas: &mut Canvas) {
         for point in self.points.iter() {
             canvas.vertices.push(Vertex{
                 position:   *point,
@@ -407,7 +407,7 @@ impl Painter {
         self.shapes.insert(index, shape);
     }
 
-    pub fn tesselate(mut self, canvas: &mut Mesh) {
+    pub fn tesselate(mut self, canvas: &mut Canvas) {
         self.shapes.drain(..).for_each(|it| {
             match it {
                 Shape::Rect(rect) => rect.tesselate(canvas),
@@ -447,12 +447,15 @@ impl gpu::Vertex for Vertex {
 }
 
 #[derive(Default)]
-pub struct Mesh {
+pub struct Canvas {
     pub vertices: Vec<Vertex>,
     pub indices:  Vec<u32>,
+
+    pub width: u32,
+    pub height: u32,
 }
 
-impl Mesh {
+impl Canvas {
     fn rect(self: &mut Self, bounds: Rect, uv: Rect, scissor: Rect, color: Color, texture: u32) {
         let size = bounds.size();
         if size.x <= 0.0 || size.y <= 0.0 {
@@ -511,38 +514,41 @@ impl Mesh {
 }
 
 pub struct DrawState {
-    pipeline: AssetRef<Pipeline>,
+    pipeline:    AssetRef<Pipeline>,
+    render_pass: gpu::RenderPass,
 }
 
 impl DrawState {
     pub fn new() -> Self {
         let engine = Engine::as_ref();
+        let graphics: &Graphics = engine.module().unwrap();
+        let device = graphics.device();
         let asset_manager: &AssetManager = engine.module().unwrap();
 
-        Self { pipeline: asset_manager.find("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}").unwrap() }
+        Self { pipeline: asset_manager.find("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}").unwrap(), render_pass: device.create_render_pass(vec![gpu::Format::RGBA_U8], None).unwrap() }
     }
 
-    pub fn draw(&self, mesh: Mesh, gfx: &mut GraphicsContext, ctx: &Context) {
+    pub fn record(&self, canvas: Canvas, gfx: &mut GraphicsContext, ctx: &Context) -> Result<gpu::Texture, ()> {
         let graphics = Engine::as_ref().module::<Graphics>().unwrap();
         let device = graphics.device();
 
-        if mesh.vertices.len() == 0 {
-            return;
+        if canvas.vertices.len() == 0 {
+            return Err(());
         }
 
         let vertex_buffer = device.create_buffer(
             gpu::BufferUsage::VERTEX, 
             gpu::MemoryType::HostVisible, 
-            mesh.vertices.len() * size_of::<Vertex>()
+            canvas.vertices.len() * size_of::<Vertex>()
         ).unwrap();
-        vertex_buffer.copy_to(&mesh.vertices[..]);
+        vertex_buffer.copy_to(&canvas.vertices[..]);
 
         let index_buffer = device.create_buffer(
             gpu::BufferUsage::INDEX, 
             gpu::MemoryType::HostVisible, 
-            mesh.indices.len() * size_of::<u32>()
+            canvas.indices.len() * size_of::<u32>()
         ).unwrap();
-        index_buffer.copy_to(&mesh.indices[..]);
+        index_buffer.copy_to(&canvas.indices[..]);
 
         let viewport = ctx.input.viewport.size();
 
@@ -563,10 +569,28 @@ impl DrawState {
 
         let pipeline = self.pipeline.read();
 
-        gfx.bind_pipeline(&pipeline.gpu);
-        gfx.bind_vertex_buffer(&vertex_buffer);
-        gfx.bind_index_buffer(&index_buffer);
-        gfx.bind_constant_buffer(&import_buffer);
-        gfx.draw_indexed(mesh.indices.len(), 0);
+        let backbuffer = device.create_texture(
+            gpu::TextureUsage::SAMPLED | gpu::TextureUsage::COLOR_ATTACHMENT, 
+            gpu::MemoryType::DeviceLocal, 
+            gpu::Format::RGBA_U8, 
+            canvas.width, 
+            canvas.height, 
+            1, 
+            gpu::Wrap::Clamp,
+            gpu::Filter::Linear,
+            gpu::Filter::Linear
+        ).unwrap();
+
+        gfx.begin_render_pass(&self.render_pass, &[&backbuffer]);
+            gfx.clear(Color::BLACK);
+            gfx.bind_pipeline(&pipeline.gpu);
+            gfx.bind_vertex_buffer(&vertex_buffer);
+            gfx.bind_index_buffer(&index_buffer);
+            gfx.bind_constant_buffer(&import_buffer);
+            gfx.draw_indexed(canvas.indices.len(), 0);
+        gfx.end_render_pass();
+        gfx.resource_barrier_texture(&backbuffer, gpu::Layout::ColorAttachment, gpu::Layout::ShaderReadOnly);
+        
+        Ok(backbuffer)
     }
 }

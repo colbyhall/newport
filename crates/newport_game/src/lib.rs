@@ -12,6 +12,9 @@ mod components;
 mod game;
 mod render_state;
 
+#[cfg(feature = "editor")]
+mod editor;
+
 pub use {
     game_state::*,
     components::*,

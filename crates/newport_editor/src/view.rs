@@ -29,8 +29,9 @@ enum ViewChildren {
         direction: Direction,
     },
     Tabs{
-        tabs:     Vec<Box<dyn Tab>>,
-        selected: usize,
+        tabs:      Vec<Box<dyn Tab>>,
+        selected:  usize,
+        hide_tabs: bool,
     }
 }
 
@@ -65,9 +66,10 @@ impl View {
                 self.children = ViewChildren::Tabs{
                     tabs:     tabs,
                     selected: 0,
+                    hide_tabs: false,
                 }
             },
-            ViewChildren::Tabs { tabs, selected } => {
+            ViewChildren::Tabs { tabs, selected, .. } => {
                 tabs.push(Box::new(tab));
                 *selected = tabs.len() - 1;
             },
@@ -91,6 +93,15 @@ impl View {
             _ => unreachable!()
         }
     }
+
+    pub fn hide_tabs(&mut self, hide: bool)  {
+        match &mut self.children {
+            ViewChildren::Tabs { hide_tabs, .. } => {
+                *hide_tabs = hide;
+            },
+            _ => unreachable!()
+        }
+    }
 }
 
 impl View {
@@ -102,29 +113,31 @@ impl View {
                 layout_style.height_sizing = Sizing::Fill;
                 builder.scoped_style(layout_style, |builder| builder.label("Empty View"));
             },
-            ViewChildren::Tabs { tabs, selected } => {
+            ViewChildren::Tabs { tabs, selected, hide_tabs } => {
                 let mut layout_style: LayoutStyle = builder.style().get();
                 layout_style.margin = Rect::default();
                 layout_style.padding = (8.0, 5.0, 8.0, 5.0).into();
-                builder.style().push(layout_style);
-
-                let mut color: ColorStyle = builder.style().get();
-                color.focused_background = DARK.bg_s;
-                color.focused_foreground = DARK.fg;
-                builder.style().push(color);
-
-                let height = builder.label_height_with_padding();
-                let layout = Layout::left_to_right(builder.layout.push_size(Vector2::new(0.0, height)));
-                builder.layout(layout, |builder|{
-                    for (index, it) in tabs.iter().enumerate() {
-                        if TabLabel::new(it.name(), index == *selected).build(builder).clicked() {
-                            *selected = index;
+                if !*hide_tabs {
+                    builder.style().push(layout_style);
+    
+                    let mut color: ColorStyle = builder.style().get();
+                    color.focused_background = DARK.bg_s;
+                    color.focused_foreground = DARK.fg;
+                    builder.style().push(color);
+    
+                    let height = builder.label_height_with_padding();
+                    let layout = Layout::left_to_right(builder.layout.push_size(Vector2::new(0.0, height)));
+                    builder.layout(layout, |builder|{
+                        for (index, it) in tabs.iter().enumerate() {
+                            if TabLabel::new(it.name(), index == *selected).build(builder).clicked() {
+                                *selected = index;
+                            }
                         }
-                    }
-                });
-
-                builder.style().pop::<LayoutStyle>();
-                builder.style().pop::<ColorStyle>();
+                    });
+    
+                    builder.style().pop::<LayoutStyle>();
+                    builder.style().pop::<ColorStyle>();
+                }
 
                 layout_style.padding = (8.0, 8.0, 8.0, 8.0).into();
                 builder.style().push(layout_style);

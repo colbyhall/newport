@@ -1,0 +1,42 @@
+Asset(
+    id: "{62b4ffa0-9510-4818-a6f2-7645ec304d8e}",
+    asset: Pipeline(
+        imports: [
+            ("texture", Texture),
+        ],
+
+        vertex_shader: Some((
+            system_semantics: [
+                VertexId,
+            ],
+
+            exports: [
+                ("uv", Vector2),
+            ],
+
+            code: r#"
+                output.uv = float2((input.vertex_id << 1) & 2, input.vertex_id & 2);
+                output.position = float4(output.uv * float2(2, -2) + float2(-1, 1), 0, 1);
+
+                return output;
+            "#,
+        )),
+
+        pixel_shader: Some((
+            exports: [
+                ("color", BGR_U8_SRGB),
+            ],
+
+            code: r#"
+                Imports imports = get_imports();
+
+                Texture2D    my_texture = index_textures(imports.texture);
+                SamplerState my_sampler = index_samplers(imports.texture);
+
+                output.color = my_texture.Sample(my_sampler, input.uv, 0);
+                
+                return output;
+            "#
+        )),
+    )
+)
