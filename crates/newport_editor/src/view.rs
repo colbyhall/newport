@@ -20,7 +20,7 @@ use crate::math::{
     Rect,
 };
 
-pub const SPACING: f32 = 5.0;
+pub const SPACING: f32 = 1.0;
 
 enum ViewChildren {
     None,
@@ -32,6 +32,7 @@ enum ViewChildren {
         tabs:      Vec<Box<dyn Tab>>,
         selected:  usize,
         hide_tabs: bool,
+        hide_border: bool,
     }
 }
 
@@ -67,6 +68,7 @@ impl View {
                     tabs:     tabs,
                     selected: 0,
                     hide_tabs: false,
+                    hide_border: false,
                 }
             },
             ViewChildren::Tabs { tabs, selected, .. } => {
@@ -102,6 +104,15 @@ impl View {
             _ => unreachable!()
         }
     }
+
+    pub fn hide_border(&mut self, hide: bool)  {
+        match &mut self.children {
+            ViewChildren::Tabs { hide_border, .. } => {
+                *hide_border = hide;
+            },
+            _ => unreachable!()
+        }
+    }
 }
 
 impl View {
@@ -113,20 +124,26 @@ impl View {
                 layout_style.height_sizing = Sizing::Fill;
                 builder.scoped_style(layout_style, |builder| builder.label("Empty View"));
             },
-            ViewChildren::Tabs { tabs, selected, hide_tabs } => {
+            ViewChildren::Tabs { tabs, selected, hide_tabs, hide_border } => {
+                // Draw the tab space
                 let mut layout_style: LayoutStyle = builder.style().get();
                 layout_style.margin = Rect::default();
-                layout_style.padding = (8.0, 5.0, 8.0, 5.0).into();
+                layout_style.padding = (12.0, 6.0, 12.0, 6.0).into();
                 if !*hide_tabs {
                     builder.style().push(layout_style);
     
                     let mut color: ColorStyle = builder.style().get();
-                    color.focused_background = DARK.bg_s;
-                    color.focused_foreground = DARK.fg;
-                    builder.style().push(color);
-    
+                    color.hovered_background = DARK.bg2;
+                    color.focused_background = color.hovered_background;
+                    color.focused_foreground = color.hovered_foreground;
+                    
                     let height = builder.label_height_with_padding();
-                    let layout = Layout::left_to_right(builder.layout.push_size(Vector2::new(0.0, height)));
+                    let bounds = builder.layout.push_size(Vector2::new(0.0, height));
+                    builder.painter.push_shape(Shape::solid_rect(bounds, color.unhovered_background, 0.0));
+
+                    builder.style().push(color);
+
+                    let layout = Layout::left_to_right(bounds);
                     builder.layout(layout, |builder|{
                         for (index, it) in tabs.iter().enumerate() {
                             if TabLabel::new(it.name(), index == *selected).build(builder).clicked() {
@@ -137,6 +154,8 @@ impl View {
     
                     builder.style().pop::<LayoutStyle>();
                     builder.style().pop::<ColorStyle>();
+
+                    builder.add_spacing(SPACING);
                 }
 
                 layout_style.padding = (8.0, 8.0, 8.0, 8.0).into();
@@ -149,10 +168,14 @@ impl View {
                 builder.painter.push_shape(Shape::solid_rect(bounds, color.inactive_background, 0.0));
 
                 let mut color: ColorStyle = builder.style().get();
-                color.inactive_background = DARK.bg_h;
+                color.inactive_background = DARK.bg;
 
                 builder.scoped_style(color, |builder| {
-                    let bounds = Rect::from_min_max(bounds.min + SPACING, bounds.max - SPACING);
+                    let bounds = if *hide_border {
+                        Rect::from_min_max(bounds.min, bounds.max)
+                    } else {
+                        Rect::from_min_max(bounds.min + SPACING, bounds.max - SPACING)
+                    };
                     builder.layout(Layout::up_to_down(bounds), |builder| {
                         tabs[*selected].build(builder);
                     });

@@ -6,7 +6,6 @@ use crate::{
 use newport_editor::{
     Editor,
     View,
-    AssetBrowser,
     Direction,
 };
 
@@ -41,6 +40,7 @@ impl Module for GameEditor {
         let mut level = View::new("level", 0.8);
         level.add_tab(Viewport::new());
         level.hide_tabs(true);
+        level.hide_border(true);
 
         let view = View::new_views("main", 1.0, vec![details_and_outliner, level], Direction::RightToLeft);
 

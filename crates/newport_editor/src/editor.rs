@@ -15,7 +15,6 @@ use crate::{
     Panel,
     Style,
     Sizing,
-    SPACING,
     ColorStyle,
     LayoutStyle,
     Shape,
@@ -23,7 +22,7 @@ use crate::{
 };
 use engine::{ Module, Engine, EngineBuilder, InputEvent };
 use graphics::{ Graphics, Texture, Pipeline };
-use math::{ Color, Rect };
+use math::{  Rect };
 use asset::{ AssetRef, AssetManager };
 use os::window::WindowStyle;
 
@@ -93,15 +92,15 @@ impl Editor {
 
             gui.begin_frame(input);
 
-            // Top title bar which holds the pages, title, and window buttons
+            // Top title bar which holds the menu buttons, title, and window buttons
             let mut layout_style: LayoutStyle = gui.style().get();
             layout_style.padding = (12.0, 8.0, 12.0, 8.0).into();
             layout_style.margin = Rect::default();
             gui.style().push(layout_style);
 
             let mut color: ColorStyle = gui.style().get();
-            color.inactive_background = DARK.bg_h;
-            color.unhovered_background = DARK.bg_h;
+            color.inactive_background = DARK.bg;
+            color.unhovered_background = DARK.bg;
             gui.style().push(color);
 
             let text_style: TextStyle = gui.style().get();
@@ -156,11 +155,11 @@ impl Editor {
             let bounds = gui.take_canvas();
             let mut builder = gui.builder("view", Layout::up_to_down(bounds));
             let mut color: ColorStyle = builder.style().get();
-            builder.painter.push_shape(Shape::solid_rect(bounds, color.inactive_background, 0.0));
+            builder.painter.push_shape(Shape::solid_rect(bounds, color.hovered_background, 0.0));
 
-            color.inactive_background = DARK.bg_s;
+            color.inactive_background = DARK.bg;
             builder.scoped_style(color, |builder| {
-                let bounds = Rect::from_min_max(bounds.min + SPACING, bounds.max - SPACING);
+                let bounds = Rect::from_min_max(bounds.min, bounds.max);
                 builder.layout(Layout::up_to_down(bounds), |builder| {
                     view.build(builder);
                 });
