@@ -105,7 +105,7 @@ impl<T:'static> Drop for AssetRef<T> {
         if self.strong_count() == 1 {
             let mut lock = self.arc.write().unwrap();
             *lock = None;
-            info!("[AssetManager] Unloaded asset {:?}", self.path)
+            info!("[AssetManager] Unloaded asset {}", self.path.display())
         }
     }
 }

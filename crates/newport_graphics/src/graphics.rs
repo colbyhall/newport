@@ -6,6 +6,7 @@ use crate::{
     Texture,
     FontCollection,
     Mesh,
+    Pipeline,
 };
 
 use engine::{ 
@@ -57,5 +58,6 @@ impl Module for Graphics {
             .register(AssetVariant::new::<Texture>(&["texture", "tex"]))
             .register(AssetVariant::new::<FontCollection>(&["font"]))
             .register(AssetVariant::new::<Mesh>(&["mesh"]))
+            .register(AssetVariant::new::<Pipeline>(&["pipeline"]))
     }
 }

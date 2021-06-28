@@ -125,14 +125,19 @@ impl Asset for Mesh {
                 indices.push(base + index);
             }
             
-            let positions  = reader.read_positions().unwrap();
             let mut normals = reader.read_normals().unwrap();
+            let mut uvs = reader.read_tex_coords(0).unwrap().into_f32();
+
+
+            let positions  = reader.read_positions().unwrap();
             for position in positions {
                 let normal = normals.next().unwrap_or_default();
+                let uv = uvs.next().unwrap();
 
                 vertices.push(Vertex{
                     position: position.into(),
                     normal:   normal.into(),
+                    uv0:      uv.into(),
                     ..Default::default()
                 });
             }

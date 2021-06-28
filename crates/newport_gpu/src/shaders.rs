@@ -63,7 +63,7 @@ thread_local! {
     static DXC_COMPILER: CompilerThreadInfo = CompilerThreadInfo::new();
 }
 
-pub fn compile(name: &str, source: &str, main: &str, variant: ShaderVariant) -> Option<Vec<u8>> {  
+pub fn compile(name: &str, source: &str, main: &str, variant: ShaderVariant) -> Result<Vec<u8>, String> {  
     DXC_COMPILER.with(|f| {
         let target_profile = match variant {
             ShaderVariant::Pixel => "ps_6_1",
@@ -97,17 +97,18 @@ pub fn compile(name: &str, source: &str, main: &str, variant: ShaderVariant) -> 
         );
 
         match result {
-            Err(_) => {
-                // let error_blob = result
-                //     .0
-                //     .get_error_buffer()
-                //     .unwrap();
-                // TODO: Do error handling
-                None
-            }
+            Err(result) => {
+                let error_blob = result
+                    .0
+                    .get_error_buffer()
+                    .unwrap();
+                
+                let err_string = f.library.get_blob_as_string(&error_blob).replace("\\n", "\n");
+                Err(err_string)
+            },
             Ok(result) => {
                 let result_blob = result.get_result().unwrap();
-                Some(result_blob.to_vec())
+                Ok(result_blob.to_vec())
             }
         }
     })

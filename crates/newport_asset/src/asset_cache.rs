@@ -41,7 +41,7 @@ impl Cache for AssetCache {
         for it in collections.iter() {
             if !it.path.exists() {
                 fs::create_dir(&it.path).unwrap();
-                info!("Created collection directory {:?}", it.path);
+                info!("Created collection directory ({})", it.path.display());
             }
         }
 
@@ -78,7 +78,7 @@ impl Cache for AssetCache {
         
         let mut uuid_to_path = HashMap::new();
         for it in collections.iter() {
-            info!("Discovering assets in {:?}", it.path);
+            info!("Discovering assets in ({})", it.path.display());
             discover(it.path.clone(), &mut uuid_to_path, &variants);
         }
 

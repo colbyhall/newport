@@ -281,3 +281,9 @@ impl From<(f32, f32)> for Vector2 {
         Self{ x, y }
     }
 }
+
+impl From<[f32; 2]> for Vector2 {
+    fn from(xy: [f32; 2]) -> Self {
+        Self{ x: xy[0], y: xy[1] }
+    }
+}

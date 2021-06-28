@@ -112,7 +112,7 @@ impl AssetManager {
             };
 
             *lock = Some(result.1);
-            info!("[AssetManager] Loaded asset {:?} in {:.2}ms", path, dur);
+            info!("[AssetManager] Loaded asset ({}) in {:.2}ms", path.display(), dur);
         }
 
         Some(result)

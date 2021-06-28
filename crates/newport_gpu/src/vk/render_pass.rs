@@ -37,7 +37,7 @@ impl RenderPass {
             let attachment = vk::AttachmentDescription::builder()
                 .format(format)
                 .samples(vk::SampleCountFlags::TYPE_1)
-                .load_op(vk::AttachmentLoadOp::LOAD)
+                .load_op(vk::AttachmentLoadOp::DONT_CARE)
                 .store_op(vk::AttachmentStoreOp::STORE)
                 .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
                 .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
@@ -63,7 +63,7 @@ impl RenderPass {
             let attachment = vk::AttachmentDescription::builder()
                 .format(format)
                 .samples(vk::SampleCountFlags::TYPE_1)
-                .load_op(vk::AttachmentLoadOp::LOAD)
+                .load_op(vk::AttachmentLoadOp::DONT_CARE)
                 .store_op(vk::AttachmentStoreOp::STORE)
                 .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
                 .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
@@ -127,6 +127,6 @@ impl RenderPass {
 
 impl Drop for RenderPass {
     fn drop(&mut self) {
-        todo!()
+        // todo!()
     }
 }

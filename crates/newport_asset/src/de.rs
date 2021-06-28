@@ -23,6 +23,6 @@ pub struct AssetFile<T> {
 pub fn deserialize<'de, T: Deserialize<'de>>(bytes: &'de [u8]) -> Result<(UUID, T), ()> {
     let contents = str::from_utf8(bytes).map_err(|_| ())?;
 
-    let t: AssetFile<T> = ron::from_str(contents).map_err(|_| ())?;
+    let t: AssetFile<T> = ron::from_str(contents).unwrap(); // .map_err(|_| ())?;
     Ok((t.id, t.asset))
 }

@@ -1,0 +1,67 @@
+Asset(
+    id: "{1e1526a8-852c-47f7-8436-2bbb01fe8a22}",
+    asset: Pipeline(
+        color_blend: Some((
+            dst_blend_factor: OneMinusSrcAlpha,
+        )),
+
+        imports: [
+            ("view", Matrix4),
+        ],
+
+        vertex_shader: Some((
+            attributes: [
+                ("position", Vector2),
+                ("uv",       Vector2),
+                ("scissor",  Vector4),
+                ("color",    Vector4),
+                ("texture",  Texture),
+            ],
+
+            exports: [
+                ("screen_pos", Vector2),
+                ("uv",         Vector2),
+                ("scissor",    Vector4),
+                ("color",      Vector4),
+                ("texture",    Texture),
+            ],
+
+            code: r#"
+                output.screen_pos = input.position.xy;
+                output.uv         = input.uv;
+                output.scissor    = input.scissor;
+                output.color      = input.color;
+                output.texture    = input.texture;
+
+                Imports imports = get_imports();
+
+                output.position = mul(imports.view, float4(input.position, 10.0, 1.0));
+
+                return output;
+            "#,
+        )),
+
+        pixel_shader: Some((
+            exports: [
+                ("color", Vector4)
+            ],
+
+            code: r#"
+                Imports imports = get_imports();
+
+                Texture2D    my_texture = index_textures(input.texture);
+                SamplerState my_sampler = index_samplers(input.texture);
+
+                if (input.screen_pos.x >= input.scissor.x && input.screen_pos.y >= input.scissor.y && input.screen_pos.x <= input.scissor.z && input.screen_pos.y <= input.scissor.w) {
+                    if (input.texture == NULL) {
+                        output.color = input.color;
+                    } else {
+                        output.color = input.color * my_texture.Sample(my_sampler, input.uv, 0);
+                    }
+                }
+                
+                return output;
+            "#
+        )),
+    )
+)

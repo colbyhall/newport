@@ -10,9 +10,13 @@ mod texture;
 mod graphics;
 mod scene;
 mod mesh;
+mod pipeline;
 
-pub use font::*;
-pub use texture::*;
-pub use graphics::*;
-pub use scene::*;
-pub use mesh::*;
+pub use {
+    font::*,
+    texture::*,
+    graphics::*,
+    scene::*,
+    mesh::*,
+    pipeline::*,
+};

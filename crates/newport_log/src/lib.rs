@@ -6,6 +6,7 @@ use std::fs::{ File, create_dir, };
 use std::path::{ Path, PathBuf };
 use std::io::Write;
 use std::ptr::null_mut;
+use std::panic;
 
 /// Global structure that contains the current log file
 pub struct Logger {
@@ -33,6 +34,24 @@ impl Module for Logger {
         );
 
         let file = File::create(&path).unwrap();
+
+        panic::set_hook(Box::new(|info| {
+            // The current implementation always returns `Some`.
+            let location = info.location().unwrap();
+
+            let msg = match info.payload().downcast_ref::<&'static str>() {
+                Some(s) => *s,
+                None => match info.payload().downcast_ref::<String>() {
+                    Some(s) => &s[..],
+                    None => "Box<Any>",
+                },
+            };
+            let thread = std::thread::current();
+            let name = thread.name().unwrap_or("<unnamed>");
+
+            error!("thread '{}' panicked at '{}', {}", name, msg, location);
+            // error!("{:?}", std::backtrace::capture());
+        }));
         
         return Logger { file: Mutex::new(file) };
     }

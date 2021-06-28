@@ -60,13 +60,14 @@ impl Swapchain {
                 .image_extent(capabilities.current_extent)
                 .image_array_layers(1)
                 .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
-                .image_sharing_mode(vk::SharingMode::CONCURRENT)
+                .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
                 .queue_family_indices(&queue_family_indices[..])
                 .pre_transform(capabilities.current_transform)
                 .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
                 .present_mode(vk::PresentModeKHR::FIFO)
-                .clipped(true);
-            
+                .clipped(true)
+                .build();
+
             let handle = swapchain_khr.create_swapchain(&create_info, None).unwrap();
 
             let images = swapchain_khr.get_swapchain_images(handle).unwrap();
@@ -187,7 +188,7 @@ pub struct Device {
 
     pub bindless_layout: vk::DescriptorSetLayout,
     pub bindless_pool:   vk::DescriptorPool,
-    pub bindless_set:        vk::DescriptorSet,
+    pub bindless_set:    vk::DescriptorSet,
 }
 
 impl Device {
@@ -270,6 +271,7 @@ impl Device {
                 let mut is_acceptable = true;
                 is_acceptable &= properties.device_type == vk::PhysicalDeviceType::DISCRETE_GPU && features.geometry_shader == 1;
                 is_acceptable &= indexing_features.descriptor_binding_partially_bound == 1 && indexing_features.runtime_descriptor_array == 1;
+                // TODO: Update after bind for descriptor sets
 
                 if is_acceptable { selected_device = Some(*it); }
             }
@@ -346,7 +348,9 @@ impl Device {
 
             let mut indexing_features = vk::PhysicalDeviceDescriptorIndexingFeatures::builder()
                 .descriptor_binding_partially_bound(true)
-                .runtime_descriptor_array(true);
+                .runtime_descriptor_array(true)
+                .descriptor_binding_sampled_image_update_after_bind(true)
+                .descriptor_binding_storage_buffer_update_after_bind(true);
 
             let create_info = vk::DeviceCreateInfo::builder()
                 .push_next(&mut indexing_features)
@@ -389,7 +393,7 @@ impl Device {
                 .build(),
         ];
 
-        let bind_flags = [vk::DescriptorBindingFlags::PARTIALLY_BOUND_EXT; 3];
+        let bind_flags = [vk::DescriptorBindingFlags::PARTIALLY_BOUND_EXT | vk::DescriptorBindingFlags::UPDATE_AFTER_BIND; 3];
 
         let mut extension = vk::DescriptorSetLayoutBindingFlagsCreateInfo::builder()
             .binding_flags(&bind_flags)
@@ -397,7 +401,8 @@ impl Device {
 
         let create_info = vk::DescriptorSetLayoutCreateInfo::builder()
             .push_next(&mut extension)
-            .bindings(&bindless_bindings);
+            .bindings(&bindless_bindings)
+            .flags(vk::DescriptorSetLayoutCreateFlags::UPDATE_AFTER_BIND_POOL);
         let bindless_layout = unsafe{ logical_device.create_descriptor_set_layout(&create_info, None).unwrap() };
 
         let pool_sizes = [
@@ -419,7 +424,8 @@ impl Device {
 
         let create_info = vk::DescriptorPoolCreateInfo::builder()
             .pool_sizes(&pool_sizes)
-            .max_sets(1);
+            .max_sets(1)
+            .flags(vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND);
         let bindless_pool = unsafe{ logical_device.create_descriptor_pool(&create_info, None).unwrap() };
 
         let layouts = [
@@ -523,6 +529,8 @@ impl Device {
     }
 
     pub fn submit_graphics(&self, contexts: Vec<GraphicsContext>, wait_on: &[Receipt]) -> Receipt {
+        self.update_bindless();
+
         let mut buffers = Vec::with_capacity(contexts.len());
         for it in contexts.iter() {
             buffers.push(it.command_buffer);

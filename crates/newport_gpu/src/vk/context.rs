@@ -321,6 +321,11 @@ impl GraphicsContext {
         self.buffers.push(buffer);
     }
 
+    pub fn bind_constant_buffer(&mut self, buffer: Arc<Buffer>) {
+        self.push_constants(buffer.bindless.unwrap());
+        self.buffers.push(buffer);
+    }
+
     pub fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
         unsafe{ self.owner.logical.cmd_draw(self.command_buffer, vertex_count as u32, 1, first_vertex as u32, 0) };
     }
