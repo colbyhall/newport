@@ -133,7 +133,6 @@ impl View {
                     builder.style().push(layout_style);
     
                     let mut color: ColorStyle = builder.style().get();
-                    color.hovered_background = DARK.bg2;
                     color.focused_background = color.hovered_background;
                     color.focused_foreground = color.hovered_foreground;
                     

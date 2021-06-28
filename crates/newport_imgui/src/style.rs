@@ -180,13 +180,13 @@ pub struct ColorStyle {
 impl Default for ColorStyle {
     fn default() -> Self {
         Self{
-            inactive_background: DARK.bg_h,
+            inactive_background: DARK.bg1,
             inactive_foreground: DARK.fg,
 
             unhovered_background: DARK.bg,
             unhovered_foreground: DARK.fg,
 
-            hovered_background: DARK.bg1,
+            hovered_background: DARK.bg2,
             hovered_foreground: DARK.fg2,
 
             focused_background: DARK.bg2,

@@ -155,7 +155,7 @@ impl Editor {
             let bounds = gui.take_canvas();
             let mut builder = gui.builder("view", Layout::up_to_down(bounds));
             let mut color: ColorStyle = builder.style().get();
-            builder.painter.push_shape(Shape::solid_rect(bounds, color.hovered_background, 0.0));
+            builder.painter.push_shape(Shape::solid_rect(bounds, color.inactive_background, 0.0));
 
             color.inactive_background = DARK.bg;
             builder.scoped_style(color, |builder| {
