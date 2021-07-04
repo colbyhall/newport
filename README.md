@@ -1,21 +1,11 @@
-<picture>
-      <source 
-        srcset="assets/branding/logo_white.svg"
-        media="(prefers-color-scheme: dark)"
-      />
-      <source
-        srcset="assets/branding/logo_black_name.svg"
-        media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)"
-      />
-      <img src="assets/branding/logo_black_name.svg" />
-</picture>
+#Ethereal Engine
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Build](https://github.com/colbyhall/newport/actions/workflows/ci.yml/badge.svg)](https://github.com/colbyhall/newport/actions/workflows/ci.yml)
 [![Crates](https://meritbadge.herokuapp.com/newport)](https://crates.io/crates/newport)
 
 ## About
-Newport is a modular 2D and 3D game engine built in Rust for Rust. It is designed to be easily extendable and easy to use. The project is early on in development. Every API is extremely volatile as the engine is worked on more.
+Ethereal Engine is a modular 2D and 3D game engine built in Rust for Rust. It is designed to be easily extendable and easy to use. The project is early on in development. Every API is extremely volatile as the engine is worked on more.
 
 ## Goals
 * **Independent** - Build with minimal dependencies
