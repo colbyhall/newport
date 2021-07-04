@@ -1,4 +1,4 @@
-#Ethereal Engine
+# Ethereal Engine
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Build](https://github.com/colbyhall/newport/actions/workflows/ci.yml/badge.svg)](https://github.com/colbyhall/newport/actions/workflows/ci.yml)
