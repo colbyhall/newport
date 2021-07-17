@@ -38,6 +38,10 @@ name = "game"
 path = "examples/game.rs"
 
 [[example]]
+name = "levy"
+path = "examples/levy.rs"
+
+[[example]]
 name = "imgui"
 path = "examples/imgui.rs"
 
