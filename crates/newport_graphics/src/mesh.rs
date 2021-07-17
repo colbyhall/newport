@@ -1,61 +1,36 @@
-use crate::{
-    asset,
-    gpu,
-    math,
-    engine,
-    serde,
+use crate::{asset, engine, gpu, math, serde, Graphics};
 
-    Graphics,
-};
+use asset::{deserialize, Asset, UUID};
 
-use asset::{
-    Asset,
-    deserialize,
-    UUID,
-};
+use gpu::{Buffer, BufferUsage, MemoryType, VertexAttribute};
 
-use gpu::{
-    Buffer,
-    VertexAttribute,
-    BufferUsage,
-    MemoryType,
-};
+use engine::Engine;
 
-use engine::{
-    Engine,
-};
-
-use math::{
-    Vector3, 
-    Vector2,
-};
+use math::{Vector2, Vector3};
 
 use std::{
     mem::size_of,
-    path::{ Path, PathBuf },
+    path::{Path, PathBuf},
 };
 
-use serde::{ 
-    Serialize, 
-    Deserialize, 
-};
+use serde::{Deserialize, Serialize};
 
 use gltf;
 
 #[derive(Serialize, Deserialize, Default)]
 #[serde(crate = "self::serde")]
 pub struct Vertex {
-    pub position:  Vector3,
+    pub position: Vector3,
 
     #[serde(default)]
-    pub normal:    Vector3,
+    pub normal: Vector3,
 
     #[serde(default)]
-    pub tangent:   Vector3,
+    pub tangent: Vector3,
 
     #[serde(default)]
     pub bitangent: Vector3,
-    
+
     #[serde(default)]
     pub uv0: Vector2,
 
@@ -70,7 +45,6 @@ impl gpu::Vertex for Vertex {
             VertexAttribute::Vector3,
             VertexAttribute::Vector3,
             VertexAttribute::Vector3,
-
             VertexAttribute::Vector2,
             VertexAttribute::Vector2,
         ]
@@ -79,10 +53,10 @@ impl gpu::Vertex for Vertex {
 
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
-    pub indices:  Vec<u32>,
+    pub indices: Vec<u32>,
 
     pub vertex_buffer: Buffer,
-    pub index_buffer:  Buffer,
+    pub index_buffer: Buffer,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -116,7 +90,7 @@ impl Asset for Mesh {
 
         let mut vertices = Vec::with_capacity(vertex_count);
         let mut indices = Vec::with_capacity(index_count);
-        
+
         for primitive in mesh.primitives() {
             let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
 
@@ -124,20 +98,19 @@ impl Asset for Mesh {
             for index in reader.read_indices().unwrap().into_u32() {
                 indices.push(base + index);
             }
-            
+
             let mut normals = reader.read_normals().unwrap();
             let mut uvs = reader.read_tex_coords(0).unwrap().into_f32();
 
-
-            let positions  = reader.read_positions().unwrap();
+            let positions = reader.read_positions().unwrap();
             for position in positions {
                 let normal = normals.next().unwrap_or_default();
                 let uv = uvs.next().unwrap();
 
-                vertices.push(Vertex{
+                vertices.push(Vertex {
                     position: position.into(),
-                    normal:   normal.into(),
-                    uv0:      uv.into(),
+                    normal: normal.into(),
+                    uv0: uv.into(),
                     ..Default::default()
                 });
             }
@@ -147,31 +120,39 @@ impl Asset for Mesh {
         let graphics = engine.module::<Graphics>().unwrap();
         let device = graphics.device();
 
-        let transfer_vertex = device.create_buffer(
-            BufferUsage::TRANSFER_SRC, 
-            MemoryType::HostVisible, 
-            vertices.len() * size_of::<Vertex>(),
-        ).unwrap();
+        let transfer_vertex = device
+            .create_buffer(
+                BufferUsage::TRANSFER_SRC,
+                MemoryType::HostVisible,
+                vertices.len() * size_of::<Vertex>(),
+            )
+            .unwrap();
         transfer_vertex.copy_to(&vertices[..]);
 
-        let transfer_index = device.create_buffer(
-            BufferUsage::TRANSFER_SRC, 
-            MemoryType::HostVisible, 
-            indices.len() * size_of::<u32>(),
-        ).unwrap();
+        let transfer_index = device
+            .create_buffer(
+                BufferUsage::TRANSFER_SRC,
+                MemoryType::HostVisible,
+                indices.len() * size_of::<u32>(),
+            )
+            .unwrap();
         transfer_index.copy_to(&indices[..]);
 
-        let vertex_buffer = device.create_buffer(
-            BufferUsage::TRANSFER_DST | BufferUsage::VERTEX, 
-            MemoryType::DeviceLocal, 
-            vertices.len() * size_of::<Vertex>(),
-        ).unwrap();
+        let vertex_buffer = device
+            .create_buffer(
+                BufferUsage::TRANSFER_DST | BufferUsage::VERTEX,
+                MemoryType::DeviceLocal,
+                vertices.len() * size_of::<Vertex>(),
+            )
+            .unwrap();
 
-        let index_buffer = device.create_buffer(
-            BufferUsage::TRANSFER_DST | BufferUsage::INDEX, 
-            MemoryType::DeviceLocal, 
-            indices.len() * size_of::<u32>(),
-        ).unwrap();
+        let index_buffer = device
+            .create_buffer(
+                BufferUsage::TRANSFER_DST | BufferUsage::INDEX,
+                MemoryType::DeviceLocal,
+                indices.len() * size_of::<u32>(),
+            )
+            .unwrap();
 
         let mut gfx = device.create_graphics_context().unwrap();
         {
@@ -184,6 +165,14 @@ impl Asset for Mesh {
         let receipt = device.submit_graphics(vec![gfx], &[]);
         receipt.wait();
 
-        (id, Self{ vertices, indices, vertex_buffer, index_buffer })
+        (
+            id,
+            Self {
+                vertices,
+                indices,
+                vertex_buffer,
+                index_buffer,
+            },
+        )
     }
 }

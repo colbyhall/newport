@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use syn::{ Data, DeriveInput, Fields, Ident, parse_macro_input, Generics };
-use quote::{ quote, format_ident };
+use quote::{format_ident, quote};
+use syn::{parse_macro_input, Data, DeriveInput, Fields, Generics, Ident};
 
 #[proc_macro_derive(Editable)]
 pub fn derive_editable(input: TokenStream) -> TokenStream {
@@ -11,8 +11,10 @@ pub fn derive_editable(input: TokenStream) -> TokenStream {
 
 fn expand_derive_editable(input: &DeriveInput) -> TokenStream2 {
     match &input.data {
-        Data::Struct(data) => implement_struct_editable(&input.ident, &input.generics, &data.fields),
-        _ => unimplemented!("Enum not supported")
+        Data::Struct(data) => {
+            implement_struct_editable(&input.ident, &input.generics, &data.fields)
+        }
+        _ => unimplemented!("Enum not supported"),
     }
 }
 
@@ -27,14 +29,14 @@ fn implement_struct_editable(ident: &Ident, generics: &Generics, fields: &Fields
             for field in fields.named.iter() {
                 match &field.ident {
                     Some(ident) => {
-                        tokens.push(quote!{
+                        tokens.push(quote! {
                             #path::Editable::edit(&mut self.#ident, stringify!(#ident), ui);
                         });
-                    },
+                    }
                     None => {}
                 }
             }
-        },
+        }
         _ => panic!("Named are only supported"),
     }
 

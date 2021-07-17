@@ -1,8 +1,6 @@
-use serde::{ Serialize, Deserialize };
+use serde::{Deserialize, Serialize};
 
-use crate::{
-    Vector3,
-};
+use crate::Vector3;
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Quaternion {
@@ -13,21 +11,31 @@ pub struct Quaternion {
 }
 
 impl Quaternion {
-    pub const IDENTITY: Self = Self{ x: 0.0, y: 0.0, z: 0.0, w: 1.0 };
+    pub const IDENTITY: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        w: 1.0,
+    };
 
     pub fn from_axis_angle(axis: impl Into<Vector3>, theta: f32) -> Self {
         let axis = axis.into();
 
         let theta = theta / 2.0;
-        
+
         let s = theta.sin();
         let c = theta.cos();
-        Self{ x: s * axis.x, y: s * axis.y, z: s * axis.z, w: c }
+        Self {
+            x: s * axis.x,
+            y: s * axis.y,
+            z: s * axis.z,
+            w: c,
+        }
     }
 
     pub fn from_euler(euler: impl Into<Vector3>) -> Self {
         let euler = euler.into() * 0.5;
-        
+
         let cr = euler.x.cos();
         let sr = euler.x.sin();
 
@@ -37,7 +45,7 @@ impl Quaternion {
         let cy = euler.z.cos();
         let sy = euler.z.sin();
 
-        Self{
+        Self {
             x: sr * cp * cy - cr * sp * sy,
             y: cr * sp * cy + sr * cp * sy,
             z: cr * cp * sy - sr * sp * cy,
@@ -61,12 +69,22 @@ impl Quaternion {
             Default::default()
         } else {
             let inv = 1.0 / len;
-            Self{ x: self.x * inv, y: self.y * inv, z: self.z * inv, w: self.w * inv }
+            Self {
+                x: self.x * inv,
+                y: self.y * inv,
+                z: self.z * inv,
+                w: self.w * inv,
+            }
         }
     }
 
     pub fn inverse(self) -> Self {
-        Self{ x: -self.x, y: -self.y, z: -self.z, w: self.w }
+        Self {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+            w: self.w,
+        }
     }
 
     pub fn rotate(self, xyz: Vector3) -> Vector3 {
@@ -87,6 +105,10 @@ impl Quaternion {
     }
 
     pub fn xyz(self) -> Vector3 {
-        Vector3{ x: self.x, y: self.y, z: self.z }
+        Vector3 {
+            x: self.x,
+            y: self.y,
+            z: self.z,
+        }
     }
 }

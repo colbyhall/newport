@@ -1,3 +1,1 @@
-pub struct Scene {
-
-}
+pub struct Scene {}

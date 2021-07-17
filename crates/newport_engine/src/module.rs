@@ -1,6 +1,4 @@
-use crate::{
-    EngineBuilder
-};
+use crate::EngineBuilder;
 
 /// Modules are an easy way to have global immutable state
 pub trait Module: Sized + 'static {
@@ -8,9 +6,9 @@ pub trait Module: Sized + 'static {
     fn new() -> Self;
 
     /// Takes a builder to append on other modules or elements
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `builder` - A [`EngineBuilder`] used to add dep modules or functions
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
         builder

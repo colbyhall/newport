@@ -1,7 +1,4 @@
-use newport_editor::{
-    Tab,
-    Builder,
-};
+use newport_editor::{Builder, Tab};
 
 pub struct Details;
 
@@ -16,7 +13,5 @@ impl Tab for Details {
         "Details".to_string()
     }
 
-    fn build(&mut self, _builder: &mut Builder) {
-
-    }
+    fn build(&mut self, _builder: &mut Builder) {}
 }

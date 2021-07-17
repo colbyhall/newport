@@ -1,4 +1,4 @@
-// Runnable structure 
+// Runnable structure
 pub mod engine {
     pub use newport_engine::*;
 }
@@ -6,7 +6,7 @@ pub mod engine {
 // Global thread safe logger
 pub use newport_log::*;
 
-// Completely thread safe asset manager 
+// Completely thread safe asset manager
 pub mod asset {
     pub use newport_asset::*;
 }

@@ -1,4 +1,4 @@
-use newport::engine::{ Module, Engine, EngineBuilder };
+use newport::engine::{Engine, EngineBuilder, Module};
 
 // First thing first is to define our module struct
 struct HelloWorld;

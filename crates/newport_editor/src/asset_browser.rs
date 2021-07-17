@@ -1,47 +1,20 @@
 use crate::{
-    Tab,
-    Builder,
-
-    Layout,
-    Scrollbox,
-    Direction,
-    LayoutStyle,
-
-    ToId,
-    Retained,
-    Id,
-
-    ButtonResponse,
-    button_control,
-
-    TextEdit,
-
-    TextStyle,
-    ColorStyle,
-
-    Shape,
-    Sizing,
-    SPACING,
-
-    engine::Engine,
     asset::AssetCache,
-    math::{ Rect, Vector2 },
-
-    cache,
+    button_control, cache,
+    engine::Engine,
+    math::{Rect, Vector2},
+    Builder, ButtonResponse, ColorStyle, Direction, Id, Layout, LayoutStyle, Retained, Scrollbox,
+    Shape, Sizing, Tab, TextEdit, TextStyle, ToId, SPACING,
 };
 
-use cache::{
-    CacheManager
-};
+use cache::CacheManager;
 
-use std::{
-    path::Path,
-};
+use std::path::Path;
 
 #[derive(Debug)]
 enum BrowserEntry {
-    Directory{
-        path:    String,
+    Directory {
+        path: String,
         entries: Vec<BrowserEntry>,
         id: u64,
         has_sub: bool,
@@ -59,8 +32,8 @@ impl BrowserEntry {
 
     fn entries(&self) -> &Vec<BrowserEntry> {
         match self {
-            BrowserEntry::Directory{ entries, .. } => entries,
-            _ => unreachable!()
+            BrowserEntry::Directory { entries, .. } => entries,
+            _ => unreachable!(),
         }
     }
 
@@ -68,15 +41,17 @@ impl BrowserEntry {
         let root = match path.iter().next() {
             Some(root) => root,
             None => return,
-        }.to_str().unwrap();
+        }
+        .to_str()
+        .unwrap();
 
         match self {
-            BrowserEntry::Directory { entries, has_sub, .. } => {
-                let found = entries.iter_mut().find(|it| {
-                    match it {
-                        BrowserEntry::Directory { path, .. } => &root == path,
-                        BrowserEntry::Asset(_) => false,
-                    }
+            BrowserEntry::Directory {
+                entries, has_sub, ..
+            } => {
+                let found = entries.iter_mut().find(|it| match it {
+                    BrowserEntry::Directory { path, .. } => &root == path,
+                    BrowserEntry::Asset(_) => false,
                 });
 
                 let is_file = root.contains('.');
@@ -86,19 +61,27 @@ impl BrowserEntry {
                         if !is_file {
                             found.insert(Path::new(path.strip_prefix(root).unwrap()), id);
                         }
-                    },
+                    }
                     None => {
                         if is_file {
                             entries.push(BrowserEntry::Asset(root.to_string()));
                         } else {
                             *has_sub = true;
-                            entries.push(BrowserEntry::Directory{ path: root.to_string(), entries: Vec::new(), id: *id, has_sub: false });
+                            entries.push(BrowserEntry::Directory {
+                                path: root.to_string(),
+                                entries: Vec::new(),
+                                id: *id,
+                                has_sub: false,
+                            });
                             *id += 1;
-                            entries.last_mut().unwrap().insert(Path::new(path.strip_prefix(root).unwrap()), id);
+                            entries
+                                .last_mut()
+                                .unwrap()
+                                .insert(Path::new(path.strip_prefix(root).unwrap()), id);
                         }
-                    },
+                    }
                 }
-            },
+            }
             BrowserEntry::Asset(_) => {
                 return;
             }
@@ -106,12 +89,12 @@ impl BrowserEntry {
     }
 
     fn find(&self, find_id: u64) -> Option<&BrowserEntry> {
-         match self {
+        match self {
             BrowserEntry::Directory { id, entries, .. } => {
                 if find_id == *id {
                     return Some(self);
                 }
-                
+
                 for entry in entries.iter() {
                     let result = entry.find(find_id);
                     if result.is_some() {
@@ -120,10 +103,8 @@ impl BrowserEntry {
                 }
 
                 None
-            },
-            BrowserEntry::Asset(_) => {
-                None
             }
+            BrowserEntry::Asset(_) => None,
         }
     }
 }
@@ -136,7 +117,7 @@ pub struct AssetBrowser {
 
 impl AssetBrowser {
     pub fn new() -> Self {
-        let mut entries = BrowserEntry::Directory{
+        let mut entries = BrowserEntry::Directory {
             path: "Assets".into(),
             entries: Vec::new(),
             id: 0,
@@ -174,59 +155,80 @@ impl Tab for AssetBrowser {
                 layout_style.width_sizing = Sizing::Fill;
                 builder.scoped_style(layout_style, |builder| {
                     TextEdit::singleline(&mut self.directory_search)
-                    .hint("Search")
-                    .build(builder);
+                        .hint("Search")
+                        .build(builder);
                 });
 
                 builder.add_spacing(SPACING);
 
                 let space_left = builder.layout.space_left();
                 let bounds = builder.layout.push_size(space_left);
-                Scrollbox::new("asset_browser_directories", bounds, Direction::UpToDown)
-                .build(builder, |builder| {
-                    let mut layout_style: LayoutStyle = builder.style().get();
-                    layout_style.width_sizing = Sizing::Fill;
-                    builder.scoped_style(layout_style, |builder| {
-                        fn build_entry(builder: &mut Builder, entry: &BrowserEntry, selected: &mut u64) {
-                            match entry {
-                                BrowserEntry::Directory{ path, entries, id, has_sub } => {
-                                    let entry = SelectableCollapsingEntry::new(id, path, *id == *selected);
-    
-                                    if entry.build(builder, *has_sub, |builder| {
-                                        for entry in entries.iter() {
-                                            build_entry(builder, entry, selected);
-                                        }
-                                    }).clicked() {
-                                        *selected = *id;
-                                    }
-                                },
-                                _ => return
-                            }
-                        }
-    
-                        match &self.entries {
-                            BrowserEntry::Directory{ entries, .. } => {
-                                for entry in entries.iter() {
-                                    build_entry(builder, entry, &mut self.selected_entry);
-                                }
-                            },
-                            _ => {}
-                        }
-                    });
-                });
-            });
+                Scrollbox::new("asset_browser_directories", bounds, Direction::UpToDown).build(
+                    builder,
+                    |builder| {
+                        let mut layout_style: LayoutStyle = builder.style().get();
+                        layout_style.width_sizing = Sizing::Fill;
+                        builder.scoped_style(layout_style, |builder| {
+                            fn build_entry(
+                                builder: &mut Builder,
+                                entry: &BrowserEntry,
+                                selected: &mut u64,
+                            ) {
+                                match entry {
+                                    BrowserEntry::Directory {
+                                        path,
+                                        entries,
+                                        id,
+                                        has_sub,
+                                    } => {
+                                        let entry = SelectableCollapsingEntry::new(
+                                            id,
+                                            path,
+                                            *id == *selected,
+                                        );
 
+                                        if entry
+                                            .build(builder, *has_sub, |builder| {
+                                                for entry in entries.iter() {
+                                                    build_entry(builder, entry, selected);
+                                                }
+                                            })
+                                            .clicked()
+                                        {
+                                            *selected = *id;
+                                        }
+                                    }
+                                    _ => return,
+                                }
+                            }
+
+                            match &self.entries {
+                                BrowserEntry::Directory { entries, .. } => {
+                                    for entry in entries.iter() {
+                                        build_entry(builder, entry, &mut self.selected_entry);
+                                    }
+                                }
+                                _ => {}
+                            }
+                        });
+                    },
+                );
+            });
 
             builder.add_spacing(SPACING);
 
-            Scrollbox::new("assets", builder.layout.push_size(builder.layout.space_left()), Direction::UpToDown)
+            Scrollbox::new(
+                "assets",
+                builder.layout.push_size(builder.layout.space_left()),
+                Direction::UpToDown,
+            )
             .build(builder, |builder| {
                 match self.entries.find(self.selected_entry) {
                     Some(entry) => {
                         for entry in entry.entries().iter() {
                             builder.label(entry.path());
                         }
-                    },
+                    }
                     _ => {}
                 }
             });
@@ -241,17 +243,15 @@ struct SelectableCollapsingRetained {
 
 impl Default for SelectableCollapsingRetained {
     fn default() -> Self {
-        Self{
-            is_open: true,
-        }
+        Self { is_open: true }
     }
 }
 
-impl Retained for SelectableCollapsingRetained { }
+impl Retained for SelectableCollapsingRetained {}
 
 struct SelectableCollapsingEntry {
-    id:       Id,
-    label:    String,
+    id: Id,
+    label: String,
     selected: bool,
 }
 
@@ -266,7 +266,12 @@ impl SelectableCollapsingEntry {
 }
 
 impl SelectableCollapsingEntry {
-    fn build(self, builder: &mut Builder, has_contents: bool, contents: impl FnOnce(&mut Builder)) -> ButtonResponse {
+    fn build(
+        self,
+        builder: &mut Builder,
+        has_contents: bool,
+        contents: impl FnOnce(&mut Builder),
+    ) -> ButtonResponse {
         let mut retained = builder.retained::<SelectableCollapsingRetained>(self.id);
 
         let layout_style: LayoutStyle = builder.style().get();
@@ -281,14 +286,17 @@ impl SelectableCollapsingEntry {
         let mut cursor_x = bounds.min.x + layout_style.padding.min.x;
 
         let collapse_button_bounds = if has_contents {
-            let min = Vector2::new(cursor_x, bounds.min.y + bounds.height() / 2.0 - collapse_button_size.y / 2.0);
+            let min = Vector2::new(
+                cursor_x,
+                bounds.min.y + bounds.height() / 2.0 - collapse_button_size.y / 2.0,
+            );
             let max = min + collapse_button_size;
             Rect::from_min_max(min, max)
         } else {
             Rect::default()
         };
         cursor_x += collapse_button_size.x + 5.0;
-        
+
         let response = button_control(self.id, bounds, builder);
 
         let toggle_id = (self.id, builder as *mut Builder).to_id();
@@ -299,7 +307,7 @@ impl SelectableCollapsingEntry {
 
         let is_focused = builder.is_focused(self.id);
         let is_hovered = builder.is_hovered(self.id);
-        
+
         let (background_color, foreground_color) = {
             let background_color = if self.selected {
                 color.selected_background
@@ -324,37 +332,46 @@ impl SelectableCollapsingEntry {
             (background_color, foreground_color)
         };
 
-        builder.painter.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
+        builder
+            .painter
+            .push_shape(Shape::solid_rect(bounds, background_color, 0.0));
 
         if has_contents {
             if retained.is_open {
                 let points = [
                     collapse_button_bounds.top_left(),
                     collapse_button_bounds.top_right(),
-                    collapse_button_bounds.bottom_left() + Vector2::new(collapse_button_size.x / 2.0, 0.0),
+                    collapse_button_bounds.bottom_left()
+                        + Vector2::new(collapse_button_size.x / 2.0, 0.0),
                 ];
-                builder.painter.push_shape(Shape::solid_triangle(points, foreground_color));
+                builder
+                    .painter
+                    .push_shape(Shape::solid_triangle(points, foreground_color));
             } else {
                 let points = [
                     collapse_button_bounds.bottom_left(),
                     collapse_button_bounds.top_left(),
-                    collapse_button_bounds.bottom_right() + Vector2::new(0.0, collapse_button_size.y / 2.0),
+                    collapse_button_bounds.bottom_right()
+                        + Vector2::new(0.0, collapse_button_size.y / 2.0),
                 ];
-                builder.painter.push_shape(Shape::solid_triangle(points, foreground_color));
+                builder
+                    .painter
+                    .push_shape(Shape::solid_triangle(points, foreground_color));
             }
         }
 
-        let at = Vector2::new(cursor_x, Rect::from_pos_size(bounds.pos(), label_rect).top_left().y);
-        builder.painter.push_shape(
-            Shape::text(
-                self.label, 
-                at, 
-                &text.font, 
-                text.label_size, 
-                builder.input().dpi, 
-                foreground_color
-            )
+        let at = Vector2::new(
+            cursor_x,
+            Rect::from_pos_size(bounds.pos(), label_rect).top_left().y,
         );
+        builder.painter.push_shape(Shape::text(
+            self.label,
+            at,
+            &text.font,
+            text.label_size,
+            builder.input().dpi,
+            foreground_color,
+        ));
 
         if retained.is_open && has_contents {
             let mut layout_style: LayoutStyle = builder.style().get();

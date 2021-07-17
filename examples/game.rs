@@ -1,7 +1,7 @@
-use newport::*;
-use engine::{ Module, Engine, EngineBuilder };
+use engine::{Engine, EngineBuilder, Module};
 use game::Game;
 use math::Color;
+use newport::*;
 
 struct GameExample;
 
@@ -12,8 +12,7 @@ impl Module for GameExample {
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
-        builder
-            .module::<Game>()
+        builder.module::<Game>()
     }
 }
 

@@ -1,22 +1,13 @@
-use crate::{
-    RenderState, 
-    ecs::World, 
-    engine::Engine,
+use crate::{ecs::World, engine::Engine, Named, RenderState, Transform};
 
-    Transform,
-    Named
-};
-
-use std::{
-    collections::HashMap,
-};
+use std::collections::HashMap;
 
 #[derive(PartialEq, Eq, Copy, Clone, Hash)]
 pub struct ViewportId(u64);
 
 #[derive(Clone)]
 pub struct Viewport {
-    pub width:  u32,
+    pub width: u32,
     pub height: u32,
 
     pub transform: Transform,
@@ -27,7 +18,7 @@ pub struct GameState {
     world: World,
 
     last_viewport_id: u64,
-    viewports:        HashMap<ViewportId, Viewport>,
+    viewports: HashMap<ViewportId, Viewport>,
 }
 
 impl GameState {
@@ -35,46 +26,35 @@ impl GameState {
         let systems = Engine::as_ref().register().unwrap_or_default();
         let mut world = World::new(systems);
 
-        world.create()
-            .with(Named{
+        world
+            .create()
+            .with(Named {
                 name: "Hello World".into(),
             })
             .finish();
 
-        world.create()
-            .with(Named{
-                name: "Foo".into(),
-            })
-            .finish();
+        world.create().with(Named { name: "Foo".into() }).finish();
 
-        world.create()
-            .with(Named{
-                name: "Bar".into(),
-            })
-            .finish();
+        world.create().with(Named { name: "Bar".into() }).finish();
 
-        world.create()
-            .with(Named{
-                name: "Car".into(),
-            })
-            .finish();
+        world.create().with(Named { name: "Car".into() }).finish();
 
-        Self{
+        Self {
             world: world,
 
             last_viewport_id: 0,
-            viewports:        HashMap::new(),
+            viewports: HashMap::new(),
         }
     }
 
-    pub fn simulate(&mut self, dt: f32) -> RenderState{
+    pub fn simulate(&mut self, dt: f32) -> RenderState {
         self.world.simulate(dt);
 
         RenderState {
             viewports: self.viewports.clone(),
 
             primitives: Vec::new(),
-            primitive_transforms: Vec::new(),            
+            primitive_transforms: Vec::new(),
         }
     }
 

@@ -1,33 +1,13 @@
-use crate::{
-    engine,
-    gpu,
-    asset,
+use crate::{asset, engine, gpu, FontCollection, Mesh, Pipeline, Texture};
 
-    Texture,
-    FontCollection,
-    Mesh,
-    Pipeline,
-};
+use engine::{Engine, EngineBuilder, Module};
 
-use engine::{ 
-    Module, 
-    Engine, 
-    EngineBuilder
-};
+use gpu::{Device, Format, Instance, RenderPass};
 
-use gpu::{ 
-    Instance, 
-    Device, 
-    RenderPass, 
-    Format
-};
-
-use asset::{  
-    AssetVariant 
-};
+use asset::AssetVariant;
 
 pub struct Graphics {
-    device:      Device,
+    device: Device,
     backbuffer_render_pass: RenderPass,
 }
 
@@ -46,11 +26,18 @@ impl Module for Graphics {
         let engine = Engine::as_ref();
 
         let instance = Instance::new().unwrap();
-        let device = instance.create_device(Some(engine.window().handle())).unwrap();
+        let device = instance
+            .create_device(Some(engine.window()))
+            .unwrap();
 
-        let backbuffer_render_pass = device.create_render_pass(vec![Format::BGR_U8_SRGB], None).unwrap();
+        let backbuffer_render_pass = device
+            .create_render_pass(vec![Format::BGR_U8_SRGB], None)
+            .unwrap();
 
-        Self { device, backbuffer_render_pass }
+        Self {
+            device,
+            backbuffer_render_pass,
+        }
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {

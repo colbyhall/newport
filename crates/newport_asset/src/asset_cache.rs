@@ -1,28 +1,12 @@
-use crate::{
-    cache,
-    serde,
-    engine,
-    log::info,
-
-    UUID,
-    AssetCollection,
-    AssetVariant
-};
+use crate::{cache, engine, log::info, serde, AssetCollection, AssetVariant, UUID};
 
 use cache::Cache;
 
-use serde::{
-    Serialize,
-    Deserialize,
-};
+use serde::{Deserialize, Serialize};
 
 use engine::Engine;
 
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    fs
-};
+use std::{collections::HashMap, fs, path::PathBuf};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "self::serde")]
@@ -36,7 +20,7 @@ impl Cache for AssetCache {
 
         let collections = engine.register::<AssetCollection>().unwrap_or_default();
         let variants = engine.register::<AssetVariant>().unwrap_or_default();
-        
+
         // Run through all the collections and create a directory if one is not created
         for it in collections.iter() {
             if !it.path.exists() {
@@ -45,7 +29,11 @@ impl Cache for AssetCache {
             }
         }
 
-        fn discover(mut path: PathBuf, uuid_to_path: &mut HashMap<UUID, PathBuf>, variants: &Vec<AssetVariant>) -> PathBuf {
+        fn discover(
+            mut path: PathBuf,
+            uuid_to_path: &mut HashMap<UUID, PathBuf>,
+            variants: &Vec<AssetVariant>,
+        ) -> PathBuf {
             for entry in fs::read_dir(&path).unwrap() {
                 let entry = entry.unwrap();
                 let file_type = entry.file_type().unwrap();
@@ -58,14 +46,16 @@ impl Cache for AssetCache {
                     let path = entry.path();
                     let ext = path.extension().unwrap_or_default();
 
-                    let variant = variants.iter().find(|v| v.extensions.contains(&ext.to_str().unwrap()));
+                    let variant = variants
+                        .iter()
+                        .find(|v| v.extensions.contains(&ext.to_str().unwrap()));
                     match variant {
                         Some(variant) => {
                             let contents = fs::read(&path).unwrap();
                             let uuid = (variant.deserialize)(&contents, &path).0;
 
                             uuid_to_path.insert(uuid, path);
-                        },
+                        }
                         _ => {}
                     }
                 } else {
@@ -75,16 +65,14 @@ impl Cache for AssetCache {
 
             path
         }
-        
+
         let mut uuid_to_path = HashMap::new();
         for it in collections.iter() {
             info!("Discovering assets in ({})", it.path.display());
             discover(it.path.clone(), &mut uuid_to_path, &variants);
         }
 
-        Self {
-            uuid_to_path
-        }
+        Self { uuid_to_path }
     }
 
     fn needs_reload(&self) -> bool {

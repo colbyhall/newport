@@ -1,25 +1,13 @@
 use crate::{
-    Button, 
-    ButtonResponse, 
-    Context, 
-    Id, 
-    InputState, 
-    Label, 
-    Layout, 
-    Painter, 
-    StyleMap,
-    Retained,
-    Style,
-    LayoutStyle,
-    TextStyle,
-    Sizing,
+    Button, ButtonResponse, Context, Id, InputState, Label, Layout, LayoutStyle, Painter, Retained,
+    Sizing, Style, StyleMap, TextStyle,
 };
 
-use crate::math::{ Vector2, Rect };
+use crate::math::{Rect, Vector2};
 
 pub struct Builder<'a> {
-    pub id:      Id,
-    pub layout:  Layout,
+    pub id: Id,
+    pub layout: Layout,
 
     pub painter: Painter,
     pub(crate) context: &'a mut Context,
@@ -37,22 +25,22 @@ impl<'a> Builder<'a> {
     pub fn is_focused(&self, id: Id) -> bool {
         match &self.context.focused {
             Some(focused) => *focused == id,
-            None => false
+            None => false,
         }
     }
 
     pub fn is_hovered(&self, id: Id) -> bool {
         match &self.context.hovered {
             Some(hovered) => *hovered == id,
-            None => false
+            None => false,
         }
     }
 
     pub fn focus(&mut self, id: Id) {
         self.context.focused = Some(id);
     }
-    
-    pub fn unfocus(&mut self, id: Id) -> bool{
+
+    pub fn unfocus(&mut self, id: Id) -> bool {
         if self.is_focused(id) {
             self.context.focused = None;
             return true;
@@ -77,7 +65,7 @@ impl<'a> Builder<'a> {
         Button::new(label).build(self)
     }
 
-    pub fn label(&mut self, label: impl Into<String>){
+    pub fn label(&mut self, label: impl Into<String>) {
         Label::new(label).build(self)
     }
 
@@ -103,7 +91,7 @@ impl<'a> Builder<'a> {
         let content_size = style.content_size(space_needed, space_available);
 
         let layout_rect = self.layout.push_size(style.spacing_size(content_size));
-        
+
         Rect::from_pos_size(layout_rect.pos(), content_size)
     }
 

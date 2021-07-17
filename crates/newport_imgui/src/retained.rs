@@ -11,7 +11,7 @@ pub trait RetainedAsAny {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-impl <T: Retained + 'static> RetainedAsAny for T {
+impl<T: Retained + 'static> RetainedAsAny for T {
     fn as_any(&self) -> &dyn Any {
         self
     }

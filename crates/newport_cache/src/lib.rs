@@ -1,42 +1,30 @@
 use newport_engine as engine;
 use newport_serde as serde;
 
-use engine::{
-    Module,
-    Engine,
-    EngineBuilder
-};
+use engine::{Engine, EngineBuilder, Module};
 
-use serde::{
-    Serialize,
-    de::DeserializeOwned,
-
-    bincode,
-};
+use serde::{bincode, de::DeserializeOwned, Serialize};
 
 use std::{
-    any::{
-        TypeId,
-        Any,
-    },
+    any::{Any, TypeId},
     collections::HashMap,
-    path::{ PathBuf, Path },
     fs,
-    sync::{ RwLock, RwLockReadGuard },
     marker::PhantomData,
     ops::Deref,
+    path::{Path, PathBuf},
+    sync::{RwLock, RwLockReadGuard},
 };
 
 static CACHE_PATH: &'static str = "cache/";
 
 pub struct CacheManager {
     registers: HashMap<TypeId, CacheRegister>,
-    caches:    HashMap<TypeId, RwLock<Box<dyn Any>>>,
+    caches: HashMap<TypeId, RwLock<Box<dyn Any>>>,
 }
 
 pub struct CacheViewer<'a, T: Cache> {
     phantom: PhantomData<T>,
-    lock:    RwLockReadGuard<'a, Box<dyn Any>>,
+    lock: RwLockReadGuard<'a, Box<dyn Any>>,
 }
 
 impl<'a, T: Cache> Deref for CacheViewer<'a, T> {
@@ -52,7 +40,7 @@ impl CacheManager {
 
         let cache = self.caches.get(&id)?;
         let lock = cache.read().ok()?;
-        Some(CacheViewer{
+        Some(CacheViewer {
             phantom: PhantomData,
             lock,
         })
@@ -93,38 +81,31 @@ impl Module for CacheManager {
             caches.insert(*id, RwLock::new(cache));
         }
 
-        Self {
-            registers,
-            caches
-        }
+        Self { registers, caches }
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
-        builder
-            .tick(|engine: &Engine, _: f32| {
-                let cache_manager = engine.module::<CacheManager>().unwrap();
+        builder.tick(|engine: &Engine, _: f32| {
+            let cache_manager = engine.module::<CacheManager>().unwrap();
 
-                for (id, cache) in cache_manager.caches.iter() {
-                    let mut cache = cache.write().unwrap();
+            for (id, cache) in cache_manager.caches.iter() {
+                let mut cache = cache.write().unwrap();
 
-                    let register = cache_manager.registers.get(id).unwrap();
-                    if (register.needs_reload)(&cache) {
-                        *cache = (register.new)();
+                let register = cache_manager.registers.get(id).unwrap();
+                if (register.needs_reload)(&cache) {
+                    *cache = (register.new)();
 
-                        let contents = (register.serialize)(&cache);
-                        fs::write(register.path(), contents).unwrap();
-                    }
+                    let contents = (register.serialize)(&cache);
+                    fs::write(register.path(), contents).unwrap();
                 }
-            })
+            }
+        })
     }
 }
 
 impl Drop for CacheManager {
     fn drop(&mut self) {
-        let Self{
-            caches,
-            registers
-        } = self;
+        let Self { caches, registers } = self;
 
         caches.drain().for_each(|(id, cache)| {
             let register = registers.get(&id).unwrap();
@@ -141,11 +122,11 @@ impl Drop for CacheManager {
 #[derive(Clone)]
 pub struct CacheRegister {
     name: &'static str,
-    id:   TypeId,
+    id: TypeId,
 
-    serialize:    fn(&Box<dyn Any>) -> Vec<u8>,
-    deserialize:  fn(Vec<u8>) -> Box<dyn Any>,
-    new:          fn() -> Box<dyn Any>,
+    serialize: fn(&Box<dyn Any>) -> Vec<u8>,
+    deserialize: fn(Vec<u8>) -> Box<dyn Any>,
+    new: fn() -> Box<dyn Any>,
     needs_reload: fn(&Box<dyn Any>) -> bool,
 }
 

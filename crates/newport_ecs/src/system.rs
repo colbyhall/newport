@@ -1,15 +1,13 @@
-use crate::{
-    World,
-};
+use crate::World;
 
 pub type System = fn(&mut World, f32);
 
 #[derive(Clone)]
 pub struct SystemRegister {
-    pub(crate) name:       &'static str,
-    pub(crate) func:       System,
+    pub(crate) name: &'static str,
+    pub(crate) func: System,
     pub(crate) depends_on: Vec<&'static str>,
-    pub(crate) active:     bool,
+    pub(crate) active: bool,
 }
 
 impl SystemRegister {
@@ -18,7 +16,7 @@ impl SystemRegister {
             name: name,
             func: func,
             depends_on: Vec::new(),
-            active:     false,
+            active: false,
         }
     }
 

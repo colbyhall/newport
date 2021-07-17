@@ -1,16 +1,13 @@
-use crate::{
-    Asset,
-    UUID,
-};
+use crate::{Asset, UUID};
 
 use std::{
-    any::{ Any, TypeId },
-    path::{ Path, PathBuf },
+    any::{Any, TypeId},
+    path::{Path, PathBuf},
 };
 
 #[derive(Clone)]
 pub struct AssetVariant {
-    pub(crate) type_id:    TypeId,
+    pub(crate) type_id: TypeId,
     pub(crate) extensions: Vec<&'static str>,
 
     pub(crate) deserialize: fn(&[u8], &Path) -> (UUID, Box<dyn Any>),
@@ -23,8 +20,8 @@ impl AssetVariant {
             (id, Box::new(t))
         }
 
-        AssetVariant{
-            type_id:    TypeId::of::<T>(),
+        AssetVariant {
+            type_id: TypeId::of::<T>(),
             extensions: extensions.to_vec(),
 
             deserialize: deserialize::<T>,
@@ -39,9 +36,7 @@ pub struct AssetCollection {
 
 impl AssetCollection {
     pub fn new(path: impl Into<PathBuf>) -> AssetCollection {
-        AssetCollection{
-            path: path.into(),
-        }
+        AssetCollection { path: path.into() }
     }
 
     pub fn path(&self) -> &Path {

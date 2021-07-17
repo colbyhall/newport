@@ -1,24 +1,21 @@
-use crate::{
-    math,
-    ecs::Entity,
-};
+use crate::{ecs::Entity, math};
 
-use math::{
-    Vector3,
-    Quaternion,
-    Matrix4
-};
+use math::{Matrix4, Quaternion, Vector3};
 
 #[derive(Copy, Clone)]
 pub struct Transform {
     pub location: Vector3,
     pub rotation: Quaternion,
-    pub scale:    Vector3,
+    pub scale: Vector3,
 }
 
 impl Transform {
     pub fn new(location: Vector3, rotation: Quaternion, scale: Vector3) -> Self {
-        Self{ location, rotation, scale }
+        Self {
+            location,
+            rotation,
+            scale,
+        }
     }
 }
 

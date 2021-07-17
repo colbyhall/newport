@@ -1,16 +1,8 @@
-use crate::{
-    Viewport,
-    ViewportId,
-
-    math,
-    gpu::GraphicsContext,
-};
+use crate::{gpu::GraphicsContext, math, Viewport, ViewportId};
 
 use math::Matrix4;
 
-use std::{
-    collections::HashMap,
-};
+use std::collections::HashMap;
 
 pub struct RenderState {
     pub viewports: HashMap<ViewportId, Viewport>,

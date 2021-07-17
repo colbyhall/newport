@@ -1,15 +1,6 @@
-use crate::{
-    Builder,
-    ButtonResponse,
-    Id,
-    ToId,
-    button_control,
-    ColorStyle,
-    TextStyle,
-    Shape,
-};
+use crate::{button_control, Builder, ButtonResponse, ColorStyle, Id, Shape, TextStyle, ToId};
 
-use crate::math::{ Rect, Vector2 };
+use crate::math::{Rect, Vector2};
 
 pub struct Checkbox<'a> {
     id: Id,
@@ -18,7 +9,7 @@ pub struct Checkbox<'a> {
 
 impl<'a> Checkbox<'a> {
     pub fn new(id: impl ToId, is_checked: &'a mut bool) -> Self {
-        Self{
+        Self {
             id: id.to_id(),
             is_checked: is_checked,
         }
@@ -35,14 +26,15 @@ impl<'a> Checkbox<'a> {
         let checkbox_size = Vector2::new(size, size);
         let check_size = (size / 3.0, size / 3.0).into();
 
-        let bounds = Rect::from_pos_size(builder.content_bounds(checkbox_size).pos(), checkbox_size);
+        let bounds =
+            Rect::from_pos_size(builder.content_bounds(checkbox_size).pos(), checkbox_size);
 
         let response = button_control(self.id, bounds, builder);
 
         if response.clicked() {
             *self.is_checked = !*self.is_checked;
         }
-        
+
         let is_focused = builder.is_focused(self.id);
         let is_hovered = builder.is_hovered(self.id);
 
@@ -66,11 +58,15 @@ impl<'a> Checkbox<'a> {
             (background_color, foreground_color)
         };
 
-        builder.painter.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
+        builder
+            .painter
+            .push_shape(Shape::solid_rect(bounds, background_color, 0.0));
 
         if *self.is_checked {
             let check_bounds = Rect::from_pos_size(bounds.pos(), check_size);
-            builder.painter.push_shape(Shape::solid_rect(check_bounds, foreground_color, 100.0));
+            builder
+                .painter
+                .push_shape(Shape::solid_rect(check_bounds, foreground_color, 100.0));
         }
 
         response

@@ -1,24 +1,9 @@
 use crate::{
-    Id,
-    ToId,
-    Layout,
-    Builder,
-    Sizing,
-    ButtonResponse,
-    button_control,
-    DARK,
-    Style,
-    Direction,
-    LayoutStyle,
-    ColorStyle,
-    TextStyle,
-    Shape,
+    button_control, Builder, ButtonResponse, ColorStyle, Direction, Id, Layout, LayoutStyle, Shape,
+    Sizing, Style, TextStyle, ToId, DARK,
 };
 
-use crate::math::{
-    Vector2,
-    Rect,
-};
+use crate::math::{Rect, Vector2};
 
 pub const SPACING: f32 = 1.0;
 
@@ -28,18 +13,18 @@ enum ViewChildren {
         views: Vec<View>,
         direction: Direction,
     },
-    Tabs{
-        tabs:      Vec<Box<dyn Tab>>,
-        selected:  usize,
+    Tabs {
+        tabs: Vec<Box<dyn Tab>>,
+        selected: usize,
         hide_tabs: bool,
         hide_border: bool,
-    }
+    },
 }
 
 pub struct View {
-    _id:        Id,
-    children:  ViewChildren,
-    percent:   f32,
+    _id: Id,
+    children: ViewChildren,
+    percent: f32,
 }
 
 impl View {
@@ -47,15 +32,15 @@ impl View {
         Self {
             _id: id.to_id(),
             children: ViewChildren::None,
-            percent:  percent,
+            percent: percent,
         }
     }
 
     pub fn new_views(id: impl ToId, percent: f32, views: Vec<View>, direction: Direction) -> Self {
         Self {
             _id: id.to_id(),
-            children: ViewChildren::Views{ views, direction },
-            percent:  percent,
+            children: ViewChildren::Views { views, direction },
+            percent: percent,
         }
     }
 
@@ -64,18 +49,18 @@ impl View {
             ViewChildren::None => {
                 let mut tabs: Vec<Box<dyn Tab>> = Vec::with_capacity(1);
                 tabs.push(Box::new(tab));
-                self.children = ViewChildren::Tabs{
-                    tabs:     tabs,
+                self.children = ViewChildren::Tabs {
+                    tabs: tabs,
                     selected: 0,
                     hide_tabs: false,
                     hide_border: false,
                 }
-            },
+            }
             ViewChildren::Tabs { tabs, selected, .. } => {
                 tabs.push(Box::new(tab));
                 *selected = tabs.len() - 1;
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
     }
 
@@ -84,33 +69,33 @@ impl View {
             ViewChildren::None => {
                 let mut views = Vec::with_capacity(1);
                 views.push(view);
-                self.children = ViewChildren::Views{
+                self.children = ViewChildren::Views {
                     views: views,
                     direction: Direction::LeftToRight,
                 }
-            },
+            }
             ViewChildren::Views { views, .. } => {
                 views.push(view);
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
     }
 
-    pub fn hide_tabs(&mut self, hide: bool)  {
+    pub fn hide_tabs(&mut self, hide: bool) {
         match &mut self.children {
             ViewChildren::Tabs { hide_tabs, .. } => {
                 *hide_tabs = hide;
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
     }
 
-    pub fn hide_border(&mut self, hide: bool)  {
+    pub fn hide_border(&mut self, hide: bool) {
         match &mut self.children {
             ViewChildren::Tabs { hide_border, .. } => {
                 *hide_border = hide;
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
     }
 }
@@ -123,34 +108,46 @@ impl View {
                 layout_style.width_sizing = Sizing::Fill;
                 layout_style.height_sizing = Sizing::Fill;
                 builder.scoped_style(layout_style, |builder| builder.label("Empty View"));
-            },
-            ViewChildren::Tabs { tabs, selected, hide_tabs, hide_border } => {
+            }
+            ViewChildren::Tabs {
+                tabs,
+                selected,
+                hide_tabs,
+                hide_border,
+            } => {
                 // Draw the tab space
                 let mut layout_style: LayoutStyle = builder.style().get();
                 layout_style.margin = Rect::default();
                 layout_style.padding = (12.0, 6.0, 12.0, 6.0).into();
                 if !*hide_tabs {
                     builder.style().push(layout_style);
-    
+
                     let mut color: ColorStyle = builder.style().get();
                     color.focused_background = color.hovered_background;
                     color.focused_foreground = color.hovered_foreground;
-                    
+
                     let height = builder.label_height_with_padding();
                     let bounds = builder.layout.push_size(Vector2::new(0.0, height));
-                    builder.painter.push_shape(Shape::solid_rect(bounds, color.unhovered_background, 0.0));
+                    builder.painter.push_shape(Shape::solid_rect(
+                        bounds,
+                        color.unhovered_background,
+                        0.0,
+                    ));
 
                     builder.style().push(color);
 
                     let layout = Layout::left_to_right(bounds);
-                    builder.layout(layout, |builder|{
+                    builder.layout(layout, |builder| {
                         for (index, it) in tabs.iter().enumerate() {
-                            if TabLabel::new(it.name(), index == *selected).build(builder).clicked() {
+                            if TabLabel::new(it.name(), index == *selected)
+                                .build(builder)
+                                .clicked()
+                            {
                                 *selected = index;
                             }
                         }
                     });
-    
+
                     builder.style().pop::<LayoutStyle>();
                     builder.style().pop::<ColorStyle>();
 
@@ -161,10 +158,14 @@ impl View {
                 builder.style().push(layout_style);
 
                 let available_size = builder.available_rect().size();
-                
+
                 let bounds = builder.layout.push_size(available_size);
                 let color: ColorStyle = builder.style().get();
-                builder.painter.push_shape(Shape::solid_rect(bounds, color.inactive_background, 0.0));
+                builder.painter.push_shape(Shape::solid_rect(
+                    bounds,
+                    color.inactive_background,
+                    0.0,
+                ));
 
                 let mut color: ColorStyle = builder.style().get();
                 color.inactive_background = DARK.bg;
@@ -185,7 +186,7 @@ impl View {
             ViewChildren::Views { views, direction } => {
                 let available_size = builder.available_rect().size();
                 let bounds = builder.layout.push_size(available_size);
-                
+
                 let layout = Layout::new(bounds, *direction);
 
                 builder.layout(layout, |builder| {
@@ -199,7 +200,7 @@ impl View {
                         builder.add_spacing(SPACING);
                     }
                 });
-            },
+            }
         }
     }
 }
@@ -222,7 +223,7 @@ impl Tab for TestTab {
 }
 
 pub struct TabLabel {
-    id:   Id,
+    id: Id,
     name: String,
     selected: bool,
 }
@@ -233,7 +234,7 @@ impl TabLabel {
         Self {
             id: name.to_id(),
             name: name,
-            selected: selected
+            selected: selected,
         }
     }
 
@@ -243,12 +244,12 @@ impl TabLabel {
 
         let label_rect = text.string_rect(&self.name, text.label_size, None).size();
         let bounds = builder.content_bounds(label_rect);
-        
+
         let response = button_control(self.id, bounds, builder);
-        
+
         let is_focused = self.selected;
         let is_hovered = builder.is_hovered(self.id);
-        
+
         let (background_color, foreground_color) = {
             let background_color = if is_focused {
                 color.focused_background
@@ -269,19 +270,19 @@ impl TabLabel {
             (background_color, foreground_color)
         };
 
-        builder.painter.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
-        
+        builder
+            .painter
+            .push_shape(Shape::solid_rect(bounds, background_color, 0.0));
+
         let at = Rect::from_pos_size(bounds.pos(), label_rect).top_left();
-        builder.painter.push_shape(
-            Shape::text(
-                self.name, 
-                at, 
-                &text.font, 
-                text.label_size, 
-                builder.input().dpi, 
-                foreground_color
-            )
-        );
+        builder.painter.push_shape(Shape::text(
+            self.name,
+            at,
+            &text.font,
+            text.label_size,
+            builder.input().dpi,
+            foreground_color,
+        ));
 
         response
     }

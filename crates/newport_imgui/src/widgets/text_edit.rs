@@ -1,27 +1,11 @@
-use crate::{
-    Builder,
-    Id,
-    ToId,
-    ColorStyle,
-    TextStyle,
-    LayoutStyle,
-    Shape,
+use crate::{math, os, Builder, ColorStyle, Id, LayoutStyle, Retained, Shape, TextStyle, ToId};
 
-    Retained,
-
-    math,
-    os,
-};
-
-use math::{
-    Rect,
-    Vector2,
-};
+use math::{Rect, Vector2};
 
 pub struct TextEdit<'a> {
     text: &'a mut String,
     hint: String,
-    id:   Id,
+    id: Id,
 }
 
 impl<'a> TextEdit<'a> {
@@ -74,9 +58,9 @@ impl TextEditResponse {
 
 #[derive(Default, Clone)]
 struct TextEditRetained {
-    cursor:    usize,
+    cursor: usize,
     selection: usize,
-    cursor_t:  f32,
+    cursor_t: f32,
     showing_cursor: bool,
 }
 
@@ -90,7 +74,16 @@ impl TextEditRetained {
         if left {
             for i in (0..self.cursor - 1).rev() {
                 let c = text.chars().nth(i).unwrap();
-                if c == ' ' || c == '.' || c == '/' || c == '{' || c == '}' || c == '(' || c == ')' || c == '[' || c == ']' {
+                if c == ' '
+                    || c == '.'
+                    || c == '/'
+                    || c == '{'
+                    || c == '}'
+                    || c == '('
+                    || c == ')'
+                    || c == '['
+                    || c == ']'
+                {
                     return i + 1;
                 }
             }
@@ -98,7 +91,16 @@ impl TextEditRetained {
         } else {
             for i in self.cursor + 1..text.len() {
                 let c = text.chars().nth(i).unwrap();
-                if c == ' ' || c == '.' || c == '/' || c == '{' || c == '}' || c == '(' || c == ')' || c == '[' || c == ']' {
+                if c == ' '
+                    || c == '.'
+                    || c == '/'
+                    || c == '{'
+                    || c == '}'
+                    || c == '('
+                    || c == ')'
+                    || c == '['
+                    || c == ']'
+                {
                     return i;
                 }
             }
@@ -119,21 +121,26 @@ impl TextEditRetained {
     }
 }
 
-impl Retained for TextEditRetained { }
+impl Retained for TextEditRetained {}
 
-impl <'a> TextEdit<'a> {
-    pub fn build(self, builder: &mut Builder) -> TextEditResponse{
+impl<'a> TextEdit<'a> {
+    pub fn build(self, builder: &mut Builder) -> TextEditResponse {
         let text: TextStyle = builder.style().get();
-        
+
         let label_size = text.string_rect(&self.text, text.label_size, None).size();
         let bounds = builder.content_bounds(label_size);
-        
+
         let mut retained: TextEditRetained = builder.retained(self.id);
 
         let layout_style: LayoutStyle = builder.style().get();
-        let at = Vector2::new(bounds.min.x + layout_style.padding.min.x, Rect::from_pos_size(bounds.pos(), label_size).top_left().y);
+        let at = Vector2::new(
+            bounds.min.x + layout_style.padding.min.x,
+            Rect::from_pos_size(bounds.pos(), label_size).top_left().y,
+        );
         let mut font = text.font.write();
-        let font = font.font_at_size(text.label_size, builder.input().dpi).unwrap();
+        let font = font
+            .font_at_size(text.label_size, builder.input().dpi)
+            .unwrap();
 
         let is_over = builder.input().mouse_is_over(bounds);
         if is_over {
@@ -173,7 +180,8 @@ impl <'a> TextEdit<'a> {
                 response = TextEditResponse::InputRecieved;
                 retained.reset_cursor_blink();
                 retained.remove_selection(self.text);
-                self.text.insert_str(retained.cursor, &builder.input().text_input);
+                self.text
+                    .insert_str(retained.cursor, &builder.input().text_input);
 
                 let input_len = builder.input().text_input.len();
                 retained.cursor += input_len;
@@ -202,7 +210,7 @@ impl <'a> TextEdit<'a> {
                     } else {
                         retained.cursor -= 1;
                     }
-                    
+
                     if !shift_down {
                         retained.selection = retained.cursor;
                     }
@@ -229,7 +237,7 @@ impl <'a> TextEdit<'a> {
                     } else {
                         retained.cursor += 1;
                     }
-                    
+
                     if !shift_down {
                         retained.selection = retained.cursor;
                     }
@@ -272,13 +280,12 @@ impl <'a> TextEdit<'a> {
                             retained.selection = retained.cursor;
                         }
                     }
-
                 }
             }
 
             if builder.input().was_key_pressed(os::input::KEY_HOME) {
                 response = TextEditResponse::InputRecieved;
-                
+
                 retained.cursor = 0;
                 if !shift_down {
                     retained.selection = retained.cursor;
@@ -294,12 +301,12 @@ impl <'a> TextEdit<'a> {
                 }
             }
 
-            if builder.input().was_key_pressed(os::input::KEY_ENTER) { 
+            if builder.input().was_key_pressed(os::input::KEY_ENTER) {
                 response = TextEditResponse::Entered;
                 builder.unfocus(self.id);
             }
 
-            if builder.input().was_key_pressed(os::input::KEY_ESCAPE) { 
+            if builder.input().was_key_pressed(os::input::KEY_ESCAPE) {
                 builder.unfocus(self.id);
             }
 
@@ -312,14 +319,18 @@ impl <'a> TextEdit<'a> {
                     }
                 }
 
-                if builder.input().mouse_is_over(bounds) && builder.input().mouse_location.unwrap_or_default().x > at.x + label_size.x {
+                if builder.input().mouse_is_over(bounds)
+                    && builder.input().mouse_location.unwrap_or_default().x > at.x + label_size.x
+                {
                     retained.cursor = self.text.len();
                     retained.selection = retained.cursor;
                     response = TextEditResponse::InputRecieved;
                 }
             }
 
-            if builder.input().mouse_button_down[os::input::MOUSE_BUTTON_LEFT.as_mouse_button() as usize] {
+            if builder.input().mouse_button_down
+                [os::input::MOUSE_BUTTON_LEFT.as_mouse_button() as usize]
+            {
                 for (index, bounds) in font.bounds_iter(self.text, at).enumerate() {
                     if builder.input().mouse_is_over(bounds) {
                         retained.cursor = index;
@@ -327,12 +338,14 @@ impl <'a> TextEdit<'a> {
                     }
                 }
 
-                if builder.input().mouse_is_over(bounds) && builder.input().mouse_location.unwrap_or_default().x > at.x + label_size.x {
+                if builder.input().mouse_is_over(bounds)
+                    && builder.input().mouse_location.unwrap_or_default().x > at.x + label_size.x
+                {
                     retained.cursor = self.text.len();
                     response = TextEditResponse::InputRecieved;
                 }
             }
-            
+
             if response.input_recieved() {
                 retained.reset_cursor_blink();
             }
@@ -340,7 +353,7 @@ impl <'a> TextEdit<'a> {
             response
         } else {
             TextEditResponse::None
-        }; 
+        };
 
         let color: ColorStyle = builder.style().get();
         let (background_color, foreground_color) = {
@@ -363,23 +376,23 @@ impl <'a> TextEdit<'a> {
             (background_color, foreground_color)
         };
 
-        builder.painter.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
+        builder
+            .painter
+            .push_shape(Shape::solid_rect(bounds, background_color, 0.0));
 
         let cursor_width = 2.0;
 
         if self.text.len() > 0 {
             // Show the blinking caret if we're focused
             if is_focused {
-                builder.painter.push_shape(
-                    Shape::text(
-                        self.text.clone(), 
-                        at, 
-                        &text.font, 
-                        text.label_size, 
-                        builder.input().dpi, 
-                        foreground_color
-                    )
-                );
+                builder.painter.push_shape(Shape::text(
+                    self.text.clone(),
+                    at,
+                    &text.font,
+                    text.label_size,
+                    builder.input().dpi,
+                    foreground_color,
+                ));
 
                 // Change the color of the cursor when we have a selection
                 let cursor_color = if retained.cursor != retained.selection {
@@ -392,9 +405,11 @@ impl <'a> TextEdit<'a> {
                 if retained.cursor == self.text.len() && retained.showing_cursor {
                     let at = at + Vector2::new(label_size.x, -font.height);
                     let bounds = (at, at + Vector2::new(cursor_width, font.height));
-                    builder.painter.push_shape(Shape::solid_rect(bounds, cursor_color, 0.0));
-                } 
-                
+                    builder
+                        .painter
+                        .push_shape(Shape::solid_rect(bounds, cursor_color, 0.0));
+                }
+
                 // Iterate through the text if the cursor is in the middle or we have a valid selection
                 if retained.cursor < self.text.len() || retained.cursor != retained.selection {
                     for (index, bounds) in font.bounds_iter(self.text, at).enumerate() {
@@ -406,55 +421,67 @@ impl <'a> TextEdit<'a> {
                             };
 
                             if show_selection {
-                                builder.painter.push_shape(Shape::solid_rect(bounds, color.selected_background, 0.0));
+                                builder.painter.push_shape(Shape::solid_rect(
+                                    bounds,
+                                    color.selected_background,
+                                    0.0,
+                                ));
 
                                 let c = self.text.chars().nth(index).unwrap();
                                 builder.painter.push_shape(Shape::text(
-                                    format!("{}", c), 
-                                    bounds.top_left(), 
-                                    &text.font, 
-                                    text.label_size, 
-                                    builder.input().dpi, 
-                                    color.selected_foreground
+                                    format!("{}", c),
+                                    bounds.top_left(),
+                                    &text.font,
+                                    text.label_size,
+                                    builder.input().dpi,
+                                    color.selected_foreground,
                                 ));
                             }
                         }
 
                         if index == retained.cursor && retained.showing_cursor {
-                            let bounds = (bounds.min, bounds.min + Vector2::new(cursor_width, bounds.height()));
-                            builder.painter.push_shape(Shape::solid_rect(bounds, cursor_color, 0.0));
+                            let bounds = (
+                                bounds.min,
+                                bounds.min + Vector2::new(cursor_width, bounds.height()),
+                            );
+                            builder.painter.push_shape(Shape::solid_rect(
+                                bounds,
+                                cursor_color,
+                                0.0,
+                            ));
                         }
                     }
                 }
             } else {
-                builder.painter.push_shape(
-                    Shape::text(
-                        self.text.clone(), 
-                        at, 
-                        &text.font, 
-                        text.label_size, 
-                        builder.input().dpi, 
-                        foreground_color
-                    )
-                );
+                builder.painter.push_shape(Shape::text(
+                    self.text.clone(),
+                    at,
+                    &text.font,
+                    text.label_size,
+                    builder.input().dpi,
+                    foreground_color,
+                ));
             }
         } else {
             if is_focused {
                 if retained.showing_cursor {
-                    let bounds = (at - Vector2::new(0.0, font.height), at + Vector2::new(cursor_width, 0.0));
-                    builder.painter.push_shape(Shape::solid_rect(bounds, foreground_color, 0.0));
+                    let bounds = (
+                        at - Vector2::new(0.0, font.height),
+                        at + Vector2::new(cursor_width, 0.0),
+                    );
+                    builder
+                        .painter
+                        .push_shape(Shape::solid_rect(bounds, foreground_color, 0.0));
                 }
             } else {
-                builder.painter.push_shape(
-                    Shape::text(
-                        self.hint, 
-                        at, 
-                        &text.font, 
-                        text.label_size, 
-                        builder.input().dpi, 
-                        foreground_color
-                    )
-                );
+                builder.painter.push_shape(Shape::text(
+                    self.hint,
+                    at,
+                    &text.font,
+                    text.label_size,
+                    builder.input().dpi,
+                    foreground_color,
+                ));
             }
         }
 

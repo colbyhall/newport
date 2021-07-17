@@ -1,6 +1,6 @@
-use crate::math::{ Rect, Vector2 };
-pub use crate::os::window::WindowEvent as Event;
+use crate::math::{Rect, Vector2};
 pub use crate::os::input::*;
+pub use crate::os::window::WindowEvent as Event;
 
 use std::collections::VecDeque;
 
@@ -8,7 +8,7 @@ use std::collections::VecDeque;
 pub struct RawInput {
     pub viewport: Rect,
 
-    pub dt:  f32,
+    pub dt: f32,
     pub dpi: f32,
 
     pub events: VecDeque<Event>,
@@ -19,7 +19,7 @@ pub struct InputState {
     pub mouse_location: Option<Vector2>,
     pub last_mouse_location: Option<Vector2>,
 
-    pub dt:  f32,
+    pub dt: f32,
     pub dpi: f32,
 
     pub key_pressed: [bool; 256],
@@ -72,7 +72,7 @@ impl InputState {
     pub fn mouse_is_over(&self, rect: Rect) -> bool {
         match self.mouse_location {
             Some(loc) => rect.point_overlap(loc),
-            None => false
+            None => false,
         }
     }
 

@@ -1,9 +1,9 @@
-use crate::world::World;
-use crate::entity::Entity;
 use crate::component::Component;
+use crate::entity::Entity;
+use crate::world::World;
 
 use std::any::TypeId;
-use std::slice::{ Iter, IterMut };
+use std::slice::{Iter, IterMut};
 
 pub struct QueryFromComponents<'a> {
     world: &'a mut World,
@@ -30,9 +30,7 @@ impl<'a> QueryFromComponents<'a> {
             found.push(e);
         }
 
-        Query {
-            found: found,
-        }
+        Query { found: found }
     }
 }
 
@@ -42,7 +40,7 @@ pub struct Query {
 
 impl Query {
     pub(crate) fn from_components(world: &mut World) -> QueryFromComponents {
-        QueryFromComponents{
+        QueryFromComponents {
             world: world,
 
             variants: Vec::with_capacity(8),

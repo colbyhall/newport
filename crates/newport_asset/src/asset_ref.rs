@@ -1,32 +1,29 @@
-use crate::{
-    AssetManager,
-    log::info,
-};
+use crate::{log::info, AssetManager};
 
 use std::{
-    sync::{ Arc, RwLock, RwLockReadGuard, RwLockWriteGuard },
-    marker::PhantomData,
     any::Any,
-    path::{ PathBuf, Path },
-    ops::{ Deref, DerefMut },
     fmt,
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+    path::{Path, PathBuf},
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
 /// A thread-safe reference-counting `Asset` reference.
-/// 
+///
 /// Essentially an `AssetRef<T: Asset>` is an `Arc<RwLock<T>>` to an asset. As long
-/// as an `Asset` has an `AssetRef` the `Asset` will be loaded. It can then be accessed 
+/// as an `Asset` has an `AssetRef` the `Asset` will be loaded. It can then be accessed
 /// like a `RwLock` with its own custom read and write guards
 ///
 /// # Todo
 ///
 /// * `AssetWeak<T: Asset>` for asset weak ptrs
 pub struct AssetRef<T: 'static> {
-    pub(crate) arc:     Arc<RwLock<Option<Box<dyn Any>>>>,
+    pub(crate) arc: Arc<RwLock<Option<Box<dyn Any>>>>,
     pub(crate) phantom: PhantomData<T>,
     pub(crate) variant: usize, // Index into AssetManager::variants
-    pub(crate) manager: AssetManager, 
-    pub(crate) path:    PathBuf,
+    pub(crate) manager: AssetManager,
+    pub(crate) path: PathBuf,
 }
 
 impl<T: 'static> AssetRef<T> {
@@ -45,7 +42,7 @@ impl<T: 'static> AssetRef<T> {
     /// ```
     pub fn write(&self) -> AssetWriteGuard<T> {
         AssetWriteGuard {
-            lock:    self.arc.write().unwrap(),
+            lock: self.arc.write().unwrap(),
             phantom: PhantomData,
         }
     }
@@ -65,16 +62,16 @@ impl<T: 'static> AssetRef<T> {
     /// ```
     pub fn read(&self) -> AssetReadGuard<T> {
         AssetReadGuard {
-            lock:    self.arc.read().unwrap(),
+            lock: self.arc.read().unwrap(),
             phantom: PhantomData,
         }
     }
 
     /// Returns the number of references to `Asset`
     pub fn strong_count(&self) -> usize {
-        // We always have 1 reference to the asset and what we care about here is the 
+        // We always have 1 reference to the asset and what we care about here is the
         // number of references to the asset
-        Arc::strong_count(&self.arc) - 1 
+        Arc::strong_count(&self.arc) - 1
     }
 
     /// Returns the number of weak references to `Asset`
@@ -87,7 +84,7 @@ impl<T: 'static> AssetRef<T> {
     }
 }
 
-impl<T:'static + fmt::Debug> fmt::Debug for AssetRef<T> {
+impl<T: 'static + fmt::Debug> fmt::Debug for AssetRef<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let read_lock = self.read();
 
@@ -99,7 +96,7 @@ impl<T:'static + fmt::Debug> fmt::Debug for AssetRef<T> {
     }
 }
 
-impl<T:'static> Drop for AssetRef<T> {
+impl<T: 'static> Drop for AssetRef<T> {
     fn drop(&mut self) {
         // If we're the last unload the asset
         if self.strong_count() == 1 {
@@ -110,14 +107,14 @@ impl<T:'static> Drop for AssetRef<T> {
     }
 }
 
-impl<T:'static> Clone for AssetRef<T> {
+impl<T: 'static> Clone for AssetRef<T> {
     fn clone(&self) -> Self {
         Self {
-            arc:        self.arc.clone(),
-            phantom:    PhantomData,
-            variant:    self.variant,
-            manager:    self.manager.clone(),
-            path:       self.path.clone(),
+            arc: self.arc.clone(),
+            phantom: PhantomData,
+            variant: self.variant,
+            manager: self.manager.clone(),
+            path: self.path.clone(),
         }
     }
 }
@@ -125,8 +122,8 @@ impl<T:'static> Clone for AssetRef<T> {
 /// RAII structure used to release the exclusive write access of an `AssetRef` when dropped.
 /// This structure is created by the `write` method on `AssetRef`
 pub struct AssetWriteGuard<'a, T: 'static> {
-    lock:    RwLockWriteGuard<'a, Option<Box<dyn Any>>>,
-    phantom: PhantomData<T>
+    lock: RwLockWriteGuard<'a, Option<Box<dyn Any>>>,
+    phantom: PhantomData<T>,
 }
 
 impl<'a, T: 'static> Deref for AssetWriteGuard<'a, T> {
@@ -146,8 +143,8 @@ impl<'a, T: 'static> DerefMut for AssetWriteGuard<'a, T> {
 /// RAII structure used to release the shared read access of an `AssetRef` when dropped.
 /// This structure is created by the `read` method on `AssetRef`
 pub struct AssetReadGuard<'a, T: 'static> {
-    lock:    RwLockReadGuard<'a, Option<Box<dyn Any>>>,
-    phantom: PhantomData<T>
+    lock: RwLockReadGuard<'a, Option<Box<dyn Any>>>,
+    phantom: PhantomData<T>,
 }
 
 impl<'a, T: 'static> Deref for AssetReadGuard<'a, T> {

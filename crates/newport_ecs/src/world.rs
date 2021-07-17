@@ -1,31 +1,27 @@
 use crate::{
-    entity::{ Entity, EntityData },
-    component::{ ComponentMap, ComponentId, Component },
-    query::{ QueryFromComponents, Query },
-
+    component::{Component, ComponentId, ComponentMap},
+    entity::{Entity, EntityData},
+    query::{Query, QueryFromComponents},
     system::SystemRegister,
 };
 
 #[cfg(feature = "editable")]
 use newport_editor::Builder;
 
-use std::{
-    any::TypeId,
-    cmp::Ordering,
-};
+use std::{any::TypeId, cmp::Ordering};
 
 use slotmap::SlotMap;
 
 pub struct EntityBuilder<'a> {
     components: Vec<ComponentId>,
-    world:      &'a mut World,
+    world: &'a mut World,
 }
 
 impl<'a> EntityBuilder<'a> {
     fn new(world: &'a mut World) -> Self {
         Self {
             components: Vec::with_capacity(16),
-            world:      world,
+            world: world,
         }
     }
 
@@ -36,7 +32,7 @@ impl<'a> EntityBuilder<'a> {
     }
 
     pub fn finish(self) -> Entity {
-        self.world.entities.insert(EntityData{
+        self.world.entities.insert(EntityData {
             components: self.components,
         })
     }
@@ -45,12 +41,12 @@ impl<'a> EntityBuilder<'a> {
 pub struct World {
     pub(crate) entities: SlotMap<Entity, EntityData>,
     components: ComponentMap,
-    systems:    Vec<SystemRegister>
+    systems: Vec<SystemRegister>,
 }
 
 impl World {
     pub fn new(mut systems: Vec<SystemRegister>) -> Self {
-        systems.sort_by(|a, b|{
+        systems.sort_by(|a, b| {
             let a_depends_on_b = a.depends_on.iter().find(|name| **name == b.name).is_some();
             let b_depends_on_a = b.depends_on.iter().find(|name| **name == a.name).is_some();
 
@@ -65,9 +61,9 @@ impl World {
         });
 
         Self {
-            entities:   SlotMap::with_key(),
+            entities: SlotMap::with_key(),
             components: ComponentMap::new(),
-            systems:    systems,
+            systems: systems,
         }
     }
 

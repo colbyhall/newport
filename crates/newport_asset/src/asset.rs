@@ -1,13 +1,6 @@
-use crate::{
-    serde,
-    UUID,
-    deserialize
-};
+use crate::{deserialize, serde, UUID};
 
-use serde::{
-    Serialize, 
-    de::DeserializeOwned,
-};
+use serde::{de::DeserializeOwned, Serialize};
 
 use std::path::Path;
 

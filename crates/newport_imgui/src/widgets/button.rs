@@ -1,20 +1,8 @@
-use crate::{
-    Builder, 
-    Id, 
-    ToId, 
-    ColorStyle,
-    TextStyle,
-    Shape,
+use crate::{asset, graphics, math, Builder, ColorStyle, Id, Shape, TextStyle, ToId};
 
-    math,
-    asset,
-    graphics,
-};
-
-use math::{ Rect, Vector2 };
 use asset::AssetRef;
 use graphics::Texture;
-
+use math::{Rect, Vector2};
 
 #[derive(Copy, Clone)]
 pub enum ButtonResponse {
@@ -74,7 +62,7 @@ impl Button {
         let label = label.into();
 
         Self {
-            id:    Id::from(&label),
+            id: Id::from(&label),
             label: label,
         }
     }
@@ -93,12 +81,12 @@ impl Button {
 
         let label_rect = text.string_rect(&self.label, text.label_size, None).size();
         let bounds = builder.content_bounds(label_rect);
-        
+
         let response = button_control(self.id, bounds, builder);
-        
+
         let is_focused = builder.is_focused(self.id);
         let is_hovered = builder.is_hovered(self.id);
-        
+
         let (background_color, foreground_color) = {
             let background_color = if is_focused {
                 color.focused_background
@@ -119,36 +107,36 @@ impl Button {
             (background_color, foreground_color)
         };
 
-        builder.painter.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
-        
+        builder
+            .painter
+            .push_shape(Shape::solid_rect(bounds, background_color, 0.0));
+
         let at = Rect::from_pos_size(bounds.pos(), label_rect).top_left();
-        builder.painter.push_shape(
-            Shape::text(
-                self.label, 
-                at, 
-                &text.font, 
-                text.label_size, 
-                builder.input().dpi, 
-                foreground_color
-            )
-        );
+        builder.painter.push_shape(Shape::text(
+            self.label,
+            at,
+            &text.font,
+            text.label_size,
+            builder.input().dpi,
+            foreground_color,
+        ));
 
         response
     }
 }
 
 pub struct ImageButton {
-    id:    Id,
+    id: Id,
     image: AssetRef<Texture>,
-    size:  Option<Vector2>,
+    size: Option<Vector2>,
 }
 
 impl ImageButton {
     pub fn new(image: &AssetRef<Texture>) -> Self {
         Self {
-            id:    Id::from(image.path()),
+            id: Id::from(image.path()),
             image: image.clone(),
-            size:  None,
+            size: None,
         }
     }
 
@@ -176,12 +164,12 @@ impl ImageButton {
             }
         };
         let bounds = builder.content_bounds(size);
-        
+
         let response = button_control(self.id, bounds, builder);
-        
+
         let is_focused = builder.is_focused(self.id);
         let is_hovered = builder.is_hovered(self.id);
-        
+
         let (background_color, foreground_color) = {
             let background_color = if is_focused {
                 color.focused_background
@@ -202,15 +190,22 @@ impl ImageButton {
             (background_color, foreground_color)
         };
 
-        builder.painter.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
-        
+        builder
+            .painter
+            .push_shape(Shape::solid_rect(bounds, background_color, 0.0));
+
         let gpu_texture = {
             let texture = self.image.read();
             texture.gpu().clone()
         };
 
         let bounds = Rect::from_pos_size(bounds.pos(), size);
-        builder.painter.push_shape(Shape::textured_rect(bounds, foreground_color, 0.0, &gpu_texture));
+        builder.painter.push_shape(Shape::textured_rect(
+            bounds,
+            foreground_color,
+            0.0,
+            &gpu_texture,
+        ));
 
         response
     }

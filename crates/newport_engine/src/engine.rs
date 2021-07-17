@@ -1,75 +1,67 @@
 use crate::{
     math::Rect,
-    os::window::{ WindowBuilder, WindowStyle },
-    
-    EngineBuilder,
-    Module,
-    Register,
+    os::window::{WindowBuilder, WindowStyle},
+    EngineBuilder, Module, Register,
 };
 
 use std::{
-    sync::Mutex,
-    sync::atomic::{ AtomicBool, Ordering },
+    any::{Any, TypeId},
     collections::HashMap,
-    any::{ TypeId, Any },
-    time::Instant,
     process,
+    sync::atomic::{AtomicBool, Ordering},
+    sync::Mutex,
+    time::Instant,
 };
 
-pub use crate::os::window::{
-    Window,
-    WindowEvent as InputEvent,
-};
+pub use crate::os::window::{Window, WindowEvent as InputEvent};
 
 static mut ENGINE: Option<Engine> = None;
 
 /// Global runnable structure used for instantiating engine modules and handling app code
-/// 
-/// Created using an [`EngineBuilder`] which defines the functionality of the app using [`Module`]s 
+///
+/// Created using an [`EngineBuilder`] which defines the functionality of the app using [`Module`]s
 pub struct Engine {
-    name:      String,
-    modules:   HashMap<TypeId, Box<dyn Any>>, 
+    name: String,
+    modules: HashMap<TypeId, Box<dyn Any>>,
     registers: HashMap<TypeId, Box<dyn Any>>,
 
     is_running: AtomicBool,
-    fps:        i32,
-    
-    window:   Window,
+    fps: i32,
+
+    window: Window,
     minimize: AtomicBool,
     maximize: AtomicBool,
-    drag:     Mutex<Rect>,
-    dpi:      f32,
+    drag: Mutex<Rect>,
+    dpi: f32,
 }
 
 impl Engine {
     /// Starts the engine using what was built with a [`EngineBuilder`]
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `builder` - An [`EngineBuilder`] used to setup app execution and structure
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use newport_engine::{ EngineBuilder, Engine };
     /// use newport_asset::AssetManager;
-    /// 
+    ///
     /// let builder = EngineBuilder::new()
     ///     .module::<AssetManager>();
     /// Engine::run(builder).unwrap();
     /// ```
-    pub fn run(mut builder: EngineBuilder) {      
+    pub fn run(mut builder: EngineBuilder) {
         // Grab the project name or use a default
         let name = builder.name.unwrap_or("newport".to_string());
-    
+
         // UNSAFE: Set the global state
-        let engine = unsafe{ 
+        let engine = unsafe {
             let id = TypeId::of::<WindowStyle>();
             let styles: Vec<WindowStyle> = match builder.registers.get(&id) {
-                Some(any_vec) => {
-                    any_vec.downcast_ref::<Vec<WindowStyle>>().unwrap().clone()
-                },
-                None => Vec::default()
+                Some(any_vec) => any_vec.downcast_ref::<Vec<WindowStyle>>().unwrap().clone(),
+                None => Vec::default(),
             };
             let style = match styles.last() {
                 Some(style) => *style,
@@ -84,20 +76,20 @@ impl Engine {
 
             let dpi = window.dpi();
 
-            ENGINE = Some(Engine{
-                name:       name,
-                modules:    HashMap::with_capacity(builder.entries.len()),
-                registers:  builder.registers,
+            ENGINE = Some(Engine {
+                name: name,
+                modules: HashMap::with_capacity(builder.entries.len()),
+                registers: builder.registers,
 
                 is_running: AtomicBool::new(true),
-                fps:        0,
-                
-                window:   window,
+                fps: 0,
+
+                window: window,
                 minimize: AtomicBool::new(false),
                 maximize: AtomicBool::new(false),
 
                 drag: Mutex::new(Rect::default()),
-                dpi:  dpi,
+                dpi: dpi,
             });
 
             ENGINE.as_mut().unwrap()
@@ -132,15 +124,18 @@ impl Engine {
             }
             frame_count += 1;
 
-            {    
+            {
                 for event in engine.window.poll_events() {
-                    builder.process_input.iter().for_each(|process_input| process_input(engine, &engine.window, &event));
-    
+                    builder
+                        .process_input
+                        .iter()
+                        .for_each(|process_input| process_input(engine, &engine.window, &event));
+
                     match event {
                         InputEvent::Closed => {
                             engine.is_running.store(false, Ordering::Relaxed);
                             break 'run;
-                        },
+                        }
                         InputEvent::Resizing(_, _) => {
                             builder.tick.iter().for_each(|tick| tick(engine, 0.0));
                         }
@@ -168,33 +163,36 @@ impl Engine {
         }
 
         // Do pre shutdowns
-        builder.pre_shutdown.drain(..).for_each(|shutdown| shutdown(engine));
+        builder
+            .pre_shutdown
+            .drain(..)
+            .for_each(|shutdown| shutdown(engine));
 
         process::exit(0);
     }
 
     /// Returns the global [`Engine`] as a ref
     pub fn as_ref() -> &'static Engine {
-        unsafe{ ENGINE.as_ref().unwrap() }
+        unsafe { ENGINE.as_ref().unwrap() }
     }
 
     /// Searches a module by type and returns an [`Option<&'static T>`]
-    /// 
-    /// # Arguments 
-    /// 
+    ///
+    /// # Arguments
+    ///
     /// * `T` - A [`Module`] that should have been created using a [`EngineBuilder`]
-    /// 
-    /// # Examples 
-    /// 
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use newport_engine::Engine;
-    /// 
+    ///
     /// let engine = Engine::as_ref();
     /// let module = engine.module::<Module>().unwrap();
     /// ```
     pub fn module<'a, T: Module>(&'a self) -> Option<&'a T> {
         let id = TypeId::of::<T>();
-        
+
         let module = self.modules.get(&id)?;
         module.downcast_ref::<T>()
     }

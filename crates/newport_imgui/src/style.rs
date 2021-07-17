@@ -1,11 +1,11 @@
-use crate::graphics::FontCollection;
-use crate::math::{ Color, Rect, Vector2 };
+use crate::asset::{AssetManager, AssetRef};
 use crate::engine::Engine;
-use crate::asset::{ AssetManager, AssetRef };
+use crate::graphics::FontCollection;
+use crate::math::{Color, Rect, Vector2};
 use crate::DARK;
 
 use std::{
-    any::{ Any, TypeId },
+    any::{Any, TypeId},
     collections::HashMap,
 };
 
@@ -18,7 +18,7 @@ pub struct StyleMap {
 impl StyleMap {
     pub fn new() -> Self {
         Self {
-            inner: HashMap::with_capacity(16)
+            inner: HashMap::with_capacity(16),
         }
     }
 
@@ -28,7 +28,14 @@ impl StyleMap {
         if !self.inner.contains_key(&id) {
             self.inner.insert(id, Box::new(vec![T::default()]));
         }
-        self.inner.get(&id).unwrap().downcast_ref::<Vec<T>>().unwrap().last().unwrap().clone()
+        self.inner
+            .get(&id)
+            .unwrap()
+            .downcast_ref::<Vec<T>>()
+            .unwrap()
+            .last()
+            .unwrap()
+            .clone()
     }
 
     pub fn push<T: Style>(&mut self, t: T) {
@@ -37,7 +44,12 @@ impl StyleMap {
         if !self.inner.contains_key(&id) {
             self.inner.insert(id, Box::new(vec![T::default()]));
         }
-        self.inner.get_mut(&id).unwrap().downcast_mut::<Vec<T>>().unwrap().push(t);
+        self.inner
+            .get_mut(&id)
+            .unwrap()
+            .downcast_mut::<Vec<T>>()
+            .unwrap()
+            .push(t);
     }
 
     pub fn pop<T: Style>(&mut self) {
@@ -48,37 +60,45 @@ impl StyleMap {
             return;
         }
 
-        let vec = self.inner.get_mut(&id).unwrap().downcast_mut::<Vec<T>>().unwrap();
+        let vec = self
+            .inner
+            .get_mut(&id)
+            .unwrap()
+            .downcast_mut::<Vec<T>>()
+            .unwrap();
         vec.pop();
     }
 }
 
 #[derive(Clone, Copy)]
 pub enum Sizing {
-    MinMax{
-        min: f32,
-        max: f32,
-    },
-    Fill
+    MinMax { min: f32, max: f32 },
+    Fill,
 }
 
 #[derive(Clone, Copy)]
 pub struct LayoutStyle {
-    pub margin:  Rect,
+    pub margin: Rect,
     pub padding: Rect,
-    
-    pub width_sizing:  Sizing,
+
+    pub width_sizing: Sizing,
     pub height_sizing: Sizing,
 }
 
 impl Default for LayoutStyle {
     fn default() -> Self {
-        Self{
-            margin:  (5.0, 5.0, 5.0, 5.0).into(),
+        Self {
+            margin: (5.0, 5.0, 5.0, 5.0).into(),
             padding: (5.0, 5.0, 5.0, 5.0).into(),
 
-            width_sizing:  Sizing::MinMax{ min: 0.0, max: f32::INFINITY },
-            height_sizing: Sizing::MinMax{ min: 0.0, max: f32::INFINITY },
+            width_sizing: Sizing::MinMax {
+                min: 0.0,
+                max: f32::INFINITY,
+            },
+            height_sizing: Sizing::MinMax {
+                min: 0.0,
+                max: f32::INFINITY,
+            },
         }
     }
 }
@@ -86,23 +106,15 @@ impl Default for LayoutStyle {
 impl LayoutStyle {
     pub fn content_size(&self, mut needed: Vector2, available: Vector2) -> Vector2 {
         needed += self.padding.min + self.padding.max;
-        
+
         let width = match self.width_sizing {
-            Sizing::MinMax{ min, max } => {
-                needed.x.max(min).min(max)
-            },
-            Sizing::Fill => {
-                available.x
-            }
+            Sizing::MinMax { min, max } => needed.x.max(min).min(max),
+            Sizing::Fill => available.x,
         };
 
         let height = match self.height_sizing {
-            Sizing::MinMax{ min, max } => {
-                needed.y.max(min).min(max)
-            },
-            Sizing::Fill => {
-                available.y
-            }
+            Sizing::MinMax { min, max } => needed.y.max(min).min(max),
+            Sizing::Fill => available.y,
         };
 
         (width, height).into()
@@ -115,30 +127,32 @@ impl LayoutStyle {
 
 #[derive(Clone)]
 pub enum Alignment {
-    Left, 
-    Center, 
+    Left,
+    Center,
     Right,
 }
 
 #[derive(Clone)]
 pub struct TextStyle {
-    pub font:      AssetRef<FontCollection>,
+    pub font: AssetRef<FontCollection>,
     pub alignment: Alignment,
 
-    pub label_size:  u32,
+    pub label_size: u32,
     pub header_size: u32,
 }
 
 impl Default for TextStyle {
     fn default() -> Self {
         let asset_manager = Engine::as_ref().module::<AssetManager>().unwrap();
-        let font = asset_manager.find("{cdb5cd33-004d-4518-ab20-93475b735cfa}").unwrap();
+        let font = asset_manager
+            .find("{cdb5cd33-004d-4518-ab20-93475b735cfa}")
+            .unwrap();
 
         Self {
-            font:      font,
+            font: font,
             alignment: Alignment::Center,
 
-            label_size:  10,
+            label_size: 10,
             header_size: 14,
         }
     }
@@ -161,25 +175,25 @@ impl TextStyle {
 
 #[derive(Clone)]
 pub struct ColorStyle {
-    pub inactive_background:  Color,
-    pub inactive_foreground:  Color,
+    pub inactive_background: Color,
+    pub inactive_foreground: Color,
 
     pub unhovered_background: Color,
     pub unhovered_foreground: Color,
 
-    pub hovered_background:   Color,
-    pub hovered_foreground:   Color,
+    pub hovered_background: Color,
+    pub hovered_foreground: Color,
 
-    pub focused_background:   Color,
-    pub focused_foreground:   Color,
+    pub focused_background: Color,
+    pub focused_foreground: Color,
 
-    pub selected_background:  Color,
-    pub selected_foreground:  Color,
+    pub selected_background: Color,
+    pub selected_foreground: Color,
 }
 
 impl Default for ColorStyle {
     fn default() -> Self {
-        Self{
+        Self {
             inactive_background: DARK.bg1,
             inactive_foreground: DARK.fg,
 

@@ -1,56 +1,42 @@
 use crate::{
-    engine,
-    graphics,
-    math,
-    asset,
-    gpu,
-    os,
-
-    Context,
-    RawInput,
-    DrawState,
-    View,
-    DARK,
-    Layout,
-    Panel,
-    Style,
-    Sizing,
-    ColorStyle,
-    LayoutStyle,
-    Shape,
-    TextStyle,
+    asset, engine, gpu, graphics, math, os, ColorStyle, Context, DrawState, Layout, LayoutStyle,
+    Panel, RawInput, Shape, Sizing, Style, TextStyle, View, DARK,
 };
-use engine::{ Module, Engine, EngineBuilder, InputEvent };
-use graphics::{ Graphics, Texture, Pipeline };
-use math::{  Rect };
-use asset::{ AssetRef, AssetManager };
+use asset::{AssetManager, AssetRef};
+use engine::{Engine, EngineBuilder, InputEvent, Module};
+use graphics::{Graphics, Pipeline, Texture};
+use math::Rect;
 use os::window::WindowStyle;
 
-use std::sync::{ Mutex, MutexGuard };
+use std::sync::{Mutex, MutexGuard};
 
 struct EditorAssets {
-    _close_button:    AssetRef<Texture>,
+    _close_button: AssetRef<Texture>,
     present_pipeline: AssetRef<Pipeline>,
 }
 
 impl EditorAssets {
     fn new() -> Self {
         let asset_manager = Engine::as_ref().module::<AssetManager>().unwrap();
-        Self{
-            _close_button: asset_manager.find("{ce163885-9cd7-4103-b865-3e41df21ba13}").unwrap(),
-            present_pipeline: asset_manager.find("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}").unwrap()
+        Self {
+            _close_button: asset_manager
+                .find("{ce163885-9cd7-4103-b865-3e41df21ba13}")
+                .unwrap(),
+            present_pipeline: asset_manager
+                .find("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}")
+                .unwrap(),
         }
     }
 }
 
 #[allow(dead_code)]
 struct EditorInner {
-    gui:   Context,
+    gui: Context,
     input: Option<RawInput>,
 
     draw_state: DrawState,
-    assets:     EditorAssets,
-    view:       View,
+    assets: EditorAssets,
+    view: View,
 }
 
 pub struct Editor(Mutex<EditorInner>);
@@ -85,8 +71,14 @@ impl Editor {
 
         let canvas = {
             let mut input = input.take().unwrap_or_default();
-            
-            input.viewport = (0.0, 0.0, backbuffer.width() as f32, backbuffer.height() as f32).into();
+
+            input.viewport = (
+                0.0,
+                0.0,
+                backbuffer.width() as f32,
+                backbuffer.height() as f32,
+            )
+                .into();
             input.dt = dt;
             input.dpi = dpi;
 
@@ -104,8 +96,9 @@ impl Editor {
             gui.style().push(color);
 
             let text_style: TextStyle = gui.style().get();
-            
-            let height = text_style.label_height() + layout_style.padding.min.y + layout_style.padding.max.y;
+
+            let height =
+                text_style.label_height() + layout_style.padding.min.y + layout_style.padding.max.y;
             Panel::top("menu_bar", height).build(gui, |builder| {
                 let space = builder.available_rect();
 
@@ -137,14 +130,19 @@ impl Editor {
                     }
 
                     let drag = builder.layout.available_rect();
-                    let drag = Rect::from_pos_size(drag.pos() * builder.input().dpi, drag.size() * builder.input().dpi);
+                    let drag = Rect::from_pos_size(
+                        drag.pos() * builder.input().dpi,
+                        drag.size() * builder.input().dpi,
+                    );
                     engine.set_custom_drag(drag);
 
                     builder.layout(Layout::left_to_right(space), |builder| {
                         let mut layout_style: LayoutStyle = builder.style().get();
                         layout_style.width_sizing = Sizing::Fill;
                         layout_style.height_sizing = Sizing::Fill;
-                        builder.scoped_style(layout_style, |builder| builder.label(format!("{} - Newport Editor", Engine::as_ref().name())));
+                        builder.scoped_style(layout_style, |builder| {
+                            builder.label(format!("{} - Newport Editor", Engine::as_ref().name()))
+                        });
                     });
                 });
             });
@@ -155,7 +153,9 @@ impl Editor {
             let bounds = gui.take_canvas();
             let mut builder = gui.builder("view", Layout::up_to_down(bounds));
             let mut color: ColorStyle = builder.style().get();
-            builder.painter.push_shape(Shape::solid_rect(bounds, color.inactive_background, 0.0));
+            builder
+                .painter
+                .push_shape(Shape::solid_rect(bounds, color.inactive_background, 0.0));
 
             color.inactive_background = DARK.bg;
             builder.scoped_style(color, |builder| {
@@ -164,7 +164,7 @@ impl Editor {
                     view.build(builder);
                 });
             });
-            
+
             builder.finish();
 
             gui.end_frame()
@@ -180,16 +180,18 @@ impl Editor {
             let imgui = draw_state.record(canvas, &mut gfx, gui).unwrap();
             gfx.begin_render_pass(&graphics.backbuffer_render_pass(), &[&backbuffer]);
             gfx.bind_pipeline(&present_pipeline.gpu);
-            
+
             struct Import {
                 _texture: u32,
             }
-            let import_buffer = device.create_buffer(
-                gpu::BufferUsage::CONSTANTS, 
-                gpu::MemoryType::HostVisible, 
-                std::mem::size_of::<Import>()
-            ).unwrap();
-            import_buffer.copy_to(&[Import{
+            let import_buffer = device
+                .create_buffer(
+                    gpu::BufferUsage::CONSTANTS,
+                    gpu::MemoryType::HostVisible,
+                    std::mem::size_of::<Import>(),
+                )
+                .unwrap();
+            import_buffer.copy_to(&[Import {
                 _texture: imgui.bindless().unwrap(),
             }]);
 
@@ -197,10 +199,14 @@ impl Editor {
             gfx.draw(3, 0);
             gfx.end_render_pass();
 
-            gfx.resource_barrier_texture(&backbuffer, gpu::Layout::ColorAttachment, gpu::Layout::Present);
+            gfx.resource_barrier_texture(
+                &backbuffer,
+                gpu::Layout::ColorAttachment,
+                gpu::Layout::Present,
+            );
         }
         gfx.end();
-        
+
         let receipt = device.submit_graphics(vec![gfx], &[]);
         device.display(&[receipt]);
         device.wait_for_idle();
@@ -209,12 +215,12 @@ impl Editor {
 
 impl Module for Editor {
     fn new() -> Self {
-        Self(Mutex::new(EditorInner{
-            gui:    Context::new(),
-            input:  None,
+        Self(Mutex::new(EditorInner {
+            gui: Context::new(),
+            input: None,
 
             draw_state: DrawState::new(),
-            assets:     EditorAssets::new(),
+            assets: EditorAssets::new(),
 
             view: View::new("main", 1.0),
         }))
@@ -224,25 +230,32 @@ impl Module for Editor {
         builder
             .module::<Graphics>()
             .module::<AssetManager>()
-            .register(WindowStyle::CustomTitleBar{
+            .register(WindowStyle::CustomTitleBar {
                 border: 5.0,
-                drag:   Default::default(),
+                drag: Default::default(),
             })
-            .process_input(|engine: &Engine, _window: &os::window::Window, event: &InputEvent| {
-                let mut editor = engine.module::<Editor>().unwrap().lock(); // SPEED: Maybe this will be too slow????
+            .process_input(
+                |engine: &Engine, _window: &os::window::Window, event: &InputEvent| {
+                    let mut editor = engine.module::<Editor>().unwrap().lock(); // SPEED: Maybe this will be too slow????
 
-                if editor.input.is_none() {
-                    editor.input = Some(RawInput::default());
-                }
-                editor.input.as_mut().unwrap().events.push_back(event.clone());
-            })
+                    if editor.input.is_none() {
+                        editor.input = Some(RawInput::default());
+                    }
+                    editor
+                        .input
+                        .as_mut()
+                        .unwrap()
+                        .events
+                        .push_back(event.clone());
+                },
+            )
             .tick(|engine: &Engine, dt: f32| {
                 let editor = engine.module::<Editor>().unwrap();
 
                 if engine.window().is_minimized() {
                     return;
                 }
-            
+
                 editor.do_frame(dt);
             })
     }

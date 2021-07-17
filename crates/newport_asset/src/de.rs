@@ -1,16 +1,8 @@
-use crate::{
-    serde,
-    UUID,
-};
+use crate::{serde, UUID};
 
 use std::str;
 
-use serde::{
-    ron,
-
-    Serialize,
-    Deserialize,
-};
+use serde::{ron, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "self::serde", rename = "Asset")]

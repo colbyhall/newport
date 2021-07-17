@@ -2,7 +2,7 @@ use crate::Vector2;
 
 use std::convert::From;
 
-use serde::{ Serialize, Deserialize };
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Rect {
@@ -11,28 +11,25 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub const INFINITY: Rect = Rect{ 
-        min: Vector2{ 
-            x: -f32::INFINITY, 
-            y: -f32::INFINITY 
-        }, 
-        max: Vector2{ 
-            x: f32::INFINITY, 
-            y: f32::INFINITY 
-        } 
+    pub const INFINITY: Rect = Rect {
+        min: Vector2 {
+            x: -f32::INFINITY,
+            y: -f32::INFINITY,
+        },
+        max: Vector2 {
+            x: f32::INFINITY,
+            y: f32::INFINITY,
+        },
     };
 
     pub fn from_min_max(min: Vector2, max: Vector2) -> Self {
-        Self{
-            min: min,
-            max: max,
-        }
+        Self { min: min, max: max }
     }
 
     pub fn from_pos_size(pos: Vector2, size: Vector2) -> Self {
         let min = pos - size / 2.0;
         let max = pos + size / 2.0;
-        Self{ min, max }
+        Self { min, max }
     }
 
     pub fn width(self) -> f32 {
@@ -70,12 +67,15 @@ impl Rect {
     }
 
     pub fn point_overlap(self, point: Vector2) -> bool {
-        self.min.x <= point.x && self.max.x >= point.x && self.min.y <= point.y && self.max.y >= point.y
+        self.min.x <= point.x
+            && self.max.x >= point.x
+            && self.min.y <= point.y
+            && self.max.y >= point.y
     }
 
     pub fn split_top(&mut self, size: f32) -> Rect {
         let max = self.max;
-        
+
         self.max.y -= size;
 
         let min = Vector2::new(self.min.x, self.max.y);
@@ -85,7 +85,7 @@ impl Rect {
 
     pub fn split_bottom(&mut self, size: f32) -> Rect {
         let min = self.min;
-        
+
         self.min.y += size;
 
         let max = Vector2::new(self.max.x, self.min.y);
@@ -95,7 +95,7 @@ impl Rect {
 
     pub fn split_left(&mut self, size: f32) -> Rect {
         let min = self.min;
-        
+
         self.min.x += size;
 
         let max = Vector2::new(self.min.x, self.max.y);
@@ -105,7 +105,7 @@ impl Rect {
 
     pub fn split_right(&mut self, size: f32) -> Rect {
         let max = self.max;
-        
+
         self.max.x -= size;
 
         let min = Vector2::new(self.max.x, self.min.y);
@@ -117,10 +117,7 @@ impl Rect {
 impl From<(Vector2, Vector2)> for Rect {
     fn from(min_max: (Vector2, Vector2)) -> Self {
         let (min, max) = min_max;
-        Self{
-            min: min,
-            max: max,
-        }
+        Self { min: min, max: max }
     }
 }
 
@@ -129,7 +126,7 @@ impl From<(f32, f32, f32, f32)> for Rect {
         let (x0, y0, x1, y1) = rect;
         Self {
             min: Vector2::new(x0, y0),
-            max: Vector2::new(x1, y1)
+            max: Vector2::new(x1, y1),
         }
     }
 }

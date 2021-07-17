@@ -1,22 +1,8 @@
-use std::ops::{ 
-    Add, 
-    AddAssign, 
-    
-    Sub, 
-    SubAssign, 
-    
-    Mul, 
-    MulAssign, 
-    
-    Div, 
-    DivAssign, 
-    
-    Neg
-};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use std::convert::From;
 
-use serde::{ Serialize, Deserialize };
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Vector2 {
@@ -25,20 +11,23 @@ pub struct Vector2 {
 }
 
 impl Vector2 {
-    pub const ZERO: Self  = Self::new(0.0, 0.0);
-    pub const ONE:  Self  = Self::new(1.0, 1.0);
+    pub const ZERO: Self = Self::new(0.0, 0.0);
+    pub const ONE: Self = Self::new(1.0, 1.0);
 
     pub const RIGHT: Self = Self::new(1.0, 0.0);
-    pub const UP:    Self = Self::new(0.0, 1.0);
+    pub const UP: Self = Self::new(0.0, 1.0);
 
     pub const INFINITY: Self = Self::new(f32::INFINITY, f32::INFINITY);
 
     pub const fn new(x: f32, y: f32) -> Self {
-        Self{ x: x, y: y }
+        Self { x: x, y: y }
     }
 
     pub fn from_rad(theta: f32) -> Self {
-        Self{ x: theta.sin(), y: theta.cos() }
+        Self {
+            x: theta.sin(),
+            y: theta.cos(),
+        }
     }
 
     pub const fn dot(self, rhs: Self) -> f32 {
@@ -58,7 +47,8 @@ impl Vector2 {
     }
 
     pub fn len(self) -> f32 {
-        self.len_sq().sqrt() }
+        self.len_sq().sqrt()
+    }
 
     pub fn abs(self) -> Self {
         Vector2::new(self.x.abs(), self.y.abs())
@@ -73,33 +63,17 @@ impl Vector2 {
     }
 
     pub const fn min(self, other: Self) -> Self {
-        let x = if self.x < other.x {
-            self.x
-        } else {
-            other.x
-        };
+        let x = if self.x < other.x { self.x } else { other.x };
 
-        let y = if self.y < other.y {
-            self.y
-        } else {
-            other.y
-        };
+        let y = if self.y < other.y { self.y } else { other.y };
 
         Self::new(x, y)
     }
 
     pub const fn max(self, other: Self) -> Self {
-        let x = if self.x > other.x {
-            self.x
-        } else {
-            other.x
-        };
+        let x = if self.x > other.x { self.x } else { other.x };
 
-        let y = if self.y > other.y {
-            self.y
-        } else {
-            other.y
-        };
+        let y = if self.y > other.y { self.y } else { other.y };
 
         Self::new(x, y)
     }
@@ -254,14 +228,14 @@ impl Div<f32> for Vector2 {
 impl DivAssign for Vector2 {
     fn div_assign(&mut self, rhs: Self) {
         self.x /= rhs.x;
-        self.y /=  rhs.y;
+        self.y /= rhs.y;
     }
 }
 
 impl DivAssign<f32> for Vector2 {
     fn div_assign(&mut self, rhs: f32) {
         self.x /= rhs;
-        self.y /=  rhs;
+        self.y /= rhs;
     }
 }
 
@@ -278,12 +252,12 @@ impl Neg for Vector2 {
 impl From<(f32, f32)> for Vector2 {
     fn from(xy: (f32, f32)) -> Self {
         let (x, y) = xy;
-        Self{ x, y }
+        Self { x, y }
     }
 }
 
 impl From<[f32; 2]> for Vector2 {
     fn from(xy: [f32; 2]) -> Self {
-        Self{ x: xy[0], y: xy[1] }
+        Self { x: xy[0], y: xy[1] }
     }
 }

@@ -1,24 +1,10 @@
-use std::ops::{ 
-    Add, 
-    AddAssign, 
-    
-    Sub, 
-    SubAssign, 
-    
-    Mul, 
-    MulAssign, 
-    
-    Div, 
-    DivAssign, 
-    
-    Neg
-};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use std::convert::From;
 
 use crate::Vector2;
 
-use serde::{ Serialize, Deserialize };
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Vector3 {
@@ -28,15 +14,15 @@ pub struct Vector3 {
 }
 
 impl Vector3 {
-    pub const ZERO: Self  = Self::new(0.0, 0.0, 0.0);
-    pub const ONE: Self   = Self::new(1.0, 1.0, 1.0);
+    pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
+    pub const ONE: Self = Self::new(1.0, 1.0, 1.0);
 
     pub const FORWARD: Self = Self::new(1.0, 0.0, 0.0);
-    pub const RIGHT:   Self = Self::new(0.0, 1.0, 0.0);
-    pub const UP:      Self = Self::new(0.0, 0.0, 1.0);
+    pub const RIGHT: Self = Self::new(0.0, 1.0, 0.0);
+    pub const UP: Self = Self::new(0.0, 0.0, 1.0);
 
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
-        Self{ x: x, y: y, z: z }
+        Self { x: x, y: y, z: z }
     }
 
     pub const fn dot(self, other: Self) -> f32 {
@@ -56,7 +42,8 @@ impl Vector3 {
     }
 
     pub fn len(self) -> f32 {
-        self.len_sq().sqrt() }
+        self.len_sq().sqrt()
+    }
 
     pub fn abs(self) -> Self {
         Self::new(self.x.abs(), self.y.abs(), self.z.abs())
@@ -71,45 +58,21 @@ impl Vector3 {
     }
 
     pub const fn min(self, other: Self) -> Self {
-        let x = if self.x < other.x {
-            self.x
-        } else {
-            other.x
-        };
+        let x = if self.x < other.x { self.x } else { other.x };
 
-        let y = if self.y < other.y {
-            self.y
-        } else {
-            other.y
-        };
+        let y = if self.y < other.y { self.y } else { other.y };
 
-        let z = if self.z < other.z {
-            self.z
-        } else {
-            other.z
-        };
+        let z = if self.z < other.z { self.z } else { other.z };
 
         Self::new(x, y, z)
     }
 
     pub const fn max(self, other: Self) -> Self {
-        let x = if self.x > other.x {
-            self.x
-        } else {
-            other.x
-        };
+        let x = if self.x > other.x { self.x } else { other.x };
 
-        let y = if self.y > other.y {
-            self.y
-        } else {
-            other.y
-        };
+        let y = if self.y > other.y { self.y } else { other.y };
 
-        let z = if self.z > other.z {
-            self.z
-        } else {
-            other.z
-        };
+        let z = if self.z > other.z { self.z } else { other.z };
 
         Self::new(x, y, z)
     }
@@ -146,7 +109,6 @@ impl Vector3 {
         }
     }
 }
-
 
 impl Add for Vector3 {
     type Output = Self;

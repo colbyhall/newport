@@ -1,23 +1,9 @@
-use std::ops::{ 
-    Add, 
-    AddAssign, 
-    
-    Sub, 
-    SubAssign, 
-    
-    Mul, 
-    MulAssign, 
-    
-    Div, 
-    DivAssign, 
-    
-    Neg,
-};
 use std::convert::From;
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use crate::Vector3;
 
-use serde::{ Serialize, Deserialize };
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Vector4 {
@@ -28,10 +14,15 @@ pub struct Vector4 {
 }
 
 impl Vector4 {
-    pub const ZERO: Self  = Self::new(0.0, 0.0, 0.0, 0.0);
+    pub const ZERO: Self = Self::new(0.0, 0.0, 0.0, 0.0);
 
     pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
-        Self{ x: x, y: y, z: z, w: w }
+        Self {
+            x: x,
+            y: y,
+            z: z,
+            w: w,
+        }
     }
 
     pub const fn dot(self, rhs: Self) -> f32 {
@@ -42,7 +33,6 @@ impl Vector4 {
         (self.x, self.y, self.z, self.w)
     }
 }
-
 
 impl Add for Vector4 {
     type Output = Self;

@@ -19,16 +19,14 @@ struct Transform {
 fn query() {
     let mut world = World::new(Default::default());
 
-    world.create()
-        .with(Test{
+    world
+        .create()
+        .with(Test {
             name: "Hello World".into(),
         })
         .finish();
 
-    let query = world.query()
-        .with::<Transform>()
-        .with::<Test>()
-        .build();
+    let query = world.query().with::<Transform>().with::<Test>().build();
 
     for e in query.iter() {
         let _test = world.find::<Test>(*e).unwrap();
@@ -42,8 +40,9 @@ fn query() {
 fn hello_world() {
     let mut world = World::new(Default::default());
 
-    let test = world.create()
-        .with(Test{
+    let test = world
+        .create()
+        .with(Test {
             name: "Hello World".into(),
         })
         .finish();

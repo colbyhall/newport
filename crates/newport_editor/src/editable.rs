@@ -1,6 +1,5 @@
 use crate::*;
 
-
 pub trait Editable {
     fn edit(&mut self, name: &str, ui: &mut Builder);
 }

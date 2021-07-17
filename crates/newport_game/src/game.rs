@@ -1,32 +1,25 @@
-use crate:: {
-    GameState,
-    RenderState,
-
-    engine::{ Module, EngineBuilder, Engine },
-    graphics,
-    asset,
-};
 #[cfg(feature = "editor")]
 use crate::editor::GameEditor;
-
-use graphics::{
-    Graphics,
+use crate::{
+    asset,
+    engine::{Engine, EngineBuilder, Module},
+    graphics, GameState, RenderState,
 };
 
-use asset::{
-    AssetManager,
-};
+use graphics::Graphics;
 
-use std::sync::{ Mutex, RwLock };
+use asset::AssetManager;
+
+use std::sync::{Mutex, RwLock};
 
 pub struct Game {
-    pub game_state:   Mutex<GameState>,
+    pub game_state: Mutex<GameState>,
     pub render_state: RwLock<Option<RenderState>>,
 }
 
 impl Module for Game {
     fn new() -> Self {
-        Self{ 
+        Self {
             game_state: Mutex::new(GameState::new()),
             render_state: RwLock::new(None),
         }
@@ -46,7 +39,7 @@ impl Module for Game {
                 {
                     let mut render_state = game.render_state.write().unwrap();
                     *render_state = Some(new_render_state);
-                }               
+                }
             })
             .module::<Graphics>()
             .module::<AssetManager>();
@@ -56,5 +49,4 @@ impl Module for Game {
 
         result
     }
-
 }

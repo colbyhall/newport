@@ -1,11 +1,11 @@
-use std::ops::{ Mul, MulAssign, };
+use std::ops::{Mul, MulAssign};
 
-use crate::Vector4;
-use crate::Vector3;
-use crate::PI;
 use crate::Quaternion;
+use crate::Vector3;
+use crate::Vector4;
+use crate::PI;
 
-use serde::{ Serialize, Deserialize };
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Default, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Matrix4 {
@@ -16,25 +16,40 @@ pub struct Matrix4 {
 }
 
 impl Matrix4 {
-    pub const ZERO: Self = Self{
+    pub const ZERO: Self = Self {
         x_axis: Vector4::new(0.0, 0.0, 0.0, 0.0),
         y_axis: Vector4::new(0.0, 0.0, 0.0, 0.0),
         z_axis: Vector4::new(0.0, 0.0, 0.0, 0.0),
         w_axis: Vector4::new(0.0, 0.0, 0.0, 0.0),
     };
 
-    pub const IDENTITY: Self = Self{
+    pub const IDENTITY: Self = Self {
         x_axis: Vector4::new(1.0, 0.0, 0.0, 0.0),
         y_axis: Vector4::new(0.0, 1.0, 0.0, 0.0),
         z_axis: Vector4::new(0.0, 0.0, 1.0, 0.0),
         w_axis: Vector4::new(0.0, 0.0, 0.0, 1.0),
     };
 
-    pub const fn from_cols(x_axis: Vector4, y_axis: Vector4, z_axis: Vector4, w_axis: Vector4) -> Self {
-        Self{ x_axis: x_axis, y_axis: y_axis, z_axis: z_axis, w_axis: w_axis }
+    pub const fn from_cols(
+        x_axis: Vector4,
+        y_axis: Vector4,
+        z_axis: Vector4,
+        w_axis: Vector4,
+    ) -> Self {
+        Self {
+            x_axis: x_axis,
+            y_axis: y_axis,
+            z_axis: z_axis,
+            w_axis: w_axis,
+        }
     }
 
-    pub const fn from_rows(x_axis: Vector4, y_axis: Vector4, z_axis: Vector4, w_axis: Vector4) -> Self {
+    pub const fn from_rows(
+        x_axis: Vector4,
+        y_axis: Vector4,
+        z_axis: Vector4,
+        w_axis: Vector4,
+    ) -> Self {
         let x = Vector4::new(x_axis.x, y_axis.x, z_axis.x, w_axis.x);
         let y = Vector4::new(x_axis.y, y_axis.y, z_axis.y, w_axis.y);
         let z = Vector4::new(x_axis.z, y_axis.z, z_axis.z, w_axis.z);
@@ -77,7 +92,7 @@ impl Matrix4 {
 
     pub fn perspective(fov: f32, aspect_ratio: f32, far: f32, near: f32) -> Self {
         let cotangent = 1.0 / f32::tan(fov * (PI / 360.0));
-        
+
         let mut result = Matrix4::IDENTITY;
         result.x_axis.x = cotangent / aspect_ratio;
         result.y_axis.y = cotangent;
@@ -85,7 +100,7 @@ impl Matrix4 {
 
         result.z_axis.z = far / (near - far);
         result.w_axis.z = -(far * near) / (far - near);
-        
+
         result.w_axis.w = 0.0;
 
         result
@@ -101,7 +116,7 @@ impl Matrix4 {
         let normalized = quat.into().norm();
 
         let mut result = Matrix4::IDENTITY;
-        
+
         let xx = normalized.x * normalized.x;
         let xy = normalized.x * normalized.y;
         let xz = normalized.x * normalized.z;
@@ -157,7 +172,7 @@ impl Mul for Matrix4 {
         row_w.y = self.row(3).dot(rhs.y_axis);
         row_w.z = self.row(3).dot(rhs.z_axis);
         row_w.w = self.row(3).dot(rhs.w_axis);
-        
+
         Self::from_rows(row_x, row_y, row_z, row_w)
     }
 }

@@ -1,12 +1,12 @@
-use newport_os::time::SystemDate;
 use newport_engine::*;
+use newport_os::time::SystemDate;
 
-use std::sync::Mutex;
-use std::fs::{ File, create_dir, };
-use std::path::{ Path, PathBuf };
+use std::fs::{create_dir, File};
 use std::io::Write;
-use std::ptr::null_mut;
 use std::panic;
+use std::path::{Path, PathBuf};
+use std::ptr::null_mut;
+use std::sync::Mutex;
 
 /// Global structure that contains the current log file
 pub struct Logger {
@@ -22,16 +22,10 @@ impl Module for Logger {
         let date = SystemDate::now();
         let mut path = PathBuf::new();
         path.push(LOGS_PATH);
-        path.push(
-            format!(
-                "game_{:02}_{:02}_{}_{:02}_{:02}.log", 
-                date.month,
-                date.day_of_month,
-                date.year, 
-                date.hour,
-                date.minute
-            )
-        );
+        path.push(format!(
+            "game_{:02}_{:02}_{}_{:02}_{:02}.log",
+            date.month, date.day_of_month, date.year, date.hour, date.minute
+        ));
 
         let file = File::create(&path).unwrap();
 
@@ -52,8 +46,10 @@ impl Module for Logger {
             error!("thread '{}' panicked at '{}', {}", name, msg, location);
             // error!("{:?}", std::backtrace::capture());
         }));
-        
-        return Logger { file: Mutex::new(file) };
+
+        return Logger {
+            file: Mutex::new(file),
+        };
     }
 
     fn depends_on(builder: EngineBuilder) -> EngineBuilder {
@@ -74,12 +70,12 @@ pub enum Verbosity {
     Error,
 }
 
-static LOGS_PATH:   &str = "logs/";
-static mut LOGGER:  *mut Logger = null_mut();
+static LOGS_PATH: &str = "logs/";
+static mut LOGGER: *mut Logger = null_mut();
 
 impl Logger {
     pub fn set_global(&mut self) {
-        unsafe{ LOGGER = self };
+        unsafe { LOGGER = self };
     }
 
     pub fn log(verb: Verbosity, message: &str) {
@@ -89,9 +85,9 @@ impl Logger {
                 Verbosity::Debug => "Debug",
                 Verbosity::Info => "Info",
                 Verbosity::Warning => "Warning",
-                Verbosity::Error   => " Error ",
+                Verbosity::Error => " Error ",
             };
-            
+
             // Build output
             let date = SystemDate::now();
             format!(
@@ -101,7 +97,7 @@ impl Logger {
                 date.day_of_month,
                 date.year,
                 date.hour,
-                date.minute, 
+                date.minute,
                 date.second,
                 date.milli,
                 message,
