@@ -8,15 +8,10 @@ use crate::{
     Context,
 };
 
-use gpu::{
-    GraphicsContext,
-    Texture,
-};
+use gpu::{Gpu, GraphicsContext, Pipeline, Texture};
 
 use graphics::{
     FontCollection,
-    Graphics,
-    Pipeline,
 };
 
 use math::{
@@ -521,16 +516,16 @@ pub struct DrawState {
 impl DrawState {
     pub fn new() -> Self {
         let engine = Engine::as_ref();
-        let graphics: &Graphics = engine.module().unwrap();
-        let device = graphics.device();
+        let gpu: &Gpu = engine.module().unwrap();
+        let device = gpu.device();
         let asset_manager: &AssetManager = engine.module().unwrap();
 
         Self { pipeline: asset_manager.find("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}").unwrap(), render_pass: device.create_render_pass(vec![gpu::Format::RGBA_U8], None).unwrap() }
     }
 
     pub fn record(&self, canvas: Canvas, gfx: &mut GraphicsContext, ctx: &Context) -> Result<gpu::Texture, ()> {
-        let graphics = Engine::as_ref().module::<Graphics>().unwrap();
-        let device = graphics.device();
+        let gpu = Engine::as_ref().module::<Gpu>().unwrap();
+        let device = gpu.device();
 
         if canvas.vertices.len() == 0 {
             return Err(());
@@ -581,14 +576,14 @@ impl DrawState {
             gpu::Filter::Linear
         ).unwrap();
 
-        gfx.begin_render_pass(&self.render_pass, &[&backbuffer]);
-            gfx.clear(Color::BLACK);
-            gfx.bind_pipeline(&pipeline.gpu);
-            gfx.bind_vertex_buffer(&vertex_buffer);
-            gfx.bind_index_buffer(&index_buffer);
-            gfx.bind_constant_buffer(&import_buffer);
-            gfx.draw_indexed(canvas.indices.len(), 0);
-        gfx.end_render_pass();
+        gfx.render_pass(&self.render_pass, &[&backbuffer], |ctx| {
+            ctx
+                .clear(Color::BLACK)
+                .bind_pipeline(&pipeline)
+                .bind_vertex_buffer(&vertex_buffer)
+                .bind_index_buffer(&index_buffer)
+                .draw_indexed(canvas.indices.len(), 0);
+        });
         gfx.resource_barrier_texture(&backbuffer, gpu::Layout::ColorAttachment, gpu::Layout::ShaderReadOnly);
         
         Ok(backbuffer)

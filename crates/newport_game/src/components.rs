@@ -1,5 +1,9 @@
 use crate::{
     math,
+    asset,
+    gpu,
+    graphics,
+
     ecs::Entity,
 };
 
@@ -7,6 +11,16 @@ use math::{
     Vector3,
     Quaternion,
     Matrix4
+};
+
+use asset::{
+    AssetRef,
+};
+
+use gpu::Pipeline;
+
+use graphics::{
+    Mesh,
 };
 
 #[derive(Copy, Clone)]
@@ -34,4 +48,9 @@ pub struct Link {
 
 pub struct Named {
     pub name: String,
+}
+
+pub struct MeshRender {
+    pub mesh:       Option<AssetRef<Mesh>>,
+    pub pipeline:   Option<AssetRef<Pipeline>>,
 }

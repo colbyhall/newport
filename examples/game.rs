@@ -1,7 +1,10 @@
-use newport::*;
-use engine::{ Module, Engine, EngineBuilder };
+use newport::{
+    engine,
+    game,
+};
+
+use engine::{ Module, Builder };
 use game::Game;
-use math::Color;
 
 struct GameExample;
 
@@ -11,7 +14,7 @@ impl Module for GameExample {
         Self
     }
 
-    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+    fn depends_on(builder: Builder) -> Builder {
         builder
             .module::<Game>()
     }
@@ -19,8 +22,8 @@ impl Module for GameExample {
 
 // Start the app runner
 fn main() {
-    let builder = EngineBuilder::new()
+    Builder::new()
         .module::<GameExample>()
-        .name("Game Example");
-    Engine::run(builder);
+        .name("Game Example")
+        .run();
 }

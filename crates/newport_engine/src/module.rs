@@ -1,5 +1,5 @@
 use crate::{
-    EngineBuilder
+    Builder
 };
 
 /// Modules are an easy way to have global immutable state
@@ -11,8 +11,8 @@ pub trait Module: Sized + 'static {
     /// 
     /// # Arguments
     /// 
-    /// * `builder` - A [`EngineBuilder`] used to add dep modules or functions
-    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+    /// * `builder` - A [`Builder`] used to add dep modules or functions
+    fn depends_on(builder: Builder) -> Builder {
         builder
     }
 }

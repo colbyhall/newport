@@ -2,7 +2,7 @@ use crate:: {
     GameState,
     RenderState,
 
-    engine::{ Module, EngineBuilder, Engine },
+    engine::{ Module, Builder, Engine },
     graphics,
     asset,
 };
@@ -32,7 +32,7 @@ impl Module for Game {
         }
     }
 
-    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+    fn depends_on(builder: Builder) -> Builder {
         let result = builder
             .tick(|engine: &Engine, dt: f32| {
                 let game = engine.module::<Game>().unwrap();

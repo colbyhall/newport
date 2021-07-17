@@ -2,7 +2,7 @@ use crate::{
     math::Rect,
     os::window::{ WindowBuilder, WindowStyle },
     
-    EngineBuilder,
+    Builder,
     Module,
     Register,
 };
@@ -25,7 +25,7 @@ static mut ENGINE: Option<Engine> = None;
 
 /// Global runnable structure used for instantiating engine modules and handling app code
 /// 
-/// Created using an [`EngineBuilder`] which defines the functionality of the app using [`Module`]s 
+/// Created using an [`Builder`] which defines the functionality of the app using [`Module`]s 
 pub struct Engine {
     name:      String,
     modules:   HashMap<TypeId, Box<dyn Any>>, 
@@ -42,23 +42,23 @@ pub struct Engine {
 }
 
 impl Engine {
-    /// Starts the engine using what was built with a [`EngineBuilder`]
+    /// Starts the engine using what was built with a [`Builder`]
     /// 
     /// # Arguments
     /// 
-    /// * `builder` - An [`EngineBuilder`] used to setup app execution and structure
+    /// * `builder` - An [`Builder`] used to setup app execution and structure
     /// 
     /// # Examples
     /// 
     /// ```
-    /// use newport_engine::{ EngineBuilder, Engine };
+    /// use newport_engine::{ Builder, Engine };
     /// use newport_asset::AssetManager;
     /// 
-    /// let builder = EngineBuilder::new()
+    /// let builder = Builder::new()
     ///     .module::<AssetManager>();
     /// Engine::run(builder).unwrap();
     /// ```
-    pub fn run(mut builder: EngineBuilder) {      
+    pub(crate) fn run(mut builder: Builder) {      
         // Grab the project name or use a default
         let name = builder.name.unwrap_or("newport".to_string());
     
@@ -182,7 +182,7 @@ impl Engine {
     /// 
     /// # Arguments 
     /// 
-    /// * `T` - A [`Module`] that should have been created using a [`EngineBuilder`]
+    /// * `T` - A [`Module`] that should have been created using a [`Builder`]
     /// 
     /// # Examples 
     /// 

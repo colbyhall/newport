@@ -12,7 +12,11 @@ use std::{
 
 use path::PathBuf;
 
-use crate::ShaderVariant;
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ShaderVariant {
+    Vertex,
+    Pixel,
+}
 
 // This is copied from utils.rs in hassle-rs
 struct DefaultIncludeHandler {}

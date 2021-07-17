@@ -316,17 +316,16 @@ impl GraphicsContext {
     pub fn bind_vertex_buffer(&mut self, buffer: Arc<Buffer>) {
         let offset = 0;
         unsafe{ self.owner.logical.cmd_bind_vertex_buffers(self.command_buffer, 0, from_ref(&buffer.handle), from_ref(&offset)) };
-        self.buffers.push(buffer);
+        self.bind_buffer(buffer);
     }
 
     pub fn bind_index_buffer(&mut self, buffer: Arc<Buffer>) {
         let offset = 0;
         unsafe{ self.owner.logical.cmd_bind_index_buffer(self.command_buffer, buffer.handle, offset, vk::IndexType::UINT32) };
-        self.buffers.push(buffer);
+        self.bind_buffer(buffer);
     }
 
-    pub fn bind_constant_buffer(&mut self, buffer: Arc<Buffer>) {
-        self.push_constants(buffer.bindless.unwrap());
+    pub fn bind_buffer(&mut self, buffer: Arc<Buffer>) {
         self.buffers.push(buffer);
     }
 
@@ -369,14 +368,14 @@ impl GraphicsContext {
         unsafe{ self.owner.logical.cmd_clear_attachments(self.command_buffer, &clear[..], &[clear_rect]) };
     }
 
-    pub fn push_constants<T>(&mut self, t: T) {
+    pub fn push_constants(&mut self, t: &[u32]) {
         let pipeline = &self.pipelines.last().unwrap();
 
         let desc = match &pipeline.desc {
             PipelineDescription::Graphics(desc) => desc,
             _ => unreachable!()
         };
-        assert_eq!(size_of::<T>(), desc.push_constant_size);
+        assert_eq!(size_of::<u32>() * t.len(), desc.push_constant_size);
 
         unsafe{ 
             self.owner.logical.cmd_push_constants(
@@ -384,7 +383,7 @@ impl GraphicsContext {
                 pipeline.layout, 
                 vk::ShaderStageFlags::ALL_GRAPHICS, 
                 0, 
-                from_raw_parts(&t as *const T as *const u8, size_of::<T>()),
+                from_raw_parts(t.as_ptr() as *const u8, size_of::<u32>() * t.len()),
             );
         }
     }

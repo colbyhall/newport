@@ -20,12 +20,12 @@ use crate::{
     Shape,
     TextStyle,
 };
-use engine::{ Module, Engine, EngineBuilder, InputEvent };
-use graphics::{ Graphics, Texture, Pipeline };
+use engine::{ Module, Engine, Builder, InputEvent };
+use graphics::{ Texture, Graphics };
 use math::{  Rect };
 use asset::{ AssetRef, AssetManager };
 use os::window::WindowStyle;
-
+use gpu::{ Gpu, Pipeline };
 use std::sync::{ Mutex, MutexGuard };
 
 struct EditorAssets {
@@ -68,8 +68,8 @@ impl Editor {
     fn do_frame(&self, dt: f32) {
         let engine = Engine::as_ref();
 
-        let graphics = engine.module::<Graphics>().unwrap();
-        let device = graphics.device();
+        let gpu = engine.module::<Gpu>().unwrap();
+        let device = gpu.device();
 
         let dpi = engine.dpi();
         let backbuffer = device.acquire_backbuffer();
@@ -177,25 +177,25 @@ impl Editor {
         let mut gfx = device.create_graphics_context().unwrap();
         gfx.begin();
         {
-            let imgui = draw_state.record(canvas, &mut gfx, gui).unwrap();
-            gfx.begin_render_pass(&graphics.backbuffer_render_pass(), &[&backbuffer]);
-            gfx.bind_pipeline(&present_pipeline.gpu);
-            
-            struct Import {
-                _texture: u32,
-            }
-            let import_buffer = device.create_buffer(
-                gpu::BufferUsage::CONSTANTS, 
-                gpu::MemoryType::HostVisible, 
-                std::mem::size_of::<Import>()
-            ).unwrap();
-            import_buffer.copy_to(&[Import{
-                _texture: imgui.bindless().unwrap(),
-            }]);
-
-            gfx.bind_constant_buffer(&import_buffer);
-            gfx.draw(3, 0);
-            gfx.end_render_pass();
+            // let imgui = draw_state.record(canvas, &mut gfx, gui).unwrap();
+            // gfx.begin_render_pass(&gpu.backbuffer_render_pass(), &[&backbuffer]);
+            // gfx.bind_pipeline(&present_pipeline);
+            // 
+            // struct Import {
+                // _texture: u32,
+            // }
+            // let import_buffer = device.create_buffer(
+                // gpu::BufferUsage::CONSTANTS, 
+                // gpu::MemoryType::HostVisible, 
+                // std::mem::size_of::<Import>()
+            // ).unwrap();
+            // import_buffer.copy_to(&[Import{
+                // _texture: imgui.bindless().unwrap(),
+            // }]);
+// 
+            // gfx.bind_constant_buffer(&import_buffer);
+            // gfx.draw(3, 0);
+            // gfx.end_render_pass();
 
             gfx.resource_barrier_texture(&backbuffer, gpu::Layout::ColorAttachment, gpu::Layout::Present);
         }
@@ -220,7 +220,7 @@ impl Module for Editor {
         }))
     }
 
-    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+    fn depends_on(builder: Builder) -> Builder {
         builder
             .module::<Graphics>()
             .module::<AssetManager>()

@@ -4,8 +4,6 @@ use crate::{
     serde,
 
     engine::Engine,
-
-    Graphics,
 };
 
 use asset::{
@@ -21,7 +19,8 @@ use gpu::{
     Format, 
     Wrap, 
     Filter, 
-    Layout 
+    Layout,
+    Gpu,
 };
 
 
@@ -76,8 +75,8 @@ impl Asset for Texture {
             },
             LoadResult::ImageU8(image) => {
                 let engine = Engine::as_ref();
-                let graphics = engine.module::<Graphics>().unwrap();
-                let device = graphics.device();
+                let gpu = engine.module::<Gpu>().unwrap();
+                let device = gpu.device();
 
                 assert_eq!(image.depth, 4, "Currently vulkan only supports 4 byte formats");
 

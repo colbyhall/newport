@@ -132,13 +132,13 @@ pub struct AssetWriteGuard<'a, T: 'static> {
 impl<'a, T: 'static> Deref for AssetWriteGuard<'a, T> {
     type Target = T;
 
-    fn deref(&self) -> &T {
+    fn deref<'b>(&'b self) -> &'b T {
         self.lock.as_ref().unwrap().downcast_ref::<T>().unwrap()
     }
 }
 
 impl<'a, T: 'static> DerefMut for AssetWriteGuard<'a, T> {
-    fn deref_mut(&mut self) -> &mut T {
+    fn deref_mut<'b>(&'b mut self) -> &'b mut T {
         self.lock.as_mut().unwrap().downcast_mut::<T>().unwrap()
     }
 }
@@ -153,7 +153,7 @@ pub struct AssetReadGuard<'a, T: 'static> {
 impl<'a, T: 'static> Deref for AssetReadGuard<'a, T> {
     type Target = T;
 
-    fn deref(&self) -> &T {
+    fn deref(&self) -> &Self::Target {
         self.lock.as_ref().unwrap().downcast_ref::<T>().unwrap()
     }
 }

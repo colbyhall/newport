@@ -1,5 +1,5 @@
 use crate::{
-    engine::{ Module, EngineBuilder, Engine },
+    engine::{ Module, Builder, Engine },
     ecs::Entity,
 };
 
@@ -52,7 +52,7 @@ impl Module for GameEditor {
         }))
     }
 
-    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+    fn depends_on(builder: Builder) -> Builder {
         builder
             .module::<Editor>()
     }

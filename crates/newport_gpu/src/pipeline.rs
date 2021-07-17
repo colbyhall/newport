@@ -1,12 +1,25 @@
-use std::mem::size_of;
 use crate::*;
 
+use std::{
+    collections::HashMap,
+    path::Path,
+    sync::Arc,
+};
 
-use newport_serde::{
+use serde::{
     self as serde,
     Serialize,
     Deserialize
 };
+
+use engine::Engine;
+use asset::{
+    deserialize,
+    Asset,
+    UUID,
+};
+
+use bitflags::bitflags;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
@@ -100,133 +113,9 @@ pub trait Vertex {
     fn attributes() -> Vec<VertexAttribute>;
 }
 
-pub struct PipelineBuilder {
-    desc: PipelineDescription,
-}
-
-impl PipelineBuilder {
-    pub fn new_graphics(render_pass: &RenderPass) -> Self {
-        let desc = GraphicsPipelineDescription{
-            render_pass: render_pass.clone(),
-            shaders:     Vec::new(),
-
-            vertex_attributes: Vec::new(),
-
-            draw_mode:  DrawMode::Fill,
-            line_width: 1.0,
-
-            cull_mode:  CullMode::empty(),
-            color_mask: ColorMask::all(),
-
-            blend_enabled: false,
-
-            src_color_blend_factor: BlendFactor::One,
-            dst_color_blend_factor: BlendFactor::One,
-            color_blend_op:         BlendOp::Add,
-
-            src_alpha_blend_factor: BlendFactor::One,
-            dst_alpha_blend_factor: BlendFactor::One,
-            alpha_blend_op:         BlendOp::Add,
-
-            depth_test:    false, 
-            depth_write:   false,
-            depth_compare: CompareOp::Less,
-
-            push_constant_size: 0,
-        };
-        Self { desc: PipelineDescription::Graphics(desc) }
-    }
-
-    pub fn shaders(mut self, shaders: Vec<Shader>) -> Self {
-        match &mut self.desc {
-            PipelineDescription::Graphics(gfx) => gfx.shaders = shaders,
-            _ => unreachable!()
-        }
-        self
-    }
-
-    pub fn vertex<T: Vertex>(mut self) -> Self {
-        match &mut self.desc {
-            PipelineDescription::Graphics(gfx) => gfx.vertex_attributes = T::attributes(),
-            _ => unreachable!()
-        }
-        self
-    }
-
-    pub fn draw_mode(mut self, mode: DrawMode) -> Self {
-        match &mut self.desc {
-            PipelineDescription::Graphics(gfx) => gfx.draw_mode = mode,
-            _ => unreachable!()
-        }
-        self
-    }
-
-    pub fn line_width(mut self, width: f32) -> Self {
-        match &mut self.desc {
-            PipelineDescription::Graphics(gfx) => gfx.line_width = width,
-            _ => unreachable!()
-        }
-        self
-    }
-    
-    pub fn push_constant_size<T: Sized>(mut self) -> Self {
-        assert!(size_of::<T>() <= 128);
-        match &mut self.desc {
-            PipelineDescription::Graphics(gfx) => gfx.push_constant_size = size_of::<T>(),
-            _ => unreachable!()
-        }
-        self
-    }
-
-    pub fn enable_blend(mut self) -> Self {
-        match &mut self.desc {
-            PipelineDescription::Graphics(gfx) => gfx.blend_enabled = true,
-            _ => unreachable!()
-        }
-        self
-    }
-
-    pub fn src_alpha_blend(mut self, factor: BlendFactor) -> Self {
-        match &mut self.desc {
-            PipelineDescription::Graphics(gfx) => gfx.src_alpha_blend_factor = factor,
-            _ => unreachable!()
-        }
-        self
-    }
-
-    pub fn dst_alpha_blend(mut self, factor: BlendFactor) -> Self {
-        match &mut self.desc {
-            PipelineDescription::Graphics(gfx) => gfx.dst_alpha_blend_factor = factor,
-            _ => unreachable!()
-        }
-        self
-    }
-
-    pub fn src_color_blend(mut self, factor: BlendFactor) -> Self {
-        match &mut self.desc {
-            PipelineDescription::Graphics(gfx) => gfx.src_color_blend_factor = factor,
-            _ => unreachable!()
-        }
-        self
-    }
-
-    pub fn dst_color_blend(mut self, factor: BlendFactor) -> Self {
-        match &mut self.desc {
-            PipelineDescription::Graphics(gfx) => gfx.dst_color_blend_factor = factor,
-            _ => unreachable!()
-        }
-        self
-    }
-
-    pub fn build(self) -> PipelineDescription {
-        self.desc
-    }
-}
-
-#[derive(Debug)]
 pub struct GraphicsPipelineDescription {
     pub render_pass:  RenderPass,
-    pub shaders:      Vec<Shader>,
+    pub shaders:      Vec<Arc<api::Shader>>,
     
     pub vertex_attributes: Vec<VertexAttribute>,
 
@@ -254,11 +143,612 @@ pub struct GraphicsPipelineDescription {
     pub push_constant_size : usize, 
 }
 
-#[derive(Debug)]
 pub enum PipelineDescription {
     Graphics(GraphicsPipelineDescription),
     Compute,
 }
 
-#[derive(Clone)]
-pub struct Pipeline(pub(crate) Arc<api::Pipeline>);
+pub struct Pipeline {
+    pub(crate) file: PipelineFile,
+
+    pub(crate) api:  Arc<api::Pipeline>,
+}
+
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "Pipeline", crate = "self::serde")]
+pub struct PipelineFile {
+    #[serde(default)]
+    pub render_states: RenderStates,
+    
+    #[serde(default)]
+    pub color_blend: Option<BlendStates>,
+
+    #[serde(default)]
+    pub alpha_blend: Option<BlendStates>,
+
+    #[serde(default)]
+    pub depth_stencil_states: DepthStencilStates,
+    
+    #[serde(default)]
+    pub imports: HashMap<String, Imports>,
+
+    #[serde(default)]
+    pub common: String,
+
+    pub vertex_shader: Option<VertexShader>,
+    pub pixel_shader:  Option<PixelShader>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(crate = "self::serde")]
+pub struct DepthStencilStates {
+    #[serde(default)]
+    pub depth_test:    bool,
+    #[serde(default)]
+    pub depth_write:   bool,
+    #[serde(default = "DepthStencilStates::default_depth_compare")]
+    pub depth_compare: CompareOp,
+}
+
+impl DepthStencilStates {
+    fn default_depth_compare() -> CompareOp {
+        CompareOp::Less
+    }
+}
+
+impl Default for DepthStencilStates {
+    fn default() -> Self {
+        Self{
+            depth_test: false,
+            depth_write: false,
+            depth_compare: Self::default_depth_compare(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "CullMode", crate = "self::serde")]
+pub enum CullModeSerde {
+    Front,
+    Back
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "ColorMask", crate = "self::serde")]
+pub enum ColorMaskSerde {
+    Red,
+    Green,
+    Blue,
+    Alpha
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
+pub struct RenderStates {
+    #[serde(default = "RenderStates::default_draw_mode")]
+    pub draw_mode:  DrawMode,
+
+    #[serde(default = "RenderStates::default_line_width")]
+    pub line_width: f32,
+
+    #[serde(default)]
+    pub cull_mode:  Vec<CullModeSerde>,
+
+    #[serde(default = "RenderStates::default_color_mask")]
+    pub color_mask: Vec<ColorMaskSerde>,
+}
+
+impl RenderStates {
+    fn default_draw_mode() -> DrawMode {
+        DrawMode::Fill
+    }
+
+    fn default_line_width() -> f32 {
+        1.0
+    }
+
+    fn default_color_mask() -> Vec<ColorMaskSerde> {
+        vec![ColorMaskSerde::Red, ColorMaskSerde::Green, ColorMaskSerde::Blue, ColorMaskSerde::Alpha]
+    }
+}
+
+impl Default for RenderStates {
+    fn default() -> Self {
+        Self {
+            draw_mode: Self::default_draw_mode(),
+            line_width: Self::default_line_width(),
+            cull_mode: Default::default(),
+            color_mask: Self::default_color_mask(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone)]
+#[serde(crate = "self::serde")]
+pub struct BlendStates {
+    #[serde(default = "BlendStates::default_blend_factor")]
+    pub src_blend_factor: BlendFactor,
+
+    #[serde(default = "BlendStates::default_blend_factor")]
+    pub dst_blend_factor: BlendFactor,
+
+    #[serde(default = "BlendStates::default_blend_op")]
+    pub blend_op:         BlendOp,
+}
+
+impl BlendStates {
+    fn default_blend_factor() -> BlendFactor {
+        BlendFactor::One
+    }
+
+    fn default_blend_op() -> BlendOp {
+        BlendOp::Add
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
+pub struct Item(String, ItemVariant);
+
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
+#[serde(crate = "self::serde")]
+pub enum ItemVariant {
+    Uint32,
+    Float32,
+    Vector2,
+    Vector3,
+    Vector4,
+
+    Matrix4,
+
+    Texture,
+}
+
+impl ItemVariant {
+    fn into_type_string(self) -> &'static str {
+        match self {
+            Self::Uint32  => "uint",
+            Self::Float32 => "float",
+            
+            Self::Vector2 => "float2",
+            Self::Vector3 => "float3",
+            Self::Vector4 => "float4",
+
+            Self::Matrix4 => "float4x4",
+
+            Self::Texture => "uint",
+        }
+    }
+
+    fn size(self) -> usize {
+        match self {
+            Self::Uint32  => 4,
+            Self::Float32 => 4,
+            
+            Self::Vector2 => 8,
+            Self::Vector3 => 12,
+            Self::Vector4 => 16,
+
+            Self::Matrix4 => 16 * 4,
+
+            Self::Texture => 4,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
+pub enum Imports {
+    Entire(Vec<Item>),
+    Indexed(Vec<Item>)
+}
+
+impl Imports {
+    pub fn vec(&self) -> &Vec<Item> {
+        match self {
+            Imports::Entire(vec) => vec,
+            Imports::Indexed(vec) => vec,
+        }
+    }
+
+    pub fn size_of(&self) -> usize {
+        let mut result = 0;
+        let vec = self.vec();
+        vec.iter().for_each(|it| result += it.1.size());
+        result
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
+pub enum SystemSemantics {
+    VertexId,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
+pub struct VertexShader {
+    #[serde(default)]
+    pub attributes: Vec<Item>,
+    #[serde(default)]
+    pub system_semantics: Vec<SystemSemantics>,
+
+    #[serde(default)]
+    pub exports:    Vec<Item>,
+    pub code:       String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
+pub struct PixelShader {
+    pub exports: Vec<(String, Format)>,
+    pub code:    String,
+}
+
+static SHADER_HEADER: &str = "
+    #define NULL 0
+    ByteAddressBuffer _all_buffers[]  : register(t0);
+    Texture2D         _all_textures[] : register(t1);
+    SamplerState      _all_samplers[] : register(s2);
+
+    ByteAddressBuffer index_buffers(uint index) {
+        return _all_buffers[index];
+    }
+
+    Texture2D index_textures(uint index) {
+        return _all_textures[index];
+    }
+
+    SamplerState index_samplers(uint index) {
+        return _all_samplers[index];
+    }
+";
+
+impl Asset for Pipeline {
+    fn load(bytes: &[u8], _path: &Path) -> (UUID, Self) {
+        let engine = Engine::as_ref();
+        let gpu: &Gpu = engine.module().unwrap();
+        let device = gpu.device();
+
+        let (id, pipeline_file): (UUID, PipelineFile) = deserialize(bytes).unwrap();
+
+        let PipelineFile {
+            render_states,
+            
+            color_blend,
+            alpha_blend,
+
+            depth_stencil_states,
+
+            vertex_shader,
+            pixel_shader,
+            
+            imports,
+            common
+
+        } = &pipeline_file;
+
+        let pixel_shader = pixel_shader.as_ref().expect("Pixel Shader is required until compute shader is implemented");
+        let vertex_shader = vertex_shader.as_ref().expect("Vertex Shader is required until compute shader is implemented");
+
+        let header = {
+            let mut result = SHADER_HEADER.to_string();
+            result.reserve(bytes.len());
+
+            // TODO: Check if this should go after
+            result.push_str("\n");
+            result.push_str(&common);
+            result.push_str("\n\n");
+
+            // If we have imports then we need to fill out the constants and build boilerplate
+            if imports.len() > 0 {
+                // First thing to do is build the push constants structure
+                result.push_str("struct Constants {\n");
+                for (name, _) in imports.iter() {
+                    result.push_str("    uint ");
+                    result.push_str(name);
+                    result.push_str(";\n");
+                }
+                result.push_str("};\n");
+                result.push_str("[[vk::push_constant]] Constants constants;\n\n");
+
+                // Secondly we must now define structs for imports and accessor boilerplate
+                for (name, imports) in imports.iter() {
+                    // Declare import structure
+                    result.push_str("struct ");
+
+                    let name_capitalized = {
+                        let mut c = name.chars();
+                        match c.next() {
+                            None => String::new(),
+                            Some(f) => f.to_uppercase().chain(c).collect()
+                        }
+                    };
+
+                    result.push_str(&name_capitalized);
+                    result.push_str(" {\n");
+
+                    // Run through every item in imports and decalre it
+                    for Item(name, variant) in imports.vec().iter() {
+                        result.push_str("    ");
+                        result.push_str(variant.into_type_string());
+                        result.push_str(" ");
+                        result.push_str(name);
+                        result.push_str(";\n");
+                    }
+
+                    result.push_str("};\n\n");
+
+                    // Generate custom get method declaration
+                    result.push_str(&name_capitalized);
+                    result.push_str(" get_");
+                    result.push_str(name);
+                    result.push_str("() {\n");
+
+                    // Grab the data from the buffer
+                    match imports {
+                        Imports::Entire(_) => {
+                            result.push_str("ByteAddressBuffer buffer = index_buffers(constants.");
+                            result.push_str(name);
+                            result.push_str(");\n");
+
+                            result.push_str(&name_capitalized);
+                            result.push_str(" result = buffer.Load<");
+                            result.push_str(&name_capitalized);
+                            result.push_str(">(0);\n\n");
+                        },
+                        Imports::Indexed(_) => {
+                            result.push_str("ByteAddressBuffer buffer = index_buffers((constants.");
+                            result.push_str(name);
+                            result.push_str(" >> 16) & 0xffff);\n");
+
+                            result.push_str(&name_capitalized);
+                            result.push_str(" result = buffer.Load<");
+                            result.push_str(&name_capitalized);
+                            result.push_str(">(constants.");
+                            result.push_str(name);
+                            result.push_str(" & 0xffff);\n\n");
+                        }
+                    }
+
+                    // Transpose any matrices
+                    for Item(name, variant) in imports.vec().iter() {
+                        if *variant == ItemVariant::Matrix4 {
+                            result.push_str("result.");
+                            result.push_str(name);
+                            result.push_str(" = transpose(result.");
+                            result.push_str(name);
+                            result.push_str(");\n");
+                        }
+                    }
+
+                    result.push_str("return result;\n}\n\n");
+                }
+            }
+
+            result
+        };
+
+        let colors = pixel_shader.exports.iter().map(|(_, format)|*format).collect();
+
+        let render_pass = device.create_render_pass(colors, None).unwrap();
+
+        let vertex_attributes = vertex_shader.attributes.iter().map(|Item(_, variant)| {
+            match variant {
+                ItemVariant::Float32 => VertexAttribute::Float32,
+                ItemVariant::Vector2 => VertexAttribute::Vector2,
+                ItemVariant::Vector3 => VertexAttribute::Vector3,
+                ItemVariant::Vector4 => VertexAttribute::Vector4,
+
+                ItemVariant::Texture => VertexAttribute::Uint32,
+
+                _ => unreachable!(),
+            }
+        }).collect();
+
+        let blend_enabled = color_blend.is_some() || alpha_blend.is_some();
+
+        let color_blend = color_blend.unwrap_or(BlendStates{
+            src_blend_factor: BlendFactor::One,
+            dst_blend_factor: BlendFactor::One,
+            blend_op: BlendOp::Add
+        });
+
+        let alpha_blend = alpha_blend.unwrap_or(BlendStates{
+            src_blend_factor: BlendFactor::One,
+            dst_blend_factor: BlendFactor::One,
+            blend_op: BlendOp::Add
+        });
+
+        // Generate the pixel shader first to have access to exports
+        let pixel_shader = {
+            let PixelShader {
+                exports,
+                code,
+            } = pixel_shader;
+
+            let imports = &vertex_shader.exports;
+            
+            // Start off with header
+            let mut source = header.clone();
+
+            source.push_str("struct PixelOutput {\n");
+            for (index, (name, format)) in exports.iter().enumerate() {
+                let mut name_uppercase = name.clone();
+                name_uppercase.make_ascii_uppercase();
+
+                let variant = match format {
+                        Format::BGR_U8_SRGB|Format::RGBA_F16|Format::RGB_U8|Format::RGB_U8_SRGB|Format::RGBA_U8|Format::RGBA_U8_SRGB => "float4",
+                        _ => unreachable!(),
+                    };
+
+                let line= format!(
+                    "    {} {} : SV_TARGET{};\n", 
+                    variant, 
+                    name, 
+                    index
+                );
+                source.push_str(&line);
+            }
+            source.push_str("};\n\n");
+
+            // Generate PixelInput based off of imports
+            if imports.len() > 0 {
+                source.push_str("struct PixelInput {\n");
+                for Item(name, variant) in imports.iter() {
+                    let mut name_uppercase = name.clone();
+                    name_uppercase.make_ascii_uppercase();
+    
+                    let line= format!(
+                        "    {} {} : {};\n", 
+                        variant.into_type_string(), 
+                        name, 
+                        name_uppercase
+                    );
+                    source.push_str(&line);
+                }
+                source.push_str("};\n\n");
+
+                source.push_str("PixelOutput main( PixelInput input ) {\n");   
+            } else {
+                source.push_str("PixelOutput main( ) {\n");
+            }
+
+            source.push_str("PixelOutput output;"); 
+
+            source.push_str(&code);
+            source.push_str("\n}\n");
+
+            // Compile to binary and then pass to device
+            let binary = shader::compile("pixel.hlsl", &source, "main", ShaderVariant::Pixel).unwrap();
+            let shader = api::Shader::new(device.0.clone(), &binary, ShaderVariant::Pixel, "main".to_string()).unwrap();
+
+            shader
+        };
+
+        // Generate the vertex shader
+        let vertex_shader = {
+            let VertexShader {
+                attributes,
+                system_semantics,
+                exports,
+                code,
+            } = vertex_shader;
+            
+            // Start off with header
+            let mut source = header.clone();
+
+            // Generate VertexOutput always. There will always be position
+            source.push_str("struct VertexOutput {\n");
+            for Item(name, variant) in exports.iter() {
+                let mut name_uppercase = name.clone();
+                name_uppercase.make_ascii_uppercase();
+
+                let line= format!(
+                    "    {} {} : {};\n", 
+                    variant.into_type_string(), 
+                    name, 
+                    name_uppercase
+                );
+                source.push_str(&line);
+            }
+            source.push_str("float4 position : SV_POSITION;\n");
+            source.push_str("};\n\n");
+
+            // Generate the VertexInput based off of attributes
+            if attributes.len() > 0 || system_semantics.len() > 0{
+                source.push_str("struct VertexInput {\n");
+                for Item(name, variant) in attributes.iter() {
+                    let mut name_uppercase = name.clone();
+                    name_uppercase.make_ascii_uppercase();
+    
+                    let line= format!(
+                        "    {} {} : {};\n", 
+                        variant.into_type_string(), 
+                        name, 
+                        name_uppercase
+                    );
+                    source.push_str(&line);
+                }
+
+                for semantic in system_semantics.iter() {
+                    let line = match semantic {
+                        SystemSemantics::VertexId => "uint vertex_id : SV_VertexID;\n"
+                    };
+                    source.push_str(line);
+                }
+                source.push_str("};\n\n");
+
+                source.push_str("VertexOutput main( VertexInput input ) {\n");
+                source.push_str("VertexOutput output;");
+            } else {
+                source.push_str("VertexOutput main( ) {\n");
+            }
+            source.push_str(&code);
+            source.push_str("\n}\n");
+
+            // Compile to binary and then pass to device
+            let binary = shader::compile("vertex.hlsl", &source, "main", ShaderVariant::Vertex).unwrap();
+            let shader = api::Shader::new(device.0.clone(), &binary, ShaderVariant::Vertex, "main".to_string()).unwrap();
+
+            shader
+        };
+        let shaders = vec![pixel_shader, vertex_shader];
+
+        let (draw_mode, line_width, cull_mode, color_mask) = {
+            let mut cull_mode = CullMode::empty();
+            for it in render_states.cull_mode.iter() {
+                match it {
+                    CullModeSerde::Front => cull_mode.insert(CullMode::FRONT),
+                    CullModeSerde::Back => cull_mode.insert(CullMode::BACK),
+                }
+            }
+
+            let mut color_mask = ColorMask::empty();
+            for it in render_states.color_mask.iter() {
+                match it {
+                    ColorMaskSerde::Red => color_mask.insert(ColorMask::RED),
+                    ColorMaskSerde::Green => color_mask.insert(ColorMask::GREEN),
+                    ColorMaskSerde::Blue => color_mask.insert(ColorMask::BLUE),
+                    ColorMaskSerde::Alpha => color_mask.insert(ColorMask::ALPHA),
+                }
+            }
+
+            (render_states.draw_mode, render_states.line_width, cull_mode, color_mask)
+        };
+
+        let pipeline_desc  = GraphicsPipelineDescription{
+            render_pass,
+            shaders,
+
+            vertex_attributes,
+
+            draw_mode,
+            line_width,
+
+            cull_mode,
+            color_mask,
+
+            blend_enabled,
+
+            src_color_blend_factor: color_blend.src_blend_factor,
+            dst_color_blend_factor: color_blend.dst_blend_factor,
+            color_blend_op: color_blend.blend_op,
+
+            src_alpha_blend_factor: alpha_blend.src_blend_factor,
+            dst_alpha_blend_factor: alpha_blend.dst_blend_factor,
+            alpha_blend_op: alpha_blend.blend_op,
+
+            depth_test: depth_stencil_states.depth_test,
+            depth_write: depth_stencil_states.depth_write,
+            depth_compare: depth_stencil_states.depth_compare,
+
+            push_constant_size: pipeline_file.imports.len() * 4,
+        };
+
+        let api = api::Pipeline::new(device.0.clone(), PipelineDescription::Graphics(pipeline_desc)).unwrap();
+
+        (id, Pipeline{ file: pipeline_file, api })
+    }
+}

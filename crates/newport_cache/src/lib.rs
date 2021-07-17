@@ -4,7 +4,7 @@ use newport_serde as serde;
 use engine::{
     Module,
     Engine,
-    EngineBuilder
+    Builder
 };
 
 use serde::{
@@ -99,7 +99,7 @@ impl Module for CacheManager {
         }
     }
 
-    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+    fn depends_on(builder: Builder) -> Builder {
         builder
             .tick(|engine: &Engine, _: f32| {
                 let cache_manager = engine.module::<CacheManager>().unwrap();

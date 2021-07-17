@@ -56,7 +56,7 @@ impl Module for Logger {
         return Logger { file: Mutex::new(file) };
     }
 
-    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+    fn depends_on(builder: Builder) -> Builder {
         builder.post_init(|engine: &Engine| {
             let logger = engine.module::<Logger>().unwrap();
 

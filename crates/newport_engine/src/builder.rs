@@ -10,7 +10,7 @@ use std::{
     collections::HashMap,
 };
 
-pub(crate) struct EngineBuilderEntry {
+pub(crate) struct BuilderEntry {
     pub id:     TypeId,
     pub spawn:  fn() -> Box<dyn Any>,
 }
@@ -23,8 +23,8 @@ pub trait PreShutdown   = FnOnce(&Engine) + 'static;
 pub trait Register = Sized + Clone + 'static;
 
 /// Structure used to define engine structure and execution
-pub struct EngineBuilder {
-    pub(crate) entries:    Vec<EngineBuilderEntry>,
+pub struct Builder {
+    pub(crate) entries:    Vec<BuilderEntry>,
     pub(crate) name:       Option<String>,
 
     pub(crate) post_inits:     Vec<Box<dyn PostInit>>,
@@ -35,8 +35,8 @@ pub struct EngineBuilder {
     pub(crate) registers: HashMap<TypeId, Box<dyn Any>>,
 }
 
-impl EngineBuilder {
-    /// Creates a new [`EngineBuilder`]
+impl Builder {
+    /// Creates a new [`Builder`]
     pub fn new() -> Self {
         Self { 
             entries:    Vec::with_capacity(32),
@@ -60,9 +60,9 @@ impl EngineBuilder {
     /// # Examples
     /// 
     /// ```
-    /// use newport_engine::EngineBuilder;
+    /// use newport_engine::Builder;
     /// 
-    /// let builder = EngineBuilder::new()
+    /// let builder = Builder::new()
     ///     .module::<Test>();
     /// ```
     pub fn module<T: Module>(mut self) -> Self {
@@ -82,7 +82,7 @@ impl EngineBuilder {
         self = T::depends_on(self);
 
         // Push entry with generic spawn func and type id
-        self.entries.push(EngineBuilderEntry{
+        self.entries.push(BuilderEntry{
             id:     id,
             spawn:  spawn::<T>,
         });
@@ -99,9 +99,9 @@ impl EngineBuilder {
     /// # Examples
     /// 
     /// ```
-    /// use newport_engine::EngineBuilder;
+    /// use newport_engine::Builder;
     /// 
-    /// let builder = EngineBuilder::new()
+    /// let builder = Builder::new()
     ///     .module::<Test>();
     /// ```
     pub fn post_init<F: PostInit>(mut self, f: F) -> Self {
@@ -147,6 +147,11 @@ impl EngineBuilder {
         registers.push(register);
 
         self
+    }
+
+    // TODO: Document
+    pub fn run(self) {
+        Engine::run(self);
     }
 }
 

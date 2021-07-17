@@ -13,7 +13,7 @@ use crate::{
 use engine::{ 
     Module, 
     Engine, 
-    EngineBuilder
+    Builder
 };
 
 use log::{ 
@@ -152,7 +152,7 @@ impl Module for AssetManager {
         }))
     }
 
-    fn depends_on(builder: EngineBuilder) -> EngineBuilder {
+    fn depends_on(builder: Builder) -> Builder {
         let base = Path::new(file!()).parent().unwrap().parent().unwrap().parent().unwrap().parent().unwrap();
         let mut engine_assets = PathBuf::from(base);
         engine_assets.push("assets/");

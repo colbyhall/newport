@@ -1,4 +1,4 @@
-use newport::engine::{ Module, Engine, EngineBuilder };
+use newport::engine::{ Module, Builder };
 
 // First thing first is to define our module struct
 struct HelloWorld;
@@ -12,8 +12,8 @@ impl Module for HelloWorld {
 
 // Start the app runner
 fn main() {
-    let builder = EngineBuilder::new()
+    Builder::new()
         .module::<HelloWorld>()
-        .name("Hello World");
-    Engine::run(builder);
+        .name("Hello World")
+        .run()
 }

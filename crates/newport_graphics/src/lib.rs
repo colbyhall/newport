@@ -10,7 +10,6 @@ mod texture;
 mod graphics;
 mod scene;
 mod mesh;
-mod pipeline;
 
 pub use {
     font::*,
@@ -18,5 +17,4 @@ pub use {
     graphics::*,
     scene::*,
     mesh::*,
-    pipeline::*,
 };

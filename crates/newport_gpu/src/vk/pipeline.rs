@@ -33,13 +33,13 @@ impl Pipeline {
                 // Create all the shader staage info for pipeline
                 let mut shader_stages = Vec::with_capacity(desc.shaders.len());
                 for it in desc.shaders.iter() {
-                    let stage = shader_variant_to_shader_stage(it.0.variant);
+                    let stage = shader_variant_to_shader_stage(it.variant);
 
-                    let main = CString::new(it.0.main.clone()).unwrap();
+                    let main = CString::new(it.main.clone()).unwrap();
                     
                     let stage_info = vk::PipelineShaderStageCreateInfo::builder()
                         .stage(stage)
-                        .module(it.0.module)
+                        .module(it.module)
                         .name(&main)
                         .build();
 

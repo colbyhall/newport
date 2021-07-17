@@ -4,8 +4,6 @@ use crate::{
     asset,
     engine::Engine,
     serde,
-
-    Graphics,
 };
 
 use math::{
@@ -22,6 +20,7 @@ use gpu::{
     Layout,
     Format,
     Texture,
+    Gpu,
 };
 
 use asset::{
@@ -160,8 +159,8 @@ impl FontCollection {
             let ascent  = ascent * scale;
             let descent = descent * scale;
     
-            let graphics = Engine::as_ref().module::<Graphics>()?;
-            let device   = graphics.device();
+            let gpu = Engine::as_ref().module::<Gpu>()?;
+            let device   = gpu.device();
     
             let pixel_buffer = device.create_buffer(
                 BufferUsage::TRANSFER_SRC, 

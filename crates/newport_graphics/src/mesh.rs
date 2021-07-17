@@ -4,8 +4,6 @@ use crate::{
     math,
     engine,
     serde,
-
-    Graphics,
 };
 
 use asset::{
@@ -19,6 +17,7 @@ use gpu::{
     VertexAttribute,
     BufferUsage,
     MemoryType,
+    Gpu,
 };
 
 use engine::{
@@ -81,8 +80,8 @@ pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices:  Vec<u32>,
 
-    pub vertex_buffer: Buffer,
-    pub index_buffer:  Buffer,
+    pub vertex_buffer: Buffer<Vertex>,
+    pub index_buffer:  Buffer<u32>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -144,8 +143,8 @@ impl Asset for Mesh {
         }
 
         let engine = Engine::as_ref();
-        let graphics = engine.module::<Graphics>().unwrap();
-        let device = graphics.device();
+        let gpu = engine.module::<Gpu>().unwrap();
+        let device = gpu.device();
 
         let transfer_vertex = device.create_buffer(
             BufferUsage::TRANSFER_SRC, 
