@@ -1,5 +1,5 @@
 pub use {
-    serde::*,
-    ron,
-    bincode,
+	bincode,
+	ron,
+	serde::*,
 };

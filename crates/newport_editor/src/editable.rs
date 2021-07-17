@@ -1,8 +1,7 @@
 use crate::*;
 
-
 pub trait Editable {
-    fn edit(&mut self, name: &str, ui: &mut Builder);
+	fn edit(&mut self, name: &str, ui: &mut Builder);
 }
 
 // impl Editable for math::Vector2 {

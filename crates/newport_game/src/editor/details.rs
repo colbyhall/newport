@@ -1,22 +1,20 @@
 use newport_editor::{
-    Tab,
-    Builder,
+	Builder,
+	Tab,
 };
 
 pub struct Details;
 
 impl Details {
-    pub fn new() -> Self {
-        Self
-    }
+	pub fn new() -> Self {
+		Self
+	}
 }
 
 impl Tab for Details {
-    fn name(&self) -> String {
-        "Details".to_string()
-    }
+	fn name(&self) -> String {
+		"Details".to_string()
+	}
 
-    fn build(&mut self, _builder: &mut Builder) {
-
-    }
+	fn build(&mut self, _builder: &mut Builder) {}
 }

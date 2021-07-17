@@ -6,5 +6,5 @@ new_key_type! { pub struct Entity; }
 
 #[derive(Debug)]
 pub(crate) struct EntityData {
-    pub components: Vec<ComponentId>
+	pub components: Vec<ComponentId>,
 }

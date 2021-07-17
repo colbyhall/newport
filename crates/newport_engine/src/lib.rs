@@ -1,14 +1,14 @@
 #![feature(trait_alias)]
 
-pub(crate) use newport_os as os;
 pub(crate) use newport_math as math;
+pub(crate) use newport_os as os;
 
+mod builder;
 mod engine;
 mod module;
-mod builder;
 
 pub use {
-    engine::*,
-    module::*,
-    builder::*
+	builder::*,
+	engine::*,
+	module::*,
 };

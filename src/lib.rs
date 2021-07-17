@@ -1,45 +1,45 @@
-// Runnable structure 
+// Runnable structure
 pub mod engine {
-    pub use newport_engine::*;
+	pub use newport_engine::*;
 }
 
 // Global thread safe logger
 pub use newport_log::*;
 
-// Completely thread safe asset manager 
+// Completely thread safe asset manager
 pub mod asset {
-    pub use newport_asset::*;
+	pub use newport_asset::*;
 }
 
 // GPU abstraction
 pub mod gpu {
-    pub use newport_gpu::*;
+	pub use newport_gpu::*;
 }
 
 // Runtime graphics using the gpu crate
 pub mod graphics {
-    pub use newport_graphics::*;
+	pub use newport_graphics::*;
 }
 
 // No std math library that works for shaders
 pub mod math {
-    pub use newport_math::*;
+	pub use newport_math::*;
 }
 
 pub mod editor {
-    pub use newport_editor::*;
+	pub use newport_editor::*;
 }
 
 pub use newport_codegen::Editable;
 
 pub mod ecs {
-    pub use newport_ecs::*;
+	pub use newport_ecs::*;
 }
 
 pub mod game {
-    pub use newport_game::*;
+	pub use newport_game::*;
 }
 
 pub mod imgui {
-    pub use newport_imgui::*;
+	pub use newport_imgui::*;
 }

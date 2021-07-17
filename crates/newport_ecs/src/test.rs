@@ -6,49 +6,48 @@ use newport_math::Vector3;
 use newport_editor::Editable;
 
 struct Test {
-    name: String,
+	name: String,
 }
 
 #[allow(dead_code)]
 #[cfg_attr(feature = "editable", derive(Editable))]
 struct Transform {
-    position: Vector3,
+	position: Vector3,
 }
 
 #[test]
 fn query() {
-    let mut world = World::new(Default::default());
+	let mut world = World::new(Default::default());
 
-    world.create()
-        .with(Test{
-            name: "Hello World".into(),
-        })
-        .finish();
+	world
+		.create()
+		.with(Test {
+			name: "Hello World".into(),
+		})
+		.finish();
 
-    let query = world.query()
-        .with::<Transform>()
-        .with::<Test>()
-        .build();
+	let query = world.query().with::<Transform>().with::<Test>().build();
 
-    for e in query.iter() {
-        let _test = world.find::<Test>(*e).unwrap();
-        let _transform = world.find_mut::<Transform>(*e).unwrap();
+	for e in query.iter() {
+		let _test = world.find::<Test>(*e).unwrap();
+		let _transform = world.find_mut::<Transform>(*e).unwrap();
 
-        assert!(false);
-    }
+		assert!(false);
+	}
 }
 
 #[test]
 fn hello_world() {
-    let mut world = World::new(Default::default());
+	let mut world = World::new(Default::default());
 
-    let test = world.create()
-        .with(Test{
-            name: "Hello World".into(),
-        })
-        .finish();
+	let test = world
+		.create()
+		.with(Test {
+			name: "Hello World".into(),
+		})
+		.finish();
 
-    let test_struct: &Test = world.find(test).unwrap();
+	let test_struct: &Test = world.find(test).unwrap();
 
-    assert_eq!(test_struct.name, "Hello World");
+	assert_eq!(test_struct.name, "Hello World");
 }

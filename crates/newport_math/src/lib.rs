@@ -1,13 +1,13 @@
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_float_classify)]
 
-pub const PI  : f32 = 3.141592;
-pub const TAU : f32 = PI * 2.0;
+pub const PI: f32 = 3.141592;
+pub const TAU: f32 = PI * 2.0;
 
-pub const TO_RAD : f32 = PI / 180.0;
-pub const TO_DEG : f32 = 180.0 / PI;
+pub const TO_RAD: f32 = PI / 180.0;
+pub const TO_DEG: f32 = 180.0 / PI;
 
-pub const SMALL_NUMBER : f32 = 1.0e-8;
+pub const SMALL_NUMBER: f32 = 1.0e-8;
 
 pub mod vec2;
 pub use vec2::*;
@@ -31,19 +31,21 @@ pub mod quat;
 pub use quat::*;
 
 pub trait InterpTo {
-    fn interp_to(self, target: Self, dt: f32, speed: f32) -> Self;
+	fn interp_to(self, target: Self, dt: f32, speed: f32) -> Self;
 }
 
 impl InterpTo for f32 {
-    fn interp_to(self, target: Self, dt: f32, speed: f32) -> Self {
-        if speed <= 0.0 { return target; }
+	fn interp_to(self, target: Self, dt: f32, speed: f32) -> Self {
+		if speed <= 0.0 {
+			return target;
+		}
 
-        let distance = target - self;
-        if distance * distance < SMALL_NUMBER {
-            return target;
-        }
+		let distance = target - self;
+		if distance * distance < SMALL_NUMBER {
+			return target;
+		}
 
-        let delta = distance * (dt * speed).max(0.0).min(1.0);
-        self + delta
-    }
+		let delta = distance * (dt * speed).max(0.0).min(1.0);
+		self + delta
+	}
 }

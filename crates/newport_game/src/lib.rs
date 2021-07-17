@@ -1,23 +1,23 @@
 pub(crate) use {
-    newport_engine   as engine,
-    newport_ecs      as ecs,
-    newport_math     as math,
-    newport_gpu      as gpu,
-    newport_graphics as graphics,
-    newport_asset    as asset,
+	newport_asset as asset,
+	newport_ecs as ecs,
+	newport_engine as engine,
+	newport_gpu as gpu,
+	newport_graphics as graphics,
+	newport_math as math,
 };
 
-mod game_state;
 mod components;
 mod game;
+mod game_state;
 mod render_state;
 
 #[cfg(feature = "editor")]
 mod editor;
 
 pub use {
-    game_state::*,
-    components::*,
-    game::*,
-    render_state::*,
+	components::*,
+	game::*,
+	game_state::*,
+	render_state::*,
 };
