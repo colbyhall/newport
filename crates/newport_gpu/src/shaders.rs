@@ -1,14 +1,6 @@
-use hassle_rs::{
-    Dxc, 
-    DxcCompiler, 
-    DxcLibrary,
-    DxcIncludeHandler
-};
+use hassle_rs::{Dxc, DxcCompiler, DxcIncludeHandler, DxcLibrary};
 
-use std::{
-    env,
-    path,
-};
+use std::{env, path};
 
 use path::PathBuf;
 
@@ -34,7 +26,7 @@ impl DxcIncludeHandler for DefaultIncludeHandler {
 struct CompilerThreadInfo {
     _dxc: Dxc,
     compiler: DxcCompiler,
-    library: DxcLibrary
+    library: DxcLibrary,
 }
 
 impl CompilerThreadInfo {
@@ -42,7 +34,7 @@ impl CompilerThreadInfo {
         let out_dir = env!("OUT_DIR");
         let target_index = out_dir.find("target").unwrap();
         let (_, relative_out_dir) = out_dir.split_at(target_index);
-        
+
         let mut library_path = PathBuf::from(relative_out_dir);
         library_path.push("dxcompiler.dll");
 
@@ -51,7 +43,7 @@ impl CompilerThreadInfo {
         let compiler = dxc.create_compiler().unwrap();
         let library = dxc.create_library().unwrap();
 
-        Self{
+        Self {
             _dxc: dxc,
             compiler,
             library,
@@ -63,14 +55,20 @@ thread_local! {
     static DXC_COMPILER: CompilerThreadInfo = CompilerThreadInfo::new();
 }
 
-pub fn compile(name: &str, source: &str, main: &str, variant: ShaderVariant) -> Result<Vec<u8>, String> {  
+pub fn compile(
+    name: &str,
+    source: &str,
+    main: &str,
+    variant: ShaderVariant,
+) -> Result<Vec<u8>, String> {
     DXC_COMPILER.with(|f| {
         let target_profile = match variant {
             ShaderVariant::Pixel => "ps_6_1",
-            ShaderVariant::Vertex => "vs_6_1"
+            ShaderVariant::Vertex => "vs_6_1",
         };
-    
-        let blob = f.library
+
+        let blob = f
+            .library
             .create_blob_with_encoding_from_str(source)
             .unwrap();
 
@@ -98,14 +96,14 @@ pub fn compile(name: &str, source: &str, main: &str, variant: ShaderVariant) -> 
 
         match result {
             Err(result) => {
-                let error_blob = result
-                    .0
-                    .get_error_buffer()
-                    .unwrap();
-                
-                let err_string = f.library.get_blob_as_string(&error_blob).replace("\\n", "\n");
+                let error_blob = result.0.get_error_buffer().unwrap();
+
+                let err_string = f
+                    .library
+                    .get_blob_as_string(&error_blob)
+                    .replace("\\n", "\n");
                 Err(err_string)
-            },
+            }
             Ok(result) => {
                 let result_blob = result.get_result().unwrap();
                 Ok(result_blob.to_vec())

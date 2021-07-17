@@ -5,22 +5,29 @@
 use crate::win32::*;
 
 #[cfg(target_os = "windows")]
-use crate::{ MAKEINTRESOURCEA, GET_WHEEL_DELTA_WPARAM, HIWORD, proc_address };
+use crate::{proc_address, GET_WHEEL_DELTA_WPARAM, HIWORD, MAKEINTRESOURCEA};
 
-use crate::library::Library;
 use crate::input::*;
+use crate::library::Library;
 
 use newport_math::Rect;
 
 use lazy_static::lazy_static;
 
+use xcb::send_event;
+#[cfg(target_os = "linux")]
+use xcb::{
+    create_gc, create_window, map_window, Connection, COPY_FROM_PARENT, CW_BACK_PIXEL,
+    CW_EVENT_MASK, EVENT_MASK_EXPOSURE, EVENT_MASK_KEY_PRESS, GC_FOREGROUND, GC_GRAPHICS_EXPOSURES,
+    WINDOW_CLASS_INPUT_OUTPUT,
+};
+
 use std::{
     collections::VecDeque,
+    ffi::{c_void, CString, OsString},
     mem::size_of,
-    ptr::{null_mut, null, NonNull},
-    ffi::{ CString, OsString },
     num::Wrapping,
-    os::windows::ffi::OsStrExt,
+    ptr::{null, null_mut, NonNull},
 };
 
 #[repr(C)]
@@ -28,10 +35,11 @@ use std::{
 enum PROCESS_DPI_AWARENESS {
     PROCESS_DPI_UNAWARE,
     PROCESS_SYSTEM_DPI_AWARE,
-    PROCESS_PER_MONITOR_DPI_AWARE
+    PROCESS_PER_MONITOR_DPI_AWARE,
 }
 
-type SetProcessDPIAwareness = extern fn(PROCESS_DPI_AWARENESS) -> HRESULT;
+#[cfg(target_os = "windows")]
+type SetProcessDPIAwareness = extern "C" fn(PROCESS_DPI_AWARENESS) -> HRESULT;
 
 #[repr(C)]
 #[allow(non_camel_case_types)]
@@ -42,14 +50,15 @@ enum MONITOR_DPI_TYPE {
     MDT_DEFAULT,
 }
 
-type GetDpiForMonitor = extern fn(HMONITOR, MONITOR_DPI_TYPE, *mut UINT, *mut UINT) -> HRESULT;
+#[cfg(target_os = "windows")]
+type GetDpiForMonitor = extern "C" fn(HMONITOR, MONITOR_DPI_TYPE, *mut UINT, *mut UINT) -> HRESULT;
 
 #[cfg(target_os = "windows")]
 lazy_static! {
     static ref SHCORE: Option<Library> = {
         let library = Library::new("shcore.dll").ok()?;
 
-        let func : Option<SetProcessDPIAwareness> = proc_address!(library, "SetProcessDpiAwareness");
+        let func: Option<SetProcessDPIAwareness> = proc_address!(library, "SetProcessDpiAwareness");
         if func.is_some() {
             let func = func.unwrap();
             func(PROCESS_DPI_AWARENESS::PROCESS_SYSTEM_DPI_AWARE);
@@ -64,41 +73,38 @@ pub enum WindowStyle {
     Windowed,
     Borderless,
     Fullscreen,
-    CustomTitleBar{
-        border: f32,
-        drag:   Rect,
-    }
+    CustomTitleBar { border: f32, drag: Rect },
 }
 
 /// Builder used to create [`Window`]s with set parameters
 pub struct WindowBuilder {
-    size:  (u32, u32),
+    size: (u32, u32),
     title: String,
     style: WindowStyle,
 }
 
 impl WindowBuilder {
     /// Returns a [`WindowBuilder`] to start building off of
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use newport_os::window::WindowBuilder;
     /// let builder = WindowBuilder::new();
     /// ```
     pub const fn new() -> Self {
-        Self{
+        Self {
             size: (1280, 720),
             title: String::new(),
             style: WindowStyle::Windowed,
         }
     }
 
-    /// Sets title in [`WindowBuilder`]. Consumes and returns a [`WindowBuilder`] to build off of. 
-    /// 
+    /// Sets title in [`WindowBuilder`]. Consumes and returns a [`WindowBuilder`] to build off of.
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `title` - A string that will be used as the title in the spawned window
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use newport_os::window::WindowBuilder;
@@ -111,15 +117,15 @@ impl WindowBuilder {
     }
 
     /// Sets size in [`WindowBuilder`]. Consumes and returns a [`WindowBuilder`] to build off of.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `size` - A tuple of `(u32, u32)` that is the width and height of the viewport in the spawned window
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use newport_os::window::WindowBuilder;
-    /// 
+    ///
     /// let builder = WindowBuilder::new()
     ///     .size((1920, 1080));
     /// ```
@@ -143,9 +149,9 @@ pub enum WindowSpawnError {
 
 #[cfg(target_os = "windows")]
 impl WindowBuilder {
-    /// Consumes a [`WindowBuilder`] and tries to create a [`Window`]. Returns a 
+    /// Consumes a [`WindowBuilder`] and tries to create a [`Window`]. Returns a
     /// [`Window`] on success and a [`WindowSpawnError`] on fail.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use newport_os::window::WindowBuilder;
@@ -158,19 +164,19 @@ impl WindowBuilder {
     pub fn spawn(self) -> Result<Window, WindowSpawnError> {
         #[allow(unused_unsafe)]
         unsafe {
-            let class = WNDCLASSEXA{
-                cbSize:         size_of::<WNDCLASSEXA>() as UINT, 
-                style:          0, 
-                lpfnWndProc:    Some(window_callback), 
-                cbClsExtra:     0, 
-                cbWndExtra:     0, 
-                hInstance:      GetModuleHandleA(null()), 
-                hIcon:          null_mut(), 
-                hCursor:        LoadCursorA(null_mut(), MAKEINTRESOURCEA!(32512)),
-                hbrBackground:  5 as HBRUSH, 
-                lpszMenuName:   null_mut(),
-                lpszClassName:  self.title.as_ptr() as LPCSTR,
-                hIconSm:        null_mut(),
+            let class = WNDCLASSEXA {
+                cbSize: size_of::<WNDCLASSEXA>() as UINT,
+                style: 0,
+                lpfnWndProc: Some(window_callback),
+                cbClsExtra: 0,
+                cbWndExtra: 0,
+                hInstance: GetModuleHandleA(null()),
+                hIcon: null_mut(),
+                hCursor: LoadCursorA(null_mut(), MAKEINTRESOURCEA!(32512)),
+                hbrBackground: 5 as HBRUSH,
+                lpszMenuName: null_mut(),
+                lpszClassName: self.title.as_ptr() as LPCSTR,
+                hIconSm: null_mut(),
             };
 
             if RegisterClassExA(&class) == 0 {
@@ -178,33 +184,38 @@ impl WindowBuilder {
             }
 
             // Apparently on Windows 10 "A" suffix functions can take utf 8
-            assert!(self.title.is_ascii(), "We're only using ASCII windows functions. This should eventually change");
+            assert!(
+                self.title.is_ascii(),
+                "We're only using ASCII windows functions. This should eventually change"
+            );
 
             let style = WS_OVERLAPPEDWINDOW;
 
             let mut adjusted_rect = RECT {
-                left:   0,
-                top:    0,
-                right:  self.size.0,
+                left: 0,
+                top: 0,
+                right: self.size.0,
                 bottom: self.size.1,
             };
             AdjustWindowRect(&mut adjusted_rect, style, 0);
 
-            let width  = (Wrapping(adjusted_rect.right) - Wrapping(adjusted_rect.left)).0;
+            let width = (Wrapping(adjusted_rect.right) - Wrapping(adjusted_rect.left)).0;
             let height = (Wrapping(adjusted_rect.bottom) - Wrapping(adjusted_rect.top)).0;
 
             let window_title = CString::new(self.title.as_bytes()).unwrap();
             let handle = CreateWindowExA(
-                0, 
-                class.lpszClassName, 
-                window_title.as_ptr(), 
-                style, 
-                0, 0, 
-                width, height, 
-                null_mut(), 
+                0,
+                class.lpszClassName,
+                window_title.as_ptr(),
+                style,
+                0,
+                0,
+                width,
+                height,
                 null_mut(),
-                class.hInstance, 
-                null_mut()
+                null_mut(),
+                class.hInstance,
+                null_mut(),
             );
 
             let shcore = SHCORE.as_ref();
@@ -215,14 +226,19 @@ impl WindowBuilder {
 
                 let mut result = 1.0;
 
-                let func : Option<GetDpiForMonitor> = proc_address!(shcore, "GetDpiForMonitor");
+                let func: Option<GetDpiForMonitor> = proc_address!(shcore, "GetDpiForMonitor");
                 if func.is_some() {
                     let monitor = MonitorFromWindow(handle, MONITOR_DEFAULTTONEAREST);
 
-                    let mut dpix : UINT = 0;
-                    let mut dpiy : UINT = 0;
+                    let mut dpix: UINT = 0;
+                    let mut dpiy: UINT = 0;
                     let func = func.unwrap();
-                    func(monitor, MONITOR_DPI_TYPE::MDT_EFFECTIVE_DPI, &mut dpix, &mut dpiy);
+                    func(
+                        monitor,
+                        MONITOR_DPI_TYPE::MDT_EFFECTIVE_DPI,
+                        &mut dpix,
+                        &mut dpiy,
+                    );
                     result = dpix as f32 / 96.0;
                 }
                 result
@@ -234,7 +250,7 @@ impl WindowBuilder {
 
             // We have to do this to prevent weird bugs with top title bar showing
             match &self.style {
-                WindowStyle::CustomTitleBar{ .. } => {
+                WindowStyle::CustomTitleBar { .. } => {
                     SetWindowTheme(handle, b"\0".as_ptr() as LPCWSTR, b"\0".as_ptr() as LPCWSTR);
                 }
                 _ => {
@@ -242,47 +258,119 @@ impl WindowBuilder {
                     let _dark_mode_wide: Vec<u16> = dark_mode.encode_wide().collect();
 
                     // SetWindowTheme(handle, dark_mode_wide.as_ptr() as LPCWSTR, b"\0".as_ptr() as LPCWSTR);
-                } 
+                }
             }
 
-            let mut track = TRACKMOUSEEVENT{
-                cbSize:         size_of::<TRACKMOUSEEVENT>() as u32,
-                dwFlags:        0x00000002, // Mouse Leave
-                hwndTrack:      handle,
-                dwHoverTime:    0,
+            let mut track = TRACKMOUSEEVENT {
+                cbSize: size_of::<TRACKMOUSEEVENT>() as u32,
+                dwFlags: 0x00000002, // Mouse Leave
+                hwndTrack: handle,
+                dwHoverTime: 0,
             };
             TrackMouseEvent(&mut track);
 
-            let mut window = Window{
+            let mut window = Window {
                 handle: handle,
-                size:   (width, height),
-                title:  self.title,
-                dpi:    dpi,
-                style:  self.style,
+                size: (width, height),
+                title: self.title,
+                dpi: dpi,
+                style: self.style,
                 mouse_left: false,
             };
 
             window.center_in_window(); // TODO: Have some position in the builder with a center function
 
-            Ok(window)            
+            Ok(window)
         }
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl WindowBuilder {
+    /// Consumes a [`WindowBuilder`] and tries to create a [`Window`]. Returns a
+    /// [`Window`] on success and a [`WindowSpawnError`] on fail.
+    ///
+    /// # Examples
+    /// ```
+    /// use newport_os::window::WindowBuilder;
+    /// let window = WindowBuilder::new()
+    ///     .title("Hello, world!".to_string())
+    ///     .size((1920, 1080))
+    ///     .spawn()
+    ///     .unwrap();
+    /// ```
+    pub fn spawn(self) -> Result<Window, WindowSpawnError> {
+        let (conn, screen_num) = Connection::connect(None).unwrap();
+        let setup = conn.get_setup();
+        let screen = setup.roots().nth(screen_num as usize).unwrap();
+
+        let foreground = conn.generate_id();
+
+        create_gc(
+            &conn,
+            foreground,
+            screen.root(),
+            &[
+                (GC_FOREGROUND, screen.black_pixel()),
+                (GC_GRAPHICS_EXPOSURES, 0),
+            ],
+        );
+
+        let handle = conn.generate_id();
+        create_window(
+            &conn,
+            COPY_FROM_PARENT as u8,
+            handle,
+            screen.root(),
+            0,
+            0,
+            self.size.0 as u16,
+            self.size.1 as u16,
+            10, // TODO: border stuff
+            WINDOW_CLASS_INPUT_OUTPUT as u16,
+            screen.root_visual(),
+            &[
+                (CW_BACK_PIXEL, screen.black_pixel()),
+                (CW_EVENT_MASK, EVENT_MASK_EXPOSURE | EVENT_MASK_KEY_PRESS),
+            ],
+        );
+
+        map_window(&conn, handle);
+        conn.flush();
+
+        Ok(Window {
+            handle,
+            size: self.size,
+            title: self.title,
+            dpi: 0.,
+            style: self.style,
+
+            mouse_left: false,
+            conn,
+        })
     }
 }
 
 #[cfg(target_os = "windows")]
 pub use crate::win32::HWND as WindowHandle;
 
+#[cfg(target_os = "linux")]
+pub type WindowHandle = u32;
+
 /// An os's shell window that can be drawn into
-/// 
+///
 /// This can be used by different libraries for drawing and input
 pub struct Window {
     handle: WindowHandle,
     size: (u32, u32),
     title: String,
-    dpi:   f32,
+    dpi: f32,
     style: WindowStyle,
-    
+
     mouse_left: bool,
+
+    #[cfg(target_os = "linux")]
+    conn: Connection,
 }
 
 #[cfg(target_os = "windows")]
@@ -290,7 +378,7 @@ impl Window {
     /// Sets a window to be visible
     pub fn set_visible(&mut self, visible: bool) -> bool {
         let visibility = if visible { SW_SHOW } else { SW_HIDE };
-        unsafe{ ShowWindow(self.handle, visibility) == 1 }
+        unsafe { ShowWindow(self.handle, visibility) == 1 }
     }
 
     /// Centers a window in its current monitor
@@ -298,11 +386,19 @@ impl Window {
         unsafe {
             let monitor_width = GetSystemMetrics(SM_CXSCREEN);
             let monitor_height = GetSystemMetrics(SM_CYSCREEN);
-    
+
             let x = monitor_width / 2 - (self.size.0 as i32) / 2;
             let y = monitor_height / 2 - (self.size.1 as i32) / 2;
-    
-            SetWindowPos(self.handle as HWND, null_mut(), x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER) == 1
+
+            SetWindowPos(
+                self.handle as HWND,
+                null_mut(),
+                x,
+                y,
+                0,
+                0,
+                SWP_NOSIZE | SWP_NOZORDER,
+            ) == 1
         }
     }
 
@@ -314,7 +410,9 @@ impl Window {
             unsafe { ShowWindow(self.handle, 3) };
         }
         let mut viewport_size = RECT::default();
-        unsafe { GetClientRect(self.handle, &mut viewport_size); }
+        unsafe {
+            GetClientRect(self.handle, &mut viewport_size);
+        }
         self.size.0 = viewport_size.right - viewport_size.left;
         self.size.1 = viewport_size.bottom - viewport_size.top;
     }
@@ -324,14 +422,14 @@ impl Window {
     }
 
     /// Polls os shell for window events and returns a [`WindowEventIterator`]
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use newport_os::window::{ WindowEvent, WindowBuilder };
-    /// 
+    ///
     /// let window = WindowBuilder::new().spawn().unwrap();
-    /// 
+    ///
     /// `run: loop {
     ///     for event in window.poll_events() {
     ///         match event {
@@ -339,14 +437,14 @@ impl Window {
     ///             _ => { }
     ///         }
     ///     }
-    /// } 
+    /// }
     /// ```
     pub fn poll_events(&mut self) -> WindowEventIterator {
         unsafe {
-            let mut result = WindowEventIterator{
-                queue:  VecDeque::new(),
+            let mut result = WindowEventIterator {
+                queue: VecDeque::new(),
 
-                window:      NonNull::new(self as *mut Window).unwrap(),
+                window: NonNull::new(self as *mut Window).unwrap(),
             };
 
             // We upload the self ptr here because of rust move semantics.
@@ -359,10 +457,7 @@ impl Window {
                 wParam: 0,
                 lParam: 0,
                 time: 0,
-                pt: POINT {
-                    x: 0,
-                    y: 0
-                },
+                pt: POINT { x: 0, y: 0 },
             };
 
             // Poll window events and dispatch events through the window_callback
@@ -394,28 +489,109 @@ impl Window {
     }
 
     pub fn is_maximized(&self) -> bool {
-        unsafe{ IsZoomed(self.handle) != 0 }
+        unsafe { IsZoomed(self.handle) != 0 }
     }
 
     pub fn is_minimized(&self) -> bool {
-        unsafe{ IsIconic(self.handle) != 0 }
+        unsafe { IsIconic(self.handle) != 0 }
     }
 
     pub fn set_custom_drag(&mut self, new_drag: Rect) {
         match &mut self.style {
-            WindowStyle::CustomTitleBar{ drag, .. } => {
+            WindowStyle::CustomTitleBar { drag, .. } => {
                 *drag = new_drag;
-            },
-            _ => { }, // Do nothing. This kind of sucks
+            }
+            _ => {} // Do nothing. This kind of sucks
         }
     }
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(target_os = "linux")]
+impl Window {
+    /// Sets a window to be visible
+    pub fn set_visible(&mut self, visible: bool) -> bool {
+        visible
+    }
+
+    /// Centers a window in its current monitor
+    pub fn center_in_window(&mut self) -> bool {
+        true
+    }
+
+    /// Maximizes a window and updates the size
+    pub fn maximize(&mut self) {}
+
+    pub fn minimize(&mut self) {}
+
+    /// Polls os shell for window events and returns a [`WindowEventIterator`]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use newport_os::window::{ WindowEvent, WindowBuilder };
+    ///
+    /// let window = WindowBuilder::new().spawn().unwrap();
+    ///
+    /// `run: loop {
+    ///     for event in window.poll_events() {
+    ///         match event {
+    ///             WindowEvent::Closed => break `run;
+    ///             _ => { }
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    pub fn poll_events(&mut self) -> WindowEventIterator {
+        WindowEventIterator {
+            queue: VecDeque::new(),
+
+            window: NonNull::new(self as *mut Window).unwrap(),
+        }
+    }
+
+    /// Returns the title as a &str
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    /// Returns the os handle generally as a [`std::ffi::c_void`]
+    pub fn handle(&self) -> WindowHandle {
+        self.handle
+    }
+
+    pub fn connection(&self) -> &Connection {
+        &self.conn
+    }
+
+    pub fn size(&self) -> (u32, u32) {
+        self.size
+    }
+
+    pub fn dpi(&self) -> f32 {
+        self.dpi
+    }
+
+    pub fn is_maximized(&self) -> bool {
+        false
+    }
+
+    pub fn is_minimized(&self) -> bool {
+        false
+    }
+
+    pub fn set_custom_drag(&mut self, new_drag: Rect) {}
+}
+
 impl Drop for Window {
+    #[cfg(windows)]
     fn drop(&mut self) {
         unsafe { DestroyWindow(self.handle) };
         self.handle = null_mut();
+    }
+
+    #[cfg(target_os = "linux")]
+    fn drop(&mut self) {
+        todo!();
     }
 }
 
@@ -425,20 +601,27 @@ pub enum WindowEvent {
     FocusGained,
     FocusLost,
     Closed,
-    Key { key: Input, pressed: bool },
+    Key {
+        key: Input,
+        pressed: bool,
+    },
     Resized(u32, u32),
     Resizing(u32, u32),
     Char(char),
     MouseWheel(i16),
-    MouseButton { mouse_button: Input, pressed: bool, position: (u32, u32) },
+    MouseButton {
+        mouse_button: Input,
+        pressed: bool,
+        position: (u32, u32),
+    },
     MouseMove(u32, u32),
-    MouseLeave
+    MouseLeave,
 }
 
 /// Iterator containing [`WindowEvent`]s after being polled
 pub struct WindowEventIterator {
-    queue:  VecDeque<WindowEvent>,
-    
+    queue: VecDeque<WindowEvent>,
+
     window: NonNull<Window>,
 }
 
@@ -451,8 +634,8 @@ impl Iterator for WindowEventIterator {
 
 #[cfg(target_os = "windows")]
 #[allow(non_snake_case)]
-extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM) -> LRESULT {
-    let iterator : &mut WindowEventIterator;
+extern "C" fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM) -> LRESULT {
+    let iterator: &mut WindowEventIterator;
     unsafe {
         let iterator_ptr = GetWindowLongPtrA(hWnd, GWLP_USERDATA) as *mut WindowEventIterator;
         if iterator_ptr == null_mut() {
@@ -460,7 +643,7 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
         }
         iterator = &mut *iterator_ptr;
     }
-    let mut event : Option<WindowEvent> = None;
+    let mut event: Option<WindowEvent> = None;
 
     let window = unsafe { iterator.window.as_mut() };
 
@@ -471,28 +654,36 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
     match uMsg {
         WM_CLOSE => {
             event = Some(WindowEvent::Closed);
-        },
+        }
         WM_SETFOCUS => {
             event = Some(WindowEvent::FocusGained);
-        },
+        }
         WM_KILLFOCUS => {
             event = Some(WindowEvent::FocusLost);
-        },
+        }
         WM_SYSKEYDOWN | WM_KEYDOWN => {
             let key = Input::key_from_code(wParam as u8);
             if key.is_some() {
-                event = Some(WindowEvent::Key{ key: key.unwrap(), pressed: true });
+                event = Some(WindowEvent::Key {
+                    key: key.unwrap(),
+                    pressed: true,
+                });
             }
-        },
+        }
         WM_SYSKEYUP | WM_KEYUP => {
             let key = Input::key_from_code(wParam as u8);
             if key.is_some() {
-                event = Some(WindowEvent::Key{ key: key.unwrap(), pressed: false });
+                event = Some(WindowEvent::Key {
+                    key: key.unwrap(),
+                    pressed: false,
+                });
             }
-        },
+        }
         WM_SIZING | WM_SIZE => {
             let mut viewport_size = RECT::default();
-            unsafe { GetClientRect(hWnd, &mut viewport_size); }
+            unsafe {
+                GetClientRect(hWnd, &mut viewport_size);
+            }
             let old_width = window.size.0;
             let old_height = window.size.1;
             window.size.0 = viewport_size.right - viewport_size.left;
@@ -503,60 +694,104 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
             } else {
                 event = Some(WindowEvent::Resized(old_width, old_height));
             }
-        },
+        }
         WM_CHAR => {
-            static mut SURROGATE_PAIR_FIRST : u32 = 0;
+            static mut SURROGATE_PAIR_FIRST: u32 = 0;
             let mut c = wParam as u32;
 
-            if c < 32 && c != '\t' as u32 { return 0; }
-            if c == 127 { return 0; }
+            if c < 32 && c != '\t' as u32 {
+                return 0;
+            }
+            if c == 127 {
+                return 0;
+            }
 
             if c >= 0xD800 && c <= 0xDBFF {
-                unsafe { SURROGATE_PAIR_FIRST = c; }
+                unsafe {
+                    SURROGATE_PAIR_FIRST = c;
+                }
                 return 0;
             } else if c >= 0xDC00 && c <= 0xDFFF {
                 let surrogate_pair_second = c;
                 c = 0x10000;
-                unsafe { c += (SURROGATE_PAIR_FIRST & 0x03FF) << 10; }
+                unsafe {
+                    c += (SURROGATE_PAIR_FIRST & 0x03FF) << 10;
+                }
                 c += surrogate_pair_second & 0x03FF;
             }
 
             event = Some(WindowEvent::Char(std::char::from_u32(c).unwrap()));
-        },
+        }
         WM_MOUSEWHEEL => {
             let delta = GET_WHEEL_DELTA_WPARAM!(wParam) / 8;
             event = Some(WindowEvent::MouseWheel(delta));
-        },
+        }
         WM_LBUTTONDOWN => {
-            unsafe { SetCapture(window.handle); }
+            unsafe {
+                SetCapture(window.handle);
+            }
             let (_, height) = window.size();
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: true, position: (x, height - y) });
-        },
+            event = Some(WindowEvent::MouseButton {
+                mouse_button: MOUSE_BUTTON_LEFT,
+                pressed: true,
+                position: (x, height - y),
+            });
+        }
         WM_LBUTTONUP => {
-            unsafe { ReleaseCapture(); }
+            unsafe {
+                ReleaseCapture();
+            }
             let (_, height) = window.size();
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_LEFT, pressed: false, position: (x, height - y) });
-        },
+            event = Some(WindowEvent::MouseButton {
+                mouse_button: MOUSE_BUTTON_LEFT,
+                pressed: false,
+                position: (x, height - y),
+            });
+        }
         WM_MBUTTONDOWN => {
-            unsafe { SetCapture(window.handle); }
+            unsafe {
+                SetCapture(window.handle);
+            }
             let (_, height) = window.size();
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: true, position: (x, height - y) });
-        },
+            event = Some(WindowEvent::MouseButton {
+                mouse_button: MOUSE_BUTTON_MIDDLE,
+                pressed: true,
+                position: (x, height - y),
+            });
+        }
         WM_MBUTTONUP => {
-            unsafe { ReleaseCapture(); }
+            unsafe {
+                ReleaseCapture();
+            }
             let (_, height) = window.size();
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_MIDDLE, pressed: false, position: (x, height - y) });
-        },
+            event = Some(WindowEvent::MouseButton {
+                mouse_button: MOUSE_BUTTON_MIDDLE,
+                pressed: false,
+                position: (x, height - y),
+            });
+        }
         WM_RBUTTONDOWN => {
-            unsafe { SetCapture(window.handle); }
+            unsafe {
+                SetCapture(window.handle);
+            }
             let (_, height) = window.size();
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: true, position: (x, height - y) });
-        },
+            event = Some(WindowEvent::MouseButton {
+                mouse_button: MOUSE_BUTTON_RIGHT,
+                pressed: true,
+                position: (x, height - y),
+            });
+        }
         WM_RBUTTONUP => {
-            unsafe { ReleaseCapture(); }
+            unsafe {
+                ReleaseCapture();
+            }
             let (_, height) = window.size();
-            event = Some(WindowEvent::MouseButton{ mouse_button: MOUSE_BUTTON_RIGHT, pressed: false, position: (x, height - y) });
-        },
+            event = Some(WindowEvent::MouseButton {
+                mouse_button: MOUSE_BUTTON_RIGHT,
+                pressed: false,
+                position: (x, height - y),
+            });
+        }
         WM_MOUSEMOVE => {
             let (_, height) = window.size();
 
@@ -565,92 +800,92 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
             if window.mouse_left {
                 window.mouse_left = false;
 
-                let mut track = TRACKMOUSEEVENT{
-                    cbSize:         size_of::<TRACKMOUSEEVENT>() as u32,
-                    dwFlags:        0x00000002, // Mouse Leave
-                    hwndTrack:      hWnd,
-                    dwHoverTime:    0,
+                let mut track = TRACKMOUSEEVENT {
+                    cbSize: size_of::<TRACKMOUSEEVENT>() as u32,
+                    dwFlags: 0x00000002, // Mouse Leave
+                    hwndTrack: hWnd,
+                    dwHoverTime: 0,
                 };
                 unsafe { TrackMouseEvent(&mut track) };
             }
-        },
+        }
         WM_MOUSELEAVE => {
             event = Some(WindowEvent::MouseLeave);
 
             window.mouse_left = true;
-        },
+        }
 
         WM_DWMCOMPOSITIONCHANGED => {
             match window.style {
-                WindowStyle::CustomTitleBar{ .. } => {
+                WindowStyle::CustomTitleBar { .. } => {
                     // let mut margins = MARGINS::default();
-        
+
                     // if window.is_maximized() {
                     //     let x_push = unsafe{ GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
                     //     let y_push = unsafe{ GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
-        
+
                     //     margins.cxLeftWidth = x_push;
                     //     margins.cxRightWidth = x_push;
-        
+
                     //     margins.cyTopHeight = y_push;
                     //     margins.cyBottomHeight = y_push;
                     // }
-        
-                    // unsafe{ DwmExtendFrameIntoClientArea(hWnd, &margins) };
-                },
-                _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
-            }
-        },
-        WM_NCACTIVATE => {
-            match window.style {
-                WindowStyle::CustomTitleBar{ .. } => {
-                    result = 1;
 
-                    if window.is_minimized() {
-                        result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) };
-                    }
-                },
-                _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
+                    // unsafe{ DwmExtendFrameIntoClientArea(hWnd, &margins) };
+                }
+                _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) },
             }
+        }
+        WM_NCACTIVATE => match window.style {
+            WindowStyle::CustomTitleBar { .. } => {
+                result = 1;
+
+                if window.is_minimized() {
+                    result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) };
+                }
+            }
+            _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) },
         },
-        WM_NCCALCSIZE => {
-            match window.style {
-                WindowStyle::CustomTitleBar{ .. } => {
-                    let mut margins = MARGINS::default();
-        
-                    let rect = unsafe{ &mut *(lParam as *mut RECT) };
-        
-                    if window.is_maximized() {
-                        let x_push = unsafe{ GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
-                        let y_push = unsafe{ GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) };
-        
-                        rect.left += x_push as u32;
-                        rect.top  += y_push as u32;
-                        rect.bottom -= x_push as u32;
-                        rect.right -= y_push as u32;
-        
-                        margins.cxLeftWidth = x_push;
-                        margins.cxRightWidth = x_push;
-        
-                        margins.cyTopHeight = y_push;
-                        margins.cyBottomHeight = y_push;
-                    }
-        
-                    unsafe{ DwmExtendFrameIntoClientArea(hWnd, &margins) };
-                },
-                _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
+        WM_NCCALCSIZE => match window.style {
+            WindowStyle::CustomTitleBar { .. } => {
+                let mut margins = MARGINS::default();
+
+                let rect = unsafe { &mut *(lParam as *mut RECT) };
+
+                if window.is_maximized() {
+                    let x_push = unsafe {
+                        GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER)
+                    };
+                    let y_push = unsafe {
+                        GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER)
+                    };
+
+                    rect.left += x_push as u32;
+                    rect.top += y_push as u32;
+                    rect.bottom -= x_push as u32;
+                    rect.right -= y_push as u32;
+
+                    margins.cxLeftWidth = x_push;
+                    margins.cxRightWidth = x_push;
+
+                    margins.cyTopHeight = y_push;
+                    margins.cyBottomHeight = y_push;
+                }
+
+                unsafe { DwmExtendFrameIntoClientArea(hWnd, &margins) };
             }
+            _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) },
         },
         WM_NCHITTEST => {
             match window.style {
-                WindowStyle::CustomTitleBar{ border, drag } => {
-                    let mut mouse = POINT{ x: x, y: y };
+                WindowStyle::CustomTitleBar { border, drag } => {
+                    let mut mouse = POINT { x: x, y: y };
 
                     let mut frame = RECT::default();
-                    unsafe{ GetWindowRect(hWnd, &mut frame) };
-        
+                    unsafe { GetWindowRect(hWnd, &mut frame) };
+
                     let mut client = RECT::default();
-                    unsafe{ 
+                    unsafe {
                         GetClientRect(hWnd, &mut client);
                         ScreenToClient(hWnd, &mut mouse);
                     }
@@ -662,13 +897,13 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
                     // Convert newport rect into windows RECT
                     let height = client.bottom;
                     let drag = RECT {
-                        top:    height - drag.max.y as u32,
+                        top: height - drag.max.y as u32,
                         bottom: height - drag.min.y as u32,
 
-                        left:   drag.min.x as u32,
-                        right:  drag.max.x as u32,
+                        left: drag.min.x as u32,
+                        right: drag.max.x as u32,
                     };
-        
+
                     let mut left = false;
                     let mut right = false;
                     let mut bot = false;
@@ -679,7 +914,7 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
                         bot = client.bottom - border as u32 <= mouse.y && mouse.y < client.bottom;
                         top = client.top <= mouse.y && mouse.y < client.top + border as u32;
                     }
-                    
+
                     if left {
                         if top {
                             result = HTTOPLEFT;
@@ -707,11 +942,11 @@ extern fn window_callback(hWnd: HWND, uMsg: UINT, wParam: WPARAM, lParam: LPARAM
                             result = HTCLIENT;
                         }
                     }
-                },
-                _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
+                }
+                _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) },
             }
-        },
-        _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) }
+        }
+        _ => result = unsafe { DefWindowProcA(hWnd, uMsg, wParam, lParam) },
     }
 
     if event.is_some() {

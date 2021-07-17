@@ -1,26 +1,31 @@
-use crate::{ BufferUsage, MemoryType, ResourceCreateError };
-use super::{ Device, DeviceAllocation };
+use super::{Device, DeviceAllocation};
+use crate::{BufferUsage, MemoryType, ResourceCreateError};
 
-use ash::vk;
 use ash::version::DeviceV1_0;
+use ash::vk;
 
-use std::sync::{ Arc, RwLock };
 use std::ptr::copy_nonoverlapping;
+use std::sync::{Arc, RwLock};
 
 pub struct Buffer {
-    pub owner:  Arc<Device>,
+    pub owner: Arc<Device>,
 
     pub handle: vk::Buffer,
     pub memory: RwLock<DeviceAllocation>,
-    pub size:   usize,
+    pub size: usize,
 
-    pub usage:  BufferUsage,
+    pub usage: BufferUsage,
 
     pub bindless: Option<u32>, // Index into owner bindless buffer array
 }
 
 impl Buffer {
-    pub fn new(owner: Arc<Device>, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Arc<Buffer>, ResourceCreateError> {
+    pub fn new(
+        owner: Arc<Device>,
+        usage: BufferUsage,
+        memory: MemoryType,
+        size: usize,
+    ) -> Result<Arc<Buffer>, ResourceCreateError> {
         let mut vk_usage = vk::BufferUsageFlags::default();
         if usage.contains(BufferUsage::TRANSFER_SRC) {
             vk_usage |= vk::BufferUsageFlags::TRANSFER_SRC;
@@ -43,37 +48,43 @@ impl Buffer {
                 .size(size as vk::DeviceSize)
                 .usage(vk_usage)
                 .sharing_mode(vk::SharingMode::EXCLUSIVE); // TODO: Look into this more
-    
+
             let handle = owner.logical.create_buffer(&create_info, None).unwrap();
-    
+
             // Allocate memory for buffer
-            let memory = owner.allocate_memory(owner.logical.get_buffer_memory_requirements(handle), memory);
+            let memory =
+                owner.allocate_memory(owner.logical.get_buffer_memory_requirements(handle), memory);
             if memory.is_err() {
                 return Err(ResourceCreateError::OutOfMemory);
             }
             let memory = memory.unwrap();
-            owner.logical.bind_buffer_memory(handle, memory.memory, 0).unwrap();
+            owner
+                .logical
+                .bind_buffer_memory(handle, memory.memory, 0)
+                .unwrap();
 
             // Add a weak reference to the device for bindless
             if usage.contains(BufferUsage::CONSTANTS) {
                 let mut bindless = owner.bindless_info.lock().unwrap();
-                
-                let found = bindless.buffers
-                    .iter_mut().enumerate()
+
+                let found = bindless
+                    .buffers
+                    .iter_mut()
+                    .enumerate()
                     .find(|(_, x)| x.strong_count() == 0)
                     .map(|(index, _)| index);
 
                 let index = found.unwrap_or(bindless.buffers.len());
 
-                let result = Arc::new(Buffer{
+                let result = Arc::new(Buffer {
                     owner: owner.clone(),
-    
+
                     handle: handle,
                     memory: RwLock::new(memory),
-                    size:   size,
+                    size: size,
 
-                    usage:  usage,
-                    
+                    usage: usage,
+
                     bindless: Some(index as u32),
                 });
 
@@ -87,15 +98,15 @@ impl Buffer {
                 return Ok(result);
             }
 
-            Ok(Arc::new(Buffer{
+            Ok(Arc::new(Buffer {
                 owner: owner,
 
                 handle: handle,
                 memory: RwLock::new(memory),
-                size:   size,
+                size: size,
 
-                usage:  usage,
-                
+                usage: usage,
+
                 bindless: None,
             }))
         }
@@ -105,8 +116,21 @@ impl Buffer {
         let memory = self.memory.write().unwrap();
 
         unsafe {
-            let ptr = self.owner.logical.map_memory(memory.memory, memory.offset, memory.size, vk::MemoryMapFlags::empty()).unwrap();
-            copy_nonoverlapping(data.as_ptr() as *const u8, ptr as *mut u8, memory.size as usize);
+            let ptr = self
+                .owner
+                .logical
+                .map_memory(
+                    memory.memory,
+                    memory.offset,
+                    memory.size,
+                    vk::MemoryMapFlags::empty(),
+                )
+                .unwrap();
+            copy_nonoverlapping(
+                data.as_ptr() as *const u8,
+                ptr as *mut u8,
+                memory.size as usize,
+            );
             self.owner.logical.unmap_memory(memory.memory);
         }
     }

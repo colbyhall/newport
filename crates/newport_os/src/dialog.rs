@@ -1,9 +1,8 @@
-use crate::win32::*;
 use crate::window::Window;
 
 use std::{
-    ptr::{ null, null_mut },
     mem::size_of,
+    ptr::{null, null_mut},
 };
 
 pub struct DialogBuilder<'a> {
@@ -11,13 +10,13 @@ pub struct DialogBuilder<'a> {
 
     _title: Option<String>,
 
-    extensions:        Vec<(String, String)>,
+    extensions: Vec<(String, String)>,
     default_extension: usize,
 }
 
 impl<'a> DialogBuilder<'a> {
     pub fn new(window: &'a Window) -> Self {
-        let result = Self{
+        let result = Self {
             window,
 
             _title: None,
@@ -33,7 +32,12 @@ impl<'a> DialogBuilder<'a> {
         self
     }
 
-    pub fn extension(mut self, name: impl Into<String>, extension: impl Into<String>, as_default: bool) -> Self {
+    pub fn extension(
+        mut self,
+        name: impl Into<String>,
+        extension: impl Into<String>,
+        as_default: bool,
+    ) -> Self {
         self.extensions.push((name.into(), extension.into()));
         if as_default {
             self.default_extension = self.extensions.len() - 1;
@@ -47,7 +51,10 @@ pub struct DialogResult {
 }
 
 impl<'a> DialogBuilder<'a> {
+    #[cfg(windows)]
     pub fn show(self) -> Option<DialogResult> {
+        use crate::win32::*;
+
         let mut filter = String::new();
         for (name, ext) in self.extensions {
             filter.push_str(&name);
@@ -59,10 +66,10 @@ impl<'a> DialogBuilder<'a> {
 
         let mut file: [i8; 260] = [0; 260];
 
-        let mut ofa = OPENFILENAMEA{
+        let mut ofa = OPENFILENAMEA {
             lStructSize: size_of::<OPENFILENAMEA>() as DWORD,
             hwndOwner: self.window.handle(),
-            hInstance: unsafe{ GetModuleHandleA(null()) },
+            hInstance: unsafe { GetModuleHandleA(null()) },
             lpstrFilter: filter.as_ptr() as *const i8,
             lpstrCustomFilter: null_mut(),
             nMaxCustFilter: 0,
@@ -87,12 +94,18 @@ impl<'a> DialogBuilder<'a> {
             FlagsEx: 0,
         };
 
-        unsafe{ GetOpenFileNameA(&mut ofa) };
+        unsafe { GetOpenFileNameA(&mut ofa) };
 
-        let result = unsafe{ GetLastError() };
+        let result = unsafe { GetLastError() };
         println!("{}", result);
 
         // NOT FINISHED
+        todo!();
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn show(self) -> Option<DialogResult> {
+        // levy: Displaying a dialogue on linux is, *not fun*.
         todo!();
     }
 }

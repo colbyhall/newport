@@ -2,36 +2,36 @@
 //! was originally concepted after reading http://alextardif.com/RenderingAbstractionLayers.html
 //!
 //! # Warning
-//! 
-//! This package is still in a very early state. The API is currently super volatile. I would not 
-//! recommend using this package if you don't plan on handling the unknown future changes. 
-//! 
+//!
+//! This package is still in a very early state. The API is currently super volatile. I would not
+//! recommend using this package if you don't plan on handling the unknown future changes.
+//!
 //! # Goals
-//! 
-//! * Abstraction layer should be as lightweight as possible. As many API layer specfic concepts should be 
+//!
+//! * Abstraction layer should be as lightweight as possible. As many API layer specfic concepts should be
 //!    hidden from the user
 //!
-//! * Abstraction layer should be as simple as possible. There will be code complexity that is unavoidable but 
-//!   they should be rare. If the user ends up spending too much time debugging just to get to the meat of 
+//! * Abstraction layer should be as simple as possible. There will be code complexity that is unavoidable but
+//!   they should be rare. If the user ends up spending too much time debugging just to get to the meat of
 //!   their calls then we have failed
-//! 
+//!
 //! * Abstraction layer should be easy to maintain and add on. The hope is that the above points aid this goal
 //!
 //! # Needs
-//! 
+//!
 //! * Ability to create multiple devices to allow multiple GPU work if desired
 //! * Create, upload, and destroy resources (buffers, textures, shaders, pipelines, etc)
 //! * Gather, submit, and wait on command work from various passes, in a multicore-compatible way
 //! * Automatic device memory management
+use newport_os::window::Window;
 
-use newport_os::window::WindowHandle;
-use newport_math::{ Rect, Color };
+use newport_math::{Color, Rect};
 
-use newport_serde::{self as serde, Serialize, Deserialize};
+use newport_serde::{self as serde, Deserialize, Serialize};
 
-use std::sync::{ Arc };
 use std::convert::Into;
 use std::fmt;
+use std::sync::Arc;
 
 use bitflags::*;
 
@@ -41,8 +41,8 @@ mod vk;
 #[cfg(feature = "vulkan")]
 use vk as api;
 
-pub mod shaders;
 mod pipeline;
+pub mod shaders;
 
 pub use pipeline::*;
 
@@ -62,13 +62,13 @@ impl Instance {
         Ok(Self(inner))
     }
 
-    pub fn create_device(&self, window: Option<WindowHandle>) -> Result<Device, DeviceCreateError> {
+    pub fn create_device(&self, window: Option<&Window>) -> Result<Device, DeviceCreateError> {
         let inner = api::Device::new(self.0.clone(), window)?;
         Ok(Device(inner))
     }
 }
 
-pub use api::Receipt as Receipt;
+pub use api::Receipt;
 
 #[derive(Debug)]
 pub enum DeviceCreateError {
@@ -80,22 +80,58 @@ pub enum DeviceCreateError {
 pub struct Device(Arc<api::Device>);
 
 impl Device {
-    pub fn create_buffer(&self, usage: BufferUsage, memory: MemoryType, size: usize) -> Result<Buffer, ResourceCreateError> {
+    pub fn create_buffer(
+        &self,
+        usage: BufferUsage,
+        memory: MemoryType,
+        size: usize,
+    ) -> Result<Buffer, ResourceCreateError> {
         let inner = api::Buffer::new(self.0.clone(), usage, memory, size)?;
         Ok(Buffer(inner))
     }
 
-    pub fn create_texture(&self, usage: TextureUsage, memory: MemoryType, format: Format, width: u32, height: u32, depth: u32, wrap: Wrap, min_filter: Filter, mag_filter: Filter) -> Result<Texture, ResourceCreateError> {
-        let inner = api::Texture::new(self.0.clone(), memory, usage, format, width, height, depth, wrap, min_filter, mag_filter)?;
+    pub fn create_texture(
+        &self,
+        usage: TextureUsage,
+        memory: MemoryType,
+        format: Format,
+        width: u32,
+        height: u32,
+        depth: u32,
+        wrap: Wrap,
+        min_filter: Filter,
+        mag_filter: Filter,
+    ) -> Result<Texture, ResourceCreateError> {
+        let inner = api::Texture::new(
+            self.0.clone(),
+            memory,
+            usage,
+            format,
+            width,
+            height,
+            depth,
+            wrap,
+            min_filter,
+            mag_filter,
+        )?;
         Ok(Texture(inner))
     }
 
-    pub fn create_render_pass(&self, colors: Vec<Format>, depth: Option<Format>) -> Result<RenderPass, ()> {
+    pub fn create_render_pass(
+        &self,
+        colors: Vec<Format>,
+        depth: Option<Format>,
+    ) -> Result<RenderPass, ()> {
         let inner = api::RenderPass::new(self.0.clone(), colors, depth)?;
         Ok(RenderPass(inner))
     }
 
-    pub fn create_shader(&self, contents: &[u8], variant: ShaderVariant, main: String) -> Result<Shader, ()> {
+    pub fn create_shader(
+        &self,
+        contents: &[u8],
+        variant: ShaderVariant,
+        main: String,
+    ) -> Result<Shader, ()> {
         let inner = api::Shader::new(self.0.clone(), contents, variant, main)?;
         Ok(Shader(inner))
     }
@@ -114,7 +150,11 @@ impl Device {
         Texture(self.0.acquire_backbuffer())
     }
 
-    pub fn submit_graphics(&self, mut contexts: Vec<GraphicsContext>, wait_on: &[Receipt]) -> Receipt {
+    pub fn submit_graphics(
+        &self,
+        mut contexts: Vec<GraphicsContext>,
+        wait_on: &[Receipt],
+    ) -> Receipt {
         let mut api_contexts = Vec::with_capacity(contexts.len());
         contexts.drain(..).for_each(|x| api_contexts.push(x.0));
 
@@ -134,14 +174,13 @@ impl Device {
     }
 }
 
-
 /// Type of memory allocations that buffers or textures can be allocated from
 #[derive(Copy, Clone, Debug)]
 pub enum MemoryType {
     /// Able to be uploaded to by mapping memory. Slower to access. Faster to write to
-    HostVisible, 
+    HostVisible,
     /// Able to be uploaded to by using commands. Faster to access. Slower to write to
-    DeviceLocal,  
+    DeviceLocal,
 }
 
 bitflags! {
@@ -178,15 +217,15 @@ pub enum ResourceCreateError {
 #[serde(crate = "self::serde")]
 pub enum Format {
     Undefined,
-    
+
     RGB_U8,
     RGB_U8_SRGB,
     RGBA_U8,
     RGBA_U8_SRGB,
-    
+
     RGBA_F16,
 
-    BGR_U8_SRGB,    
+    BGR_U8_SRGB,
 }
 
 bitflags! {
@@ -228,19 +267,19 @@ pub enum Filter {
 pub struct Texture(Arc<api::Texture>);
 
 impl Texture {
-    pub fn format(&self) -> Format { 
+    pub fn format(&self) -> Format {
         self.0.format()
     }
 
-    pub fn width(&self) -> u32 { 
+    pub fn width(&self) -> u32 {
         self.0.width()
     }
 
-    pub fn height(&self) -> u32 { 
+    pub fn height(&self) -> u32 {
         self.0.height()
     }
 
-    pub fn depth(&self) -> u32 { 
+    pub fn depth(&self) -> u32 {
         self.0.depth()
     }
 
@@ -254,9 +293,7 @@ pub struct RenderPass(Arc<api::RenderPass>);
 
 impl fmt::Debug for RenderPass {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        fmt
-            .debug_struct("RenderPass")
-            .finish()
+        fmt.debug_struct("RenderPass").finish()
     }
 }
 
@@ -270,9 +307,7 @@ pub struct Shader(Arc<api::Shader>);
 
 impl fmt::Debug for Shader {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        fmt
-            .debug_struct("Shader")
-            .finish()
+        fmt.debug_struct("Shader").finish()
     }
 }
 
@@ -287,8 +322,14 @@ impl GraphicsContext {
         self.0.end();
     }
 
-    pub fn resource_barrier_texture(&mut self, texture: &Texture, old_layout: Layout, new_layout: Layout) {
-        self.0.resource_barrier_texture(texture.0.clone(), old_layout, new_layout);
+    pub fn resource_barrier_texture(
+        &mut self,
+        texture: &Texture,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) {
+        self.0
+            .resource_barrier_texture(texture.0.clone(), old_layout, new_layout);
     }
 
     pub fn copy_buffer_to_texture(&mut self, dst: &Texture, src: &Buffer) {
@@ -301,7 +342,7 @@ impl GraphicsContext {
 
     pub fn begin_render_pass(&mut self, render_pass: &RenderPass, attachments: &[&Texture]) {
         let mut a = Vec::with_capacity(attachments.len());
-        attachments.iter().for_each(|e| a.push(e.0.clone()) );
+        attachments.iter().for_each(|e| a.push(e.0.clone()));
 
         self.0.begin_render_pass(render_pass.0.clone(), &a[..]);
     }
@@ -323,7 +364,7 @@ impl GraphicsContext {
         self.0.bind_scissor(scissor);
     }
 
-    pub fn bind_vertex_buffer(&mut self, buffer: &Buffer){
+    pub fn bind_vertex_buffer(&mut self, buffer: &Buffer) {
         self.0.bind_vertex_buffer(buffer.0.clone());
     }
 

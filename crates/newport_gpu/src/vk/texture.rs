@@ -1,45 +1,44 @@
-use crate::{ MemoryType, TextureUsage, Format, Wrap, ResourceCreateError, Filter };
-use super::{ vk_format, Device, DeviceAllocation };
+use super::{vk_format, Device, DeviceAllocation};
+use crate::{Filter, Format, MemoryType, ResourceCreateError, TextureUsage, Wrap};
 
-use ash::vk;
 use ash::version::DeviceV1_0;
+use ash::vk;
 
 use std::sync::Arc;
 
 pub struct Texture {
-    pub owner:   Arc<Device>,
+    pub owner: Arc<Device>,
 
-    pub image:   vk::Image,
-    pub view:    vk::ImageView,
+    pub image: vk::Image,
+    pub view: vk::ImageView,
     pub sampler: vk::Sampler,
-    pub memory:  DeviceAllocation,
+    pub memory: DeviceAllocation,
 
     pub memory_type: MemoryType,
 
-    pub usage:   TextureUsage,
-    pub format:  Format,
+    pub usage: TextureUsage,
+    pub format: Format,
 
-    pub width:  u32,
+    pub width: u32,
     pub height: u32,
-    pub depth:  u32,
+    pub depth: u32,
 
     // Index into the devices bindless array
     pub bindless: Option<u32>,
 }
 
-
 impl Texture {
     pub fn new(
-        owner: Arc<Device>, 
-        memory_type: MemoryType, 
-        usage: TextureUsage, 
-        format: Format, 
-        width:  u32, 
-        height: u32, 
-        depth: u32, 
-        wrap: Wrap, 
-        min_filter: Filter, 
-        mag_filter: Filter
+        owner: Arc<Device>,
+        memory_type: MemoryType,
+        usage: TextureUsage,
+        format: Format,
+        width: u32,
+        height: u32,
+        depth: u32,
+        wrap: Wrap,
+        min_filter: Filter,
+        mag_filter: Filter,
     ) -> Result<Arc<Texture>, ResourceCreateError> {
         let mut image_type = vk::ImageType::TYPE_3D;
         if depth == 1 {
@@ -71,7 +70,7 @@ impl Texture {
             .height(height)
             .depth(depth)
             .build();
-        
+
         let create_info = vk::ImageCreateInfo::builder()
             .image_type(image_type)
             .format(vk_format(format))
@@ -83,20 +82,25 @@ impl Texture {
             .sharing_mode(vk::SharingMode::EXCLUSIVE)
             .extent(extent);
 
-        let image = unsafe{ owner.logical.create_image(&create_info, None) };
+        let image = unsafe { owner.logical.create_image(&create_info, None) };
         if image.is_err() {
             return Err(ResourceCreateError::Unknown);
         }
         let image = image.unwrap();
 
-        let requirements = unsafe{ owner.logical.get_image_memory_requirements(image) };
+        let requirements = unsafe { owner.logical.get_image_memory_requirements(image) };
         let memory = owner.allocate_memory(requirements, memory_type);
         if memory.is_err() {
             return Err(ResourceCreateError::OutOfMemory);
         }
         let memory = memory.unwrap();
 
-        unsafe{ owner.logical.bind_image_memory(image, memory.memory, memory.offset).unwrap() };
+        unsafe {
+            owner
+                .logical
+                .bind_image_memory(image, memory.memory, memory.offset)
+                .unwrap()
+        };
 
         let mut image_view_type = vk::ImageViewType::TYPE_3D;
         if depth == 1 {
@@ -115,10 +119,10 @@ impl Texture {
                     .aspect_mask(vk::ImageAspectFlags::COLOR)
                     .level_count(1)
                     .layer_count(1)
-                    .build()
+                    .build(),
             );
 
-        let view = unsafe{ owner.logical.create_image_view(&create_info, None) };
+        let view = unsafe { owner.logical.create_image_view(&create_info, None) };
         if view.is_err() {
             return Err(ResourceCreateError::Unknown);
         }
@@ -127,7 +131,7 @@ impl Texture {
         fn filter_to_vk(filter: Filter) -> vk::Filter {
             match filter {
                 Filter::Nearest => vk::Filter::NEAREST,
-                Filter::Linear  => vk::Filter::LINEAR,
+                Filter::Linear => vk::Filter::LINEAR,
             }
         }
 
@@ -147,7 +151,7 @@ impl Texture {
             .address_mode_w(swrap)
             .border_color(vk::BorderColor::INT_OPAQUE_BLACK);
 
-        let sampler = unsafe{ owner.logical.create_sampler(&create_info, None) };
+        let sampler = unsafe { owner.logical.create_sampler(&create_info, None) };
         if sampler.is_err() {
             return Err(ResourceCreateError::Unknown);
         }
@@ -156,32 +160,34 @@ impl Texture {
         // Add a weak reference to the device for bindless
         if usage.contains(TextureUsage::SAMPLED) {
             let mut bindless = owner.bindless_info.lock().unwrap();
-            
-            let found = bindless.textures
-                .iter_mut().enumerate()
+
+            let found = bindless
+                .textures
+                .iter_mut()
+                .enumerate()
                 .find(|(_, x)| x.strong_count() == 0)
                 .map(|(index, _)| index);
 
             let index = found.unwrap_or(bindless.textures.len());
 
-            let result = Arc::new(Texture{
+            let result = Arc::new(Texture {
                 owner: owner.clone(), // SPEED: Exra ref count due to mutex lock.
-    
-                image:   image,
-                view:    view,
+
+                image: image,
+                view: view,
                 sampler: sampler,
-                memory:  memory,
-    
+                memory: memory,
+
                 memory_type: memory_type,
-    
-                usage:  usage,
+
+                usage: usage,
                 format: format,
-    
-                width:  width,
+
+                width: width,
                 height: height,
-                depth:  depth,
-    
-                bindless: Some(index as u32)
+                depth: depth,
+
+                bindless: Some(index as u32),
             });
 
             let weak = Arc::downgrade(&result);
@@ -194,31 +200,39 @@ impl Texture {
             return Ok(result);
         }
 
-        Ok(Arc::new(Texture{
+        Ok(Arc::new(Texture {
             owner: owner,
 
-            image:   image,
-            view:    view,
+            image: image,
+            view: view,
             sampler: sampler,
-            memory:  memory,
+            memory: memory,
 
             memory_type: memory_type,
 
-            usage:  usage,
+            usage: usage,
             format: format,
 
-            width:  width,
+            width: width,
             height: height,
-            depth:  depth,
+            depth: depth,
 
-            bindless: None
+            bindless: None,
         }))
     }
 
-    pub fn format(&self) -> Format { self.format }
-    pub fn width(&self) -> u32 { self.width }
-    pub fn height(&self) -> u32 { self.height }
-    pub fn depth(&self) -> u32 { self.depth }
+    pub fn format(&self) -> Format {
+        self.format
+    }
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+    pub fn depth(&self) -> u32 {
+        self.depth
+    }
 
     pub fn bindless(&self) -> Option<u32> {
         self.bindless

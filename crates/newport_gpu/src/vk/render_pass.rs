@@ -1,11 +1,11 @@
-use crate::{ Format, };
-use super::{ Device, vk_format };
+use super::{vk_format, Device};
+use crate::Format;
 
-use ash::vk;
 use ash::version::DeviceV1_0;
+use ash::vk;
 
-use std::sync::Arc;
 use std::slice::from_ref;
+use std::sync::Arc;
 
 pub struct RenderPass {
     pub owner: Arc<Device>,
@@ -13,13 +13,17 @@ pub struct RenderPass {
     pub handle: vk::RenderPass,
 
     pub colors: Vec<Format>,
-    pub depth:  Option<Format>
+    pub depth: Option<Format>,
 }
 
 impl RenderPass {
-    pub fn new(owner: Arc<Device>, colors: Vec<Format>, depth: Option<Format>) -> Result<Arc<RenderPass>, ()> {
+    pub fn new(
+        owner: Arc<Device>,
+        colors: Vec<Format>,
+        depth: Option<Format>,
+    ) -> Result<Arc<RenderPass>, ()> {
         let mut color_refs = Vec::with_capacity(colors.len());
-        
+
         let num_attachments = {
             let num = colors.len();
             if depth.is_some() {
@@ -70,11 +74,11 @@ impl RenderPass {
                 .initial_layout(vk::ImageLayout::UNDEFINED)
                 .final_layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
             attachments.push(attachment.build());
-            
+
             let the_ref = vk::AttachmentReference::builder()
                 .attachment(num_attachments as u32)
                 .layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-                
+
             Some(the_ref.build())
         } else {
             None
@@ -115,11 +119,11 @@ impl RenderPass {
             }
             let handle = handle.unwrap();
 
-            Ok(Arc::new(RenderPass{
+            Ok(Arc::new(RenderPass {
                 owner: owner,
                 handle: handle,
                 colors: colors,
-                depth:  depth,
+                depth: depth,
             }))
         }
     }

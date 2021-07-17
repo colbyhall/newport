@@ -4,27 +4,27 @@ use super::*;
 #[derive(Copy, Clone, Default)]
 struct Oem_ID {
     wProcessorArchitecture: WORD,
-    wReserved:              WORD,
+    wReserved: WORD,
 }
 
 #[repr(C)]
 union Oem_Union {
-    dwOemId:  DWORD,
+    dwOemId: DWORD,
     internal: Oem_ID,
 }
 
 #[repr(C)]
 struct SYSTEM_INFO {
-    oem_id:                      Oem_Union,
-    dwPageSize:                  DWORD,
+    oem_id: Oem_Union,
+    dwPageSize: DWORD,
     lpMinimumApplicationAddress: LPVOID,
     lpMaximumApplicationAddress: LPVOID,
-    dwActiveProcessorMask:       DWORD_PTR,
-    dwNumberOfProcessors:        DWORD,
-    dwProcessorType:             DWORD,
-    dwAllocationGranularity:     DWORD,
-    wProcessorLevel:             WORD,
-    wProcessorRevision:          WORD,
+    dwActiveProcessorMask: DWORD_PTR,
+    dwNumberOfProcessors: DWORD,
+    dwProcessorType: DWORD,
+    dwAllocationGranularity: DWORD,
+    wProcessorLevel: WORD,
+    wProcessorRevision: WORD,
 }
 type LPSYSTEM_INFO = *mut SYSTEM_INFO;
 
@@ -46,11 +46,11 @@ impl Default for PROCESSOR_CACHE_TYPE {
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
 struct CACHE_DESCRIPTOR {
-    Level:          BYTE,
-    Associativity:  BYTE,
-    LineSize:       WORD,
-    Size:           DWORD,
-    Type:           PROCESSOR_CACHE_TYPE,
+    Level: BYTE,
+    Associativity: BYTE,
+    LineSize: WORD,
+    Size: DWORD,
+    Type: PROCESSOR_CACHE_TYPE,
 }
 
 #[repr(C)]
@@ -74,14 +74,16 @@ impl Default for LOGICAL_PROCESSOR_RELATIONSHIP {
 #[derive(Clone, Copy)]
 union SYSTEM_LOGICAL_PROCESSOR_INFORMATION_UNION {
     ProcessorCoreFlags: BYTE,
-    NodeNumber:         DWORD,
-    Cache:              CACHE_DESCRIPTOR,
-    Reserved:           [ULONGLONG; 2],
+    NodeNumber: DWORD,
+    Cache: CACHE_DESCRIPTOR,
+    Reserved: [ULONGLONG; 2],
 }
 
 impl Default for SYSTEM_LOGICAL_PROCESSOR_INFORMATION_UNION {
     fn default() -> Self {
-        SYSTEM_LOGICAL_PROCESSOR_INFORMATION_UNION { ProcessorCoreFlags: 0, }
+        SYSTEM_LOGICAL_PROCESSOR_INFORMATION_UNION {
+            ProcessorCoreFlags: 0,
+        }
     }
 }
 
@@ -89,28 +91,28 @@ impl Default for SYSTEM_LOGICAL_PROCESSOR_INFORMATION_UNION {
 #[derive(Clone, Copy, Default)]
 struct SYSTEM_LOGICAL_PROCESSOR_INFORMATION {
     ProcessorMask: ULONG_PTR,
-    Relationship:  LOGICAL_PROCESSOR_RELATIONSHIP,
-    Union:         SYSTEM_LOGICAL_PROCESSOR_INFORMATION_UNION,
+    Relationship: LOGICAL_PROCESSOR_RELATIONSHIP,
+    Union: SYSTEM_LOGICAL_PROCESSOR_INFORMATION_UNION,
 }
 type PSYSTEM_LOGICAL_PROCESSOR_INFORMATION = *mut SYSTEM_LOGICAL_PROCESSOR_INFORMATION;
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub struct SYSTEMTIME {
-    pub wYear:          WORD,
-    pub wMonth:         WORD,
-    pub wDayOfWeek:     WORD,
-    pub wDay:           WORD,
-    pub wHour:          WORD,
-    pub wMinute:        WORD,
-    pub wSecond:        WORD,
-    pub wMilliseconds:  WORD,
+    pub wYear: WORD,
+    pub wMonth: WORD,
+    pub wDayOfWeek: WORD,
+    pub wDay: WORD,
+    pub wHour: WORD,
+    pub wMinute: WORD,
+    pub wSecond: WORD,
+    pub wMilliseconds: WORD,
 }
 pub type LPSYSTEMTIME = *mut SYSTEMTIME;
 
-pub const MEM_COMMIT    : DWORD = 0x00001000;
-pub const MEM_RESERVE   : DWORD = 0x00002000;
-pub const MEM_RELEASE   : DWORD = 0x00008000;
+pub const MEM_COMMIT: DWORD = 0x00001000;
+pub const MEM_RESERVE: DWORD = 0x00002000;
+pub const MEM_RELEASE: DWORD = 0x00008000;
 
 pub const PAGE_READWRITE: DWORD = 0x04;
 
@@ -118,7 +120,7 @@ pub const PAGE_READWRITE: DWORD = 0x04;
 extern "stdcall" {
     pub fn CloseHandle(hObject: HANDLE) -> BOOL;
     pub fn GetModuleHandleA(lpModuleName: LPCSTR) -> HMODULE;
-    
+
     pub fn GetProcAddress(hModule: HMODULE, lpProcName: LPCSTR) -> LPVOID;
     pub fn LoadLibraryA(lpLibFileName: LPCSTR) -> HMODULE;
     pub fn FreeLibrary(hLibModule: HMODULE) -> BOOL;
@@ -129,7 +131,10 @@ extern "stdcall" {
     fn GlobalFree(hMem: HGLOBAL) -> HGLOBAL;
 
     fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);
-    fn GetLogicalProcessorInformation(Buffer: PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, ReturnedLength: PDWORD) -> BOOL;
+    fn GetLogicalProcessorInformation(
+        Buffer: PSYSTEM_LOGICAL_PROCESSOR_INFORMATION,
+        ReturnedLength: PDWORD,
+    ) -> BOOL;
 
     pub fn GetLastError() -> DWORD;
 
@@ -140,6 +145,11 @@ extern "stdcall" {
     fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;
     fn GetProcessHeap() -> HANDLE;
 
-    fn VirtualAlloc(lpAddress: LPVOID, dwSize: SIZE_T, flAlloactionType: DWORD, flProtect: DWORD) -> LPVOID;
+    fn VirtualAlloc(
+        lpAddress: LPVOID,
+        dwSize: SIZE_T,
+        flAlloactionType: DWORD,
+        flProtect: DWORD,
+    ) -> LPVOID;
     fn VirtualFree(lpAddress: LPVOID, dwSize: SIZE_T, dwFreeType: DWORD) -> BOOL;
 }

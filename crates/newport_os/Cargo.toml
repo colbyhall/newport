@@ -10,5 +10,10 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
+chrono = "0.4.19"
 lazy_static = "1.4.0"
 newport_math = { path = "../newport_math", version = "0.0.1" }
+
+[target.'cfg(unix)'.dependencies]
+xcb = "0.8.2"
+libc = "0.2.98"
