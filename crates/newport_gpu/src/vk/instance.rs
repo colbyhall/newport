@@ -105,7 +105,7 @@ impl Instance {
                         vk::Result::ERROR_INCOMPATIBLE_DRIVER => {
                             return Err(InstanceCreateError::IncompatibleDriver)
                         }
-                        e => { dbg!(e); return Err(InstanceCreateError::Unknown) },
+                        _ => return Err(InstanceCreateError::Unknown),
                     },
                 }
             }
