@@ -2,7 +2,7 @@ use crate::Format;
 use ash::vk;
 
 pub const ENABLED_LAYER_NAMES: [*const i8; 0] =
-    [/*b"VK_LAYER_KHRONOS_validation\0".as_ptr() as *const i8*/]; // TODO: remove this
+    [b"VK_LAYER_KHRONOS_validation\0".as_ptr() as *const i8];
 
 mod instance;
 pub use instance::*;
