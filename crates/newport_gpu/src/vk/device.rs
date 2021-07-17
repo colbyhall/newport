@@ -293,7 +293,7 @@ impl Device {
                 // TODO: Maybe do more checking with features we actually will need like KHR Swapchain support?
                 //  also maybe take something in from the builder
                 let mut is_acceptable = true;
-                is_acceptable &= properties.device_type == vk::PhysicalDeviceType::INTEGRATED_GPU // TODO: fallback to integrated
+                is_acceptable &= properties.device_type == vk::PhysicalDeviceType::DISCRETE_GPU // TODO: fallback to integrated
                     && features.geometry_shader == 1;
                 is_acceptable &= indexing_features.descriptor_binding_partially_bound == 1
                     && indexing_features.runtime_descriptor_array == 1;

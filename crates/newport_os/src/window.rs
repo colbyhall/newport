@@ -542,6 +542,7 @@ impl Window {
     /// }
     /// ```
     pub fn poll_events(&mut self) -> WindowEventIterator {
+        // TODO: poll events
         WindowEventIterator {
             queue: VecDeque::new(),
 
