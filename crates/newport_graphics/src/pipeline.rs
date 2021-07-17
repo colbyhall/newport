@@ -1,26 +1,10 @@
-use crate::{
-    gpu,
-    asset,
-    engine,
-    serde,
+use crate::{asset, engine, gpu, serde, Graphics};
 
-    Graphics,
-};
+use asset::{deserialize, Asset, UUID};
 
-use asset::{
-    Asset,
-    UUID,
-    deserialize,
-};
+use serde::{Deserialize, Serialize};
 
-use serde::{
-    Serialize,
-    Deserialize
-};
-
-use engine::{
-    Engine,
-};
+use engine::Engine;
 
 use std::path::Path;
 
@@ -29,7 +13,7 @@ use std::path::Path;
 pub struct PipelineFile {
     #[serde(default)]
     render_states: RenderStates,
-    
+
     #[serde(default)]
     color_blend: Option<BlendStates>,
 
@@ -38,7 +22,7 @@ pub struct PipelineFile {
 
     #[serde(default)]
     depth_stencil_states: DepthStencilStates,
-    
+
     #[serde(default)]
     imports: Vec<Item>,
 
@@ -46,16 +30,16 @@ pub struct PipelineFile {
     common: String,
 
     vertex_shader: Option<VertexShader>,
-    pixel_shader:  Option<PixelShader>,
+    pixel_shader: Option<PixelShader>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
 pub struct DepthStencilStates {
     #[serde(default)]
-    depth_test:    bool,
+    depth_test: bool,
     #[serde(default)]
-    depth_write:   bool,
+    depth_write: bool,
     #[serde(default = "DepthStencilStates::default_depth_compare")]
     depth_compare: gpu::CompareOp,
 }
@@ -68,7 +52,7 @@ impl DepthStencilStates {
 
 impl Default for DepthStencilStates {
     fn default() -> Self {
-        Self{
+        Self {
             depth_test: false,
             depth_write: false,
             depth_compare: Self::default_depth_compare(),
@@ -80,7 +64,7 @@ impl Default for DepthStencilStates {
 #[serde(rename = "CullMode", crate = "self::serde")]
 pub enum CullModeSerde {
     Front,
-    Back
+    Back,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -89,20 +73,20 @@ pub enum ColorMaskSerde {
     Red,
     Green,
     Blue,
-    Alpha
+    Alpha,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
 pub struct RenderStates {
     #[serde(default = "RenderStates::default_draw_mode")]
-    draw_mode:  gpu::DrawMode,
+    draw_mode: gpu::DrawMode,
 
     #[serde(default = "RenderStates::default_line_width")]
     line_width: f32,
 
     #[serde(default)]
-    cull_mode:  Vec<CullModeSerde>,
+    cull_mode: Vec<CullModeSerde>,
 
     #[serde(default = "RenderStates::default_color_mask")]
     color_mask: Vec<ColorMaskSerde>,
@@ -118,7 +102,12 @@ impl RenderStates {
     }
 
     fn default_color_mask() -> Vec<ColorMaskSerde> {
-        vec![ColorMaskSerde::Red, ColorMaskSerde::Green, ColorMaskSerde::Blue, ColorMaskSerde::Alpha]
+        vec![
+            ColorMaskSerde::Red,
+            ColorMaskSerde::Green,
+            ColorMaskSerde::Blue,
+            ColorMaskSerde::Alpha,
+        ]
     }
 }
 
@@ -143,7 +132,7 @@ pub struct BlendStates {
     dst_blend_factor: gpu::BlendFactor,
 
     #[serde(default = "BlendStates::default_blend_op")]
-    blend_op:         gpu::BlendOp,
+    blend_op: gpu::BlendOp,
 }
 
 impl BlendStates {
@@ -177,7 +166,7 @@ impl ItemVariant {
     fn into_type_string(self) -> &'static str {
         match self {
             Self::Float32 => "float",
-            
+
             Self::Vector2 => "float2",
             Self::Vector3 => "float3",
             Self::Vector4 => "float4",
@@ -204,15 +193,15 @@ pub struct VertexShader {
     pub system_semantics: Vec<SystemSemantics>,
 
     #[serde(default)]
-    pub exports:    Vec<Item>,
-    pub code:       String,
+    pub exports: Vec<Item>,
+    pub code: String,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
 pub struct PixelShader {
     pub exports: Vec<(String, gpu::Format)>,
-    pub code:    String,
+    pub code: String,
 }
 
 pub struct Pipeline {
@@ -255,7 +244,7 @@ impl Asset for Pipeline {
 
         let PipelineFile {
             render_states,
-            
+
             color_blend,
             alpha_blend,
 
@@ -263,14 +252,17 @@ impl Asset for Pipeline {
 
             vertex_shader,
             pixel_shader,
-            
-            imports,
-            common
 
+            imports,
+            common,
         } = &pipeline_file;
 
-        let pixel_shader = pixel_shader.as_ref().expect("Pixel Shader is required until compute shader is implemented");
-        let vertex_shader = vertex_shader.as_ref().expect("Vertex Shader is required until compute shader is implemented");
+        let pixel_shader = pixel_shader
+            .as_ref()
+            .expect("Pixel Shader is required until compute shader is implemented");
+        let vertex_shader = vertex_shader
+            .as_ref()
+            .expect("Vertex Shader is required until compute shader is implemented");
 
         let header = {
             let mut result = SHADER_HEADER.to_string();
@@ -280,47 +272,45 @@ impl Asset for Pipeline {
             result.push_str("\n\n");
 
             if imports.len() > 0 {
-
                 // Build GlobalImports which we'll pull from byte address buffer into
                 result.push_str("struct Imports {\n");
                 for Item(name, variant) in imports.iter() {
-                    let line= format!(
-                        "    {} {};\n", 
-                        variant.into_type_string(), 
-                        name,
-                    );
+                    let line = format!("    {} {};\n", variant.into_type_string(), name,);
                     result.push_str(&line);
                 }
                 result.push_str("};\n\n");
 
                 result.push_str("Imports get_imports() {\n");
-                result.push_str("Imports result = index_buffers(constants.index).Load<Imports>(0);\n");
+                result.push_str(
+                    "Imports result = index_buffers(constants.index).Load<Imports>(0);\n",
+                );
 
                 for Item(name, variant) in imports.iter() {
                     if *variant == ItemVariant::Matrix4 {
-                        let line= format!(
-                            "result.{} = transpose(result.{});\n", 
-                            name,
-                            name, 
-                        );
+                        let line = format!("result.{} = transpose(result.{});\n", name, name,);
                         result.push_str(&line);
                     }
                 }
 
                 result.push_str("return result;\n");
                 result.push_str("}\n\n");
-
             }
 
             result
         };
 
-        let colors = pixel_shader.exports.iter().map(|(_, format)|*format).collect();
+        let colors = pixel_shader
+            .exports
+            .iter()
+            .map(|(_, format)| *format)
+            .collect();
 
         let render_pass = device.create_render_pass(colors, None).unwrap();
 
-        let vertex_attributes = vertex_shader.attributes.iter().map(|Item(_, variant)| {
-            match variant {
+        let vertex_attributes = vertex_shader
+            .attributes
+            .iter()
+            .map(|Item(_, variant)| match variant {
                 ItemVariant::Float32 => gpu::VertexAttribute::Float32,
                 ItemVariant::Vector2 => gpu::VertexAttribute::Vector2,
                 ItemVariant::Vector3 => gpu::VertexAttribute::Vector3,
@@ -329,32 +319,29 @@ impl Asset for Pipeline {
                 ItemVariant::Texture => gpu::VertexAttribute::Uint32,
 
                 _ => unreachable!(),
-            }
-        }).collect();
+            })
+            .collect();
 
         let blend_enabled = color_blend.is_some() || alpha_blend.is_some();
 
-        let color_blend = color_blend.unwrap_or(BlendStates{
+        let color_blend = color_blend.unwrap_or(BlendStates {
             src_blend_factor: gpu::BlendFactor::One,
             dst_blend_factor: gpu::BlendFactor::One,
-            blend_op: gpu::BlendOp::Add
+            blend_op: gpu::BlendOp::Add,
         });
 
-        let alpha_blend = alpha_blend.unwrap_or(BlendStates{
+        let alpha_blend = alpha_blend.unwrap_or(BlendStates {
             src_blend_factor: gpu::BlendFactor::One,
             dst_blend_factor: gpu::BlendFactor::One,
-            blend_op: gpu::BlendOp::Add
+            blend_op: gpu::BlendOp::Add,
         });
 
         // Generate the pixel shader first to have access to exports
         let pixel_shader = {
-            let PixelShader {
-                exports,
-                code,
-            } = pixel_shader;
+            let PixelShader { exports, code } = pixel_shader;
 
             let imports = &vertex_shader.exports;
-            
+
             // Start off with header
             let mut source = header.clone();
 
@@ -364,16 +351,16 @@ impl Asset for Pipeline {
                 name_uppercase.make_ascii_uppercase();
 
                 let variant = match format {
-                        gpu::Format::BGR_U8_SRGB|gpu::Format::RGBA_F16|gpu::Format::RGB_U8|gpu::Format::RGB_U8_SRGB|gpu::Format::RGBA_U8|gpu::Format::RGBA_U8_SRGB => "float4",
-                        _ => unreachable!(),
-                    };
+                    gpu::Format::BGR_U8_SRGB
+                    | gpu::Format::RGBA_F16
+                    | gpu::Format::RGB_U8
+                    | gpu::Format::RGB_U8_SRGB
+                    | gpu::Format::RGBA_U8
+                    | gpu::Format::RGBA_U8_SRGB => "float4",
+                    _ => unreachable!(),
+                };
 
-                let line= format!(
-                    "    {} {} : SV_TARGET{};\n", 
-                    variant, 
-                    name, 
-                    index
-                );
+                let line = format!("    {} {} : SV_TARGET{};\n", variant, name, index);
                 source.push_str(&line);
             }
             source.push_str("};\n\n");
@@ -384,30 +371,34 @@ impl Asset for Pipeline {
                 for Item(name, variant) in imports.iter() {
                     let mut name_uppercase = name.clone();
                     name_uppercase.make_ascii_uppercase();
-    
-                    let line= format!(
-                        "    {} {} : {};\n", 
-                        variant.into_type_string(), 
-                        name, 
+
+                    let line = format!(
+                        "    {} {} : {};\n",
+                        variant.into_type_string(),
+                        name,
                         name_uppercase
                     );
                     source.push_str(&line);
                 }
                 source.push_str("};\n\n");
 
-                source.push_str("PixelOutput main( PixelInput input ) {\n");   
+                source.push_str("PixelOutput main( PixelInput input ) {\n");
             } else {
                 source.push_str("PixelOutput main( ) {\n");
             }
 
-            source.push_str("PixelOutput output;"); 
+            source.push_str("PixelOutput output;");
 
             source.push_str(&code);
             source.push_str("\n}\n");
 
             // Compile to binary and then pass to device
-            let binary = gpu::shaders::compile("pixel.hlsl", &source, "main", gpu::ShaderVariant::Pixel).unwrap();
-            let shader = device.create_shader(&binary, gpu::ShaderVariant::Pixel, "main".to_string()).unwrap();
+            let binary =
+                gpu::shaders::compile("pixel.hlsl", &source, "main", gpu::ShaderVariant::Pixel)
+                    .unwrap();
+            let shader = device
+                .create_shader(&binary, gpu::ShaderVariant::Pixel, "main".to_string())
+                .unwrap();
 
             shader
         };
@@ -420,7 +411,7 @@ impl Asset for Pipeline {
                 exports,
                 code,
             } = vertex_shader;
-            
+
             // Start off with header
             let mut source = header.clone();
 
@@ -430,10 +421,10 @@ impl Asset for Pipeline {
                 let mut name_uppercase = name.clone();
                 name_uppercase.make_ascii_uppercase();
 
-                let line= format!(
-                    "    {} {} : {};\n", 
-                    variant.into_type_string(), 
-                    name, 
+                let line = format!(
+                    "    {} {} : {};\n",
+                    variant.into_type_string(),
+                    name,
                     name_uppercase
                 );
                 source.push_str(&line);
@@ -442,16 +433,16 @@ impl Asset for Pipeline {
             source.push_str("};\n\n");
 
             // Generate the VertexInput based off of attributes
-            if attributes.len() > 0 || system_semantics.len() > 0{
+            if attributes.len() > 0 || system_semantics.len() > 0 {
                 source.push_str("struct VertexInput {\n");
                 for Item(name, variant) in attributes.iter() {
                     let mut name_uppercase = name.clone();
                     name_uppercase.make_ascii_uppercase();
-    
-                    let line= format!(
-                        "    {} {} : {};\n", 
-                        variant.into_type_string(), 
-                        name, 
+
+                    let line = format!(
+                        "    {} {} : {};\n",
+                        variant.into_type_string(),
+                        name,
                         name_uppercase
                     );
                     source.push_str(&line);
@@ -459,7 +450,7 @@ impl Asset for Pipeline {
 
                 for semantic in system_semantics.iter() {
                     let line = match semantic {
-                        SystemSemantics::VertexId => "uint vertex_id : SV_VertexID;\n"
+                        SystemSemantics::VertexId => "uint vertex_id : SV_VertexID;\n",
                     };
                     source.push_str(line);
                 }
@@ -474,8 +465,12 @@ impl Asset for Pipeline {
             source.push_str("\n}\n");
 
             // Compile to binary and then pass to device
-            let binary = gpu::shaders::compile("vertex.hlsl", &source, "main", gpu::ShaderVariant::Vertex).unwrap();
-            let shader = device.create_shader(&binary, gpu::ShaderVariant::Vertex, "main".to_string()).unwrap();
+            let binary =
+                gpu::shaders::compile("vertex.hlsl", &source, "main", gpu::ShaderVariant::Vertex)
+                    .unwrap();
+            let shader = device
+                .create_shader(&binary, gpu::ShaderVariant::Vertex, "main".to_string())
+                .unwrap();
 
             shader
         };
@@ -500,10 +495,15 @@ impl Asset for Pipeline {
                 }
             }
 
-            (render_states.draw_mode, render_states.line_width, cull_mode, color_mask)
+            (
+                render_states.draw_mode,
+                render_states.line_width,
+                cull_mode,
+                color_mask,
+            )
         };
 
-        let pipeline_desc  = gpu::GraphicsPipelineDescription{
+        let pipeline_desc = gpu::GraphicsPipelineDescription {
             render_pass,
             shaders,
 
@@ -532,8 +532,16 @@ impl Asset for Pipeline {
             push_constant_size: 4,
         };
 
-        let pipeline = device.create_pipeline(gpu::PipelineDescription::Graphics(pipeline_desc)).unwrap();
+        let pipeline = device
+            .create_pipeline(gpu::PipelineDescription::Graphics(pipeline_desc))
+            .unwrap();
 
-        (id, Pipeline{ file: pipeline_file, gpu: pipeline })
+        (
+            id,
+            Pipeline {
+                file: pipeline_file,
+                gpu: pipeline,
+            },
+        )
     }
 }
