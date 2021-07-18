@@ -1,16 +1,16 @@
 [package]
 name = "newport_asset"
-version = "0.0.1"
+version = "0.2.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
-license = "MIT"
+license = "Apache-2.0"
 repository = "https://github.com/colbyhall/newport"
 description = "Thread safe asset manager for Newport engine"
 categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-newport_log    = { path = "../newport_log", version = "0.0.1" }
-newport_engine = { path = "../newport_engine", version = "0.0.1" }
-newport_cache  = { path = "../newport_cache", version = "0.0.1" }
-newport_serde  = { path = "../newport_serde", version = "0.0.1" }
+newport_log    = { path = "../newport_log", version = "0.2.0" }
+newport_engine = { path = "../newport_engine", version = "0.2.0" }
+newport_cache  = { path = "../newport_cache", version = "0.2.0" }
+newport_serde  = { path = "../newport_serde", version = "0.2.0" }

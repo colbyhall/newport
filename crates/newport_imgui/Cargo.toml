@@ -1,15 +1,20 @@
 [package]
 name = "newport_imgui"
-version = "0.0.1"
+version = "0.2.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/colbyhall/newport"
+description = "Immediate Mode GUI for Newport"
+categories = ["game-engines", "game-development"]
+keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-newport_math      = { path = "../newport_math", version = "0.0.1" }
-newport_gpu       = { path = "../newport_gpu", version = "0.0.1" }
-newport_graphics  = { path = "../newport_graphics", version = "0.0.1" }
-newport_asset     = { path = "../newport_asset", version = "0.0.1" }
-newport_os        = { path = "../newport_os", version = "0.0.1" }
-newport_engine    = { path = "../newport_engine", version = "0.0.1" }
+newport_math      = { path = "../newport_math", version = "0.2.0" }
+newport_gpu       = { path = "../newport_gpu", version = "0.2.0" }
+newport_graphics  = { path = "../newport_graphics", version = "0.2.0" }
+newport_asset     = { path = "../newport_asset", version = "0.2.0" }
+newport_os        = { path = "../newport_os", version = "0.2.0" }
+newport_engine    = { path = "../newport_engine", version = "0.2.0" }
 
 lazy_static = "1.4.0"

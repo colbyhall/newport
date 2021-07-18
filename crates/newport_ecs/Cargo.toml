@@ -1,14 +1,17 @@
 [package]
 name = "newport_ecs"
-version = "0.0.1"
+version = "0.2.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "Apache-2.0"
+repository = "https://github.com/colbyhall/newport"
+description = "Custom ECS made for Newport"
+categories = ["game-engines", "game-development"]
+keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-newport_math    = { path = "../newport_math", version = "0.0.1" }
-newport_editor = { path = "../newport_editor", version = "0.0.1", optional = true }
+newport_math    = { path = "../newport_math", version = "0.2.0" }
+newport_editor = { path = "../newport_editor", version = "0.2.0", optional = true }
 slotmap = "1.0.3"
 
 [features]

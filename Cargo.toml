@@ -1,11 +1,11 @@
 [package]
 name = "newport"
-version = "0.0.1"
+version = "0.2.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
-license = "MIT"
+license = "Apache-2.0"
 repository = "https://github.com/colbyhall/newport"
-description = "Fast module game engine built in rust"
+description = "Modular Game Engine built in Rust"
 categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
@@ -13,18 +13,18 @@ keywords = ["game", "engine", "gamedev", "newport"]
 members = ["crates/*"]
 
 [dependencies]
-newport_os        = { path = "crates/newport_os", version = "0.0.1" }
-newport_asset     = { path = "crates/newport_asset", version = "0.0.1" }
-newport_log       = { path = "crates/newport_log", version = "0.0.1" }
-newport_engine    = { path = "crates/newport_engine", version = "0.0.1" }
-newport_gpu       = { path = "crates/newport_gpu", version = "0.0.1" }
-newport_graphics  = { path = "crates/newport_graphics", version = "0.0.1" }
-newport_math      = { path = "crates/newport_math", version = "0.0.1" }
-newport_editor    = { path = "crates/newport_editor", version = "0.0.1" }
-newport_codegen   = { path = "crates/newport_codegen", version = "0.0.1" }
-newport_ecs       = { path = "crates/newport_ecs", version = "0.0.1", features = ["editable"] }
-newport_game      = { path = "crates/newport_game", version = "0.0.1" }
-newport_imgui     = { path = "crates/newport_imgui", version = "0.0.1" }
+newport_os        = { path = "crates/newport_os", version = "0.2.0" }
+newport_asset     = { path = "crates/newport_asset", version = "0.2.0" }
+newport_log       = { path = "crates/newport_log", version = "0.2.0" }
+newport_engine    = { path = "crates/newport_engine", version = "0.2.0" }
+newport_gpu       = { path = "crates/newport_gpu", version = "0.2.0" }
+newport_graphics  = { path = "crates/newport_graphics", version = "0.2.0" }
+newport_math      = { path = "crates/newport_math", version = "0.2.0" }
+newport_editor    = { path = "crates/newport_editor", version = "0.2.0" }
+newport_codegen   = { path = "crates/newport_codegen", version = "0.2.0" }
+newport_ecs       = { path = "crates/newport_ecs", version = "0.2.0", features = ["editable"] }
+newport_game      = { path = "crates/newport_game", version = "0.2.0" }
+newport_imgui     = { path = "crates/newport_imgui", version = "0.2.0" }
 
 # Serde sadly has to be included in the dependency list of every package that uses it
 serde = { version = "1.0.125", features = ["derive"] }
