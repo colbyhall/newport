@@ -13,13 +13,11 @@ use asset::{
 
 use gpu::{
 	BufferUsage,
-	Filter,
 	Format,
 	Gpu,
 	Layout,
 	MemoryType,
 	TextureUsage,
-	Wrap,
 };
 
 use serde::{
@@ -106,28 +104,19 @@ impl Asset for Texture {
 						image.width as u32,
 						image.height as u32,
 						1,
-						Wrap::Clamp,
-						Filter::Linear,
-						Filter::Linear,
 					)
 					.unwrap();
 
-				let mut gfx = device.create_graphics_context().unwrap();
-				{
-					gfx.begin();
-					gfx.resource_barrier_texture(
-						&gpu_texture,
-						Layout::Undefined,
-						Layout::TransferDst,
-					);
-					gfx.copy_buffer_to_texture(&gpu_texture, &pixel_buffer);
-					gfx.resource_barrier_texture(
+				let gfx = device
+					.create_graphics_recorder()
+					.resource_barrier_texture(&gpu_texture, Layout::Undefined, Layout::TransferDst)
+					.copy_buffer_to_texture(&gpu_texture, &pixel_buffer)
+					.resource_barrier_texture(
 						&gpu_texture,
 						Layout::TransferDst,
 						Layout::ShaderReadOnly,
-					);
-					gfx.end();
-				}
+					)
+					.finish();
 
 				let receipt = device.submit_graphics(vec![gfx], &[]);
 				receipt.wait();

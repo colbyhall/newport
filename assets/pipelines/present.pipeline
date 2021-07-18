@@ -1,9 +1,9 @@
 Asset(
     id: "{62b4ffa0-9510-4818-a6f2-7645ec304d8e}",
     asset: Pipeline(
-        imports: [
-            ("texture", Texture),
-        ],
+        resources: {
+			"texture": Texture,
+		},
 
         vertex_shader: Some((
             system_semantics: [
@@ -28,10 +28,8 @@ Asset(
             ],
 
             code: r#"
-                Imports imports = get_imports();
-
-                Texture2D    my_texture = index_textures(imports.texture);
-                SamplerState my_sampler = index_samplers(imports.texture);
+                Texture2D    my_texture = load_texture();
+                SamplerState my_sampler = index_samplers(0);
 
                 output.color = my_texture.Sample(my_sampler, input.uv, 0);
                 

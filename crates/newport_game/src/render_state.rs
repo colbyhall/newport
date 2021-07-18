@@ -9,7 +9,6 @@ use crate::{
 
 use gpu::{
 	Gpu,
-	GraphicsContext,
 	Pipeline,
 };
 use graphics::Mesh;
@@ -36,7 +35,7 @@ impl RenderState {
 			.create_buffer(
 				gpu::BufferUsage::CONSTANTS,
 				gpu::MemoryType::HostVisible,
-				std::mem::size_of::<Matrix4>() * self.primitive_transforms.len(),
+				self.primitive_transforms.len(),
 			)
 			.unwrap();
 		transform_buffer.copy_to(&self.primitive_transforms[..]);
@@ -44,7 +43,7 @@ impl RenderState {
 		let view_matrices: Vec<Matrix4> = self
 			.viewports
 			.iter()
-			.map(|(id, viewport)| {
+			.map(|(_id, viewport)| {
 				let aspect_ratio = viewport.width as f32 / viewport.height as f32;
 				let projection = Matrix4::perspective(viewport.fov, aspect_ratio, 10000.0, 0.1);
 				// TODO: View matrix
@@ -56,7 +55,7 @@ impl RenderState {
 			.create_buffer(
 				gpu::BufferUsage::CONSTANTS,
 				gpu::MemoryType::HostVisible,
-				std::mem::size_of::<Matrix4>() * view_matrices.len(),
+				view_matrices.len(),
 			)
 			.unwrap();
 		views_buffer.copy_to(&view_matrices[..]);
@@ -71,9 +70,6 @@ impl RenderState {
 					viewport.width,
 					viewport.height,
 					1,
-					gpu::Wrap::Clamp,
-					gpu::Filter::Linear,
-					gpu::Filter::Linear,
 				)
 				.unwrap();
 
@@ -89,22 +85,4 @@ pub enum Primitive {
 		mesh: AssetRef<Mesh>,
 		pipeline: AssetRef<Pipeline>,
 	},
-}
-
-impl Primitive {
-	pub fn record(&self, index: usize, gfx: &mut GraphicsContext) {
-		match self {
-			Primitive::StaticMesh { mesh, pipeline } => {
-				let pipeline = pipeline.read();
-				let mesh = mesh.read();
-
-				struct Constants {}
-
-				// gfx.bind_pipeline(&pipeline);
-				// gfx.bind_vertex_buffer(&mesh.vertex_buffer);
-				// gfx.bind_index_buffer(&mesh.vertex_buffer);
-				// gfx.draw_indexed(mesh.indices.len(), 0);
-			}
-		}
-	}
 }

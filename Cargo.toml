@@ -38,6 +38,10 @@ name = "game"
 path = "examples/game.rs"
 
 [[example]]
+name = "gpu"
+path = "examples/gpu.rs"
+
+[[example]]
 name = "imgui"
 path = "examples/imgui.rs"
 

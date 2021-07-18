@@ -6,9 +6,11 @@ Asset(
             dst_blend_factor: OneMinusSrcAlpha,
         )),
 
-        imports: [
-            ("view", Matrix4),
-        ],
+		constants: {
+			"imports": Entire([
+				("view", Matrix4),
+			]),
+		},
 
         vertex_shader: Some((
             attributes: [
@@ -16,7 +18,7 @@ Asset(
                 ("uv",       Vector2),
                 ("scissor",  Vector4),
                 ("color",    Vector4),
-                ("texture",  Texture),
+                ("texture",  Uint32),
             ],
 
             exports: [
@@ -24,7 +26,7 @@ Asset(
                 ("uv",         Vector2),
                 ("scissor",    Vector4),
                 ("color",      Vector4),
-                ("texture",    Texture),
+                ("texture",    Uint32),
             ],
 
             code: r#"
@@ -48,10 +50,8 @@ Asset(
             ],
 
             code: r#"
-                Imports imports = get_imports();
-
                 Texture2D    my_texture = index_textures(input.texture);
-                SamplerState my_sampler = index_samplers(input.texture);
+                SamplerState my_sampler = index_samplers(0);
 
                 bool in_scissor = 
                     input.screen_pos.x >= input.scissor.x && 

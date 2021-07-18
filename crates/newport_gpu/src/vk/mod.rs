@@ -28,8 +28,11 @@ pub use shader::*;
 mod pipeline;
 pub use pipeline::*;
 
-mod context;
-pub use context::*;
+mod command_buffer;
+pub use command_buffer::*;
+
+mod sampler;
+pub use sampler::*;
 
 pub fn vk_format(format: Format) -> vk::Format {
 	match format {

@@ -27,12 +27,9 @@ use math::{
 	Vector3,
 };
 
-use std::{
-	mem::size_of,
-	path::{
-		Path,
-		PathBuf,
-	},
+use std::path::{
+	Path,
+	PathBuf,
 };
 
 use serde::{
@@ -149,7 +146,7 @@ impl Asset for Mesh {
 			.create_buffer(
 				BufferUsage::TRANSFER_SRC,
 				MemoryType::HostVisible,
-				vertices.len() * size_of::<Vertex>(),
+				vertices.len(),
 			)
 			.unwrap();
 		transfer_vertex.copy_to(&vertices[..]);
@@ -158,7 +155,7 @@ impl Asset for Mesh {
 			.create_buffer(
 				BufferUsage::TRANSFER_SRC,
 				MemoryType::HostVisible,
-				indices.len() * size_of::<u32>(),
+				indices.len(),
 			)
 			.unwrap();
 		transfer_index.copy_to(&indices[..]);
@@ -167,7 +164,7 @@ impl Asset for Mesh {
 			.create_buffer(
 				BufferUsage::TRANSFER_DST | BufferUsage::VERTEX,
 				MemoryType::DeviceLocal,
-				vertices.len() * size_of::<Vertex>(),
+				vertices.len(),
 			)
 			.unwrap();
 
@@ -175,17 +172,15 @@ impl Asset for Mesh {
 			.create_buffer(
 				BufferUsage::TRANSFER_DST | BufferUsage::INDEX,
 				MemoryType::DeviceLocal,
-				indices.len() * size_of::<u32>(),
+				indices.len(),
 			)
 			.unwrap();
 
-		let mut gfx = device.create_graphics_context().unwrap();
-		{
-			gfx.begin();
-			gfx.copy_buffer_to_buffer(&vertex_buffer, &transfer_vertex);
-			gfx.copy_buffer_to_buffer(&index_buffer, &transfer_index);
-			gfx.end();
-		}
+		let gfx = device
+			.create_graphics_recorder()
+			.copy_buffer_to_buffer(&vertex_buffer, &transfer_vertex)
+			.copy_buffer_to_buffer(&index_buffer, &transfer_index)
+			.finish();
 
 		let receipt = device.submit_graphics(vec![gfx], &[]);
 		receipt.wait();

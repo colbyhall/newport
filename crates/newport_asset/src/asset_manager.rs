@@ -146,11 +146,18 @@ impl Module for AssetManager {
 		for (id, path) in asset_cache.uuid_to_path.iter() {
 			let ext = path.extension().unwrap_or_default();
 
-			let (index, _) = variants
+			let variant = variants
 				.iter()
 				.enumerate()
-				.find(|(_, v)| v.extensions.contains(&ext.to_str().unwrap()))
-				.unwrap();
+				.find(|(_, v)| v.extensions.contains(&ext.to_str().unwrap()));
+
+			// Skip any path found without a proper extension. This is so we
+			// don't crash when an asset register is removed.
+			let index = match variant {
+				Some((index, _)) => index,
+				_ => continue,
+			};
+
 			let write_time = fs::metadata(path).unwrap().modified().unwrap();
 
 			assets.insert(

@@ -205,40 +205,23 @@ impl Editor {
 			gui.end_frame()
 		};
 
-		device.update_bindless();
-
 		let present_pipeline = assets.present_pipeline.read();
 
-		let mut gfx = device.create_graphics_context().unwrap();
-		gfx.begin();
-		{
-			// let imgui = draw_state.record(canvas, &mut gfx, gui).unwrap();
-			// gfx.begin_render_pass(&gpu.backbuffer_render_pass(), &[&backbuffer]);
-			// gfx.bind_pipeline(&present_pipeline);
-			//
-			// struct Import {
-			// _texture: u32,
-			// }
-			// let import_buffer = device.create_buffer(
-			// gpu::BufferUsage::CONSTANTS,
-			// gpu::MemoryType::HostVisible,
-			// std::mem::size_of::<Import>()
-			// ).unwrap();
-			// import_buffer.copy_to(&[Import{
-			// _texture: imgui.bindless().unwrap(),
-			// }]);
-			//
-			// gfx.bind_constant_buffer(&import_buffer);
-			// gfx.draw(3, 0);
-			// gfx.end_render_pass();
-
-			gfx.resource_barrier_texture(
+		let gfx = device.create_graphics_recorder();
+		let (gfx, imgui) = draw_state.record(canvas, gfx, gui);
+		let imgui = imgui.unwrap();
+		let gfx = gfx
+			.render_pass(&gpu.backbuffer_render_pass(), &[&backbuffer], |ctx| {
+				ctx.bind_pipeline(&present_pipeline)
+					.bind_texture("texture", &imgui)
+					.draw(3, 0)
+			})
+			.resource_barrier_texture(
 				&backbuffer,
 				gpu::Layout::ColorAttachment,
 				gpu::Layout::Present,
-			);
-		}
-		gfx.end();
+			)
+			.finish();
 
 		let receipt = device.submit_graphics(vec![gfx], &[]);
 		device.display(&[receipt]);

@@ -19,14 +19,13 @@ use newport_math::{
 use ash::version::DeviceV1_0;
 use ash::vk;
 
-use std::mem::size_of;
 use std::slice::{
 	from_raw_parts,
 	from_ref,
 };
 use std::sync::Arc;
 
-pub struct GraphicsContext {
+pub struct GraphicsCommandBuffer {
 	pub owner: Arc<Device>,
 
 	pub command_buffer: vk::CommandBuffer,
@@ -53,7 +52,7 @@ fn layout_to_image_layout(layout: Layout) -> vk::ImageLayout {
 	}
 }
 
-impl GraphicsContext {
+impl GraphicsCommandBuffer {
 	pub fn begin(&mut self) {
 		unsafe {
 			self.owner
@@ -192,8 +191,8 @@ impl GraphicsContext {
 	}
 }
 
-impl GraphicsContext {
-	pub fn new(owner: Arc<Device>) -> Result<GraphicsContext, ()> {
+impl GraphicsCommandBuffer {
+	pub fn new(owner: Arc<Device>) -> Result<GraphicsCommandBuffer, ()> {
 		let handle = {
 			let mut thread_infos = owner.thread_info.lock().unwrap();
 			let thread_id = std::thread::current().id();
@@ -230,7 +229,7 @@ impl GraphicsContext {
 			handle.unwrap()[0]
 		};
 
-		Ok(GraphicsContext {
+		Ok(GraphicsCommandBuffer {
 			owner: owner,
 
 			command_buffer: handle,
@@ -403,6 +402,10 @@ impl GraphicsContext {
 		self.buffers.push(buffer);
 	}
 
+	pub fn bind_textures(&mut self, texture: Arc<Texture>) {
+		self.textures.push(texture);
+	}
+
 	pub fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
 		unsafe {
 			self.owner.logical.cmd_draw(
@@ -464,6 +467,7 @@ impl GraphicsContext {
 		};
 	}
 
+	// TODO: Make this less all over the place
 	pub fn push_constants(&mut self, t: &[u32]) {
 		let pipeline = &self.pipelines.last().unwrap();
 
@@ -471,7 +475,7 @@ impl GraphicsContext {
 			PipelineDescription::Graphics(desc) => desc,
 			_ => unreachable!(),
 		};
-		assert_eq!(size_of::<u32>() * t.len(), desc.push_constant_size);
+		// assert_eq!(size_of::<u32>() * t.len(), desc.push_constant_size);
 
 		unsafe {
 			self.owner.logical.cmd_push_constants(
@@ -479,13 +483,13 @@ impl GraphicsContext {
 				pipeline.layout,
 				vk::ShaderStageFlags::ALL_GRAPHICS,
 				0,
-				from_raw_parts(t.as_ptr() as *const u8, size_of::<u32>() * t.len()),
+				from_raw_parts(t.as_ptr() as *const u8, desc.push_constant_size),
 			);
 		}
 	}
 }
 
-impl Drop for GraphicsContext {
+impl Drop for GraphicsCommandBuffer {
 	fn drop(&mut self) {
 		let thread_infos = self.owner.thread_info.lock().unwrap();
 		let thread_id = std::thread::current().id();

@@ -11,9 +11,9 @@ use crate::{
 	Context,
 };
 
+use gpu::GraphicsRecorder;
 use gpu::{
 	Gpu,
-	GraphicsContext,
 	Pipeline,
 	Texture,
 };
@@ -27,8 +27,6 @@ use math::{
 	Vector2,
 	Vector3,
 };
-
-use std::mem::size_of;
 
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Roundness {
@@ -569,21 +567,21 @@ impl DrawState {
 	pub fn record(
 		&self,
 		canvas: Canvas,
-		gfx: &mut GraphicsContext,
+		gfx: GraphicsRecorder,
 		ctx: &Context,
-	) -> Result<gpu::Texture, ()> {
+	) -> (GraphicsRecorder, Result<gpu::Texture, ()>) {
 		let gpu = Engine::as_ref().module::<Gpu>().unwrap();
 		let device = gpu.device();
 
 		if canvas.vertices.len() == 0 {
-			return Err(());
+			return (gfx, Err(()));
 		}
 
 		let vertex_buffer = device
 			.create_buffer(
 				gpu::BufferUsage::VERTEX,
 				gpu::MemoryType::HostVisible,
-				canvas.vertices.len() * size_of::<Vertex>(),
+				canvas.vertices.len(),
 			)
 			.unwrap();
 		vertex_buffer.copy_to(&canvas.vertices[..]);
@@ -592,7 +590,7 @@ impl DrawState {
 			.create_buffer(
 				gpu::BufferUsage::INDEX,
 				gpu::MemoryType::HostVisible,
-				canvas.indices.len() * size_of::<u32>(),
+				canvas.indices.len(),
 			)
 			.unwrap();
 		index_buffer.copy_to(&canvas.indices[..]);
@@ -606,11 +604,7 @@ impl DrawState {
 			_view: Matrix4,
 		}
 		let import_buffer = device
-			.create_buffer(
-				gpu::BufferUsage::CONSTANTS,
-				gpu::MemoryType::HostVisible,
-				size_of::<Import>(),
-			)
+			.create_buffer(gpu::BufferUsage::CONSTANTS, gpu::MemoryType::HostVisible, 1)
 			.unwrap();
 		import_buffer.copy_to(&[Import { _view: proj * view }]);
 
@@ -624,25 +618,24 @@ impl DrawState {
 				canvas.width,
 				canvas.height,
 				1,
-				gpu::Wrap::Clamp,
-				gpu::Filter::Linear,
-				gpu::Filter::Linear,
 			)
 			.unwrap();
 
-		gfx.render_pass(&self.render_pass, &[&backbuffer], |ctx| {
-			ctx.clear(Color::BLACK)
-				.bind_pipeline(&pipeline)
-				.bind_vertex_buffer(&vertex_buffer)
-				.bind_index_buffer(&index_buffer)
-				.draw_indexed(canvas.indices.len(), 0);
-		});
-		gfx.resource_barrier_texture(
-			&backbuffer,
-			gpu::Layout::ColorAttachment,
-			gpu::Layout::ShaderReadOnly,
-		);
+		let gfx = gfx
+			.render_pass(&self.render_pass, &[&backbuffer], |ctx| {
+				ctx.clear(Color::BLACK)
+					.bind_pipeline(&pipeline)
+					.bind_vertex_buffer(&vertex_buffer)
+					.bind_index_buffer(&index_buffer)
+					.bind_constant("imports", &import_buffer)
+					.draw_indexed(canvas.indices.len(), 0)
+			})
+			.resource_barrier_texture(
+				&backbuffer,
+				gpu::Layout::ColorAttachment,
+				gpu::Layout::ShaderReadOnly,
+			);
 
-		Ok(backbuffer)
+		(gfx, Ok(backbuffer))
 	}
 }

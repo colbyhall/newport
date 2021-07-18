@@ -67,6 +67,7 @@ impl Cache for AssetCache {
 						.find(|v| v.extensions.contains(&ext.to_str().unwrap()));
 					match variant {
 						Some(variant) => {
+							info!("Caching asset ({:?})", path);
 							let contents = fs::read(&path).unwrap();
 							let uuid = (variant.deserialize)(&contents, &path).0;
 

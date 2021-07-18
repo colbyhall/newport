@@ -50,13 +50,15 @@ pub enum Layout {
 	Present,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
 pub enum Wrap {
 	Clamp,
 	Repeat,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
 pub enum Filter {
 	Nearest,
 	Linear,

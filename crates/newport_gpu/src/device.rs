@@ -3,16 +3,15 @@ use crate::{
 
 	Buffer,
 	BufferUsage,
-	Filter,
 	Format,
-	GraphicsContext,
+	GraphicsCommandBuffer,
+	GraphicsRecorder,
 	MemoryType,
 	Receipt,
 	RenderPass,
 	ResourceCreateError,
 	Texture,
 	TextureUsage,
-	Wrap,
 };
 
 use std::sync::Arc;
@@ -54,22 +53,8 @@ impl Device {
 		width: u32,
 		height: u32,
 		depth: u32,
-		wrap: Wrap,
-		min_filter: Filter,
-		mag_filter: Filter,
 	) -> Result<Texture, ResourceCreateError> {
-		let inner = api::Texture::new(
-			self.0.clone(),
-			memory,
-			usage,
-			format,
-			width,
-			height,
-			depth,
-			wrap,
-			min_filter,
-			mag_filter,
-		)?;
+		let inner = api::Texture::new(self.0.clone(), memory, usage, format, width, height, depth)?;
 		Ok(Texture(inner))
 	}
 
@@ -82,9 +67,10 @@ impl Device {
 		Ok(RenderPass(inner))
 	}
 
-	pub fn create_graphics_context(&self) -> Result<GraphicsContext, ()> {
-		let inner = api::GraphicsContext::new(self.0.clone())?;
-		Ok(GraphicsContext { api: inner })
+	pub fn create_graphics_recorder(&self) -> GraphicsRecorder {
+		let mut inner = api::GraphicsCommandBuffer::new(self.0.clone()).unwrap();
+		inner.begin();
+		GraphicsRecorder { api: inner }
 	}
 
 	pub fn acquire_backbuffer(&self) -> Texture {
@@ -93,21 +79,19 @@ impl Device {
 
 	pub fn submit_graphics(
 		&self,
-		mut contexts: Vec<GraphicsContext>,
+		mut command_buffers: Vec<GraphicsCommandBuffer>,
 		wait_on: &[Receipt],
 	) -> Receipt {
-		let mut api_contexts = Vec::with_capacity(contexts.len());
-		contexts.drain(..).for_each(|x| api_contexts.push(x.api));
+		let mut api_buffers = Vec::with_capacity(command_buffers.len());
+		command_buffers
+			.drain(..)
+			.for_each(|x| api_buffers.push(x.api));
 
-		self.0.submit_graphics(api_contexts, wait_on)
+		self.0.submit_graphics(api_buffers, wait_on)
 	}
 
 	pub fn display(&self, wait_on: &[Receipt]) {
 		self.0.display(wait_on)
-	}
-
-	pub fn update_bindless(&self) {
-		self.0.update_bindless()
 	}
 
 	pub fn wait_for_idle(&self) {

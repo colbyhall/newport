@@ -13,14 +13,12 @@ use math::{
 
 use gpu::{
 	BufferUsage,
-	Filter,
 	Format,
 	Gpu,
 	Layout,
 	MemoryType,
 	Texture,
 	TextureUsage,
-	Wrap,
 };
 
 use asset::{
@@ -39,7 +37,6 @@ use std::{
 	fs,
 
 	iter::Iterator,
-	mem::size_of,
 	path::{
 		Path,
 		PathBuf,
@@ -181,7 +178,7 @@ impl FontCollection {
 				.create_buffer(
 					BufferUsage::TRANSFER_SRC,
 					MemoryType::HostVisible,
-					pixels.len() * size_of::<u32>(),
+					pixels.len(),
 				)
 				.ok()?;
 			pixel_buffer.copy_to(&pixels[..]);
@@ -194,20 +191,15 @@ impl FontCollection {
 					tex_width as u32,
 					tex_height as u32,
 					1,
-					Wrap::Clamp,
-					Filter::Nearest,
-					Filter::Nearest,
 				)
 				.ok()?;
 
-			let mut gfx = device.create_graphics_context().ok()?;
-			{
-				gfx.begin();
-				gfx.resource_barrier_texture(&atlas, Layout::Undefined, Layout::TransferDst);
-				gfx.copy_buffer_to_texture(&atlas, &pixel_buffer);
-				gfx.resource_barrier_texture(&atlas, Layout::TransferDst, Layout::ShaderReadOnly);
-				gfx.end();
-			}
+			let gfx = device
+				.create_graphics_recorder()
+				.resource_barrier_texture(&atlas, Layout::Undefined, Layout::TransferDst)
+				.copy_buffer_to_texture(&atlas, &pixel_buffer)
+				.resource_barrier_texture(&atlas, Layout::TransferDst, Layout::ShaderReadOnly)
+				.finish();
 
 			let receipt = device.submit_graphics(vec![gfx], &[]);
 			receipt.wait();

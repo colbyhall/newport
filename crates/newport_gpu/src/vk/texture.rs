@@ -4,12 +4,10 @@ use super::{
 	DeviceAllocation,
 };
 use crate::{
-	Filter,
 	Format,
 	MemoryType,
 	ResourceCreateError,
 	TextureUsage,
-	Wrap,
 };
 
 use ash::version::DeviceV1_0;
@@ -22,7 +20,6 @@ pub struct Texture {
 
 	pub image: vk::Image,
 	pub view: vk::ImageView,
-	pub sampler: vk::Sampler,
 	pub memory: DeviceAllocation,
 
 	pub memory_type: MemoryType,
@@ -47,9 +44,6 @@ impl Texture {
 		width: u32,
 		height: u32,
 		depth: u32,
-		wrap: Wrap,
-		min_filter: Filter,
-		mag_filter: Filter,
 	) -> Result<Arc<Texture>, ResourceCreateError> {
 		let mut image_type = vk::ImageType::TYPE_3D;
 		if depth == 1 {
@@ -139,35 +133,6 @@ impl Texture {
 		}
 		let view = view.unwrap();
 
-		fn filter_to_vk(filter: Filter) -> vk::Filter {
-			match filter {
-				Filter::Nearest => vk::Filter::NEAREST,
-				Filter::Linear => vk::Filter::LINEAR,
-			}
-		}
-
-		let smin_filter = filter_to_vk(min_filter);
-		let smag_filter = filter_to_vk(mag_filter);
-
-		let swrap = match wrap {
-			Wrap::Clamp => vk::SamplerAddressMode::CLAMP_TO_EDGE,
-			Wrap::Repeat => vk::SamplerAddressMode::REPEAT,
-		};
-
-		let create_info = vk::SamplerCreateInfo::builder()
-			.min_filter(smin_filter)
-			.mag_filter(smag_filter)
-			.address_mode_u(swrap)
-			.address_mode_v(swrap)
-			.address_mode_w(swrap)
-			.border_color(vk::BorderColor::INT_OPAQUE_BLACK);
-
-		let sampler = unsafe { owner.logical.create_sampler(&create_info, None) };
-		if sampler.is_err() {
-			return Err(ResourceCreateError::Unknown);
-		}
-		let sampler = sampler.unwrap();
-
 		// Add a weak reference to the device for bindless
 		if usage.contains(TextureUsage::SAMPLED) {
 			let mut bindless = owner.bindless_info.lock().unwrap();
@@ -186,7 +151,6 @@ impl Texture {
 
 				image: image,
 				view: view,
-				sampler: sampler,
 				memory: memory,
 
 				memory_type: memory_type,
@@ -216,7 +180,6 @@ impl Texture {
 
 			image: image,
 			view: view,
-			sampler: sampler,
 			memory: memory,
 
 			memory_type: memory_type,
@@ -260,7 +223,6 @@ impl Drop for Texture {
 			unsafe {
 				self.owner.logical.destroy_image(self.image, None);
 				self.owner.logical.destroy_image_view(self.view, None);
-				self.owner.logical.destroy_sampler(self.sampler, None);
 				self.owner.free_memory(self.memory);
 			}
 		}

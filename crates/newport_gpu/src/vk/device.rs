@@ -1,6 +1,7 @@
+use super::Sampler;
 use super::{
 	Buffer,
-	GraphicsContext,
+	GraphicsCommandBuffer,
 	Instance,
 	Receipt,
 	Texture,
@@ -9,11 +10,9 @@ use super::{
 use crate::{
 	BufferUsage,
 	DeviceCreateError,
-	Filter,
 	Format,
 	MemoryType,
 	TextureUsage,
-	Wrap,
 };
 
 use ash::extensions::khr;
@@ -131,7 +130,6 @@ impl Swapchain {
 
 					image: *it,
 					view: view,
-					sampler: vk::Sampler::default(),
 					memory: DeviceAllocation::default(),
 
 					memory_type: MemoryType::HostVisible,
@@ -171,7 +169,7 @@ pub struct DeviceAllocation {
 }
 
 pub enum WorkVariant {
-	Graphics(Vec<GraphicsContext>),
+	Graphics(Vec<GraphicsCommandBuffer>),
 }
 
 pub struct WorkEntry {
@@ -192,6 +190,9 @@ pub struct BindlessInfo {
 
 	pub buffers: Vec<Weak<Buffer>>,
 	pub null_buffer: Option<Arc<Buffer>>,
+
+	pub samplers: Vec<Weak<Sampler>>,
+	pub null_sampler: Option<Arc<Sampler>>,
 }
 
 pub struct Device {
@@ -513,6 +514,9 @@ impl Device {
 
 			buffers: Vec::new(),
 			null_buffer: None,
+
+			samplers: Vec::new(),
+			null_sampler: None,
 		};
 
 		let result = Arc::new(Device {
@@ -558,9 +562,6 @@ impl Device {
 			64,
 			64,
 			1,
-			Wrap::Clamp,
-			Filter::Linear,
-			Filter::Linear,
 		)
 		.unwrap();
 
@@ -573,10 +574,13 @@ impl Device {
 		)
 		.unwrap();
 
+		let null_sampler = Sampler::new(result.clone(), Default::default()).unwrap();
+
 		{
 			let mut bindless = result.bindless_info.lock().unwrap();
 			bindless.null_texture = Some(null_texutre);
 			bindless.null_buffer = Some(null_buffer);
+			bindless.null_sampler = Some(null_sampler);
 		}
 
 		Ok(result)
@@ -625,11 +629,15 @@ impl Device {
 		swapchain.as_ref().unwrap().backbuffers[index as usize].clone()
 	}
 
-	pub fn submit_graphics(&self, contexts: Vec<GraphicsContext>, wait_on: &[Receipt]) -> Receipt {
+	pub fn submit_graphics(
+		&self,
+		command_buffers: Vec<GraphicsCommandBuffer>,
+		wait_on: &[Receipt],
+	) -> Receipt {
 		self.update_bindless();
 
-		let mut buffers = Vec::with_capacity(contexts.len());
-		for it in contexts.iter() {
+		let mut buffers = Vec::with_capacity(command_buffers.len());
+		for it in command_buffers.iter() {
 			buffers.push(it.command_buffer);
 		}
 
@@ -675,12 +683,12 @@ impl Device {
 				.unwrap();
 		}
 
-		let owner = contexts[0].owner.clone();
+		let owner = command_buffers[0].owner.clone();
 
 		let id = self.push_work(WorkEntry {
 			semaphore: semaphore,
 			fence: fence,
-			variant: WorkVariant::Graphics(contexts),
+			variant: WorkVariant::Graphics(command_buffers),
 			thread_id: std::thread::current().id(),
 		});
 		Receipt::new(owner, id)
@@ -783,9 +791,7 @@ impl Device {
 			.build();
 
 		let null_texture = bindless.null_texture.as_ref().unwrap();
-
 		let mut image_infos = Vec::with_capacity(bindless.textures.len()); // TODO: Use temp allocator
-		let mut sampler_infos = Vec::with_capacity(bindless.textures.len()); // TODO: Use temp allocator
 		for it in bindless.textures.iter() {
 			if it.strong_count() == 0 {
 				let image_info = vk::DescriptorImageInfo::builder()
@@ -793,12 +799,7 @@ impl Device {
 					.image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
 					.build();
 
-				let sampler_info = vk::DescriptorImageInfo::builder()
-					.sampler(null_texture.sampler)
-					.build();
-
 				image_infos.push(image_info);
-				sampler_infos.push(sampler_info);
 				continue;
 			}
 
@@ -809,11 +810,26 @@ impl Device {
 				.image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
 				.build();
 
+			image_infos.push(image_info);
+		}
+
+		let null_sampler = bindless.null_sampler.as_ref().unwrap();
+		let mut sampler_infos = Vec::with_capacity(bindless.samplers.len()); // TODO: Use temp allocator
+		for it in bindless.samplers.iter() {
+			if it.strong_count() == 0 {
+				let sampler_info = vk::DescriptorImageInfo::builder()
+					.sampler(null_sampler.handle)
+					.build();
+
+				sampler_infos.push(sampler_info);
+				continue;
+			}
+
+			let sampler = it.upgrade().unwrap();
 			let sampler_info = vk::DescriptorImageInfo::builder()
-				.sampler(tex.sampler)
+				.sampler(sampler.handle)
 				.build();
 
-			image_infos.push(image_info);
 			sampler_infos.push(sampler_info);
 		}
 

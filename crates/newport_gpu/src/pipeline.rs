@@ -151,6 +151,8 @@ pub struct Pipeline {
 	pub(crate) file: PipelineFile,
 
 	pub(crate) api: Arc<api::Pipeline>,
+
+	pub(crate) samplers: Vec<(Arc<api::Sampler>, usize)>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -169,7 +171,10 @@ pub struct PipelineFile {
 	pub depth_stencil_states: DepthStencilStates,
 
 	#[serde(default)]
-	pub imports: HashMap<String, Imports>,
+	pub constants: HashMap<String, Constants>,
+
+	#[serde(default)]
+	pub resources: HashMap<String, Resource>,
 
 	#[serde(default)]
 	pub common: String,
@@ -292,23 +297,20 @@ impl BlendStates {
 
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
-pub struct Item(String, ItemVariant);
+pub struct ConstantMember(String, Constant);
 
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
 #[serde(crate = "self::serde")]
-pub enum ItemVariant {
+pub enum Constant {
 	Uint32,
 	Float32,
 	Vector2,
 	Vector3,
 	Vector4,
-
 	Matrix4,
-
-	Texture,
 }
 
-impl ItemVariant {
+impl Constant {
 	fn into_type_string(self) -> &'static str {
 		match self {
 			Self::Uint32 => "uint",
@@ -319,8 +321,6 @@ impl ItemVariant {
 			Self::Vector4 => "float4",
 
 			Self::Matrix4 => "float4x4",
-
-			Self::Texture => "uint",
 		}
 	}
 
@@ -334,24 +334,22 @@ impl ItemVariant {
 			Self::Vector4 => 16,
 
 			Self::Matrix4 => 16 * 4,
-
-			Self::Texture => 4,
 		}
 	}
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
-pub enum Imports {
-	Entire(Vec<Item>),
-	Indexed(Vec<Item>),
+pub enum Constants {
+	Entire(Vec<ConstantMember>),
+	Indexed(Vec<ConstantMember>),
 }
 
-impl Imports {
-	pub fn vec(&self) -> &Vec<Item> {
+impl Constants {
+	pub fn vec(&self) -> &Vec<ConstantMember> {
 		match self {
-			Imports::Entire(vec) => vec,
-			Imports::Indexed(vec) => vec,
+			Constants::Entire(vec) => vec,
+			Constants::Indexed(vec) => vec,
 		}
 	}
 
@@ -365,6 +363,13 @@ impl Imports {
 
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
+pub enum Resource {
+	Texture,
+	Sampler(SamplerDescription),
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
 pub enum SystemSemantics {
 	VertexId,
 }
@@ -373,12 +378,12 @@ pub enum SystemSemantics {
 #[serde(crate = "self::serde")]
 pub struct VertexShader {
 	#[serde(default)]
-	pub attributes: Vec<Item>,
+	pub attributes: Vec<ConstantMember>,
 	#[serde(default)]
 	pub system_semantics: Vec<SystemSemantics>,
 
 	#[serde(default)]
-	pub exports: Vec<Item>,
+	pub exports: Vec<ConstantMember>,
 	pub code: String,
 }
 
@@ -427,7 +432,9 @@ impl Asset for Pipeline {
 			vertex_shader,
 			pixel_shader,
 
-			imports,
+			constants,
+			resources,
+
 			common,
 		} = &pipeline_file;
 
@@ -448,20 +455,25 @@ impl Asset for Pipeline {
 			result.push_str("\n\n");
 
 			// If we have imports then we need to fill out the constants and build boilerplate
-			if imports.len() > 0 {
+			if constants.len() > 0 || resources.len() > 0 {
 				// First thing to do is build the push constants structure
-				result.push_str("struct Constants {\n");
-				for (name, _) in imports.iter() {
+				result.push_str("struct PushConstants {\n");
+				for (name, _) in constants.iter() {
+					result.push_str("    uint ");
+					result.push_str(name);
+					result.push_str(";\n");
+				}
+				for (name, _) in resources.iter() {
 					result.push_str("    uint ");
 					result.push_str(name);
 					result.push_str(";\n");
 				}
 				result.push_str("};\n");
-				result.push_str("[[vk::push_constant]] Constants constants;\n\n");
+				result.push_str("[[vk::push_constant]] PushConstants push_constants;\n\n");
 
-				// Secondly we must now define structs for imports and accessor boilerplate
-				for (name, imports) in imports.iter() {
-					// Declare import structure
+				// Secondly we must now define structs for constants and accessor boilerplate
+				for (name, constants) in constants.iter() {
+					// Declare constants structure
 					result.push_str("struct ");
 
 					let name_capitalized = {
@@ -475,8 +487,8 @@ impl Asset for Pipeline {
 					result.push_str(&name_capitalized);
 					result.push_str(" {\n");
 
-					// Run through every item in imports and decalre it
-					for Item(name, variant) in imports.vec().iter() {
+					// Run through every item in constants and decalre it
+					for ConstantMember(name, variant) in constants.vec().iter() {
 						result.push_str("    ");
 						result.push_str(variant.into_type_string());
 						result.push_str(" ");
@@ -493,9 +505,11 @@ impl Asset for Pipeline {
 					result.push_str("() {\n");
 
 					// Grab the data from the buffer
-					match imports {
-						Imports::Entire(_) => {
-							result.push_str("ByteAddressBuffer buffer = index_buffers(constants.");
+					match constants {
+						Constants::Entire(_) => {
+							result.push_str(
+								"ByteAddressBuffer buffer = index_buffers(push_constants.",
+							);
 							result.push_str(name);
 							result.push_str(");\n");
 
@@ -504,23 +518,25 @@ impl Asset for Pipeline {
 							result.push_str(&name_capitalized);
 							result.push_str(">(0);\n\n");
 						}
-						Imports::Indexed(_) => {
-							result.push_str("ByteAddressBuffer buffer = index_buffers((constants.");
+						Constants::Indexed(_) => {
+							result.push_str(
+								"ByteAddressBuffer buffer = index_buffers((push_constants.",
+							);
 							result.push_str(name);
 							result.push_str(" >> 16) & 0xffff);\n");
 
 							result.push_str(&name_capitalized);
 							result.push_str(" result = buffer.Load<");
 							result.push_str(&name_capitalized);
-							result.push_str(">(constants.");
+							result.push_str(">(push_constants.");
 							result.push_str(name);
 							result.push_str(" & 0xffff);\n\n");
 						}
 					}
 
 					// Transpose any matrices
-					for Item(name, variant) in imports.vec().iter() {
-						if *variant == ItemVariant::Matrix4 {
+					for ConstantMember(name, variant) in constants.vec().iter() {
+						if *variant == Constant::Matrix4 {
 							result.push_str("result.");
 							result.push_str(name);
 							result.push_str(" = transpose(result.");
@@ -530,6 +546,35 @@ impl Asset for Pipeline {
 					}
 
 					result.push_str("return result;\n}\n\n");
+				}
+
+				// Generate resource load boilerplate
+				for (name, resource) in resources.iter() {
+					// Generate custom load method declaration
+					let resource_type = match resource {
+						Resource::Texture => "Texture2D",
+						Resource::Sampler { .. } => "SamplerState",
+					};
+
+					result.push_str(resource_type);
+					result.push_str(" load_");
+					result.push_str(name);
+					result.push_str("() {\n");
+
+					match resource {
+						Resource::Texture => {
+							result.push_str("return index_textures(push_constants.");
+							result.push_str(name);
+							result.push_str(");")
+						}
+						Resource::Sampler { .. } => {
+							result.push_str("return index_samplers(push_constants.");
+							result.push_str(name);
+							result.push_str(");\n")
+						}
+					}
+
+					result.push_str("}\n\n");
 				}
 			}
 
@@ -547,13 +592,12 @@ impl Asset for Pipeline {
 		let vertex_attributes = vertex_shader
 			.attributes
 			.iter()
-			.map(|Item(_, variant)| match variant {
-				ItemVariant::Float32 => VertexAttribute::Float32,
-				ItemVariant::Vector2 => VertexAttribute::Vector2,
-				ItemVariant::Vector3 => VertexAttribute::Vector3,
-				ItemVariant::Vector4 => VertexAttribute::Vector4,
-
-				ItemVariant::Texture => VertexAttribute::Uint32,
+			.map(|ConstantMember(_, variant)| match variant {
+				Constant::Float32 => VertexAttribute::Float32,
+				Constant::Vector2 => VertexAttribute::Vector2,
+				Constant::Vector3 => VertexAttribute::Vector3,
+				Constant::Vector4 => VertexAttribute::Vector4,
+				Constant::Uint32 => VertexAttribute::Uint32,
 
 				_ => unreachable!(),
 			})
@@ -605,7 +649,7 @@ impl Asset for Pipeline {
 			// Generate PixelInput based off of imports
 			if imports.len() > 0 {
 				source.push_str("struct PixelInput {\n");
-				for Item(name, variant) in imports.iter() {
+				for ConstantMember(name, variant) in imports.iter() {
 					let mut name_uppercase = name.clone();
 					name_uppercase.make_ascii_uppercase();
 
@@ -657,7 +701,7 @@ impl Asset for Pipeline {
 
 			// Generate VertexOutput always. There will always be position
 			source.push_str("struct VertexOutput {\n");
-			for Item(name, variant) in exports.iter() {
+			for ConstantMember(name, variant) in exports.iter() {
 				let mut name_uppercase = name.clone();
 				name_uppercase.make_ascii_uppercase();
 
@@ -675,7 +719,7 @@ impl Asset for Pipeline {
 			// Generate the VertexInput based off of attributes
 			if attributes.len() > 0 || system_semantics.len() > 0 {
 				source.push_str("struct VertexInput {\n");
-				for Item(name, variant) in attributes.iter() {
+				for ConstantMember(name, variant) in attributes.iter() {
 					let mut name_uppercase = name.clone();
 					name_uppercase.make_ascii_uppercase();
 
@@ -772,7 +816,8 @@ impl Asset for Pipeline {
 			depth_write: depth_stencil_states.depth_write,
 			depth_compare: depth_stencil_states.depth_compare,
 
-			push_constant_size: pipeline_file.imports.len() * 4,
+			push_constant_size: pipeline_file.constants.len() * 4
+				+ pipeline_file.resources.len() * 4,
 		};
 
 		let api = api::Pipeline::new(
@@ -781,11 +826,28 @@ impl Asset for Pipeline {
 		)
 		.unwrap();
 
+		let samplers = resources
+			.iter()
+			.enumerate()
+			.filter(|(_, (_, resource))| match resource {
+				Resource::Sampler(_) => true,
+				_ => false,
+			})
+			.map(|(index, (_, resource))| match resource {
+				Resource::Sampler(desc) => {
+					let sampler = api::Sampler::new(device.0.clone(), *desc).unwrap();
+					(sampler, index)
+				}
+				_ => unreachable!(),
+			})
+			.collect();
+
 		(
 			id,
 			Pipeline {
 				file: pipeline_file,
 				api,
+				samplers,
 			},
 		)
 	}

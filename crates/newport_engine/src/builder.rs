@@ -107,24 +107,24 @@ impl Builder {
 	/// let builder = Builder::new()
 	///     .module::<Test>();
 	/// ```
-	pub fn post_init<F: PostInit>(mut self, f: F) -> Self {
+	pub fn post_init(mut self, f: impl PostInit) -> Self {
 		self.post_inits.push(Box::new(f));
 		self
 	}
 
-	pub fn process_input<F: ProcessInput>(mut self, f: F) -> Self {
+	pub fn process_input(mut self, f: impl ProcessInput) -> Self {
 		self.process_input.push(Box::new(f));
 		self
 	}
 
 	/// Adds a tick closure to the list
-	pub fn tick<F: Tick>(mut self, f: F) -> Self {
+	pub fn tick(mut self, f: impl Tick) -> Self {
 		self.tick.push(Box::new(f));
 		self
 	}
 
 	/// Adds a pre shutdown closure to the list
-	pub fn pre_shutdown<F: PreShutdown>(mut self, f: F) -> Self {
+	pub fn pre_shutdown(mut self, f: impl PreShutdown) -> Self {
 		self.pre_shutdown.push(Box::new(f));
 		self
 	}

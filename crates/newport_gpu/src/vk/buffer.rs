@@ -136,11 +136,13 @@ impl Buffer {
 					vk::MemoryMapFlags::empty(),
 				)
 				.unwrap();
+
 			copy_nonoverlapping(
 				data.as_ptr() as *const u8,
 				ptr as *mut u8,
 				memory.size as usize,
 			);
+
 			self.owner.logical.unmap_memory(memory.memory);
 		}
 	}

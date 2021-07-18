@@ -39,6 +39,11 @@ use math::{
 	Rect,
 };
 
+use serde::{
+	Deserialize,
+	Serialize,
+};
+
 use std::convert::Into;
 
 #[cfg(feature = "vulkan")]
@@ -48,7 +53,7 @@ mod vk;
 use vk as api;
 
 mod buffer;
-mod context;
+mod command_buffer;
 mod device;
 mod gpu;
 mod instance;
@@ -62,7 +67,7 @@ pub(crate) use shader::*;
 
 pub use {
 	buffer::*,
-	context::*,
+	command_buffer::*,
 	device::*,
 	gpu::*,
 	instance::*,
@@ -85,4 +90,27 @@ pub enum MemoryType {
 pub enum ResourceCreateError {
 	Unknown,
 	OutOfMemory,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone)]
+#[serde(crate = "self::serde")]
+pub struct SamplerDescription {
+	min_filter: Filter,
+	mag_filter: Filter,
+	address_u: Wrap,
+	address_v: Wrap,
+	address_w: Wrap,
+}
+
+impl Default for SamplerDescription {
+	fn default() -> Self {
+		Self {
+			min_filter: Filter::Linear,
+			mag_filter: Filter::Linear,
+
+			address_u: Wrap::Clamp,
+			address_v: Wrap::Clamp,
+			address_w: Wrap::Clamp,
+		}
+	}
 }
