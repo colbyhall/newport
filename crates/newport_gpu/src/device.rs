@@ -1,3 +1,7 @@
+use crate::shader::ShaderVariant;
+use crate::GraphicsPipeline;
+use crate::GraphicsPipelineDescription;
+use crate::Shader;
 use crate::{
 	api,
 
@@ -67,10 +71,28 @@ impl Device {
 		Ok(RenderPass(inner))
 	}
 
+	pub fn create_graphics_pipeline(
+		&self,
+		description: GraphicsPipelineDescription,
+	) -> Result<GraphicsPipeline, ()> {
+		let inner = api::GraphicsPipeline::new(self.0.clone(), description)?;
+		Ok(GraphicsPipeline(inner))
+	}
+
+	pub fn create_shader(
+		&self,
+		binary: &[u8],
+		variant: ShaderVariant,
+		main: &str,
+	) -> Result<Shader, ()> {
+		let inner = api::Shader::new(self.0.clone(), binary, variant, main.to_string())?;
+		Ok(Shader(inner))
+	}
+
 	pub fn create_graphics_recorder(&self) -> GraphicsRecorder {
 		let mut inner = api::GraphicsCommandBuffer::new(self.0.clone()).unwrap();
 		inner.begin();
-		GraphicsRecorder { api: inner }
+		GraphicsRecorder(inner)
 	}
 
 	pub fn acquire_backbuffer(&self) -> Texture {
@@ -85,7 +107,7 @@ impl Device {
 		let mut api_buffers = Vec::with_capacity(command_buffers.len());
 		command_buffers
 			.drain(..)
-			.for_each(|x| api_buffers.push(x.api));
+			.for_each(|x| api_buffers.push(x.0));
 
 		self.0.submit_graphics(api_buffers, wait_on)
 	}

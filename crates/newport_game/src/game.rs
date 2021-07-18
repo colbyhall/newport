@@ -39,7 +39,7 @@ impl Module for Game {
 			.tick(|engine: &Engine, dt: f32| {
 				let game = engine.module::<Game>().unwrap();
 
-				// Simualte the game state and then build the render state
+				// Simulate the game state and then build the render state
 				let new_render_state = {
 					let mut game_state = game.game_state.lock().unwrap();
 					game_state.simulate(dt)

@@ -25,8 +25,8 @@ pub use render_pass::*;
 mod shader;
 pub use shader::*;
 
-mod pipeline;
-pub use pipeline::*;
+mod graphics_pipeline;
+pub use graphics_pipeline::*;
 
 mod command_buffer;
 pub use command_buffer::*;

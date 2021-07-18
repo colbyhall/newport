@@ -32,7 +32,7 @@ use engine::{
 };
 use gpu::{
 	Gpu,
-	Pipeline,
+	GraphicsPipeline,
 };
 use graphics::{
 	Graphics,
@@ -47,7 +47,7 @@ use std::sync::{
 
 struct EditorAssets {
 	_close_button: AssetRef<Texture>,
-	present_pipeline: AssetRef<Pipeline>,
+	present_pipeline: AssetRef<GraphicsPipeline>,
 }
 
 impl EditorAssets {

@@ -18,12 +18,11 @@ pub struct Shader {
 impl Shader {
 	pub fn new(
 		owner: Arc<Device>,
-		contents: &[u8],
+		binary: &[u8],
 		variant: ShaderVariant,
 		main: String,
 	) -> Result<Arc<Shader>, ()> {
-		let contents =
-			unsafe { from_raw_parts(contents.as_ptr() as *const u32, contents.len() / 4) };
+		let contents = unsafe { from_raw_parts(binary.as_ptr() as *const u32, binary.len() / 4) };
 
 		let create_info = vk::ShaderModuleCreateInfo::builder().code(contents);
 

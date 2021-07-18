@@ -56,24 +56,23 @@ mod buffer;
 mod command_buffer;
 mod device;
 mod gpu;
+mod graphics_pipeline;
 mod instance;
-mod pipeline;
 mod receipt;
 mod render_pass;
 mod shader;
 mod texture;
-
-pub(crate) use shader::*;
 
 pub use {
 	buffer::*,
 	command_buffer::*,
 	device::*,
 	gpu::*,
+	graphics_pipeline::*,
 	instance::*,
-	pipeline::*,
 	receipt::*,
 	render_pass::*,
+	shader::*,
 	texture::*,
 };
 

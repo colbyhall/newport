@@ -2,14 +2,11 @@ use super::{
 	Buffer,
 	Device,
 	DeviceThreadInfo,
-	Pipeline,
+	GraphicsPipeline,
 	RenderPass,
 	Texture,
 };
-use crate::{
-	Layout,
-	PipelineDescription,
-};
+use crate::Layout;
 
 use newport_math::{
 	Color,
@@ -31,12 +28,15 @@ pub struct GraphicsCommandBuffer {
 	pub command_buffer: vk::CommandBuffer,
 
 	pub framebuffers: Vec<vk::Framebuffer>,
-	pub pipelines: Vec<Arc<Pipeline>>,
+	pub pipelines: Vec<Arc<GraphicsPipeline>>,
 	pub textures: Vec<Arc<Texture>>,
 	pub buffers: Vec<Arc<Buffer>>,
 
 	pub current_scissor: Option<Rect>,
 	pub current_attachments: Option<Vec<Arc<Texture>>>,
+	pub current_pipeline: Option<Arc<GraphicsPipeline>>,
+
+	pub push_constants: [u32; 32],
 }
 
 fn layout_to_image_layout(layout: Layout) -> vk::ImageLayout {
@@ -241,6 +241,9 @@ impl GraphicsCommandBuffer {
 
 			current_scissor: None,
 			current_attachments: None,
+			current_pipeline: None,
+
+			push_constants: [0; 32],
 		})
 	}
 
@@ -308,7 +311,14 @@ impl GraphicsCommandBuffer {
 		self.current_scissor = scissor;
 	}
 
-	pub fn bind_pipeline(&mut self, pipeline: Arc<Pipeline>) {
+	pub fn bind_pipeline(&mut self, pipeline: Arc<GraphicsPipeline>) {
+		self.current_pipeline = Some(pipeline.clone());
+		self.push_constants = [0; 32];
+
+		for (sampler, index) in pipeline.samplers.iter() {
+			self.push_constants[*index] = sampler.bindless;
+		}
+
 		unsafe {
 			self.owner.logical.cmd_bind_pipeline(
 				self.command_buffer,
@@ -382,7 +392,7 @@ impl GraphicsCommandBuffer {
 				from_ref(&offset),
 			)
 		};
-		self.bind_buffer(buffer);
+		self.buffers.push(buffer);
 	}
 
 	pub fn bind_index_buffer(&mut self, buffer: Arc<Buffer>) {
@@ -395,18 +405,46 @@ impl GraphicsCommandBuffer {
 				vk::IndexType::UINT32,
 			)
 		};
-		self.bind_buffer(buffer);
-	}
-
-	pub fn bind_buffer(&mut self, buffer: Arc<Buffer>) {
 		self.buffers.push(buffer);
 	}
 
-	pub fn bind_textures(&mut self, texture: Arc<Texture>) {
-		self.textures.push(texture);
+	pub fn bind_constants(&mut self, name: &str, buffer: Arc<Buffer>, index: usize) {
+		let current_pipeline = self.current_pipeline.as_ref().unwrap();
+
+		for (bindless_index, (import_name, _)) in
+			current_pipeline.description.constants.iter().enumerate()
+		{
+			if name != import_name {
+				continue;
+			}
+
+			let bindless = buffer.bindless().unwrap();
+			self.push_constants[bindless_index] =
+				((bindless & 0xffff) << 16) | ((index as u32) & 0xffff);
+			self.buffers.push(buffer);
+			break;
+		}
+	}
+
+	pub fn bind_texture(&mut self, name: &str, texture: Arc<Texture>) {
+		let current_pipeline = self.current_pipeline.as_ref().unwrap();
+
+		// Resources come after constants in push constants so we need to add the constants len
+		let constants_len = current_pipeline.description.constants.len();
+
+		for (index, (import_name, _)) in current_pipeline.description.resources.iter().enumerate() {
+			if name != import_name {
+				continue;
+			}
+
+			self.push_constants[index + constants_len] = texture.bindless().unwrap();
+			self.textures.push(texture);
+			break;
+		}
 	}
 
 	pub fn draw(&mut self, vertex_count: usize, first_vertex: usize) {
+		self.push_constants();
 		unsafe {
 			self.owner.logical.cmd_draw(
 				self.command_buffer,
@@ -419,6 +457,7 @@ impl GraphicsCommandBuffer {
 	}
 
 	pub fn draw_indexed(&mut self, index_count: usize, first_index: usize) {
+		self.push_constants();
 		unsafe {
 			self.owner.logical.cmd_draw_indexed(
 				self.command_buffer,
@@ -467,23 +506,24 @@ impl GraphicsCommandBuffer {
 		};
 	}
 
-	// TODO: Make this less all over the place
-	pub fn push_constants(&mut self, t: &[u32]) {
-		let pipeline = &self.pipelines.last().unwrap();
+	fn push_constants(&mut self) {
+		let current_pipeline = self
+			.current_pipeline
+			.as_ref()
+			.expect("GraphicsPipeline must be bound to push constants");
 
-		let desc = match &pipeline.desc {
-			PipelineDescription::Graphics(desc) => desc,
-			_ => unreachable!(),
-		};
-		// assert_eq!(size_of::<u32>() * t.len(), desc.push_constant_size);
+		let push_constant_size = current_pipeline.description.push_constant_size();
 
 		unsafe {
 			self.owner.logical.cmd_push_constants(
 				self.command_buffer,
-				pipeline.layout,
+				current_pipeline.layout,
 				vk::ShaderStageFlags::ALL_GRAPHICS,
 				0,
-				from_raw_parts(t.as_ptr() as *const u8, desc.push_constant_size),
+				from_raw_parts(
+					self.push_constants.as_ptr() as *const u8,
+					push_constant_size,
+				),
 			);
 		}
 	}

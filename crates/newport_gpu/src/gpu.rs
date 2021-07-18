@@ -4,8 +4,8 @@ use crate::{
 	engine,
 	Device,
 	Format,
+	GraphicsPipeline,
 	Instance,
-	Pipeline,
 	RenderPass,
 };
 
@@ -51,6 +51,8 @@ impl Module for Gpu {
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
-		builder.register(AssetVariant::new::<Pipeline>(&["pipeline"]))
+		builder.register(AssetVariant::new::<GraphicsPipeline>(&[
+			"graphics_pipeline",
+		]))
 	}
 }

@@ -14,7 +14,7 @@ use crate::{
 use gpu::GraphicsRecorder;
 use gpu::{
 	Gpu,
-	Pipeline,
+	GraphicsPipeline,
 	Texture,
 };
 
@@ -463,18 +463,6 @@ pub struct Vertex {
 	pub texture: u32,
 }
 
-impl gpu::Vertex for Vertex {
-	fn attributes() -> Vec<gpu::VertexAttribute> {
-		vec![
-			gpu::VertexAttribute::Vector2,
-			gpu::VertexAttribute::Vector2,
-			gpu::VertexAttribute::Vector4,
-			gpu::VertexAttribute::Color,
-			gpu::VertexAttribute::Uint32,
-		]
-	}
-}
-
 #[derive(Default)]
 pub struct Canvas {
 	pub vertices: Vec<Vertex>,
@@ -543,7 +531,7 @@ impl Canvas {
 }
 
 pub struct DrawState {
-	pipeline: AssetRef<Pipeline>,
+	pipeline: AssetRef<GraphicsPipeline>,
 	render_pass: gpu::RenderPass,
 }
 
@@ -627,7 +615,7 @@ impl DrawState {
 					.bind_pipeline(&pipeline)
 					.bind_vertex_buffer(&vertex_buffer)
 					.bind_index_buffer(&index_buffer)
-					.bind_constant("imports", &import_buffer)
+					.bind_constants("imports", &import_buffer, 0)
 					.draw_indexed(canvas.indices.len(), 0)
 			})
 			.resource_barrier_texture(

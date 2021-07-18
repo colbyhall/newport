@@ -1,0 +1,76 @@
+Asset(
+    id: "{6de5315c-fd93-406e-b8e5-676320d11229}",
+    asset: GraphicsPipeline(
+        color_blend: Some((
+            src_blend_factor: SrcAlpha,
+            dst_blend_factor: OneMinusSrcAlpha,
+        )),
+
+		constants: {
+			"imports": [
+				("view", Matrix4),
+			],
+		},
+
+        vertex_shader: (
+            attributes: [
+                ("position", Vector2),
+                ("uv",       Vector2),
+                ("scissor",  Vector4),
+                ("color",    Vector4),
+                ("texture",  Uint32),
+            ],
+
+            exports: [
+                ("screen_pos", Vector2),
+                ("uv",         Vector2),
+                ("scissor",    Vector4),
+                ("color",      Vector4),
+                ("texture",    Uint32),
+            ],
+
+            code: r#"
+                output.screen_pos = input.position.xy;
+                output.uv         = input.uv;
+                output.scissor    = input.scissor;
+                output.color      = input.color;
+                output.texture    = input.texture;
+
+                Imports imports = get_imports();
+
+                output.position = mul(imports.view, float4(input.position, 10.0, 1.0));
+
+                return output;
+            "#,
+        ),
+
+        pixel_shader: (
+            exports: [
+                ("color", RGBA_U8)
+            ],
+
+            code: r#"
+                Texture2D    my_texture = index_textures(input.texture);
+                SamplerState my_sampler = index_samplers(0);
+
+                bool in_scissor = 
+                    input.screen_pos.x >= input.scissor.x && 
+                    input.screen_pos.y >= input.scissor.y && 
+                    input.screen_pos.x <= input.scissor.z && 
+                    input.screen_pos.y <= input.scissor.w;
+
+                if (in_scissor) {
+                    if (input.texture == NULL) {
+                        output.color = input.color;
+                    } else {
+                        output.color = input.color * my_texture.Sample(my_sampler, input.uv, 0);
+                    }
+                } else {
+                    output.color = float4(0.0, 0.0, 0.0, 0.0);
+                }
+                
+                return output;
+            "#
+        ),
+    )
+)

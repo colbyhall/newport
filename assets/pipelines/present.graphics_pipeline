@@ -1,11 +1,11 @@
 Asset(
     id: "{62b4ffa0-9510-4818-a6f2-7645ec304d8e}",
-    asset: Pipeline(
+    asset: GraphicsPipeline(
         resources: {
 			"texture": Texture,
 		},
 
-        vertex_shader: Some((
+        vertex_shader: (
             system_semantics: [
                 VertexId,
             ],
@@ -20,9 +20,9 @@ Asset(
 
                 return output;
             "#,
-        )),
+        ),
 
-        pixel_shader: Some((
+        pixel_shader: (
             exports: [
                 ("color", BGR_U8_SRGB),
             ],
@@ -35,6 +35,6 @@ Asset(
                 
                 return output;
             "#
-        )),
+        ),
     )
 )

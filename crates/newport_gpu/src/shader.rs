@@ -5,6 +5,7 @@ use hassle_rs::{
 	DxcLibrary,
 };
 
+use std::sync::Arc;
 use std::{
 	env,
 	path,
@@ -12,11 +13,15 @@ use std::{
 
 use path::PathBuf;
 
+use crate::api;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ShaderVariant {
 	Vertex,
 	Pixel,
 }
+
+pub struct Shader(pub(crate) Arc<api::Shader>);
 
 // This is copied from utils.rs in hassle-rs
 struct DefaultIncludeHandler {}

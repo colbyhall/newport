@@ -17,7 +17,6 @@ use gpu::{
 	BufferUsage,
 	Gpu,
 	MemoryType,
-	VertexAttribute,
 };
 
 use engine::Engine;
@@ -58,19 +57,6 @@ pub struct Vertex {
 
 	#[serde(default)]
 	pub uv1: Vector2,
-}
-
-impl gpu::Vertex for Vertex {
-	fn attributes() -> Vec<VertexAttribute> {
-		vec![
-			VertexAttribute::Vector3,
-			VertexAttribute::Vector3,
-			VertexAttribute::Vector3,
-			VertexAttribute::Vector3,
-			VertexAttribute::Vector2,
-			VertexAttribute::Vector2,
-		]
-	}
 }
 
 pub struct Mesh {

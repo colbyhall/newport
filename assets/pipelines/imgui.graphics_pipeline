@@ -1,18 +1,18 @@
 Asset(
     id: "{1e1526a8-852c-47f7-8436-2bbb01fe8a22}",
-    asset: Pipeline(
+    asset: GraphicsPipeline(
         color_blend: Some((
             src_blend_factor: SrcAlpha,
             dst_blend_factor: OneMinusSrcAlpha,
         )),
 
 		constants: {
-			"imports": Entire([
+			"imports": [
 				("view", Matrix4),
-			]),
+			],
 		},
 
-        vertex_shader: Some((
+        vertex_shader: (
             attributes: [
                 ("position", Vector2),
                 ("uv",       Vector2),
@@ -42,9 +42,9 @@ Asset(
 
                 return output;
             "#,
-        )),
+        ),
 
-        pixel_shader: Some((
+        pixel_shader: (
             exports: [
                 ("color", RGBA_U8)
             ],
@@ -71,6 +71,6 @@ Asset(
                 
                 return output;
             "#
-        )),
+        ),
     )
 )

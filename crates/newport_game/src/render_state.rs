@@ -1,5 +1,5 @@
 use crate::{
-	asset::AssetRef,
+	engine,
 	gpu,
 	graphics,
 	math,
@@ -7,21 +7,22 @@ use crate::{
 	ViewportId,
 };
 
+use gpu::Buffer;
 use gpu::{
 	Gpu,
-	Pipeline,
+	RenderPassRecorder,
 };
-use graphics::Mesh;
+use graphics::Vertex;
 
+use engine::Engine;
 use math::Matrix4;
-use newport_engine::Engine;
 
 use std::collections::HashMap;
 
 pub struct RenderState {
 	pub viewports: HashMap<ViewportId, Viewport>,
 
-	pub primitives: Vec<Primitive>,
+	pub primitives: Vec<Box<dyn Primitive>>, // TODO: These should all be built into some bump allocator
 	pub primitive_transforms: Vec<Matrix4>,
 }
 
@@ -80,9 +81,17 @@ impl RenderState {
 	}
 }
 
-pub enum Primitive {
-	StaticMesh {
-		mesh: AssetRef<Mesh>,
-		pipeline: AssetRef<Pipeline>,
-	},
+pub trait Primitive {
+	fn record(&self, recorder: RenderPassRecorder) -> RenderPassRecorder;
+}
+
+pub struct MeshRenderPrimitive {
+	pub vertex_buffer: Buffer<Vertex>,
+	pub index_buffer: Buffer<u32>,
+}
+
+impl Primitive for MeshRenderPrimitive {
+	fn record(&self, recorder: RenderPassRecorder) -> RenderPassRecorder {
+		recorder
+	}
 }

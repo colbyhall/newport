@@ -83,40 +83,13 @@ bitflags! {
 	}
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum VertexAttribute {
-	Int32,
-	Uint32,
-	Float32,
-	Vector2,
-	Vector3,
-	Vector4,
-	Color,
-}
-
-impl VertexAttribute {
-	pub fn size(self) -> usize {
-		match self {
-			VertexAttribute::Int32 => 4,
-			VertexAttribute::Uint32 => 4,
-			VertexAttribute::Float32 => 4,
-			VertexAttribute::Color => 16,
-			VertexAttribute::Vector2 => 8,
-			VertexAttribute::Vector3 => 12,
-			VertexAttribute::Vector4 => 16,
-		}
-	}
-}
-
-pub trait Vertex {
-	fn attributes() -> Vec<VertexAttribute>;
-}
-
 pub struct GraphicsPipelineDescription {
-	pub render_pass: RenderPass,
-	pub shaders: Vec<Arc<api::Shader>>,
+	pub color_attachments: Vec<Format>,
+	pub depth_attachment: Option<Format>,
 
-	pub vertex_attributes: Vec<VertexAttribute>,
+	pub shaders: Vec<Shader>,
+
+	pub vertex_attributes: Vec<Constant>,
 
 	pub draw_mode: DrawMode,
 	pub line_width: f32,
@@ -138,26 +111,21 @@ pub struct GraphicsPipelineDescription {
 	pub depth_write: bool,
 	pub depth_compare: CompareOp,
 
-	/// Capped at 128 bytes
-	pub push_constant_size: usize,
+	pub constants: HashMap<String, Vec<ConstantMember>>,
+	pub resources: HashMap<String, Resource>,
 }
 
-pub enum PipelineDescription {
-	Graphics(GraphicsPipelineDescription),
-	Compute,
+impl GraphicsPipelineDescription {
+	pub(crate) fn push_constant_size(&self) -> usize {
+		self.constants.len() * 4 + self.resources.len() * 4
+	}
 }
 
-pub struct Pipeline {
-	pub(crate) file: PipelineFile,
-
-	pub(crate) api: Arc<api::Pipeline>,
-
-	pub(crate) samplers: Vec<(Arc<api::Sampler>, usize)>,
-}
+pub struct GraphicsPipeline(pub(crate) Arc<api::GraphicsPipeline>);
 
 #[derive(Serialize, Deserialize)]
-#[serde(rename = "Pipeline", crate = "self::serde")]
-pub struct PipelineFile {
+#[serde(rename = "GraphicsPipeline", crate = "self::serde")]
+pub struct GraphicsPipelineFile {
 	#[serde(default)]
 	pub render_states: RenderStates,
 
@@ -171,7 +139,7 @@ pub struct PipelineFile {
 	pub depth_stencil_states: DepthStencilStates,
 
 	#[serde(default)]
-	pub constants: HashMap<String, Constants>,
+	pub constants: HashMap<String, Vec<ConstantMember>>,
 
 	#[serde(default)]
 	pub resources: HashMap<String, Resource>,
@@ -179,8 +147,8 @@ pub struct PipelineFile {
 	#[serde(default)]
 	pub common: String,
 
-	pub vertex_shader: Option<VertexShader>,
-	pub pixel_shader: Option<PixelShader>,
+	pub vertex_shader: VertexShader,
+	pub pixel_shader: PixelShader,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -303,10 +271,12 @@ pub struct ConstantMember(String, Constant);
 #[serde(crate = "self::serde")]
 pub enum Constant {
 	Uint32,
+	Int32,
 	Float32,
 	Vector2,
 	Vector3,
 	Vector4,
+	Color,
 	Matrix4,
 }
 
@@ -314,50 +284,27 @@ impl Constant {
 	fn into_type_string(self) -> &'static str {
 		match self {
 			Self::Uint32 => "uint",
+			Self::Int32 => "int",
 			Self::Float32 => "float",
 
 			Self::Vector2 => "float2",
 			Self::Vector3 => "float3",
 			Self::Vector4 => "float4",
+			Self::Color => "float4",
 
 			Self::Matrix4 => "float4x4",
 		}
 	}
 
-	fn size(self) -> usize {
+	pub fn size(self) -> usize {
 		match self {
-			Self::Uint32 => 4,
-			Self::Float32 => 4,
-
+			Self::Uint32 | Self::Int32 | Self::Float32 => 4,
 			Self::Vector2 => 8,
 			Self::Vector3 => 12,
-			Self::Vector4 => 16,
+			Self::Vector4 | Self::Color => 16,
 
 			Self::Matrix4 => 16 * 4,
 		}
-	}
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
-pub enum Constants {
-	Entire(Vec<ConstantMember>),
-	Indexed(Vec<ConstantMember>),
-}
-
-impl Constants {
-	pub fn vec(&self) -> &Vec<ConstantMember> {
-		match self {
-			Constants::Entire(vec) => vec,
-			Constants::Indexed(vec) => vec,
-		}
-	}
-
-	pub fn size_of(&self) -> usize {
-		let mut result = 0;
-		let vec = self.vec();
-		vec.iter().for_each(|it| result += it.1.size());
-		result
 	}
 }
 
@@ -413,15 +360,15 @@ static SHADER_HEADER: &str = "
     }
 ";
 
-impl Asset for Pipeline {
+impl Asset for GraphicsPipeline {
 	fn load(bytes: &[u8], _path: &Path) -> (UUID, Self) {
 		let engine = Engine::as_ref();
 		let gpu: &Gpu = engine.module().unwrap();
 		let device = gpu.device();
 
-		let (id, pipeline_file): (UUID, PipelineFile) = deserialize(bytes).unwrap();
+		let (id, pipeline_file): (UUID, GraphicsPipelineFile) = deserialize(bytes).unwrap();
 
-		let PipelineFile {
+		let GraphicsPipelineFile {
 			render_states,
 
 			color_blend,
@@ -437,13 +384,6 @@ impl Asset for Pipeline {
 
 			common,
 		} = &pipeline_file;
-
-		let pixel_shader = pixel_shader
-			.as_ref()
-			.expect("Pixel Shader is required until compute shader is implemented");
-		let vertex_shader = vertex_shader
-			.as_ref()
-			.expect("Vertex Shader is required until compute shader is implemented");
 
 		let header = {
 			let mut result = SHADER_HEADER.to_string();
@@ -488,7 +428,7 @@ impl Asset for Pipeline {
 					result.push_str(" {\n");
 
 					// Run through every item in constants and decalre it
-					for ConstantMember(name, variant) in constants.vec().iter() {
+					for ConstantMember(name, variant) in constants.iter() {
 						result.push_str("    ");
 						result.push_str(variant.into_type_string());
 						result.push_str(" ");
@@ -505,37 +445,19 @@ impl Asset for Pipeline {
 					result.push_str("() {\n");
 
 					// Grab the data from the buffer
-					match constants {
-						Constants::Entire(_) => {
-							result.push_str(
-								"ByteAddressBuffer buffer = index_buffers(push_constants.",
-							);
-							result.push_str(name);
-							result.push_str(");\n");
+					result.push_str("ByteAddressBuffer buffer = index_buffers((push_constants.");
+					result.push_str(name);
+					result.push_str(" >> 16) & 0xffff);\n");
 
-							result.push_str(&name_capitalized);
-							result.push_str(" result = buffer.Load<");
-							result.push_str(&name_capitalized);
-							result.push_str(">(0);\n\n");
-						}
-						Constants::Indexed(_) => {
-							result.push_str(
-								"ByteAddressBuffer buffer = index_buffers((push_constants.",
-							);
-							result.push_str(name);
-							result.push_str(" >> 16) & 0xffff);\n");
-
-							result.push_str(&name_capitalized);
-							result.push_str(" result = buffer.Load<");
-							result.push_str(&name_capitalized);
-							result.push_str(">(push_constants.");
-							result.push_str(name);
-							result.push_str(" & 0xffff);\n\n");
-						}
-					}
+					result.push_str(&name_capitalized);
+					result.push_str(" result = buffer.Load<");
+					result.push_str(&name_capitalized);
+					result.push_str(">(push_constants.");
+					result.push_str(name);
+					result.push_str(" & 0xffff);\n\n");
 
 					// Transpose any matrices
-					for ConstantMember(name, variant) in constants.vec().iter() {
+					for ConstantMember(name, variant) in constants.iter() {
 						if *variant == Constant::Matrix4 {
 							result.push_str("result.");
 							result.push_str(name);
@@ -581,26 +503,16 @@ impl Asset for Pipeline {
 			result
 		};
 
-		let colors = pixel_shader
+		let color_attachments = pixel_shader
 			.exports
 			.iter()
 			.map(|(_, format)| *format)
 			.collect();
 
-		let render_pass = device.create_render_pass(colors, None).unwrap();
-
 		let vertex_attributes = vertex_shader
 			.attributes
 			.iter()
-			.map(|ConstantMember(_, variant)| match variant {
-				Constant::Float32 => VertexAttribute::Float32,
-				Constant::Vector2 => VertexAttribute::Vector2,
-				Constant::Vector3 => VertexAttribute::Vector3,
-				Constant::Vector4 => VertexAttribute::Vector4,
-				Constant::Uint32 => VertexAttribute::Uint32,
-
-				_ => unreachable!(),
-			})
+			.map(|ConstantMember(_, variant)| *variant)
 			.collect();
 
 		let blend_enabled = color_blend.is_some() || alpha_blend.is_some();
@@ -673,17 +585,14 @@ impl Asset for Pipeline {
 			source.push_str(&code);
 			source.push_str("\n}\n");
 
+			let main = "main";
+
 			// Compile to binary and then pass to device
 			let binary =
-				shader::compile("pixel.hlsl", &source, "main", ShaderVariant::Pixel).unwrap();
-			let shader = api::Shader::new(
-				device.0.clone(),
-				&binary,
-				ShaderVariant::Pixel,
-				"main".to_string(),
-			)
-			.unwrap();
-
+				shader::compile("pixel.hlsl", &source, main, ShaderVariant::Pixel).unwrap();
+			let shader = device
+				.create_shader(&binary[..], ShaderVariant::Pixel, main)
+				.unwrap();
 			shader
 		};
 
@@ -748,16 +657,15 @@ impl Asset for Pipeline {
 			source.push_str(&code);
 			source.push_str("\n}\n");
 
+			let main = "main";
+
 			// Compile to binary and then pass to device
 			let binary =
-				shader::compile("vertex.hlsl", &source, "main", ShaderVariant::Vertex).unwrap();
-			let shader = api::Shader::new(
-				device.0.clone(),
-				&binary,
-				ShaderVariant::Vertex,
-				"main".to_string(),
-			)
-			.unwrap();
+				shader::compile("vertex.hlsl", &source, main, ShaderVariant::Vertex).unwrap();
+
+			let shader = device
+				.create_shader(&binary[..], ShaderVariant::Vertex, main)
+				.unwrap();
 
 			shader
 		};
@@ -790,8 +698,10 @@ impl Asset for Pipeline {
 			)
 		};
 
-		let pipeline_desc = GraphicsPipelineDescription {
-			render_pass,
+		let description = GraphicsPipelineDescription {
+			color_attachments,
+			depth_attachment: None, // TODO: Depth attachment,
+
 			shaders,
 
 			vertex_attributes,
@@ -816,39 +726,40 @@ impl Asset for Pipeline {
 			depth_write: depth_stencil_states.depth_write,
 			depth_compare: depth_stencil_states.depth_compare,
 
-			push_constant_size: pipeline_file.constants.len() * 4
-				+ pipeline_file.resources.len() * 4,
+			constants: pipeline_file.constants,
+			resources: pipeline_file.resources,
 		};
 
-		let api = api::Pipeline::new(
-			device.0.clone(),
-			PipelineDescription::Graphics(pipeline_desc),
-		)
-		.unwrap();
+		(id, device.create_graphics_pipeline(description).unwrap())
+		// let api = api::GraphicsPipeline::new(
+		// 	device.0.clone(),
+		// 	PipelineDescription::Graphics(pipeline_desc),
+		// )
+		// .unwrap();
 
-		let samplers = resources
-			.iter()
-			.enumerate()
-			.filter(|(_, (_, resource))| match resource {
-				Resource::Sampler(_) => true,
-				_ => false,
-			})
-			.map(|(index, (_, resource))| match resource {
-				Resource::Sampler(desc) => {
-					let sampler = api::Sampler::new(device.0.clone(), *desc).unwrap();
-					(sampler, index)
-				}
-				_ => unreachable!(),
-			})
-			.collect();
+		// let samplers = resources
+		// 	.iter()
+		// 	.enumerate()
+		// 	.filter(|(_, (_, resource))| match resource {
+		// 		Resource::Sampler(_) => true,
+		// 		_ => false,
+		// 	})
+		// 	.map(|(index, (_, resource))| match resource {
+		// 		Resource::Sampler(desc) => {
+		// 			let sampler = api::Sampler::new(device.0.clone(), *desc).unwrap();
+		// 			(sampler, index)
+		// 		}
+		// 		_ => unreachable!(),
+		// 	})
+		// 	.collect();
 
-		(
-			id,
-			Pipeline {
-				file: pipeline_file,
-				api,
-				samplers,
-			},
-		)
+		// (
+		// 	id,
+		// 	GraphicsPipeline {
+		// 		file: pipeline_file,
+		// 		api,
+		// 		samplers,
+		// 	},
+		// )
 	}
 }

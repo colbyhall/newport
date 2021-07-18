@@ -15,7 +15,7 @@ use math::{
 
 use asset::AssetRef;
 
-use gpu::Pipeline;
+use gpu::GraphicsPipeline;
 
 use graphics::Mesh;
 
@@ -52,5 +52,5 @@ pub struct Named {
 
 pub struct MeshRender {
 	pub mesh: Option<AssetRef<Mesh>>,
-	pub pipeline: Option<AssetRef<Pipeline>>,
+	pub pipeline: Option<AssetRef<GraphicsPipeline>>,
 }
