@@ -15,7 +15,7 @@
 [![crates.io](https://img.shields.io/badge/crates.io-v0.2.0-red)](https://crates.io/crates/newport)
 
 ## About
-Ethereal Engine is a modular 2D and 3D game engine built in Rust for Rust. It is designed to be easily extendable and easy to use. The project is early on in development. Every API is extremely volatile as the engine is worked on more.
+Newport Engine is a modular 2D and 3D game engine built in Rust for Rust. It is designed to be easily extendable and easy to use. The project is early on in development. Every API is extremely volatile as the engine is worked on more.
 
 ## Goals
 * **Independent** - Build with minimal dependencies
