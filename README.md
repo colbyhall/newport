@@ -10,7 +10,7 @@
       <img src="assets/branding/logo_black_name.svg" />
 </picture>
 
-[![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![ci](https://github.com/colbyhall/newport/actions/workflows/ci.yml/badge.svg)](https://github.com/colbyhall/newport/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/badge/crates.io-v0.0.1-red)](https://crates.io/crates/newport)
 
