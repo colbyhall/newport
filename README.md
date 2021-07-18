@@ -11,8 +11,8 @@
 </picture>
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
-[![Build](https://github.com/colbyhall/newport/actions/workflows/ci.yml/badge.svg)](https://github.com/colbyhall/newport/actions/workflows/ci.yml)
-[![Crates](https://meritbadge.herokuapp.com/newport)](https://crates.io/crates/newport)
+[![ci](https://github.com/colbyhall/newport/actions/workflows/ci.yml/badge.svg)](https://github.com/colbyhall/newport/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/badge/crates.io-v0.0.1-red)](https://crates.io/crates/newport)
 
 ## About
 Ethereal Engine is a modular 2D and 3D game engine built in Rust for Rust. It is designed to be easily extendable and easy to use. The project is early on in development. Every API is extremely volatile as the engine is worked on more.
