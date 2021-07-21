@@ -1,0 +1,3 @@
+*.meta linguist-language=Rust
+*.graphics_pipeline linguist-language=Rust
+*.gtlf *.meta linguist-language=Json
