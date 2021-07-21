@@ -6,12 +6,9 @@ use crate::{
 	serde,
 };
 
-use asset::{
-	deserialize,
-	Asset,
-	UUID,
-};
+use asset::Asset;
 
+use asset::Importer;
 use gpu::{
 	Buffer,
 	BufferUsage,
@@ -24,11 +21,6 @@ use engine::Engine;
 use math::{
 	Vector2,
 	Vector3,
-};
-
-use std::path::{
-	Path,
-	PathBuf,
 };
 
 use serde::{
@@ -67,19 +59,17 @@ pub struct Mesh {
 	pub index_buffer: Buffer<u32>,
 }
 
+impl Asset for Mesh {}
+
 #[derive(Serialize, Deserialize)]
-#[serde(rename = "Mesh", crate = "self::serde")]
-struct MeshFile {
-	raw: PathBuf,
-}
+#[serde(crate = "self::serde")]
+pub(crate) struct MeshImporter {}
 
-impl Asset for Mesh {
-	fn load(bytes: &[u8], path: &Path) -> (UUID, Self) {
-		let (id, mesh_file): (UUID, MeshFile) = deserialize(bytes).unwrap();
+impl Importer for MeshImporter {
+	type Target = Mesh;
 
-		let raw_path = path.with_file_name(mesh_file.raw);
-
-		let (gltf, buffers, _images) = gltf::import(raw_path).unwrap();
+	fn import(&self, bytes: &[u8]) -> asset::Result<Self::Target> {
+		let (gltf, buffers, _images) = gltf::import_slice(bytes)?;
 
 		let mut vertex_count = 0;
 		let mut index_count = 0;
@@ -171,14 +161,11 @@ impl Asset for Mesh {
 		let receipt = device.submit_graphics(vec![gfx], &[]);
 		receipt.wait();
 
-		(
-			id,
-			Self {
-				vertices,
-				indices,
-				vertex_buffer,
-				index_buffer,
-			},
-		)
+		Ok(Self::Target {
+			vertices,
+			indices,
+			vertex_buffer,
+			index_buffer,
+		})
 	}
 }

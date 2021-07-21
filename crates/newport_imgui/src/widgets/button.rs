@@ -1,5 +1,6 @@
 use crate::{
 	asset,
+	gpu,
 	graphics,
 	math,
 	Builder,
@@ -12,7 +13,7 @@ use crate::{
 };
 
 use asset::AssetRef;
-use graphics::Texture;
+use gpu::Texture;
 use math::{
 	Rect,
 	Vector2,
@@ -148,7 +149,7 @@ pub struct ImageButton {
 impl ImageButton {
 	pub fn new(image: &AssetRef<Texture>) -> Self {
 		Self {
-			id: Id::from(image.path()),
+			id: Id::from(&image.path()),
 			image: image.clone(),
 			size: None,
 		}
@@ -173,8 +174,8 @@ impl ImageButton {
 		let size = match self.size {
 			Some(size) => size,
 			None => {
-				let image = self.image.read();
-				Vector2::new(image.gpu().width() as f32, image.gpu().height() as f32)
+				let image = &self.image;
+				Vector2::new(image.width() as f32, image.height() as f32)
 			}
 		};
 		let bounds = builder.content_bounds(size);
@@ -208,17 +209,12 @@ impl ImageButton {
 			.painter
 			.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
 
-		let gpu_texture = {
-			let texture = self.image.read();
-			texture.gpu().clone()
-		};
-
 		let bounds = Rect::from_pos_size(bounds.pos(), size);
 		builder.painter.push_shape(Shape::textured_rect(
 			bounds,
 			foreground_color,
 			0.0,
-			&gpu_texture,
+			&self.image,
 		));
 
 		response

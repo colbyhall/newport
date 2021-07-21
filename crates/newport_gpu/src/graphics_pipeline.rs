@@ -2,22 +2,21 @@ use crate::*;
 
 use std::{
 	collections::HashMap,
-	path::Path,
 	sync::Arc,
 };
 
+use asset::{
+	Asset,
+	Importer,
+};
+use engine::Engine;
+
 use serde::{
 	self as serde,
+	ron,
 	Deserialize,
 	Serialize,
 };
-
-use asset::{
-	deserialize,
-	Asset,
-	UUID,
-};
-use engine::Engine;
 
 use bitflags::bitflags;
 
@@ -123,33 +122,7 @@ impl GraphicsPipelineDescription {
 
 pub struct GraphicsPipeline(pub(crate) Arc<api::GraphicsPipeline>);
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename = "GraphicsPipeline", crate = "self::serde")]
-pub struct GraphicsPipelineFile {
-	#[serde(default)]
-	pub render_states: RenderStates,
-
-	#[serde(default)]
-	pub color_blend: Option<BlendStates>,
-
-	#[serde(default)]
-	pub alpha_blend: Option<BlendStates>,
-
-	#[serde(default)]
-	pub depth_stencil_states: DepthStencilStates,
-
-	#[serde(default)]
-	pub constants: HashMap<String, Vec<ConstantMember>>,
-
-	#[serde(default)]
-	pub resources: HashMap<String, Resource>,
-
-	#[serde(default)]
-	pub common: String,
-
-	pub vertex_shader: VertexShader,
-	pub pixel_shader: PixelShader,
-}
+impl Asset for GraphicsPipeline {}
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(crate = "self::serde")]
@@ -341,6 +314,38 @@ pub struct PixelShader {
 	pub code: String,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "GraphicsPipeline", crate = "self::serde")]
+pub struct GraphicsPipelineFile {
+	#[serde(default)]
+	pub render_states: RenderStates,
+
+	#[serde(default)]
+	pub color_blend: Option<BlendStates>,
+
+	#[serde(default)]
+	pub alpha_blend: Option<BlendStates>,
+
+	#[serde(default)]
+	pub depth_stencil_states: DepthStencilStates,
+
+	#[serde(default)]
+	pub constants: HashMap<String, Vec<ConstantMember>>,
+
+	#[serde(default)]
+	pub resources: HashMap<String, Resource>,
+
+	#[serde(default)]
+	pub common: String,
+
+	pub vertex_shader: VertexShader,
+	pub pixel_shader: PixelShader,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
+pub(crate) struct GraphicsPipelineImporter {}
+
 static SHADER_HEADER: &str = "
     #define NULL 0
     ByteAddressBuffer _all_buffers[]  : register(t0);
@@ -360,13 +365,16 @@ static SHADER_HEADER: &str = "
     }
 ";
 
-impl Asset for GraphicsPipeline {
-	fn load(bytes: &[u8], _path: &Path) -> (UUID, Self) {
+impl Importer for GraphicsPipelineImporter {
+	type Target = GraphicsPipeline;
+
+	fn import(&self, bytes: &[u8]) -> asset::Result<Self::Target> {
 		let engine = Engine::as_ref();
-		let gpu: &Gpu = engine.module().unwrap();
+		let gpu: &Gpu = engine.module().ok_or(asset::AssetRefError::NoManager)?;
 		let device = gpu.device();
 
-		let (id, pipeline_file): (UUID, GraphicsPipelineFile) = deserialize(bytes).unwrap();
+		let contents = std::str::from_utf8(bytes)?;
+		let file = ron::from_str(contents)?;
 
 		let GraphicsPipelineFile {
 			render_states,
@@ -383,11 +391,11 @@ impl Asset for GraphicsPipeline {
 			resources,
 
 			common,
-		} = &pipeline_file;
+		} = file;
 
 		let header = {
 			let mut result = SHADER_HEADER.to_string();
-			result.reserve(bytes.len());
+			result.reserve(4096);
 
 			// TODO: Check if this should go after
 			result.push_str("\n");
@@ -726,40 +734,21 @@ impl Asset for GraphicsPipeline {
 			depth_write: depth_stencil_states.depth_write,
 			depth_compare: depth_stencil_states.depth_compare,
 
-			constants: pipeline_file.constants,
-			resources: pipeline_file.resources,
+			constants,
+			resources,
 		};
 
-		(id, device.create_graphics_pipeline(description).unwrap())
-		// let api = api::GraphicsPipeline::new(
-		// 	device.0.clone(),
-		// 	PipelineDescription::Graphics(pipeline_desc),
-		// )
-		// .unwrap();
-
-		// let samplers = resources
-		// 	.iter()
-		// 	.enumerate()
-		// 	.filter(|(_, (_, resource))| match resource {
-		// 		Resource::Sampler(_) => true,
-		// 		_ => false,
-		// 	})
-		// 	.map(|(index, (_, resource))| match resource {
-		// 		Resource::Sampler(desc) => {
-		// 			let sampler = api::Sampler::new(device.0.clone(), *desc).unwrap();
-		// 			(sampler, index)
-		// 		}
-		// 		_ => unreachable!(),
-		// 	})
-		// 	.collect();
-
-		// (
-		// 	id,
-		// 	GraphicsPipeline {
-		// 		file: pipeline_file,
-		// 		api,
-		// 		samplers,
-		// 	},
-		// )
+		Ok(device.create_graphics_pipeline(description).unwrap())
 	}
 }
+
+// impl Asset for GraphicsPipeline {
+// 	fn load(bytes: &[u8], _path: &Path) -> (UUID, Self) {
+// 		let engine = Engine::as_ref();
+// 		let gpu: &Gpu = engine.module().unwrap();
+// 		let device = gpu.device();
+
+// 		let (id, pipeline_file): (UUID, GraphicsPipelineFile) = deserialize(bytes).unwrap();
+
+// 	}
+// }

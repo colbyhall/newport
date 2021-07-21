@@ -33,11 +33,9 @@ use engine::{
 use gpu::{
 	Gpu,
 	GraphicsPipeline,
-};
-use graphics::{
-	Graphics,
 	Texture,
 };
+use graphics::Graphics;
 use math::Rect;
 use os::window::WindowStyle;
 use std::sync::{
@@ -54,12 +52,8 @@ impl EditorAssets {
 	fn new() -> Self {
 		let asset_manager = Engine::as_ref().module::<AssetManager>().unwrap();
 		Self {
-			_close_button: asset_manager
-				.find("{ce163885-9cd7-4103-b865-3e41df21ba13}")
-				.unwrap(),
-			present_pipeline: asset_manager
-				.find("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}")
-				.unwrap(),
+			_close_button: AssetRef::new("{ce163885-9cd7-4103-b865-3e41df21ba13}").unwrap(),
+			present_pipeline: AssetRef::new("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}").unwrap(),
 		}
 	}
 }
@@ -205,14 +199,12 @@ impl Editor {
 			gui.end_frame()
 		};
 
-		let present_pipeline = assets.present_pipeline.read();
-
 		let gfx = device.create_graphics_recorder();
 		let (gfx, imgui) = draw_state.record(canvas, gfx, gui);
 		let imgui = imgui.unwrap();
 		let gfx = gfx
 			.render_pass(&gpu.backbuffer_render_pass(), &[&backbuffer], |ctx| {
-				ctx.bind_pipeline(&present_pipeline)
+				ctx.bind_pipeline(&assets.present_pipeline)
 					.bind_texture("texture", &imgui)
 					.draw(3, 0)
 			})

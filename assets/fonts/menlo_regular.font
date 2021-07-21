@@ -1,6 +1,0 @@
-Asset(
-    id: "{37f5e21e-5e74-4796-8a10-74567f5798ae}",
-    asset: Font(
-        raw:  "menlo_regular.ttf",
-    )
-)

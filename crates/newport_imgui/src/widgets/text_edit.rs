@@ -145,8 +145,8 @@ impl<'a> TextEdit<'a> {
 			bounds.min.x + layout_style.padding.min.x,
 			Rect::from_pos_size(bounds.pos(), label_size).top_left().y,
 		);
-		let mut font = text.font.write();
-		let font = font
+		let font = text
+			.font
 			.font_at_size(text.label_size, builder.input().dpi)
 			.unwrap();
 

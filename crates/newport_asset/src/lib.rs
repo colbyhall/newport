@@ -10,20 +10,45 @@ pub(crate) use newport_engine as engine;
 pub(crate) use newport_log as log;
 pub(crate) use newport_serde as serde;
 
-mod asset;
-mod asset_cache;
-mod asset_manager;
-mod asset_ref;
-mod de;
-mod registers;
+mod importer;
+mod manager;
+mod path_cache;
+mod reference;
 mod uuid;
 
 pub use {
-	asset::*,
-	asset_cache::*,
-	asset_manager::*,
-	asset_ref::*,
-	de::*,
-	registers::*,
+	importer::*,
+	manager::*,
+	reference::*,
 	uuid::*,
 };
+
+pub(crate) use path_cache::*;
+
+use std::{
+	error,
+	path::{
+		Path,
+		PathBuf,
+	},
+	result,
+};
+
+pub trait Asset: Sized + 'static {}
+
+pub type Result<T> = result::Result<T, Box<dyn error::Error>>;
+
+#[derive(Clone)]
+pub struct Collection {
+	pub(crate) path: PathBuf,
+}
+
+impl Collection {
+	pub fn new(path: impl Into<PathBuf>) -> Collection {
+		Collection { path: path.into() }
+	}
+
+	pub fn path(&self) -> &Path {
+		&self.path
+	}
+}

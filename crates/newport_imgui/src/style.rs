@@ -1,8 +1,4 @@
-use crate::asset::{
-	AssetManager,
-	AssetRef,
-};
-use crate::engine::Engine;
+use crate::asset::AssetRef;
 use crate::graphics::FontCollection;
 use crate::math::{
 	Color,
@@ -153,13 +149,8 @@ pub struct TextStyle {
 
 impl Default for TextStyle {
 	fn default() -> Self {
-		let asset_manager = Engine::as_ref().module::<AssetManager>().unwrap();
-		let font = asset_manager
-			.find("{cdb5cd33-004d-4518-ab20-93475b735cfa}")
-			.unwrap();
-
 		Self {
-			font: font,
+			font: AssetRef::new("{cdb5cd33-004d-4518-ab20-93475b735cfa}").unwrap(),
 			alignment: Alignment::Center,
 
 			label_size: 10,
@@ -170,15 +161,13 @@ impl Default for TextStyle {
 
 impl TextStyle {
 	pub fn string_rect(&self, string: &str, size: u32, wrap: Option<f32>) -> Rect {
-		let mut fc = self.font.write();
-		let font = fc.font_at_size(size, 1.0).unwrap(); // NOTE: I don't think DPI matters here
+		let font = self.font.font_at_size(size, 1.0).unwrap(); // NOTE: I don't think DPI matters here
 
 		font.string_rect(string, wrap.unwrap_or(f32::INFINITY))
 	}
 
 	pub fn label_height(&self) -> f32 {
-		let mut fc = self.font.write();
-		let font = fc.font_at_size(self.label_size, 1.0).unwrap(); // NOTE: I don't think DPI matters here
+		let font = self.font.font_at_size(self.label_size, 1.0).unwrap(); // NOTE: I don't think DPI matters here
 		font.ascent - font.descent
 	}
 }

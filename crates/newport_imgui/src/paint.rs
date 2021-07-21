@@ -1,8 +1,5 @@
 use crate::{
-	asset::{
-		AssetManager,
-		AssetRef,
-	},
+	asset::AssetRef,
 	engine::Engine,
 
 	gpu,
@@ -268,8 +265,7 @@ pub struct TextShape {
 
 impl TextShape {
 	pub fn tesselate(&self, canvas: &mut Canvas) {
-		let mut font_collection = self.font.write();
-		let font = font_collection.font_at_size(self.size, self.dpi).unwrap();
+		let font = self.font.font_at_size(self.size, self.dpi).unwrap();
 
 		let mut pos = self.at;
 		for c in self.text.chars() {
@@ -540,12 +536,9 @@ impl DrawState {
 		let engine = Engine::as_ref();
 		let gpu: &Gpu = engine.module().unwrap();
 		let device = gpu.device();
-		let asset_manager: &AssetManager = engine.module().unwrap();
 
 		Self {
-			pipeline: asset_manager
-				.find("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}")
-				.unwrap(),
+			pipeline: AssetRef::new("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}").unwrap(),
 			render_pass: device
 				.create_render_pass(vec![gpu::Format::RGBA_U8], None)
 				.unwrap(),
@@ -596,8 +589,6 @@ impl DrawState {
 			.unwrap();
 		import_buffer.copy_to(&[Import { _view: proj * view }]);
 
-		let pipeline = self.pipeline.read();
-
 		let backbuffer = device
 			.create_texture(
 				gpu::TextureUsage::SAMPLED | gpu::TextureUsage::COLOR_ATTACHMENT,
@@ -612,7 +603,7 @@ impl DrawState {
 		let gfx = gfx
 			.render_pass(&self.render_pass, &[&backbuffer], |ctx| {
 				ctx.clear(Color::BLACK)
-					.bind_pipeline(&pipeline)
+					.bind_pipeline(&self.pipeline)
 					.bind_vertex_buffer(&vertex_buffer)
 					.bind_index_buffer(&index_buffer)
 					.bind_constants("imports", &import_buffer, 0)

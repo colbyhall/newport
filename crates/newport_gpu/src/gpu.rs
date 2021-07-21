@@ -1,15 +1,16 @@
+use crate::GraphicsPipelineImporter;
+use crate::TextureImporter;
 use crate::{
 	asset,
 
 	engine,
 	Device,
 	Format,
-	GraphicsPipeline,
 	Instance,
 	RenderPass,
 };
 
-use asset::AssetVariant;
+use asset::Variant;
 use engine::{
 	Builder,
 	Engine,
@@ -51,8 +52,10 @@ impl Module for Gpu {
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
-		builder.register(AssetVariant::new::<GraphicsPipeline>(&[
-			"graphics_pipeline",
-		]))
+		builder
+			.register(Variant::new::<GraphicsPipelineImporter>(&[
+				"graphics_pipeline",
+			]))
+			.register(Variant::new::<TextureImporter>(&["png", "psd", "jpg"]))
 	}
 }

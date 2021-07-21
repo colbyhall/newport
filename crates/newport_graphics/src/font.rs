@@ -6,6 +6,8 @@ use crate::{
 	serde,
 };
 
+use asset::Importer;
+use freetype::FtResult;
 use math::{
 	Rect,
 	Vector2,
@@ -21,11 +23,7 @@ use gpu::{
 	TextureUsage,
 };
 
-use asset::{
-	deserialize,
-	Asset,
-	UUID,
-};
+use asset::Asset;
 
 use serde::{
 	Deserialize,
@@ -34,14 +32,12 @@ use serde::{
 
 use std::{
 	collections::HashMap,
-	fs,
 
 	iter::Iterator,
-	path::{
-		Path,
-		PathBuf,
+	sync::{
+		Arc,
+		Mutex,
 	},
-
 	thread_local,
 };
 
@@ -58,29 +54,26 @@ thread_local! {
 
 pub struct FontCollection {
 	face: Face,
-	fonts: HashMap<(u32, u32), Font>,
+	fonts: Mutex<HashMap<(u32, u32), Arc<Font>>>,
 }
+
+impl Asset for FontCollection {}
 
 impl FontCollection {
 	pub const NUM_GLYPHS: usize = 512;
 
-	pub fn new(file: Vec<u8>) -> Result<FontCollection, ()> {
-		let face = FREETYPE_LIB.with(|lib| {
-			let face = lib.new_memory_face(file, 0);
-			if face.is_err() {
-				return Err(());
-			}
-			Ok(face.unwrap())
-		})?;
+	pub fn new(file: Vec<u8>) -> FtResult<FontCollection> {
+		let face = FREETYPE_LIB.with(|lib| lib.new_memory_face(file, 0))?;
 
 		Ok(FontCollection {
 			face: face,
-			fonts: HashMap::new(),
+			fonts: Mutex::new(HashMap::new()),
 		})
 	}
 
-	pub fn font_at_size(&mut self, size: u32, dpi: f32) -> Option<&Font> {
-		let font = self.fonts.get(&(size, (dpi * 96.0) as u32));
+	pub fn font_at_size(&self, size: u32, dpi: f32) -> Option<Arc<Font>> {
+		let mut fonts = self.fonts.lock().unwrap();
+		let font = fonts.get(&(size, (dpi * 96.0) as u32));
 		if font.is_none() {
 			let resolution = (96.0 * dpi) as u32;
 
@@ -204,9 +197,9 @@ impl FontCollection {
 			let receipt = device.submit_graphics(vec![gfx], &[]);
 			receipt.wait();
 
-			self.fonts.insert(
+			fonts.insert(
 				(size, (dpi * 96.0) as u32),
-				Font {
+				Arc::new(Font {
 					size,
 
 					ascent,
@@ -215,28 +208,23 @@ impl FontCollection {
 
 					glyphs,
 					atlas,
-				},
+				}),
 			);
 		}
 
-		self.fonts.get(&(size, (dpi * 96.0) as u32))
+		Some(fonts.get(&(size, (dpi * 96.0) as u32))?.clone())
 	}
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(rename = "Font", crate = "self::serde")]
-struct FontFile {
-	raw: PathBuf,
-}
+#[serde(crate = "self::serde")]
+pub(crate) struct FontImporter {}
 
-impl Asset for FontCollection {
-	fn load(bytes: &[u8], path: &Path) -> (UUID, Self) {
-		let (id, file): (UUID, FontFile) = deserialize(bytes).unwrap();
+impl Importer for FontImporter {
+	type Target = FontCollection;
 
-		let raw_path = path.with_file_name(file.raw);
-
-		let font_file = fs::read(raw_path).unwrap();
-		(id, FontCollection::new(font_file).unwrap())
+	fn import(&self, bytes: &[u8]) -> asset::Result<Self::Target> {
+		Ok(FontCollection::new(bytes.to_vec())?)
 	}
 }
 

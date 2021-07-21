@@ -8,13 +8,9 @@ pub(crate) use newport_serde as serde;
 mod font;
 mod graphics;
 mod mesh;
-mod scene;
-mod texture;
 
 pub use {
 	font::*,
 	graphics::*,
 	mesh::*,
-	scene::*,
-	texture::*,
 };

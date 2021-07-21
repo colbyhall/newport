@@ -4,8 +4,8 @@ use crate::{
 	log::info,
 
 	serde,
-	AssetCollection,
-	AssetVariant,
+	Collection,
+	Variant,
 	UUID,
 };
 
@@ -26,16 +26,16 @@ use std::{
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "self::serde")]
-pub struct AssetCache {
+pub(crate) struct PathCache {
 	pub uuid_to_path: HashMap<UUID, PathBuf>,
 }
 
-impl Cache for AssetCache {
+impl Cache for PathCache {
 	fn new() -> Self {
 		let engine = Engine::as_ref();
 
-		let collections = engine.register::<AssetCollection>().unwrap_or_default();
-		let variants = engine.register::<AssetVariant>().unwrap_or_default();
+		let collections = engine.register::<Collection>().unwrap_or_default();
+		let variants = engine.register::<Variant>().unwrap_or_default();
 
 		// Run through all the collections and create a directory if one is not created
 		for it in collections.iter() {
@@ -48,7 +48,7 @@ impl Cache for AssetCache {
 		fn discover(
 			mut path: PathBuf,
 			uuid_to_path: &mut HashMap<UUID, PathBuf>,
-			variants: &Vec<AssetVariant>,
+			variants: &Vec<Variant>,
 		) -> PathBuf {
 			for entry in fs::read_dir(&path).unwrap() {
 				let entry = entry.unwrap();
@@ -60,16 +60,25 @@ impl Cache for AssetCache {
 					path.pop();
 				} else if file_type.is_file() {
 					let path = entry.path();
-					let ext = path.extension().unwrap_or_default();
 
-					let variant = variants
-						.iter()
-						.find(|v| v.extensions.contains(&ext.to_str().unwrap()));
+					let variant = {
+						let ext = path.extension().unwrap_or_default();
+
+						variants
+							.iter()
+							.find(|v| v.extensions.contains(&ext.to_str().unwrap()))
+					};
 					match variant {
 						Some(variant) => {
-							info!("Caching asset ({:?})", path);
-							let contents = fs::read(&path).unwrap();
-							let uuid = (variant.deserialize)(&contents, &path).0;
+							let mut meta_path = path.clone().into_os_string();
+							meta_path.push(crate::META_EXTENSION);
+
+							let contents = match fs::read(&meta_path) {
+								Ok(contents) => contents,
+								_ => continue,
+							};
+							info!("Caching asset ({})", path.display());
+							let uuid = (variant.load_meta)(&contents).unwrap().0;
 
 							uuid_to_path.insert(uuid, path);
 						}

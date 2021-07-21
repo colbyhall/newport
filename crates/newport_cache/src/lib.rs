@@ -27,41 +27,38 @@ use std::{
 		Path,
 		PathBuf,
 	},
-	sync::{
-		RwLock,
-		RwLockReadGuard,
-	},
 };
 
 static CACHE_PATH: &'static str = "cache/";
 
 pub struct CacheManager {
 	registers: HashMap<TypeId, CacheRegister>,
-	caches: HashMap<TypeId, RwLock<Box<dyn Any>>>,
+	caches: HashMap<TypeId, Box<dyn Any>>,
 }
 
-pub struct CacheViewer<'a, T: Cache> {
+pub struct CacheRef<T: Cache> {
+	cache: &'static Box<dyn Any>,
 	phantom: PhantomData<T>,
-	lock: RwLockReadGuard<'a, Box<dyn Any>>,
 }
 
-impl<'a, T: Cache> Deref for CacheViewer<'a, T> {
-	type Target = T;
-	fn deref(&self) -> &Self::Target {
-		self.lock.downcast_ref().unwrap()
+impl<T: Cache> CacheRef<T> {
+	pub fn new() -> Option<Self> {
+		let engine = Engine::as_ref();
+		let manager: &CacheManager = engine.module()?;
+
+		let cache = manager.caches.get(&TypeId::of::<T>())?;
+
+		Some(Self {
+			cache,
+			phantom: PhantomData,
+		})
 	}
 }
 
-impl CacheManager {
-	pub fn cache<T: Cache>(&self) -> Option<CacheViewer<T>> {
-		let id = TypeId::of::<T>();
-
-		let cache = self.caches.get(&id)?;
-		let lock = cache.read().ok()?;
-		Some(CacheViewer {
-			phantom: PhantomData,
-			lock,
-		})
+impl<T: Cache> Deref for CacheRef<T> {
+	type Target = T;
+	fn deref(&self) -> &Self::Target {
+		self.cache.downcast_ref::<T>().unwrap()
 	}
 }
 
@@ -96,27 +93,15 @@ impl Module for CacheManager {
 				cache
 			};
 
-			caches.insert(*id, RwLock::new(cache));
+			caches.insert(*id, cache);
 		}
 
 		Self { registers, caches }
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
-		builder.tick(|engine: &Engine, _: f32| {
-			let cache_manager = engine.module::<CacheManager>().unwrap();
-
-			for (id, cache) in cache_manager.caches.iter() {
-				let mut cache = cache.write().unwrap();
-
-				let register = cache_manager.registers.get(id).unwrap();
-				if (register.needs_reload)(&cache) {
-					*cache = (register.new)();
-
-					let contents = (register.serialize)(&cache);
-					fs::write(register.path(), contents).unwrap();
-				}
-			}
+		builder.tick(|_engine: &Engine, _: f32| {
+			// TODO: Reload
 		})
 	}
 }
@@ -129,7 +114,6 @@ impl Drop for CacheManager {
 			let register = registers.get(&id).unwrap();
 			let path = register.path();
 
-			let cache = cache.read().unwrap();
 			let contents = (register.serialize)(&cache);
 
 			fs::write(path, contents).unwrap();
