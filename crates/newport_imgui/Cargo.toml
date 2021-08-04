@@ -10,11 +10,11 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-newport_math      = { path = "../newport_math", version = "0.2.0" }
-newport_gpu       = { path = "../newport_gpu", version = "0.2.0" }
-newport_graphics  = { path = "../newport_graphics", version = "0.2.0" }
-newport_asset     = { path = "../newport_asset", version = "0.2.0" }
-newport_os        = { path = "../newport_os", version = "0.2.0" }
-newport_engine    = { path = "../newport_engine", version = "0.2.0" }
+math      = { path = "../newport_math", version = "0.2.0", package = "newport_math" }
+gpu       = { path = "../newport_gpu", version = "0.2.0", package = "newport_gpu" }
+graphics  = { path = "../newport_graphics", version = "0.2.0", package = "newport_graphics" }
+asset     = { path = "../newport_asset", version = "0.2.0", package = "newport_asset" }
+platform  = { path = "../newport_platform", version = "0.2.0", package = "newport_platform" }
+engine    = { path = "../newport_engine", version = "0.2.0", package = "newport_engine" }
 
 lazy_static = "1.4.0"

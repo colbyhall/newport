@@ -1,10 +1,12 @@
 use crate::{
-	ecs::World,
-	engine::Engine,
-
 	Named,
 	RenderState,
 	Transform,
+};
+
+use {
+	ecs::World,
+	engine::Engine,
 };
 
 use std::collections::HashMap;

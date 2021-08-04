@@ -8,7 +8,7 @@ use ash::vk;
 use std::ffi;
 use std::sync::Arc;
 
-use newport_log::{
+use log::{
 	error,
 	warn,
 };

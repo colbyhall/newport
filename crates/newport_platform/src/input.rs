@@ -1,6 +1,7 @@
 /// Variant enum for `Input` used to distinguish between input types
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InputVariant {
+	Unknown,
 	Key { code: u8, symbol: char },
 	MouseButton(u8),
 	MouseAxis,
@@ -83,6 +84,11 @@ impl Input {
 		}
 	}
 }
+
+pub const UNKNOWN: Input = Input {
+	display_name: "Unknown",
+	variant: InputVariant::Unknown,
+};
 
 pub const KEY_BACKSPACE: Input = Input::key("Backspace", 0x08, '\0');
 pub const KEY_TAB: Input = Input::key("Tab", 0x09, '\t');

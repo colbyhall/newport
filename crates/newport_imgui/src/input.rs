@@ -1,9 +1,9 @@
-use crate::math::{
+pub use engine::Event;
+use math::{
 	Rect,
 	Vector2,
 };
-pub use crate::os::input::*;
-pub use crate::os::window::WindowEvent as Event;
+pub use platform::input::*;
 
 use std::collections::VecDeque;
 

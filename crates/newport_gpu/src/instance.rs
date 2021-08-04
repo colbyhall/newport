@@ -1,12 +1,11 @@
 use crate::{
 	api,
 
-	os,
 	Device,
 	DeviceCreateError,
 };
 
-use os::window::WindowHandle;
+use platform::winit::window::Window;
 
 use std::sync::Arc;
 
@@ -26,7 +25,7 @@ impl Instance {
 		Ok(Self(inner))
 	}
 
-	pub fn create_device(&self, window: Option<WindowHandle>) -> Result<Device, DeviceCreateError> {
+	pub fn create_device(&self, window: Option<&Window>) -> Result<Device, DeviceCreateError> {
 		let inner = api::Device::new(self.0.clone(), window)?;
 		Ok(Device(inner))
 	}

@@ -1,6 +1,4 @@
 use crate::{
-	math,
-	os,
 	Builder,
 	ColorStyle,
 	Id,
@@ -176,7 +174,7 @@ impl<'a> TextEdit<'a> {
 		let is_hovered = builder.is_hovered(self.id);
 		let response = if is_focused {
 			retained.cursor_t += builder.input().dt;
-			if retained.cursor_t > os::caret_blink_time() {
+			if retained.cursor_t > platform::caret_blink_time() {
 				retained.cursor_t = 0.0;
 				retained.showing_cursor = !retained.showing_cursor;
 			}
@@ -196,10 +194,11 @@ impl<'a> TextEdit<'a> {
 				retained.selection += input_len;
 			}
 
-			let shift_down = builder.input().key_down[os::input::KEY_SHIFT.as_key().0 as usize];
-			let ctrl_down = builder.input().key_down[os::input::KEY_CTRL.as_key().0 as usize];
+			let shift_down =
+				builder.input().key_down[platform::input::KEY_SHIFT.as_key().0 as usize];
+			let ctrl_down = builder.input().key_down[platform::input::KEY_CTRL.as_key().0 as usize];
 
-			if builder.input().was_key_pressed(os::input::KEY_LEFT) {
+			if builder.input().was_key_pressed(platform::input::KEY_LEFT) {
 				response = TextEditResponse::InputRecieved;
 
 				if retained.cursor != retained.selection {
@@ -226,7 +225,7 @@ impl<'a> TextEdit<'a> {
 				retained.reset_cursor_blink();
 			}
 
-			if builder.input().was_key_pressed(os::input::KEY_RIGHT) {
+			if builder.input().was_key_pressed(platform::input::KEY_RIGHT) {
 				response = TextEditResponse::InputRecieved;
 
 				if retained.cursor != retained.selection {
@@ -253,7 +252,10 @@ impl<'a> TextEdit<'a> {
 				retained.reset_cursor_blink();
 			}
 
-			if builder.input().was_key_pressed(os::input::KEY_BACKSPACE) {
+			if builder
+				.input()
+				.was_key_pressed(platform::input::KEY_BACKSPACE)
+			{
 				response = TextEditResponse::InputRecieved;
 
 				if retained.cursor != retained.selection {
@@ -273,7 +275,7 @@ impl<'a> TextEdit<'a> {
 				retained.reset_cursor_blink();
 			}
 
-			if builder.input().was_key_pressed(os::input::KEY_DELETE) {
+			if builder.input().was_key_pressed(platform::input::KEY_DELETE) {
 				response = TextEditResponse::InputRecieved;
 
 				if retained.cursor != retained.selection {
@@ -291,7 +293,7 @@ impl<'a> TextEdit<'a> {
 				}
 			}
 
-			if builder.input().was_key_pressed(os::input::KEY_HOME) {
+			if builder.input().was_key_pressed(platform::input::KEY_HOME) {
 				response = TextEditResponse::InputRecieved;
 
 				retained.cursor = 0;
@@ -300,7 +302,7 @@ impl<'a> TextEdit<'a> {
 				}
 			}
 
-			if builder.input().was_key_pressed(os::input::KEY_END) {
+			if builder.input().was_key_pressed(platform::input::KEY_END) {
 				response = TextEditResponse::InputRecieved;
 
 				retained.cursor = self.text.len();
@@ -309,12 +311,12 @@ impl<'a> TextEdit<'a> {
 				}
 			}
 
-			if builder.input().was_key_pressed(os::input::KEY_ENTER) {
+			if builder.input().was_key_pressed(platform::input::KEY_ENTER) {
 				response = TextEditResponse::Entered;
 				builder.unfocus(self.id);
 			}
 
-			if builder.input().was_key_pressed(os::input::KEY_ESCAPE) {
+			if builder.input().was_key_pressed(platform::input::KEY_ESCAPE) {
 				builder.unfocus(self.id);
 			}
 
@@ -337,7 +339,7 @@ impl<'a> TextEdit<'a> {
 			}
 
 			if builder.input().mouse_button_down
-				[os::input::MOUSE_BUTTON_LEFT.as_mouse_button() as usize]
+				[platform::input::MOUSE_BUTTON_LEFT.as_mouse_button() as usize]
 			{
 				for (index, bounds) in font.bounds_iter(self.text, at).enumerate() {
 					if builder.input().mouse_is_over(bounds) {

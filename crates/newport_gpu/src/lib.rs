@@ -26,20 +26,13 @@
 
 #![feature(in_band_lifetimes)]
 
-pub(crate) use {
-	newport_asset as asset,
-	newport_engine as engine,
-	newport_math as math,
-	newport_os as os,
-	newport_serde as serde,
-};
-
 use math::{
 	Color,
 	Rect,
 };
 
 use serde::{
+	self,
 	Deserialize,
 	Serialize,
 };

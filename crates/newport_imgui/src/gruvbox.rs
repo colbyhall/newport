@@ -1,4 +1,4 @@
-use crate::math::Color;
+use math::Color;
 
 use lazy_static::lazy_static;
 

@@ -1,7 +1,3 @@
-use crate::math::{
-	Rect,
-	Vector2,
-};
 use crate::{
 	Builder,
 	Canvas,
@@ -13,6 +9,10 @@ use crate::{
 	RawInput,
 	Retained,
 	StyleMap,
+};
+use math::{
+	Rect,
+	Vector2,
 };
 
 use std::collections::HashMap;
@@ -108,12 +108,9 @@ impl Context {
 			Event::MouseButton {
 				mouse_button,
 				pressed,
-				position,
 			} => {
 				let code = mouse_button.as_mouse_button();
 				input_state.mouse_button_down[code as usize] = pressed;
-				input_state.mouse_location =
-					Some((position.0 as f32 / dpi, position.1 as f32 / dpi).into());
 			}
 			Event::MouseMove(x, y) => {
 				input_state.mouse_location = Some((x as f32 / dpi, y as f32 / dpi).into());
@@ -121,8 +118,8 @@ impl Context {
 			Event::MouseLeave => {
 				input_state.mouse_location = None;
 			}
-			Event::MouseWheel(scroll) => {
-				input_state.scroll = -scroll as f32;
+			Event::MouseWheel(_, y) => {
+				input_state.scroll = -y;
 			}
 			Event::Char(c) => {
 				input_state.text_input.push(c);

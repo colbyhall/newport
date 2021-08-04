@@ -10,14 +10,9 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-newport_engine   = { path = "../newport_engine", version = "0.2.0" }
-newport_ecs      = { path = "../newport_ecs",    version = "0.2.0", features = ["editable"] }
-newport_math     = { path = "../newport_math",   version = "0.2.0" }
-newport_gpu      = { path = "../newport_gpu",    version = "0.2.0" }
-newport_graphics = { path = "../newport_graphics", version = "0.2.0" }
-newport_asset    = { path = "../newport_asset", version = "0.2.0" }
-
-newport_editor   = { path = "../newport_editor", version = "0.2.0", optional = true }
-
-[features]
-editor = ["newport_editor"]
+engine   = { path = "../newport_engine", version = "0.2.0", package = "newport_engine" }
+ecs      = { path = "../newport_ecs",    version = "0.2.0", package = "newport_ecs" }
+math     = { path = "../newport_math",   version = "0.2.0", package = "newport_math" }
+gpu      = { path = "../newport_gpu",    version = "0.2.0", package = "newport_gpu" }
+graphics = { path = "../newport_graphics", version = "0.2.0", package = "newport_graphics" }
+asset    = { path = "../newport_asset", version = "0.2.0", package = "newport_asset" }

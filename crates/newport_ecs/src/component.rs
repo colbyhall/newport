@@ -8,23 +8,8 @@ use std::collections::{
 	VecDeque,
 };
 
-#[cfg(feature = "editable")]
-use std::any::type_name;
-
-#[cfg(feature = "editable")]
-use newport_editor::{
-	Builder,
-	Editable,
-};
-
 pub trait Component: 'static + Send + Sync {
 	const TRANSIENT: bool;
-
-	#[cfg(feature = "editable")]
-	const CAN_EDIT: bool;
-
-	#[cfg(feature = "editable")]
-	fn edit(&mut self, name: &str, ui: &mut Builder);
 }
 
 impl<T> Component for T
@@ -32,28 +17,6 @@ where
 	T: Send + Sync + 'static,
 {
 	default const TRANSIENT: bool = true;
-
-	#[cfg(feature = "editable")]
-	default const CAN_EDIT: bool = false;
-
-	#[cfg(feature = "editable")]
-	default fn edit(&mut self, _name: &str, _builder: &mut Builder) {}
-}
-
-#[cfg(feature = "editable")]
-impl<T> Component for T
-where
-	T: Editable + Send + Sync + 'static,
-{
-	const TRANSIENT: bool = true;
-
-	#[cfg(feature = "editable")]
-	default const CAN_EDIT: bool = true;
-
-	#[cfg(feature = "editable")]
-	default fn edit(&mut self, name: &str, builder: &mut Builder) {
-		self.edit(name, builder)
-	}
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -166,9 +129,6 @@ impl<T: Component> ComponentStorage<T> {
 struct ComponentMapEntry {
 	storage: Box<dyn Any>,
 	remove: fn(&mut Box<dyn Any>, &ComponentId) -> bool, // The api does not require that we know type of a component at removal so we must keep a ptr to the drop method
-
-	#[cfg(feature = "editable")]
-	edit: Option<fn(&mut Box<dyn Any>, &ComponentId, ui: &mut Builder)>,
 }
 
 impl ComponentMapEntry {
@@ -179,46 +139,9 @@ impl ComponentMapEntry {
 			storage.remove(id).is_some()
 		}
 
-		#[cfg(feature = "editable")]
-		let edit = if T::CAN_EDIT {
-			fn edit<T: Component>(
-				boxed_storage: &mut Box<dyn Any>,
-				id: &ComponentId,
-				ui: &mut Builder,
-			) {
-				let storage = boxed_storage.downcast_mut::<ComponentStorage<T>>().unwrap();
-				let it = storage.find_mut(id);
-				if it.is_none() {
-					return;
-				}
-				let it = it.unwrap();
-
-				let name = type_name::<T>();
-				let names: Vec<&str> = name.rsplit("::").collect();
-				let name = names[0];
-				Component::edit(it, name, ui);
-			}
-			Some(edit::<T>)
-		} else {
-			None
-		};
-
-		#[cfg(feature = "editable")]
-		if edit.is_some() {
-			return Self {
-				storage: Box::new(ComponentStorage::<T>::new()),
-				remove: remove::<T>,
-
-				edit: Some(edit.unwrap()),
-			};
-		}
-
 		Self {
 			storage: Box::new(ComponentStorage::<T>::new()),
 			remove: remove::<T>,
-
-			#[cfg(feature = "editable")]
-			edit: None,
 		}
 	}
 }

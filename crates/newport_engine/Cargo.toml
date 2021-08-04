@@ -10,5 +10,6 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-newport_os    = { path = "../newport_os", version = "0.2.0" }
-newport_math  = { path = "../newport_math", version = "0.2.0" }
+platform = { path = "../newport_platform", version = "0.2.0", package = "newport_platform" }
+math     = { path = "../newport_math", version = "0.2.0", package = "newport_math" }
+sync     = { path = "../newport_sync", version = "0.1.0", package = "newport_sync" }

@@ -1,8 +1,4 @@
 use crate::{
-	asset,
-	gpu,
-	graphics,
-	math,
 	Builder,
 	ColorStyle,
 	Id,

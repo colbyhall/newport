@@ -24,7 +24,6 @@ use ash::version::{
 use ash::vk;
 
 use std::collections::HashMap;
-use std::ptr::null_mut;
 use std::slice::from_ref;
 use std::sync::{
 	Arc,
@@ -33,9 +32,11 @@ use std::sync::{
 };
 use std::thread::ThreadId;
 
-#[cfg(target_os = "windows")]
-use newport_os::win32;
-use newport_os::window::WindowHandle;
+use platform::raw_window_handle::{
+	HasRawWindowHandle,
+	RawWindowHandle,
+};
+use platform::winit::window::Window;
 
 struct Swapchain {
 	// HACK: Leak the swapchain handle because it crashes when trying to free it. Probably due to it being attached to resources???
@@ -287,7 +288,7 @@ impl Device {
 
 	pub fn new(
 		instance: Arc<Instance>,
-		window: Option<WindowHandle>,
+		window: Option<&Window>,
 	) -> Result<Arc<Self>, DeviceCreateError> {
 		// Find a physical device based off of some parameters
 		let physical_device;
@@ -340,16 +341,24 @@ impl Device {
 		let surface;
 		unsafe {
 			if window.is_some() {
-				let surface_khr = khr::Win32Surface::new(&instance.entry, &instance.instance);
-				let create_info = vk::Win32SurfaceCreateInfoKHR::builder()
-					.hinstance(win32::GetModuleHandleA(null_mut()))
-					.hwnd(window.unwrap());
+				let handle = window.unwrap().raw_window_handle();
 
-				surface = Some(
-					surface_khr
-						.create_win32_surface(&create_info, None)
-						.unwrap(),
-				);
+				match handle {
+					RawWindowHandle::Windows(handle) => {
+						let surface_khr =
+							khr::Win32Surface::new(&instance.entry, &instance.instance);
+						let create_info = vk::Win32SurfaceCreateInfoKHR::builder()
+							.hinstance(handle.hinstance)
+							.hwnd(handle.hwnd);
+
+						surface = Some(
+							surface_khr
+								.create_win32_surface(&create_info, None)
+								.unwrap(),
+						);
+					}
+					_ => todo!(),
+				}
 			} else {
 				surface = None;
 			};

@@ -1,5 +1,4 @@
 use crate::{
-	math,
 	Alignment,
 	Builder,
 	ColorStyle,

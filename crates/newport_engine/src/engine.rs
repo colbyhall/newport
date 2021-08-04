@@ -1,11 +1,6 @@
 use crate::{
-	math::Rect,
-	os::window::{
-		WindowBuilder,
-		WindowStyle,
-	},
-
 	Builder,
+	Event,
 	Module,
 	Register,
 };
@@ -16,19 +11,33 @@ use std::{
 		TypeId,
 	},
 	collections::HashMap,
-	process,
 	sync::atomic::{
 		AtomicBool,
+		AtomicI32,
 		Ordering,
 	},
-	sync::Mutex,
 	time::Instant,
 };
 
-pub use crate::os::window::{
-	Window,
-	WindowEvent as InputEvent,
+use platform::winit::{
+	event::{
+		ElementState,
+		Event as WinitEvent,
+		MouseButton,
+		MouseScrollDelta,
+		WindowEvent,
+	},
+	event_loop::{
+		ControlFlow,
+		EventLoop,
+	},
+	window::{
+		Window,
+		WindowBuilder,
+	},
 };
+
+use platform::input::Input;
 
 static mut ENGINE: Option<Engine> = None;
 
@@ -41,149 +50,230 @@ pub struct Engine {
 	registers: HashMap<TypeId, Box<dyn Any>>,
 
 	is_running: AtomicBool,
-	fps: i32,
+	fps: AtomicI32,
 
-	window: Window,
-	minimize: AtomicBool,
-	maximize: AtomicBool,
-	drag: Mutex<Rect>,
-	dpi: f32,
+	window: Option<Window>,
 }
 
 impl Engine {
-	/// Starts the engine using what was built with a [`Builder`]
-	///
-	/// # Arguments
-	///
-	/// * `builder` - An [`Builder`] used to setup app execution and structure
-	///
-	/// # Examples
-	///
-	/// ```
-	/// use newport_engine::{ Builder, Engine };
-	/// use newport_asset::AssetManager;
-	///
-	/// let builder = Builder::new()
-	///     .module::<AssetManager>();
-	/// Engine::run(builder).unwrap();
-	/// ```
 	pub(crate) fn run(mut builder: Builder) {
-		// Grab the project name or use a default
-		let name = builder.name.unwrap_or("newport".to_string());
+		let event_loop = EventLoop::new();
 
 		// UNSAFE: Set the global state
 		let engine = unsafe {
-			let id = TypeId::of::<WindowStyle>();
-			let styles: Vec<WindowStyle> = match builder.registers.get(&id) {
-				Some(any_vec) => any_vec.downcast_ref::<Vec<WindowStyle>>().unwrap().clone(),
-				None => Vec::default(),
-			};
-			let style = match styles.last() {
-				Some(style) => *style,
-				None => WindowStyle::Windowed,
-			};
+			// let id = TypeId::of::<WindowStyle>();
+			// let styles: Vec<WindowStyle> = match builder.registers.get(&id) {
+			// Some(any_vec) => any_vec.downcast_ref::<Vec<WindowStyle>>().unwrap().clone(),
+			// None => Vec::default(),
+			// };
+			// let style = match styles.last() {
+			// Some(style) => *style,
+			// None => WindowStyle::Windowed,
+			// };
+			let name = builder.name.take().unwrap_or("newport".to_string());
 
-			let window = WindowBuilder::new()
-				.title(name.clone())
-				.style(style)
-				.spawn()
-				.unwrap();
-
-			let dpi = window.dpi();
+			let window = match &builder.display {
+				Some(_) => WindowBuilder::new()
+					.with_title(name.clone())
+					.with_maximized(true)
+					.build(&event_loop)
+					.ok(),
+				None => None,
+			};
 
 			ENGINE = Some(Engine {
-				name: name,
+				name,
 				modules: HashMap::with_capacity(builder.entries.len()),
-				registers: builder.registers,
+				registers: builder.registers.take().unwrap(),
 
 				is_running: AtomicBool::new(true),
-				fps: 0,
+				fps: AtomicI32::new(0),
 
-				window: window,
-				minimize: AtomicBool::new(false),
-				maximize: AtomicBool::new(false),
-
-				drag: Mutex::new(Rect::default()),
-				dpi: dpi,
+				window,
 			});
 
-			ENGINE.as_mut().unwrap()
-		};
+			let engine = ENGINE.as_mut().unwrap();
 
-		// NOTE: All modules a module depends on will be available at initialization
-		builder.entries.drain(..).for_each(|it| {
-			engine.modules.insert(it.id, (it.spawn)());
-		});
+			// NOTE: All modules a module depends on will be available at initialization
+			// TODO: Worry about safety here.
+			builder.entries.drain(..).for_each(|it| {
+				engine.modules.insert(it.id, (it.spawn)());
+			});
+
+			ENGINE.as_ref().unwrap()
+		};
 
 		// Do post init
 		builder.post_inits.drain(..).for_each(|init| init(engine));
 
-		engine.window.set_visible(true);
-		engine.window.maximize();
+		match &engine.window {
+			Some(window) => {
+				window.set_visible(true);
+			}
+			None => {}
+		}
 
 		let mut frame_count = 0;
 		let mut time = 0.0;
 
-		// Game loop
 		let mut last_frame_time = Instant::now();
-		'run: while engine.is_running.load(Ordering::Relaxed) {
-			let now = Instant::now();
-			let dt = now.duration_since(last_frame_time).as_secs_f32();
-			last_frame_time = now;
+		event_loop.run(move |event, _, control_flow| {
+			*control_flow = ControlFlow::Poll;
 
-			time += dt;
-			if time >= 1.0 {
-				time = 0.0;
-				engine.fps = frame_count;
-				frame_count = 0;
-			}
-			frame_count += 1;
+			let height = engine.window().unwrap().inner_size().height as f32;
 
-			{
-				for event in engine.window.poll_events() {
+			match event {
+				WinitEvent::WindowEvent {
+					event: WindowEvent::CloseRequested,
+					..
+				} => {
+					*control_flow = ControlFlow::Exit;
+				}
+				WinitEvent::WindowEvent {
+					event: WindowEvent::KeyboardInput { input, .. },
+					..
+				} => {
+					let key = Input::key_from_code(input.scancode as u8)
+						.unwrap_or(platform::input::UNKNOWN);
+					let event = Event::Key {
+						key,
+						pressed: input.state == ElementState::Pressed,
+					};
+
 					builder
 						.process_input
 						.iter()
-						.for_each(|process_input| process_input(engine, &engine.window, &event));
-
-					match event {
-						InputEvent::Closed => {
-							engine.is_running.store(false, Ordering::Relaxed);
-							break 'run;
-						}
-						InputEvent::Resizing(_, _) => {
-							builder.tick.iter().for_each(|tick| tick(engine, 0.0));
-						}
-						_ => {}
-					}
+						.for_each(|process| process(engine, &event));
 				}
+				WinitEvent::WindowEvent {
+					event: WindowEvent::MouseInput { button, state, .. },
+					..
+				} => {
+					let mouse_button = match button {
+						MouseButton::Left => platform::input::MOUSE_BUTTON_LEFT,
+						MouseButton::Right => platform::input::MOUSE_BUTTON_RIGHT,
+						MouseButton::Middle => platform::input::MOUSE_BUTTON_MIDDLE,
+						_ => unimplemented!(),
+					};
+					let event = Event::MouseButton {
+						mouse_button,
+						pressed: state == ElementState::Pressed,
+					};
+
+					builder
+						.process_input
+						.iter()
+						.for_each(|process| process(engine, &event));
+				}
+				WinitEvent::WindowEvent {
+					event: WindowEvent::CursorMoved { position, .. },
+					..
+				} => {
+					let event = Event::MouseMove(position.x as f32, height - position.y as f32);
+					builder
+						.process_input
+						.iter()
+						.for_each(|process| process(engine, &event));
+				}
+				WinitEvent::WindowEvent {
+					event: WindowEvent::Resized(size),
+					..
+				} => {
+					let event = Event::Resized(size.width, size.height);
+					builder
+						.process_input
+						.iter()
+						.for_each(|process| process(engine, &event));
+				}
+				WinitEvent::WindowEvent {
+					event: WindowEvent::MouseWheel { delta, .. },
+					..
+				} => {
+					let event = match delta {
+						MouseScrollDelta::LineDelta(x, y) => Event::MouseWheel(x as f32, y as f32),
+						MouseScrollDelta::PixelDelta(dif) => {
+							Event::MouseWheel(dif.x as f32, dif.y as f32)
+						}
+					};
+					builder
+						.process_input
+						.iter()
+						.for_each(|process| process(engine, &event));
+				}
+				WinitEvent::WindowEvent {
+					event: WindowEvent::ReceivedCharacter(c),
+					..
+				} => {
+					let event = Event::Char(c);
+					builder
+						.process_input
+						.iter()
+						.for_each(|process| process(engine, &event));
+				}
+				WinitEvent::WindowEvent {
+					event: WindowEvent::Focused(focused),
+					..
+				} => {
+					let event = if focused {
+						Event::FocusGained
+					} else {
+						Event::FocusLost
+					};
+					builder
+						.process_input
+						.iter()
+						.for_each(|process| process(engine, &event));
+				}
+				WinitEvent::WindowEvent {
+					event: WindowEvent::CursorEntered { .. },
+					..
+				} => {
+					let event = Event::MouseEnter;
+					builder
+						.process_input
+						.iter()
+						.for_each(|process| process(engine, &event));
+				}
+				WinitEvent::WindowEvent {
+					event: WindowEvent::CursorLeft { .. },
+					..
+				} => {
+					let event = Event::MouseLeave;
+					builder
+						.process_input
+						.iter()
+						.for_each(|process| process(engine, &event));
+				}
+				WinitEvent::MainEventsCleared => {
+					let now = Instant::now();
+					let dt = now.duration_since(last_frame_time).as_secs_f32();
+					last_frame_time = now;
+
+					time += dt;
+					if time >= 1.0 {
+						time = 0.0;
+						engine.fps.store(frame_count, Ordering::Relaxed);
+						frame_count = 0;
+					}
+					frame_count += 1;
+
+					builder.tick.iter().for_each(|tick| tick(engine, dt));
+				}
+				WinitEvent::RedrawRequested(_) => match &builder.display {
+					Some(display) => (display)(engine),
+					None => {}
+				},
+				_ => (),
 			}
 
-			builder.tick.iter().for_each(|tick| tick(engine, dt));
-
-			if engine.maximize.load(Ordering::Relaxed) {
-				engine.window.maximize();
-				engine.maximize.store(false, Ordering::Relaxed)
+			// Do pre shutdowns
+			if *control_flow == ControlFlow::Exit {
+				builder
+					.pre_shutdown
+					.drain(..)
+					.for_each(|shutdown| shutdown(engine));
 			}
-
-			if engine.minimize.load(Ordering::Relaxed) {
-				engine.window.minimize();
-				engine.minimize.store(false, Ordering::Relaxed)
-			}
-
-			{
-				let drag = engine.drag.lock().unwrap();
-				engine.window.set_custom_drag(*drag);
-			}
-		}
-
-		// Do pre shutdowns
-		builder
-			.pre_shutdown
-			.drain(..)
-			.for_each(|shutdown| shutdown(engine));
-
-		process::exit(0);
+		});
 	}
 
 	/// Returns the global [`Engine`] as a ref
@@ -191,20 +281,6 @@ impl Engine {
 		unsafe { ENGINE.as_ref().unwrap() }
 	}
 
-	/// Searches a module by type and returns an [`Option<&'static T>`]
-	///
-	/// # Arguments
-	///
-	/// * `T` - A [`Module`] that should have been created using a [`Builder`]
-	///
-	/// # Examples
-	///
-	/// ```
-	/// use newport_engine::Engine;
-	///
-	/// let engine = Engine::as_ref();
-	/// let module = engine.module::<Module>().unwrap();
-	/// ```
 	pub fn module<'a, T: Module>(&'a self) -> Option<&'a T> {
 		let id = TypeId::of::<T>();
 
@@ -225,8 +301,8 @@ impl Engine {
 	}
 
 	/// Returns the window that the engine draws into
-	pub fn window(&self) -> &Window {
-		&self.window
+	pub fn window(&self) -> Option<&Window> {
+		self.window.as_ref()
 	}
 
 	pub fn shutdown(&self) {
@@ -234,23 +310,6 @@ impl Engine {
 	}
 
 	pub fn fps(&self) -> i32 {
-		self.fps
-	}
-
-	pub fn maximize(&self) {
-		self.maximize.store(true, Ordering::Relaxed);
-	}
-
-	pub fn minimize(&self) {
-		self.minimize.store(true, Ordering::Relaxed);
-	}
-
-	pub fn set_custom_drag(&self, drag: Rect) {
-		let mut self_drag = self.drag.lock().unwrap();
-		*self_drag = drag;
-	}
-
-	pub fn dpi(&self) -> f32 {
-		self.dpi
+		self.fps.load(Ordering::Relaxed)
 	}
 }

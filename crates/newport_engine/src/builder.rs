@@ -1,8 +1,7 @@
 use crate::{
 	Engine,
-	InputEvent,
+	Event,
 	Module,
-	Window,
 };
 
 use std::{
@@ -19,8 +18,9 @@ pub(crate) struct BuilderEntry {
 }
 
 pub trait PostInit = FnOnce(&Engine) + 'static;
-pub trait ProcessInput = Fn(&Engine, &Window, &InputEvent) + 'static;
+pub trait ProcessInput = Fn(&Engine, &Event) + 'static;
 pub trait Tick = Fn(&Engine, f32) + 'static;
+pub trait Display = Fn(&Engine) + 'static;
 pub trait PreShutdown = FnOnce(&Engine) + 'static;
 
 pub trait Register = Sized + Clone + 'static;
@@ -33,9 +33,10 @@ pub struct Builder {
 	pub(crate) post_inits: Vec<Box<dyn PostInit>>,
 	pub(crate) process_input: Vec<Box<dyn ProcessInput>>,
 	pub(crate) tick: Vec<Box<dyn Tick>>,
+	pub(crate) display: Option<Box<dyn Display>>, // There can only be one display method
 	pub(crate) pre_shutdown: Vec<Box<dyn PreShutdown>>,
 
-	pub(crate) registers: HashMap<TypeId, Box<dyn Any>>,
+	pub(crate) registers: Option<HashMap<TypeId, Box<dyn Any>>>,
 }
 
 impl Builder {
@@ -48,9 +49,10 @@ impl Builder {
 			post_inits: Vec::new(),
 			process_input: Vec::new(),
 			tick: Vec::new(),
+			display: None,
 			pre_shutdown: Vec::new(),
 
-			registers: HashMap::new(),
+			registers: Some(HashMap::new()),
 		}
 	}
 
@@ -129,6 +131,11 @@ impl Builder {
 		self
 	}
 
+	pub fn display(mut self, f: impl Display) -> Self {
+		self.display = Some(Box::new(f));
+		self
+	}
+
 	/// Sets the name of the engine runnable
 	pub fn name(mut self, name: impl Into<String>) -> Self {
 		self.name = Some(name.into());
@@ -137,12 +144,13 @@ impl Builder {
 
 	pub fn register<T: Register>(mut self, register: T) -> Self {
 		let type_id = TypeId::of::<T>();
-		let it = match self.registers.get_mut(&type_id) {
+		let registers = self.registers.as_mut().unwrap();
+		let it = match registers.get_mut(&type_id) {
 			Some(it) => it,
 			None => {
 				let register: Vec<T> = Vec::new();
-				self.registers.insert(type_id, Box::new(register));
-				self.registers.get_mut(&type_id).unwrap()
+				registers.insert(type_id, Box::new(register));
+				registers.get_mut(&type_id).unwrap()
 			}
 		};
 

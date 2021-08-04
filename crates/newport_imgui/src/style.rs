@@ -1,11 +1,11 @@
-use crate::asset::AssetRef;
-use crate::graphics::FontCollection;
-use crate::math::{
+use crate::DARK;
+use asset::AssetRef;
+use graphics::FontCollection;
+use math::{
 	Color,
 	Rect,
 	Vector2,
 };
-use crate::DARK;
 
 use std::{
 	any::{

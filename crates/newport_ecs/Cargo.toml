@@ -11,8 +11,4 @@ keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
 newport_math    = { path = "../newport_math", version = "0.2.0" }
-newport_editor = { path = "../newport_editor", version = "0.2.0", optional = true }
 slotmap = "1.0.3"
-
-[features]
-editable = ["newport_editor"]

@@ -1,11 +1,8 @@
-use crate::{
+use crate::Context;
+
+use {
 	asset::AssetRef,
 	engine::Engine,
-
-	gpu,
-	graphics,
-	math,
-	Context,
 };
 
 use gpu::GraphicsRecorder;

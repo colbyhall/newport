@@ -1,9 +1,6 @@
 use crate::GraphicsPipelineImporter;
 use crate::TextureImporter;
 use crate::{
-	asset,
-
-	engine,
 	Device,
 	Format,
 	Instance,
@@ -37,9 +34,7 @@ impl Module for Gpu {
 		let engine = Engine::as_ref();
 
 		let instance = Instance::new().unwrap();
-		let device = instance
-			.create_device(Some(engine.window().handle()))
-			.unwrap();
+		let device = instance.create_device(engine.window()).unwrap();
 
 		let backbuffer_render_pass = device
 			.create_render_pass(vec![Format::BGR_U8_SRGB], None)

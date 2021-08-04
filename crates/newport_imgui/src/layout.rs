@@ -1,4 +1,4 @@
-use crate::math::{
+use math::{
 	Rect,
 	Vector2,
 };

@@ -1,5 +1,8 @@
 #[cfg(target_os = "windows")]
-use crate::win32::*;
+use winapi::um::{
+	minwinbase::SYSTEMTIME,
+	sysinfoapi::GetLocalTime,
+};
 
 /// Date gathered from the OS
 #[derive(Copy, Clone, PartialEq)]

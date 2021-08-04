@@ -1,5 +1,5 @@
 [package]
-name = "newport_os"
+name = "newport_platform"
 version = "0.2.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
@@ -11,4 +11,8 @@ keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
 lazy_static = "1.4.0"
-newport_math = { path = "../newport_math", version = "0.2.0" }
+math = { path = "../newport_math", version = "0.2.0", package = "newport_math" }
+
+winapi = { version = "0.3.9", features = ["winuser", "sysinfoapi", "impl-default"] }
+winit = "0.25"
+raw-window-handle = "0.3.3"

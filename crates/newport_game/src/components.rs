@@ -1,23 +1,12 @@
-use crate::{
-	asset,
-	ecs::Entity,
-	gpu,
-	graphics,
-
-	math,
-};
-
+use asset::AssetRef;
+use ecs::Entity;
+use gpu::GraphicsPipeline;
+use graphics::Mesh;
 use math::{
 	Matrix4,
 	Quaternion,
 	Vector3,
 };
-
-use asset::AssetRef;
-
-use gpu::GraphicsPipeline;
-
-use graphics::Mesh;
 
 #[derive(Copy, Clone)]
 pub struct Transform {

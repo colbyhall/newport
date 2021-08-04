@@ -8,7 +8,7 @@ use super::{
 };
 use crate::Layout;
 
-use newport_math::{
+use math::{
 	Color,
 	Rect,
 };

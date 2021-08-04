@@ -10,12 +10,12 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-newport_engine = { path = "../newport_engine", version = "0.2.0" }
-newport_log    = { path = "../newport_log", version = "0.2.0" }
-newport_os     = { path = "../newport_os", version = "0.2.0" }
-newport_math   = { path = "../newport_math", version = "0.2.0" }
-newport_serde   = { path = "../newport_serde", version = "0.2.0" }
-newport_asset   = { path = "../newport_asset", version = "0.2.0" }
+engine = { path = "../newport_engine", version = "0.2.0", package = "newport_engine" }
+log    = { path = "../newport_log", version = "0.2.0", package = "newport_log" }
+platform     = { path = "../newport_platform", version = "0.2.0", package = "newport_platform" }
+math   = { path = "../newport_math", version = "0.2.0", package = "newport_math" }
+serde   = { path = "../newport_serde", version = "0.2.0", package = "newport_serde" }
+asset   = { path = "../newport_asset", version = "0.2.0", package = "newport_asset" }
 
 ash  = "0.32.0"
 bitflags = "1.2"

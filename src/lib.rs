@@ -26,12 +26,6 @@ pub mod math {
 	pub use newport_math::*;
 }
 
-pub mod editor {
-	pub use newport_editor::*;
-}
-
-pub use newport_codegen::Editable;
-
 pub mod ecs {
 	pub use newport_ecs::*;
 }

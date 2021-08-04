@@ -9,7 +9,7 @@ use crate::{
 	ToId,
 };
 
-use crate::math::{
+use math::{
 	Rect,
 	Vector2,
 };
