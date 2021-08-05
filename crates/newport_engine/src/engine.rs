@@ -106,15 +106,9 @@ impl Engine {
 		// Do post init
 		builder.post_inits.drain(..).for_each(|init| init(engine));
 
-		match &engine.window {
-			Some(window) => {
-				window.set_visible(true);
-			}
-			None => {}
-		}
-
 		let mut frame_count = 0;
 		let mut time = 0.0;
+		let mut do_first_show = true;
 
 		let mut last_frame_time = Instant::now();
 		event_loop.run(move |event, _, control_flow| {
@@ -258,9 +252,18 @@ impl Engine {
 					frame_count += 1;
 
 					builder.tick.iter().for_each(|tick| tick(engine, dt));
+
+					engine.window.as_ref().unwrap().request_redraw();
 				}
 				WinitEvent::RedrawRequested(_) => match &builder.display {
-					Some(display) => (display)(engine),
+					Some(display) => {
+						(display)(engine);
+
+						if do_first_show {
+							engine.window.as_ref().unwrap().set_visible(true);
+							do_first_show = false;
+						}
+					}
 					None => {}
 				},
 				_ => (),
