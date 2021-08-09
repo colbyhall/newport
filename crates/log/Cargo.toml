@@ -1,0 +1,14 @@
+[package]
+name = "newport_log"
+version = "0.2.0"
+authors = ["Colby <me@cobeh.com>"]
+edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/colbyhall/newport"
+description = "Global logger package for Newport engine"
+categories = ["game-engines", "game-development"]
+keywords = ["game", "engine", "gamedev", "newport"]
+
+[dependencies]
+platform     = { path = "../platform", version = "0.2.0", package = "newport_platform" }
+engine = { path = "../engine", version = "0.2.0", package = "newport_engine" }

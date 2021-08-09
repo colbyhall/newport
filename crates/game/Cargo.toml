@@ -1,0 +1,18 @@
+[package]
+name = "newport_game"
+version = "0.2.0"
+authors = ["Colby <me@cobeh.com>"]
+edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/colbyhall/newport"
+description = "Library that provides general game state for making games on."
+categories = ["game-engines", "game-development"]
+keywords = ["game", "engine", "gamedev", "newport"]
+
+[dependencies]
+engine   = { path = "../engine", version = "0.2.0", package = "newport_engine" }
+ecs      = { path = "../ecs",    version = "0.2.0", package = "newport_ecs" }
+math     = { path = "../math",   version = "0.2.0", package = "newport_math" }
+gpu      = { path = "../gpu",    version = "0.2.0", package = "newport_gpu" }
+graphics = { path = "../graphics", version = "0.2.0", package = "newport_graphics" }
+asset    = { path = "../asset", version = "0.2.0", package = "newport_asset" }

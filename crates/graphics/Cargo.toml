@@ -1,0 +1,21 @@
+[package]
+name = "newport_graphics"
+version = "0.2.0"
+authors = ["Colby <me@cobeh.com>"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/colbyhall/newport"
+description = "Graphics rendering library for Newport engine"
+categories = ["game-engines", "game-development"]
+keywords = ["game", "engine", "gamedev", "newport"]
+
+[dependencies]
+engine = { path = "../engine", version = "0.2.0", package = "newport_engine" }
+gpu    = { path = "../gpu", version = "0.2.0", package = "newport_gpu" }
+math   = { path = "../math", version = "0.2.0", package = "newport_math" }
+asset  = { path = "../asset", version = "0.2.0", package = "newport_asset" }
+log    = { path = "../log", version = "0.2.0", package = "newport_log" }
+serde  = { path = "../serde", version = "0.2.0", package = "newport_serde" }
+
+freetype-rs = "0.27.0"
+gltf = "0.16"

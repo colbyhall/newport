@@ -1,0 +1,29 @@
+[package]
+name = "newport_gpu"
+version = "0.2.0"
+authors = ["Colby <me@cobeh.com>"]
+edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/colbyhall/newport"
+description = "Thread safe render abstraction layer for Newport engine"
+categories = ["game-engines", "game-development"]
+keywords = ["game", "engine", "gamedev", "newport"]
+
+[dependencies]
+engine 		= { path = "../engine", version = "0.2.0", package = "newport_engine" }
+log    		= { path = "../log", version = "0.2.0", package = "newport_log" }
+platform 	= { path = "../platform", version = "0.2.0", package = "newport_platform" }
+math   		= { path = "../math", version = "0.2.0", package = "newport_math" }
+serde   	= { path = "../serde", version = "0.2.0", package = "newport_serde" }
+asset   	= { path = "../asset", version = "0.2.0", package = "newport_asset" }
+
+ash  = "0.32.0"
+bitflags = "1.2"
+
+hassle-rs = "0.5.2"
+
+stb_image = "0.2.3"
+
+[features]
+default = ["vulkan"]
+vulkan  = []
