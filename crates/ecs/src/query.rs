@@ -1,60 +1,116 @@
-use crate::component::Component;
-use crate::entity::Entity;
-use crate::world::World;
-
-use std::any::TypeId;
-use std::slice::{
-	Iter,
-	IterMut,
+use crate::EntitiesContainer;
+use crate::Entity;
+use crate::{
+	Component,
+	ReadStorage,
+	World,
+	WriteStorage,
 };
 
-pub struct QueryFromComponents<'a> {
-	world: &'a mut World,
+use std::collections::HashMap;
+use std::collections::HashSet;
 
-	variants: Vec<TypeId>,
-}
+pub struct Query<'a> {
+	reads: HashMap<u32, ReadStorage<'a>>,
+	writes: HashMap<u32, WriteStorage<'a>>,
 
-impl<'a> QueryFromComponents<'a> {
-	pub fn with<T: Component>(mut self) -> Self {
-		self.variants.push(TypeId::of::<T>());
-		self
-	}
+	entities: &'a EntitiesContainer,
 
-	pub fn build(self) -> Query {
-		println!("{:?}", self.variants);
-		let mut found = Vec::with_capacity(128);
-		'outer: for (e, data) in self.world.entities.iter() {
-			for v in self.variants.iter() {
-				let has = data.components.iter().find(|c| *v == c.variant).is_some();
-				if !has {
-					continue 'outer;
-				}
-			}
-			found.push(e);
-		}
-
-		Query { found: found }
-	}
-}
-
-pub struct Query {
 	found: Vec<Entity>,
 }
 
-impl Query {
-	pub(crate) fn from_components(world: &mut World) -> QueryFromComponents {
-		QueryFromComponents {
-			world: world,
-
-			variants: Vec::with_capacity(8),
+impl<'a> Query<'a> {
+	pub fn builder() -> QueryBuilder {
+		QueryBuilder {
+			reads: HashSet::new(),
+			writes: HashSet::new(),
 		}
 	}
 
-	pub fn iter(&self) -> Iter<Entity> {
-		self.found.iter()
+	pub fn get<T: Component>(&self, entity: Entity) -> Option<&T> {
+		let info = self.entities.get_info(entity)?;
+
+		let id = info.components.get(&T::VARIANT_ID)?;
+
+		match self.reads.get(&T::VARIANT_ID) {
+			Some(read) => read.get(*id),
+			None => {
+				let write = self.writes.get(&T::VARIANT_ID)?;
+				write.get(*id)
+			}
+		}
 	}
 
-	pub fn iter_mut(&mut self) -> IterMut<Entity> {
-		self.found.iter_mut()
+	pub fn get_mut<T: Component>(&mut self, entity: Entity) -> Option<&mut T> {
+		let info = self.entities.get_info(entity)?;
+
+		let id = info.components.get(&T::VARIANT_ID)?;
+
+		let write = self.writes.get_mut(&T::VARIANT_ID)?;
+		write.get_mut(*id)
+	}
+
+	pub fn iter_mut(&mut self) -> impl Iterator<Item = EntityAndComponents<'a, '_>> {
+		self.found.iter().map(|e| EntityAndComponents {
+			reads: &self.reads,
+			writes: &mut self.writes,
+
+			entities_container: &mut self.entities,
+
+			entity: *e,
+		})
+	}
+}
+
+pub struct EntityAndComponents<'a: 'b, 'b> {
+	reads: &'b HashMap<u32, ReadStorage<'a>>,
+	writes: &'b mut HashMap<u32, WriteStorage<'a>>,
+
+	entities_container: &'a EntitiesContainer,
+
+	entity: Entity,
+}
+
+pub struct QueryBuilder {
+	reads: HashSet<u32>,
+	writes: HashSet<u32>,
+}
+
+impl QueryBuilder {
+	pub fn read<T: Component>(mut self) -> Self {
+		self.reads.insert(T::VARIANT_ID);
+		self
+	}
+
+	pub fn write<T: Component>(mut self) -> Self {
+		self.writes.insert(T::VARIANT_ID);
+		self
+	}
+
+	pub fn execute(self, world: &World) -> Query {
+		let mut components = HashSet::with_capacity(self.reads.len() + self.writes.len());
+		let mut reads = HashMap::with_capacity(self.reads.len());
+		let mut writes = HashMap::with_capacity(self.writes.len());
+
+		for r in self.reads {
+			components.insert(r);
+			reads.insert(r, world.components.read_id(r).unwrap());
+		}
+
+		for w in self.writes {
+			components.insert(w);
+			writes.insert(w, world.components.write_id(w).unwrap());
+		}
+
+		let found = world.entities.gather_with_active(components);
+
+		Query {
+			reads,
+			writes,
+
+			entities: &world.entities,
+
+			found,
+		}
 	}
 }

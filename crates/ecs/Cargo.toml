@@ -10,5 +10,6 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-math    = { path = "../math", version = "0.2.0", package = "newport_math" }
-slotmap = "1.0.3"
+math   = { path = "../math", version = "0.2.0", package = "newport_math" }
+serde  = { path = "../serde", version = "0.2.0", package = "newport_serde" }
+macros = { path = "macros", version = "0.1.0", package = "newport_ecs_macros" }

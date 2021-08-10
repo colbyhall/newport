@@ -1,44 +1,102 @@
-use std::any::{
-	Any,
-	TypeId,
-};
-use std::boxed::Box;
-use std::collections::{
-	HashMap,
-	VecDeque,
+use serde::{
+	self,
+	Deserialize,
+	Serialize,
 };
 
-pub trait Component: 'static + Send + Sync {
-	const TRANSIENT: bool;
+use std::collections::HashMap;
+use std::{
+	any::{
+		type_name,
+		Any,
+	},
+	collections::VecDeque,
+	sync::{
+		RwLock,
+		RwLockReadGuard,
+		RwLockWriteGuard,
+	},
+};
+
+pub trait Component: 'static + Sized + Sync {
+	const VARIANT_ID: u32 = make_variant_id(type_name::<Self>());
+
+	const CAN_SAVE: bool;
 }
 
 impl<T> Component for T
 where
-	T: Send + Sync + 'static,
+	T: Sync + Sized + 'static,
 {
-	default const TRANSIENT: bool = true;
+	default const VARIANT_ID: u32 = make_variant_id(type_name::<Self>());
+
+	default const CAN_SAVE: bool = true;
 }
 
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct ComponentId {
-	pub variant: TypeId,
+pub const fn make_variant_id(name: &'static str) -> u32 {
+	const FNV_OFFSET_BASIC: u32 = 2166136261;
+	const FNV_PRIME: u32 = 16777619;
 
-	pub index: u32, // Crunch these down to u32's to save on space
-	pub generation: u32,
+	const fn hash_rec(name: &'static str, index: usize, hash: u32) -> u32 {
+		let hash = hash * FNV_PRIME;
+		let hash = hash ^ name.as_bytes()[index] as u32;
+		if index != name.len() - 1 {
+			hash_rec(name, index + 1, hash)
+		} else {
+			hash
+		}
+	}
+
+	hash_rec(name, 0, FNV_OFFSET_BASIC)
 }
 
-// Essentially this is a SOA slotmap
-struct ComponentStorage<T: Component> {
-	// SPEED: This could be problematic considering how the option state is stored.
-	//
-	// We're also going to need to keep these somehow organized for best iteration order
+pub struct ComponentVariant {
+	pub name: &'static str,
+	pub variant_id: u32,
+
+	create_storage: fn() -> Box<dyn DynamicStorage>,
+}
+
+impl ComponentVariant {
+	pub fn new<T: Component>() -> Self {
+		fn create_storage<T: Component>() -> Box<dyn DynamicStorage> {
+			Box::new(Storage::<T>::new())
+		}
+
+		Self {
+			name: type_name::<T>(),
+			variant_id: T::VARIANT_ID,
+
+			create_storage: create_storage::<T>,
+		}
+	}
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
+pub struct ComponentId {
+	variant_id: u32,
+
+	index: u32,
+	generation: u32,
+}
+
+struct Storage<T: Component> {
+	// SPEED: We're also going to need to keep these somehow organized for best iteration order
 	components: Vec<Option<T>>,
 	generations: Vec<u32>,
 
-	available: VecDeque<u32>, // Indices into the components vector
+	available: VecDeque<usize>,
 }
 
-impl<T: Component> ComponentStorage<T> {
+trait DynamicStorage {
+	fn remove(&mut self, id: ComponentId) -> bool;
+
+	fn as_any_mut(&mut self) -> &mut dyn Any;
+	fn as_any(&self) -> &dyn Any;
+}
+
+impl<T: Component> Storage<T> {
 	fn new() -> Self {
 		let capacity = 512;
 		Self {
@@ -50,14 +108,12 @@ impl<T: Component> ComponentStorage<T> {
 	}
 
 	fn insert(&mut self, t: T) -> ComponentId {
-		let variant = TypeId::of::<T>();
-
 		if self.available.is_empty() {
 			self.components.push(Some(t));
 			self.generations.push(0);
 
 			ComponentId {
-				variant: variant,
+				variant_id: T::VARIANT_ID,
 
 				index: (self.components.len() - 1) as u32,
 				generation: 0,
@@ -65,36 +121,21 @@ impl<T: Component> ComponentStorage<T> {
 		} else {
 			let index = self.available.pop_front().unwrap();
 
-			self.components[index as usize] = Some(t);
-			self.generations[index as usize] += 1;
-			let generation = self.generations[index as usize];
+			self.components[index] = Some(t);
+			self.generations[index] += 1;
+			let generation = self.generations[index];
 
 			ComponentId {
-				variant,
-				index,
+				variant_id: T::VARIANT_ID,
+
+				index: index as u32,
 				generation,
 			}
 		}
 	}
 
-	fn remove(&mut self, id: &ComponentId) -> Option<T> {
-		assert_eq!(TypeId::of::<T>(), id.variant);
-
-		let index = id.index as usize;
-
-		if self.components.len() - 1 < index {
-			return None;
-		}
-
-		if self.generations[index] != id.generation {
-			return None;
-		}
-
-		self.components[index].take()
-	}
-
-	fn find(&self, id: &ComponentId) -> Option<&T> {
-		assert_eq!(TypeId::of::<T>(), id.variant);
+	fn get(&self, id: ComponentId) -> Option<&T> {
+		assert_eq!(T::VARIANT_ID, id.variant_id);
 
 		let index = id.index as usize;
 
@@ -109,8 +150,8 @@ impl<T: Component> ComponentStorage<T> {
 		self.components[index].as_ref()
 	}
 
-	fn find_mut(&mut self, id: &ComponentId) -> Option<&mut T> {
-		assert_eq!(TypeId::of::<T>(), id.variant);
+	fn get_mut(&mut self, id: ComponentId) -> Option<&mut T> {
+		assert_eq!(T::VARIANT_ID, id.variant_id);
 
 		let index = id.index as usize;
 
@@ -126,101 +167,112 @@ impl<T: Component> ComponentStorage<T> {
 	}
 }
 
-struct ComponentMapEntry {
-	storage: Box<dyn Any>,
-	remove: fn(&mut Box<dyn Any>, &ComponentId) -> bool, // The api does not require that we know type of a component at removal so we must keep a ptr to the drop method
-}
+impl<T: Component> DynamicStorage for Storage<T> {
+	fn remove(&mut self, id: ComponentId) -> bool {
+		assert_eq!(T::VARIANT_ID, id.variant_id);
 
-impl ComponentMapEntry {
-	fn new<T: Component>() -> Self {
-		// We won't know the type of a component when its removed. So we cache a function that does it for us since we know the type now
-		fn remove<T: Component>(boxed_storage: &mut Box<dyn Any>, id: &ComponentId) -> bool {
-			let storage = boxed_storage.downcast_mut::<ComponentStorage<T>>().unwrap();
-			storage.remove(id).is_some()
-		}
+		let index = id.index as usize;
 
-		Self {
-			storage: Box::new(ComponentStorage::<T>::new()),
-			remove: remove::<T>,
-		}
-	}
-}
-
-pub(crate) struct ComponentMap {
-	map: HashMap<TypeId, ComponentMapEntry>,
-}
-
-impl ComponentMap {
-	pub fn new() -> Self {
-		Self {
-			map: HashMap::with_capacity(64),
-		}
-	}
-
-	pub fn insert<T: Component>(&mut self, t: T) -> ComponentId {
-		let variant = TypeId::of::<T>();
-
-		// Find or create the ComponentMapEntry
-		let entry = {
-			let found = self.map.get_mut(&variant);
-			if found.is_none() {
-				self.map.insert(variant, ComponentMapEntry::new::<T>());
-				self.map.get_mut(&variant).unwrap()
-			} else {
-				found.unwrap()
-			}
-		};
-
-		let storage = entry.storage.downcast_mut::<ComponentStorage<T>>().unwrap();
-		storage.insert(t)
-	}
-
-	pub fn remove(&mut self, id: &ComponentId) -> bool {
-		// Find  the boxed component storage
-		let entry = self.map.get_mut(&id.variant);
-		if entry.is_none() {
+		if self.components.len() - 1 < index {
 			return false;
 		}
-		let entry = entry.unwrap();
 
-		(entry.remove)(&mut entry.storage, id)
+		if self.generations[index] != id.generation {
+			return false;
+		}
+
+		self.available.push_back(index);
+		self.components[index].take().is_some()
 	}
 
-	pub fn find<T: Component>(&self, id: &ComponentId) -> Option<&T> {
-		let entry = self.map.get(&id.variant);
-		if entry.is_none() {
-			return None;
-		}
-		let entry = entry.unwrap();
-
-		let storage = entry.storage.downcast_ref::<ComponentStorage<T>>().unwrap();
-		storage.find(id)
+	fn as_any_mut(&mut self) -> &mut dyn Any {
+		self
 	}
 
-	pub fn find_mut<T: Component>(&mut self, id: &ComponentId) -> Option<&mut T> {
-		let entry = self.map.get_mut(&id.variant);
-		if entry.is_none() {
-			return None;
-		}
-		let entry = entry.unwrap();
+	fn as_any(&self) -> &dyn Any {
+		self
+	}
+}
 
-		let storage = entry.storage.downcast_mut::<ComponentStorage<T>>().unwrap();
-		storage.find_mut(id)
+pub struct ComponentsContainer {
+	map: HashMap<u32, RwLock<Box<dyn DynamicStorage>>>,
+	pub variants: Vec<ComponentVariant>,
+}
+
+impl ComponentsContainer {
+	pub fn new(variants: Vec<ComponentVariant>) -> Self {
+		let mut map = HashMap::with_capacity(variants.len());
+		for v in variants.iter() {
+			map.insert(v.variant_id, RwLock::new((v.create_storage)()));
+		}
+		Self { map, variants }
 	}
 
-	#[cfg(feature = "editable")]
-	pub fn edit(&mut self, id: &ComponentId, builder: &mut Builder) {
-		let entry = self.map.get_mut(&id.variant);
-		if entry.is_none() {
-			return;
-		}
-		let entry = entry.unwrap();
+	pub fn read_id(&self, variant_id: u32) -> Option<ReadStorage> {
+		Some(ReadStorage {
+			read: self.map.get(&variant_id)?.read().unwrap(),
+		})
+	}
 
-		if entry.edit.is_none() {
-			return;
-		}
+	pub fn read<T: Component>(&self) -> Option<ReadStorage> {
+		self.read_id(T::VARIANT_ID)
+	}
 
-		let edit = entry.edit.unwrap();
-		edit(&mut entry.storage, id, builder)
+	pub fn write_id(&self, variant_id: u32) -> Option<WriteStorage> {
+		Some(WriteStorage {
+			write: self.map.get(&variant_id)?.write().unwrap(),
+		})
+	}
+
+	pub fn write<T: Component>(&self) -> Option<WriteStorage> {
+		self.write_id(T::VARIANT_ID)
+	}
+}
+
+pub struct ReadStorage<'a> {
+	read: RwLockReadGuard<'a, Box<dyn DynamicStorage>>,
+}
+
+impl<'a> ReadStorage<'a> {
+	pub fn get<T: Component>(&self, id: ComponentId) -> Option<&T> {
+		self.read
+			.as_any()
+			.downcast_ref::<Storage<T>>()
+			.expect("Incorrect usage of ReadStorage")
+			.get(id)
+	}
+}
+
+pub struct WriteStorage<'a> {
+	write: RwLockWriteGuard<'a, Box<dyn DynamicStorage>>,
+}
+
+impl<'a> WriteStorage<'a> {
+	pub fn insert<T: Component>(&mut self, t: T) -> ComponentId {
+		self.write
+			.as_any_mut()
+			.downcast_mut::<Storage<T>>()
+			.expect("Incorrect usage of WriteStorage")
+			.insert(t)
+	}
+
+	pub fn get<T: Component>(&self, id: ComponentId) -> Option<&T> {
+		self.write
+			.as_any()
+			.downcast_ref::<Storage<T>>()
+			.expect("Incorrect usage of WriteStorage")
+			.get(id)
+	}
+
+	pub fn get_mut<T: Component>(&mut self, id: ComponentId) -> Option<&mut T> {
+		self.write
+			.as_any_mut()
+			.downcast_mut::<Storage<T>>()
+			.expect("Incorrect usage of WriteStorage")
+			.get_mut(id)
+	}
+
+	pub fn remove(&mut self, id: ComponentId) -> bool {
+		self.write.remove(id)
 	}
 }
