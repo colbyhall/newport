@@ -38,7 +38,7 @@ impl Vector3 {
 	pub const UP: Self = Self::new(0.0, 0.0, 1.0);
 
 	pub const fn new(x: f32, y: f32, z: f32) -> Self {
-		Self { x: x, y: y, z: z }
+		Self { x, y, z }
 	}
 
 	pub const fn dot(self, other: Self) -> f32 {
@@ -100,12 +100,10 @@ impl Vector3 {
 			} else {
 				self.z
 			}
+		} else if self.y < self.z {
+			self.y
 		} else {
-			if self.y < self.z {
-				self.y
-			} else {
-				self.z
-			}
+			self.z
 		}
 	}
 
@@ -116,12 +114,10 @@ impl Vector3 {
 			} else {
 				self.z
 			}
+		} else if self.y > self.z {
+			self.y
 		} else {
-			if self.y > self.z {
-				self.y
-			} else {
-				self.z
-			}
+			self.z
 		}
 	}
 }

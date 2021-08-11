@@ -53,9 +53,9 @@ impl Module for Logger {
 			// error!("{:?}", std::backtrace::capture());
 		}));
 
-		return Logger {
+		Logger {
 			file: Mutex::new(file),
-		};
+		}
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
@@ -111,13 +111,13 @@ impl Logger {
 		};
 
 		unsafe {
-			if LOGGER == null_mut() {
+			if LOGGER.is_null() {
 				println!("{}", output); // UNSAFE: Not a thread safe print
 			} else {
 				let logger = LOGGER.as_ref().unwrap();
 				let mut file = logger.file.lock().unwrap();
 				writeln!(file, "{}", output).unwrap();
-				println!("{}", output);
+				println!("{}", output)
 			}
 		}
 	}

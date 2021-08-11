@@ -48,25 +48,18 @@ pub enum TextEditResponse {
 
 impl TextEditResponse {
 	pub fn entered(self) -> bool {
-		match self {
-			TextEditResponse::Entered => true,
-			_ => false,
-		}
+		matches!(self, TextEditResponse::Entered)
 	}
 
 	pub fn input_recieved(self) -> bool {
-		match self {
-			TextEditResponse::Entered => true,
-			TextEditResponse::InputRecieved => true,
-			_ => false,
-		}
+		matches!(
+			self,
+			TextEditResponse::Entered | TextEditResponse::InputRecieved
+		)
 	}
 
 	pub fn hovered(self) -> bool {
-		match self {
-			TextEditResponse::Hovered => true,
-			_ => false,
-		}
+		matches!(self, TextEditResponse::Hovered)
 	}
 }
 
@@ -97,7 +90,7 @@ impl TextEditRetained {
 					return i + 1;
 				}
 			}
-			return 0;
+			0
 		} else {
 			for i in self.cursor + 1..text.len() {
 				let c = text.chars().nth(i).unwrap();
@@ -110,7 +103,7 @@ impl TextEditRetained {
 					return i;
 				}
 			}
-			return text.len();
+			text.len()
 		}
 	}
 
@@ -182,7 +175,7 @@ impl<'a> TextEdit<'a> {
 			let mut response = TextEditResponse::None;
 
 			let input = &builder.input().text_input;
-			if input.len() > 0 {
+			if !input.is_empty() {
 				response = TextEditResponse::InputRecieved;
 				retained.reset_cursor_blink();
 				retained.remove_selection(self.text);
@@ -260,16 +253,14 @@ impl<'a> TextEdit<'a> {
 
 				if retained.cursor != retained.selection {
 					retained.remove_selection(self.text);
-				} else {
-					if retained.cursor > 0 {
-						if ctrl_down {
-							retained.cursor = retained.seek(true, self.text);
-							retained.remove_selection(self.text);
-						} else {
-							retained.cursor -= 1;
-							retained.selection = retained.cursor;
-							self.text.remove(retained.cursor);
-						}
+				} else if retained.cursor > 0 {
+					if ctrl_down {
+						retained.cursor = retained.seek(true, self.text);
+						retained.remove_selection(self.text);
+					} else {
+						retained.cursor -= 1;
+						retained.selection = retained.cursor;
+						self.text.remove(retained.cursor);
 					}
 				}
 				retained.reset_cursor_blink();
@@ -280,15 +271,13 @@ impl<'a> TextEdit<'a> {
 
 				if retained.cursor != retained.selection {
 					retained.remove_selection(self.text);
-				} else {
-					if retained.cursor < self.text.len() {
-						if ctrl_down {
-							retained.cursor = retained.seek(false, self.text);
-							retained.remove_selection(self.text);
-						} else {
-							self.text.remove(retained.cursor);
-							retained.selection = retained.cursor;
-						}
+				} else if retained.cursor < self.text.len() {
+					if ctrl_down {
+						retained.cursor = retained.seek(false, self.text);
+						retained.remove_selection(self.text);
+					} else {
+						self.text.remove(retained.cursor);
+						retained.selection = retained.cursor;
 					}
 				}
 			}
@@ -392,18 +381,18 @@ impl<'a> TextEdit<'a> {
 
 		let cursor_width = 2.0;
 
-		if self.text.len() > 0 {
+		if !self.text.is_empty() {
+			builder.painter.push_shape(Shape::text(
+				self.text.clone(),
+				at,
+				&text.font,
+				text.label_size,
+				builder.input().dpi,
+				foreground_color,
+			));
+
 			// Show the blinking caret if we're focused
 			if is_focused {
-				builder.painter.push_shape(Shape::text(
-					self.text.clone(),
-					at,
-					&text.font,
-					text.label_size,
-					builder.input().dpi,
-					foreground_color,
-				));
-
 				// Change the color of the cursor when we have a selection
 				let cursor_color = if retained.cursor != retained.selection {
 					color.selected_foreground
@@ -462,37 +451,26 @@ impl<'a> TextEdit<'a> {
 						}
 					}
 				}
-			} else {
-				builder.painter.push_shape(Shape::text(
-					self.text.clone(),
-					at,
-					&text.font,
-					text.label_size,
-					builder.input().dpi,
-					foreground_color,
-				));
+			}
+		} else if is_focused {
+			if retained.showing_cursor {
+				let bounds = (
+					at - Vector2::new(0.0, font.height),
+					at + Vector2::new(cursor_width, 0.0),
+				);
+				builder
+					.painter
+					.push_shape(Shape::solid_rect(bounds, foreground_color, 0.0));
 			}
 		} else {
-			if is_focused {
-				if retained.showing_cursor {
-					let bounds = (
-						at - Vector2::new(0.0, font.height),
-						at + Vector2::new(cursor_width, 0.0),
-					);
-					builder
-						.painter
-						.push_shape(Shape::solid_rect(bounds, foreground_color, 0.0));
-				}
-			} else {
-				builder.painter.push_shape(Shape::text(
-					self.hint,
-					at,
-					&text.font,
-					text.label_size,
-					builder.input().dpi,
-					foreground_color,
-				));
-			}
+			builder.painter.push_shape(Shape::text(
+				self.hint,
+				at,
+				&text.font,
+				text.label_size,
+				builder.input().dpi,
+				foreground_color,
+			));
 		}
 
 		builder.set_retained(self.id, retained);

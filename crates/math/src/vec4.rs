@@ -33,12 +33,7 @@ impl Vector4 {
 	pub const ZERO: Self = Self::new(0.0, 0.0, 0.0, 0.0);
 
 	pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
-		Self {
-			x: x,
-			y: y,
-			z: z,
-			w: w,
-		}
+		Self { x, y, z, w }
 	}
 
 	pub const fn dot(self, rhs: Self) -> f32 {

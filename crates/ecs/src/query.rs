@@ -50,16 +50,16 @@ impl<'a> Query<'a> {
 		write.get_mut(*id)
 	}
 
-	pub fn iter_mut(&mut self) -> impl Iterator<Item = EntityAndComponents<'a, '_>> {
-		self.found.iter().map(|e| EntityAndComponents {
-			reads: &self.reads,
-			writes: &mut self.writes,
+	// pub fn iter_mut(&mut self) -> impl Iterator<Item = EntityAndComponents<'a, '_>> {
+	// 	self.found.iter().map(|e| EntityAndComponents {
+	// 		reads: &self.reads,
+	// 		writes: &mut self.writes,
 
-			entities_container: &mut self.entities,
+	// 		entities_container: &mut self.entities,
 
-			entity: *e,
-		})
-	}
+	// 		entity: *e,
+	// 	})
+	// }
 }
 
 pub struct EntityAndComponents<'a: 'b, 'b> {

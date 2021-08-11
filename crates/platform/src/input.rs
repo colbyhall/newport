@@ -17,24 +17,21 @@ pub struct Input {
 impl Input {
 	const fn key(display_name: &'static str, code: u8, symbol: char) -> Self {
 		Self {
-			display_name: display_name,
-			variant: InputVariant::Key {
-				code: code,
-				symbol: symbol,
-			},
+			display_name,
+			variant: InputVariant::Key { code, symbol },
 		}
 	}
 
 	const fn mouse_button(display_name: &'static str, index: u8) -> Self {
 		Self {
-			display_name: display_name,
+			display_name,
 			variant: InputVariant::MouseButton(index),
 		}
 	}
 
 	const fn mouse_axis(display_name: &'static str) -> Self {
 		Self {
-			display_name: display_name,
+			display_name,
 			variant: InputVariant::MouseAxis,
 		}
 	}
@@ -57,13 +54,10 @@ impl Input {
 	/// * `(Speed)` - Use lookup table to speed up find.
 	pub fn key_from_code(in_code: u8) -> Option<Self> {
 		for input in ALL_INPUTS.iter() {
-			match input.variant {
-				InputVariant::Key { code, symbol: _ } => {
-					if in_code == code {
-						return Some(*input);
-					}
+			if let InputVariant::Key { code, symbol: _ } = input.variant {
+				if in_code == code {
+					return Some(*input);
 				}
-				_ => {}
 			}
 		}
 

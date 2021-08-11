@@ -36,7 +36,7 @@ impl Vector2 {
 	pub const INFINITY: Self = Self::new(f32::INFINITY, f32::INFINITY);
 
 	pub const fn new(x: f32, y: f32) -> Self {
-		Self { x: x, y: y }
+		Self { x, y }
 	}
 
 	pub fn from_rad(theta: f32) -> Self {

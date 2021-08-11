@@ -46,7 +46,7 @@ impl Cache for PathCache {
 		fn discover(
 			mut path: PathBuf,
 			uuid_to_path: &mut HashMap<UUID, PathBuf>,
-			variants: &Vec<Variant>,
+			variants: &[Variant],
 		) -> PathBuf {
 			for entry in fs::read_dir(&path).unwrap() {
 				let entry = entry.unwrap();
@@ -66,21 +66,18 @@ impl Cache for PathCache {
 							.iter()
 							.find(|v| v.extensions.contains(&ext.to_str().unwrap()))
 					};
-					match variant {
-						Some(variant) => {
-							let mut meta_path = path.clone().into_os_string();
-							meta_path.push(crate::META_EXTENSION);
+					if let Some(variant) = variant {
+						let mut meta_path = path.clone().into_os_string();
+						meta_path.push(crate::META_EXTENSION);
 
-							let contents = match fs::read(&meta_path) {
-								Ok(contents) => contents,
-								_ => continue,
-							};
-							info!("Caching asset ({})", path.display());
-							let uuid = (variant.load_meta)(&contents).unwrap().0;
+						let contents = match fs::read(&meta_path) {
+							Ok(contents) => contents,
+							_ => continue,
+						};
+						info!("Caching asset ({})", path.display());
+						let uuid = (variant.load_meta)(&contents).unwrap().0;
 
-							uuid_to_path.insert(uuid, path);
-						}
-						_ => {}
+						uuid_to_path.insert(uuid, path);
 					}
 				} else {
 					continue;

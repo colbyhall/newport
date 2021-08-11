@@ -36,4 +36,8 @@ impl<T: Sized> Buffer<T> {
 	pub fn len(&self) -> usize {
 		self.len
 	}
+
+	pub fn is_empty(&self) -> bool {
+		self.len() == 0
+	}
 }

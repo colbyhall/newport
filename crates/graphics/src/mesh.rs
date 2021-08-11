@@ -21,8 +21,6 @@ use serde::{
 	Serialize,
 };
 
-use gltf;
-
 #[derive(Serialize, Deserialize, Default)]
 #[serde(crate = "self::serde")]
 pub struct Vertex {
@@ -67,7 +65,7 @@ impl Importer for MeshImporter {
 		let mut vertex_count = 0;
 		let mut index_count = 0;
 
-		let mesh = gltf.meshes().nth(0).unwrap();
+		let mesh = gltf.meshes().next().unwrap();
 		for primitive in mesh.primitives() {
 			let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
 

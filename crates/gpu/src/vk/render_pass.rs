@@ -63,8 +63,7 @@ impl RenderPass {
 			.pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
 			.color_attachments(&color_refs[..]);
 
-		let depth_refs = if depth.is_some() {
-			let depth = depth.unwrap();
+		let depth_refs = if let Some(depth) = depth {
 			let format = vk_format(depth);
 
 			let attachment = vk::AttachmentDescription::builder()
@@ -94,7 +93,7 @@ impl RenderPass {
 		let mut stage_mask = vk::PipelineStageFlags::empty();
 		let mut access_mask = vk::AccessFlags::empty();
 
-		if colors.len() > 0 {
+		if !colors.is_empty() {
 			stage_mask |= vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
 			access_mask |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE;
 		}
@@ -123,10 +122,10 @@ impl RenderPass {
 			let handle = handle.unwrap();
 
 			Ok(Arc::new(RenderPass {
-				owner: owner,
-				handle: handle,
-				colors: colors,
-				depth: depth,
+				owner,
+				handle,
+				colors,
+				depth,
 			}))
 		}
 	}

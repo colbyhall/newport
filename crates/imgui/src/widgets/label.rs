@@ -21,7 +21,7 @@ impl Label {
 	pub fn new(label: impl Into<String>) -> Self {
 		let label = label.into();
 
-		Self { label: label }
+		Self { label }
 	}
 }
 

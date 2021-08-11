@@ -43,7 +43,7 @@ impl GraphicsPipeline {
 		owner: Arc<Device>,
 		description: GraphicsPipelineDescription,
 	) -> Result<Arc<GraphicsPipeline>, ()> {
-		assert!(description.shaders.len() > 0);
+		assert!(!description.shaders.is_empty());
 
 		// Create all the shader staage info for pipeline
 		let mut shader_stages = Vec::with_capacity(description.shaders.len());
@@ -146,14 +146,14 @@ impl GraphicsPipeline {
 		// Setting up blending and converting data types
 		fn blend_factor(fc: BlendFactor) -> vk::BlendFactor {
 			match fc {
-				BlendFactor::Zero => return vk::BlendFactor::ZERO,
-				BlendFactor::One => return vk::BlendFactor::ONE,
-				BlendFactor::SrcColor => return vk::BlendFactor::SRC_COLOR,
-				BlendFactor::OneMinusSrcColor => return vk::BlendFactor::ONE_MINUS_SRC_COLOR,
-				BlendFactor::DstColor => return vk::BlendFactor::DST_COLOR,
-				BlendFactor::OneMinusDstColor => return vk::BlendFactor::ONE_MINUS_DST_COLOR,
-				BlendFactor::SrcAlpha => return vk::BlendFactor::SRC_ALPHA,
-				BlendFactor::OneMinusSrcAlpha => return vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
+				BlendFactor::Zero => vk::BlendFactor::ZERO,
+				BlendFactor::One => vk::BlendFactor::ONE,
+				BlendFactor::SrcColor => vk::BlendFactor::SRC_COLOR,
+				BlendFactor::OneMinusSrcColor => vk::BlendFactor::ONE_MINUS_SRC_COLOR,
+				BlendFactor::DstColor => vk::BlendFactor::DST_COLOR,
+				BlendFactor::OneMinusDstColor => vk::BlendFactor::ONE_MINUS_DST_COLOR,
+				BlendFactor::SrcAlpha => vk::BlendFactor::SRC_ALPHA,
+				BlendFactor::OneMinusSrcAlpha => vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
 			}
 		}
 
@@ -263,10 +263,7 @@ impl GraphicsPipeline {
 			.resources
 			.iter()
 			.enumerate()
-			.filter(|(_, (_, resource))| match resource {
-				Resource::Sampler(_) => true,
-				_ => false,
-			})
+			.filter(|(_, (_, resource))| matches!(resource, Resource::Sampler(_)))
 			.map(|(index, (_, resource))| match resource {
 				Resource::Sampler(description) => {
 					let sampler = Sampler::new(owner.clone(), *description).unwrap();

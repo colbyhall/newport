@@ -398,12 +398,12 @@ impl Importer for GraphicsPipelineImporter {
 			result.reserve(4096);
 
 			// TODO: Check if this should go after
-			result.push_str("\n");
+			result.push('\n');
 			result.push_str(&common);
 			result.push_str("\n\n");
 
 			// If we have imports then we need to fill out the constants and build boilerplate
-			if constants.len() > 0 || resources.len() > 0 {
+			if !constants.is_empty() || !resources.is_empty() {
 				// First thing to do is build the push constants structure
 				result.push_str("struct PushConstants {\n");
 				for (name, _) in constants.iter() {
@@ -439,7 +439,7 @@ impl Importer for GraphicsPipelineImporter {
 					for ConstantMember(name, variant) in constants.iter() {
 						result.push_str("    ");
 						result.push_str(variant.into_type_string());
-						result.push_str(" ");
+						result.push(' ');
 						result.push_str(name);
 						result.push_str(";\n");
 					}
@@ -567,7 +567,7 @@ impl Importer for GraphicsPipelineImporter {
 			source.push_str("};\n\n");
 
 			// Generate PixelInput based off of imports
-			if imports.len() > 0 {
+			if !imports.is_empty() {
 				source.push_str("struct PixelInput {\n");
 				for ConstantMember(name, variant) in imports.iter() {
 					let mut name_uppercase = name.clone();
@@ -598,10 +598,9 @@ impl Importer for GraphicsPipelineImporter {
 			// Compile to binary and then pass to device
 			let binary =
 				shader::compile("pixel.hlsl", &source, main, ShaderVariant::Pixel).unwrap();
-			let shader = device
+			device
 				.create_shader(&binary[..], ShaderVariant::Pixel, main)
-				.unwrap();
-			shader
+				.unwrap()
 		};
 
 		// Generate the vertex shader
@@ -614,7 +613,7 @@ impl Importer for GraphicsPipelineImporter {
 			} = vertex_shader;
 
 			// Start off with header
-			let mut source = header.clone();
+			let mut source = header;
 
 			// Generate VertexOutput always. There will always be position
 			source.push_str("struct VertexOutput {\n");
@@ -634,7 +633,7 @@ impl Importer for GraphicsPipelineImporter {
 			source.push_str("};\n\n");
 
 			// Generate the VertexInput based off of attributes
-			if attributes.len() > 0 || system_semantics.len() > 0 {
+			if !attributes.is_empty() || !system_semantics.is_empty() {
 				source.push_str("struct VertexInput {\n");
 				for ConstantMember(name, variant) in attributes.iter() {
 					let mut name_uppercase = name.clone();
@@ -671,11 +670,9 @@ impl Importer for GraphicsPipelineImporter {
 			let binary =
 				shader::compile("vertex.hlsl", &source, main, ShaderVariant::Vertex).unwrap();
 
-			let shader = device
+			device
 				.create_shader(&binary[..], ShaderVariant::Vertex, main)
-				.unwrap();
-
-			shader
+				.unwrap()
 		};
 		let shaders = vec![pixel_shader, vertex_shader];
 

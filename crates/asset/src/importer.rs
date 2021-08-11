@@ -45,6 +45,9 @@ impl<T: Asset + Serialize + DeserializeOwned> Importer for NativeImporter<T> {
 	}
 }
 
+type LoadAsset = fn(&Box<dyn Any>, &[u8]) -> Result<Box<dyn Any>>;
+type LoadMeta = fn(&[u8]) -> Result<(UUID, Box<dyn Any>)>;
+
 #[derive(Clone)]
 pub struct Variant {
 	pub(crate) asset: TypeId,
@@ -52,8 +55,8 @@ pub struct Variant {
 
 	pub(crate) extensions: Vec<&'static str>,
 
-	pub(crate) load_asset: fn(&Box<dyn Any>, &[u8]) -> Result<Box<dyn Any>>,
-	pub(crate) load_meta: fn(&[u8]) -> Result<(UUID, Box<dyn Any>)>,
+	pub(crate) load_asset: LoadAsset,
+	pub(crate) load_meta: LoadMeta,
 }
 
 impl Variant {

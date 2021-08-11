@@ -26,6 +26,7 @@ pub trait PreShutdown = FnOnce(&Engine) + 'static;
 pub trait Register = Sized + Clone + 'static;
 
 /// Structure used to define engine structure and execution
+#[derive(Default)]
 pub struct Builder {
 	pub(crate) entries: Vec<BuilderEntry>,
 	pub(crate) name: Option<String>,
@@ -88,7 +89,7 @@ impl Builder {
 
 		// Push entry with generic spawn func and type id
 		self.entries.push(BuilderEntry {
-			id: id,
+			id,
 			spawn: spawn::<T>,
 		});
 

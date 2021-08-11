@@ -58,7 +58,7 @@ impl RenderPassRecorder {
 		self
 	}
 
-	pub fn bind_pipeline(mut self, pipeline: &'a GraphicsPipeline) -> Self {
+	pub fn bind_pipeline(mut self, pipeline: &GraphicsPipeline) -> Self {
 		self.0 .0.bind_pipeline(pipeline.0.clone());
 		self
 	}

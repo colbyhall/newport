@@ -39,8 +39,8 @@ impl Scrollbox {
 	pub fn new(id: impl ToId, bounds: Rect, direction: Direction) -> Self {
 		Self {
 			id: id.to_id(),
-			bounds: bounds,
-			direction: direction,
+			bounds,
+			direction,
 		}
 	}
 }

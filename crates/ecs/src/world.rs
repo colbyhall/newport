@@ -4,6 +4,7 @@ use crate::{
 	EntitiesContainer,
 };
 
+#[derive(Default)]
 pub struct World {
 	pub(crate) entities: EntitiesContainer,
 	pub(crate) components: ComponentsContainer,

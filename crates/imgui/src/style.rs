@@ -17,6 +17,7 @@ use std::{
 
 pub trait Style = Default + Clone + Any + 'static;
 
+#[derive(Default)]
 pub struct StyleMap {
 	inner: HashMap<TypeId, Box<dyn Any>>,
 }
@@ -31,9 +32,10 @@ impl StyleMap {
 	pub fn get<T: Style>(&mut self) -> T {
 		let id = TypeId::of::<T>();
 
-		if !self.inner.contains_key(&id) {
-			self.inner.insert(id, Box::new(vec![T::default()]));
-		}
+		self.inner
+			.entry(id)
+			.or_insert_with(|| Box::new(vec![T::default()]));
+
 		self.inner
 			.get(&id)
 			.unwrap()
@@ -47,9 +49,10 @@ impl StyleMap {
 	pub fn push<T: Style>(&mut self, t: T) {
 		let id = TypeId::of::<T>();
 
-		if !self.inner.contains_key(&id) {
-			self.inner.insert(id, Box::new(vec![T::default()]));
-		}
+		self.inner
+			.entry(id)
+			.or_insert_with(|| Box::new(vec![T::default()]));
+
 		self.inner
 			.get_mut(&id)
 			.unwrap()
@@ -61,10 +64,9 @@ impl StyleMap {
 	pub fn pop<T: Style>(&mut self) {
 		let id = TypeId::of::<T>();
 
-		if !self.inner.contains_key(&id) {
-			self.inner.insert(id, Box::new(vec![T::default()]));
-			return;
-		}
+		self.inner
+			.entry(id)
+			.or_insert_with(|| Box::new(vec![T::default()]));
 
 		let vec = self
 			.inner

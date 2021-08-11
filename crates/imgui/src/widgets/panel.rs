@@ -24,7 +24,7 @@ impl Panel {
 		Self {
 			id: id.to_id(),
 			variant: PanelVariant::Top,
-			size: size,
+			size,
 		}
 	}
 
@@ -32,7 +32,7 @@ impl Panel {
 		Self {
 			id: id.to_id(),
 			variant: PanelVariant::Bottom,
-			size: size,
+			size,
 		}
 	}
 }

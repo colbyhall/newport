@@ -149,18 +149,18 @@ impl Texture {
 			let result = Arc::new(Texture {
 				owner: owner.clone(), // SPEED: Exra ref count due to mutex lock.
 
-				image: image,
-				view: view,
-				memory: memory,
+				image,
+				view,
+				memory,
 
-				memory_type: memory_type,
+				memory_type,
 
-				usage: usage,
-				format: format,
+				usage,
+				format,
 
-				width: width,
-				height: height,
-				depth: depth,
+				width,
+				height,
+				depth,
 
 				bindless: Some(index as u32),
 			});
@@ -176,20 +176,20 @@ impl Texture {
 		}
 
 		Ok(Arc::new(Texture {
-			owner: owner,
+			owner,
 
-			image: image,
-			view: view,
-			memory: memory,
+			image,
+			view,
+			memory,
 
-			memory_type: memory_type,
+			memory_type,
 
-			usage: usage,
-			format: format,
+			usage,
+			format,
 
-			width: width,
-			height: height,
-			depth: depth,
+			width,
+			height,
+			depth,
 
 			bindless: None,
 		}))

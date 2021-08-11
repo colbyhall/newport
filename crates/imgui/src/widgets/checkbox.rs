@@ -23,7 +23,7 @@ impl<'a> Checkbox<'a> {
 	pub fn new(id: impl ToId, is_checked: &'a mut bool) -> Self {
 		Self {
 			id: id.to_id(),
-			is_checked: is_checked,
+			is_checked,
 		}
 	}
 }

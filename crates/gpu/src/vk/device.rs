@@ -130,7 +130,7 @@ impl Swapchain {
 					owner: device.clone(),
 
 					image: *it,
-					view: view,
+					view,
 					memory: DeviceAllocation::default(),
 
 					memory_type: MemoryType::HostVisible,
@@ -146,9 +146,9 @@ impl Swapchain {
 			}
 
 			Self {
-				handle: handle,
+				handle,
 
-				backbuffers: backbuffers,
+				backbuffers,
 				current: None,
 			}
 		}
@@ -307,10 +307,12 @@ impl Device {
 				// Find extensions to do bindless
 				let mut indexing_features = vk::PhysicalDeviceDescriptorIndexingFeatures::default();
 
-				let mut device_features = vk::PhysicalDeviceFeatures2::default();
-				device_features.p_next = &mut indexing_features
-					as *mut vk::PhysicalDeviceDescriptorIndexingFeatures
-					as *mut std::ffi::c_void;
+				let mut device_features = vk::PhysicalDeviceFeatures2 {
+					p_next: &mut indexing_features
+						as *mut vk::PhysicalDeviceDescriptorIndexingFeatures
+						as *mut std::ffi::c_void,
+					..Default::default()
+				};
 				instance
 					.instance
 					.get_physical_device_features2(*it, &mut device_features);
@@ -340,8 +342,8 @@ impl Device {
 		#[cfg(target_os = "windows")]
 		let surface;
 		unsafe {
-			if window.is_some() {
-				let handle = window.unwrap().raw_window_handle();
+			if let Some(window) = window {
+				let handle = window.raw_window_handle();
 
 				match handle {
 					RawWindowHandle::Windows(handle) => {
@@ -434,9 +436,8 @@ impl Device {
 			graphics_queue =
 				Some(logical_device.get_device_queue(graphics_family_index.unwrap(), 0));
 
-			if surface_family_index.is_some() {
-				presentation_queue =
-					Some(logical_device.get_device_queue(surface_family_index.unwrap(), 0));
+			if let Some(surface_family_index) = surface_family_index {
+				presentation_queue = Some(logical_device.get_device_queue(surface_family_index, 0));
 			} else {
 				presentation_queue = None;
 			}
@@ -534,26 +535,26 @@ impl Device {
 			logical: logical_device,
 			physical: physical_device,
 
-			graphics_queue: graphics_queue.map(|q| Mutex::new(q)),
-			presentation_queue: presentation_queue.map(|q| Mutex::new(q)),
+			graphics_queue: graphics_queue.map(Mutex::new),
+			presentation_queue: presentation_queue.map(Mutex::new),
 
-			graphics_family_index: graphics_family_index,
-			surface_family_index: surface_family_index,
+			graphics_family_index,
+			surface_family_index,
 
 			work: Mutex::new(WorkContainer {
 				last_id: 0,
 				in_queue: HashMap::new(),
 			}),
 
-			surface: surface,
+			surface,
 
 			swapchain: Mutex::new(None),
 			thread_info: Mutex::new(HashMap::new()),
 
 			bindless_info: Mutex::new(bindles_info),
 
-			bindless_layout: bindless_layout,
-			bindless_pool: bindless_pool,
+			bindless_layout,
+			bindless_pool,
 			bindless_set: bindless_set[0],
 		});
 
@@ -671,7 +672,7 @@ impl Device {
 
 			let mut wait_semaphores = Vec::with_capacity(wait_on.len());
 			let mut wait_stages = Vec::with_capacity(wait_on.len());
-			if wait_on.len() > 0 {
+			if !wait_on.is_empty() {
 				for it in wait_on.iter() {
 					let sync = it.get();
 					if sync.is_none() {
@@ -695,8 +696,8 @@ impl Device {
 		let owner = command_buffers[0].owner.clone();
 
 		let id = self.push_work(WorkEntry {
-			semaphore: semaphore,
-			fence: fence,
+			semaphore,
+			fence,
 			variant: WorkVariant::Graphics(command_buffers),
 			thread_id: std::thread::current().id(),
 		});
@@ -722,7 +723,7 @@ impl Device {
 			.image_indices(from_ref(&index));
 
 		let mut wait_semaphores = Vec::with_capacity(wait_on.len());
-		if wait_on.len() > 0 {
+		if !wait_on.is_empty() {
 			for it in wait_on.iter() {
 				let sync = it.get();
 				if sync.is_none() {

@@ -13,10 +13,7 @@ pub struct Receipt {
 
 impl Receipt {
 	pub(super) fn new(owner: Arc<Device>, id: usize) -> Self {
-		Self {
-			owner: owner,
-			id: id,
-		}
+		Self { owner, id }
 	}
 
 	pub(crate) fn get(&self) -> Option<(vk::Semaphore, vk::Fence)> {
@@ -45,7 +42,7 @@ impl Receipt {
 
 		self.owner.remove_finished_work();
 
-		return true;
+		true
 	}
 
 	pub fn is_finished(&self) -> bool {

@@ -1,5 +1,5 @@
 use newport::engine::{
-	Builder,
+	Engine,
 	Module,
 };
 
@@ -15,7 +15,7 @@ impl Module for HelloWorld {
 
 // Start the app runner
 fn main() {
-	Builder::new()
+	Engine::builder()
 		.module::<HelloWorld>()
 		.name("Hello World")
 		.run()

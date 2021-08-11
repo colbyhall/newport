@@ -89,11 +89,11 @@ impl Buffer {
 				let result = Arc::new(Buffer {
 					owner: owner.clone(),
 
-					handle: handle,
+					handle,
 					memory: RwLock::new(memory),
-					size: size,
+					size,
 
-					usage: usage,
+					usage,
 
 					bindless: Some(index as u32),
 				});
@@ -109,13 +109,13 @@ impl Buffer {
 			}
 
 			Ok(Arc::new(Buffer {
-				owner: owner,
+				owner,
 
-				handle: handle,
+				handle,
 				memory: RwLock::new(memory),
-				size: size,
+				size,
 
-				usage: usage,
+				usage,
 
 				bindless: None,
 			}))

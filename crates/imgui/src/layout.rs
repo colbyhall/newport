@@ -54,7 +54,7 @@ impl Layout {
 	pub fn new(bounds: impl Into<Rect>, direction: Direction) -> Self {
 		Layout {
 			bounds: bounds.into(),
-			direction: direction,
+			direction,
 			cursor: 0.0,
 		}
 	}

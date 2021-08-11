@@ -87,8 +87,8 @@ impl Module for AssetManager {
 		let collections = engine.register::<Collection>().unwrap_or_default();
 
 		Self {
-			variants: variants,
-			collections: collections,
+			variants,
+			collections,
 			assets: RwLock::new(assets),
 		}
 	}

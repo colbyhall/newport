@@ -70,7 +70,7 @@ impl Engine {
 			// Some(style) => *style,
 			// None => WindowStyle::Windowed,
 			// };
-			let name = builder.name.take().unwrap_or("newport".to_string());
+			let name = builder.name.take().unwrap_or_else(|| "newport".to_string());
 
 			let window = match &builder.display {
 				Some(_) => WindowBuilder::new()
@@ -95,7 +95,7 @@ impl Engine {
 			let engine = ENGINE.as_mut().unwrap();
 
 			// NOTE: All modules a module depends on will be available at initialization
-			// TODO: Worry about safety here.
+			// TODO: Worry about thread safety here.
 			builder.entries.drain(..).for_each(|it| {
 				engine.modules.insert(it.id, (it.spawn)());
 			});
@@ -114,7 +114,11 @@ impl Engine {
 		event_loop.run(move |event, _, control_flow| {
 			*control_flow = ControlFlow::Poll;
 
-			let height = engine.window().unwrap().inner_size().height as f32;
+			let height = if let Some(window) = engine.window() {
+				window.inner_size().height as f32
+			} else {
+				0.0
+			};
 
 			match event {
 				WinitEvent::WindowEvent {
@@ -253,7 +257,9 @@ impl Engine {
 
 					builder.tick.iter().for_each(|tick| tick(engine, dt));
 
-					engine.window.as_ref().unwrap().request_redraw();
+					if let Some(window) = engine.window.as_ref() {
+						window.request_redraw();
+					}
 				}
 				WinitEvent::RedrawRequested(_) => match &builder.display {
 					Some(display) => {
@@ -284,7 +290,7 @@ impl Engine {
 		unsafe { ENGINE.as_ref().unwrap() }
 	}
 
-	pub fn module<'a, T: Module>(&'a self) -> Option<&'a T> {
+	pub fn module<T: Module>(&self) -> Option<&T> {
 		let id = TypeId::of::<T>();
 
 		let module = self.modules.get(&id)?;
@@ -314,5 +320,9 @@ impl Engine {
 
 	pub fn fps(&self) -> i32 {
 		self.fps.load(Ordering::Relaxed)
+	}
+
+	pub fn builder() -> Builder {
+		Builder::new()
 	}
 }

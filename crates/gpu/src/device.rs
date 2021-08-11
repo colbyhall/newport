@@ -66,16 +66,18 @@ impl Device {
 		&self,
 		colors: Vec<Format>,
 		depth: Option<Format>,
-	) -> Result<RenderPass, ()> {
-		let inner = api::RenderPass::new(self.0.clone(), colors, depth)?;
+	) -> Result<RenderPass, ResourceCreateError> {
+		let inner = api::RenderPass::new(self.0.clone(), colors, depth)
+			.map_err(|_| ResourceCreateError::Unknown)?;
 		Ok(RenderPass(inner))
 	}
 
 	pub fn create_graphics_pipeline(
 		&self,
 		description: GraphicsPipelineDescription,
-	) -> Result<GraphicsPipeline, ()> {
-		let inner = api::GraphicsPipeline::new(self.0.clone(), description)?;
+	) -> Result<GraphicsPipeline, ResourceCreateError> {
+		let inner = api::GraphicsPipeline::new(self.0.clone(), description)
+			.map_err(|_| ResourceCreateError::Unknown)?;
 		Ok(GraphicsPipeline(inner))
 	}
 
@@ -84,8 +86,9 @@ impl Device {
 		binary: &[u8],
 		variant: ShaderVariant,
 		main: &str,
-	) -> Result<Shader, ()> {
-		let inner = api::Shader::new(self.0.clone(), binary, variant, main.to_string())?;
+	) -> Result<Shader, ResourceCreateError> {
+		let inner = api::Shader::new(self.0.clone(), binary, variant, main.to_string())
+			.map_err(|_| ResourceCreateError::Unknown)?;
 		Ok(Shader(inner))
 	}
 

@@ -27,12 +27,7 @@ impl Color {
 	pub const MAGENTA: Self = Self::new(1.0, 0.0, 1.0, 1.0);
 
 	pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
-		Self {
-			r: r,
-			g: g,
-			b: b,
-			a: a,
-		}
+		Self { r, g, b, a }
 	}
 
 	pub const fn from_hex(hex: u32) -> Self {
@@ -90,24 +85,24 @@ impl From<(f32, f32, f32, f32)> for Color {
 
 pub fn linear_to_srgb(x: f32) -> f32 {
 	if x <= 0.0 {
-		return 0.0;
+		0.0
 	} else if x >= 1.0 {
-		return 1.0;
+		1.0
 	} else if x < 0.0031308 {
-		return x * 12.92;
+		x * 12.92
 	} else {
-		return x.powf(1.0 / 2.4) * 1.055 - 0.055;
+		x.powf(1.0 / 2.4) * 1.055 - 0.055
 	}
 }
 
 pub fn srgb_to_linear(x: f32) -> f32 {
 	if x <= 0.0 {
-		return 0.0;
+		0.0
 	} else if x >= 1.0 {
-		return 1.0;
+		1.0
 	} else if x <= 0.04045 {
-		return x / 12.92;
+		x / 12.92
 	} else {
-		return ((x + 0.055) / 1.055).powf(2.4);
+		((x + 0.055) / 1.055).powf(2.4)
 	}
 }

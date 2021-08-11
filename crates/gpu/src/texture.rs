@@ -8,13 +8,13 @@ use crate::{
 };
 
 use engine::Engine;
-use serde;
 
 use bitflags::bitflags;
 
 use asset::Asset;
 use asset::Importer;
 use serde::{
+	self,
 	Deserialize,
 	Serialize,
 };

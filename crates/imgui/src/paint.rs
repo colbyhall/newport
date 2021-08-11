@@ -106,7 +106,7 @@ impl RectShape {
 			uv: Vector2::ZERO,
 			color: self.color,
 			scissor: self.scissor,
-			texture: texture,
+			texture,
 		});
 		let center_index = canvas.vertices.len() as u32 - 1;
 
@@ -119,7 +119,7 @@ impl RectShape {
 				uv: Vector2::ZERO,
 				color: self.color,
 				scissor: self.scissor,
-				texture: texture,
+				texture,
 			});
 
 			let first = canvas.vertices.len() as u32 - 1;
@@ -134,7 +134,7 @@ impl RectShape {
 					uv: Vector2::ZERO,
 					color: self.color,
 					scissor: self.scissor,
-					texture: texture,
+					texture,
 				});
 				canvas.indices.push(canvas.vertices.len() as u32 - 1);
 			}
@@ -172,17 +172,17 @@ impl RectShape {
 			uv: Vector2::ZERO,
 			color: self.color,
 			scissor: self.scissor,
-			texture: texture,
+			texture,
 		});
 		canvas.vertices.push(Vertex {
 			position: top_right_first,
 			uv: Vector2::ZERO,
 			color: self.color,
 			scissor: self.scissor,
-			texture: texture,
+			texture,
 		});
 		canvas.indices.push(center_index);
-		canvas.indices.push(at + 0);
+		canvas.indices.push(at);
 		canvas.indices.push(at + 1);
 
 		// Right triangle
@@ -192,17 +192,17 @@ impl RectShape {
 			uv: Vector2::ZERO,
 			color: self.color,
 			scissor: self.scissor,
-			texture: texture,
+			texture,
 		});
 		canvas.vertices.push(Vertex {
 			position: bottom_right_first,
 			uv: Vector2::ZERO,
 			color: self.color,
 			scissor: self.scissor,
-			texture: texture,
+			texture,
 		});
 		canvas.indices.push(center_index);
-		canvas.indices.push(at + 0);
+		canvas.indices.push(at);
 		canvas.indices.push(at + 1);
 
 		// Bottom triangle
@@ -212,17 +212,17 @@ impl RectShape {
 			uv: Vector2::ZERO,
 			color: self.color,
 			scissor: self.scissor,
-			texture: texture,
+			texture,
 		});
 		canvas.vertices.push(Vertex {
 			position: bottom_left_first,
 			uv: Vector2::ZERO,
 			color: self.color,
 			scissor: self.scissor,
-			texture: texture,
+			texture,
 		});
 		canvas.indices.push(center_index);
-		canvas.indices.push(at + 0);
+		canvas.indices.push(at);
 		canvas.indices.push(at + 1);
 
 		// Left triangle
@@ -232,17 +232,17 @@ impl RectShape {
 			uv: Vector2::ZERO,
 			color: self.color,
 			scissor: self.scissor,
-			texture: texture,
+			texture,
 		});
 		canvas.vertices.push(Vertex {
 			position: top_left_first,
 			uv: Vector2::ZERO,
 			color: self.color,
 			scissor: self.scissor,
-			texture: texture,
+			texture,
 		});
 		canvas.indices.push(center_index);
-		canvas.indices.push(at + 0);
+		canvas.indices.push(at);
 		canvas.indices.push(at + 1);
 	}
 }
@@ -347,7 +347,7 @@ impl Shape {
 
 	pub fn solid_triangle(points: [Vector2; 3], color: impl Into<Color>) -> Self {
 		Self::Triangle(TriangleShape {
-			points: points,
+			points,
 			scissor: Rect::INFINITY,
 
 			color: color.into(),
@@ -385,8 +385,8 @@ impl Shape {
 			scissor: Rect::INFINITY,
 
 			font: font.clone(),
-			size: size,
-			dpi: dpi,
+			size,
+			dpi,
 			color: color.into(),
 		})
 	}
@@ -400,6 +400,7 @@ impl Shape {
 	}
 }
 
+#[derive(Default)]
 pub struct Painter {
 	shapes: Vec<Shape>,
 	scissors: Vec<Rect>,
@@ -407,11 +408,9 @@ pub struct Painter {
 
 impl Painter {
 	pub fn new() -> Self {
-		let mut scissors = Vec::new();
-		scissors.push(Rect::INFINITY);
 		Self {
 			shapes: Vec::with_capacity(128),
-			scissors: scissors,
+			scissors: vec![Rect::INFINITY],
 		}
 	}
 
@@ -456,7 +455,6 @@ pub struct Vertex {
 	pub texture: u32,
 }
 
-#[derive(Default)]
 pub struct Canvas {
 	pub vertices: Vec<Vertex>,
 	pub indices: Vec<u32>,
@@ -466,7 +464,7 @@ pub struct Canvas {
 }
 
 impl Canvas {
-	fn rect(self: &mut Self, bounds: Rect, uv: Rect, scissor: Rect, color: Color, texture: u32) {
+	fn rect(&mut self, bounds: Rect, uv: Rect, scissor: Rect, color: Color, texture: u32) {
 		let size = bounds.size();
 		if size.x <= 0.0 || size.y <= 0.0 {
 			return;
@@ -487,34 +485,34 @@ impl Canvas {
 		self.vertices.push(Vertex {
 			position: top_left_pos,
 			uv: top_left_uv,
-			color: color,
-			scissor: scissor,
-			texture: texture,
+			color,
+			scissor,
+			texture,
 		});
 		self.vertices.push(Vertex {
 			position: top_right_pos,
 			uv: top_right_uv,
-			color: color,
-			scissor: scissor,
-			texture: texture,
+			color,
+			scissor,
+			texture,
 		});
 		self.vertices.push(Vertex {
 			position: bot_left_pos,
 			uv: bot_left_uv,
-			color: color,
-			scissor: scissor,
-			texture: texture,
+			color,
+			scissor,
+			texture,
 		});
 		self.vertices.push(Vertex {
 			position: bot_right_pos,
 			uv: bot_right_uv,
-			color: color,
-			scissor: scissor,
-			texture: texture,
+			color,
+			scissor,
+			texture,
 		});
 
 		self.indices.push(indices_start + 2);
-		self.indices.push(indices_start + 0);
+		self.indices.push(indices_start);
 		self.indices.push(indices_start + 1);
 
 		self.indices.push(indices_start + 2);
@@ -551,7 +549,7 @@ impl DrawState {
 		let gpu = Engine::as_ref().module::<Gpu>().unwrap();
 		let device = gpu.device();
 
-		if canvas.vertices.len() == 0 {
+		if canvas.vertices.is_empty() {
 			return (gfx, Err(()));
 		}
 
@@ -613,5 +611,11 @@ impl DrawState {
 			);
 
 		(gfx, Ok(backbuffer))
+	}
+}
+
+impl Default for DrawState {
+	fn default() -> Self {
+		Self::new()
 	}
 }

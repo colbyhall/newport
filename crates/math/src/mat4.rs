@@ -43,10 +43,10 @@ impl Matrix4 {
 		w_axis: Vector4,
 	) -> Self {
 		Self {
-			x_axis: x_axis,
-			y_axis: y_axis,
-			z_axis: z_axis,
-			w_axis: w_axis,
+			x_axis,
+			y_axis,
+			z_axis,
+			w_axis,
 		}
 	}
 

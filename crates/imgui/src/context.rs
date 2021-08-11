@@ -74,9 +74,9 @@ impl Context {
 		painter.push_scissor(layout.bounds());
 		Builder {
 			id: id.into(),
-			layout: layout,
+			layout,
 
-			painter: painter,
+			painter,
 			context: self,
 		}
 	}
@@ -188,11 +188,11 @@ impl Context {
 	pub fn retained<T: Retained + Default + Clone>(&mut self, id: Id) -> T {
 		let retained = {
 			let entry = self.retained.get_mut(&id);
-			if entry.is_none() {
+			if let Some(entry) = entry {
+				entry
+			} else {
 				self.retained.insert(id, Box::new(T::default()));
 				self.retained.get_mut(&id).unwrap()
-			} else {
-				entry.unwrap()
 			}
 		};
 
@@ -201,5 +201,11 @@ impl Context {
 
 	pub fn set_retained<T: Retained>(&mut self, id: Id, t: T) {
 		self.retained.insert(id, Box::new(t));
+	}
+}
+
+impl Default for Context {
+	fn default() -> Self {
+		Self::new()
 	}
 }

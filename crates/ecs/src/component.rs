@@ -50,6 +50,7 @@ pub const fn make_variant_id(name: &'static str) -> u32 {
 	hash_rec(name, 0, FNV_OFFSET_BASIC)
 }
 
+#[derive(Clone)]
 pub struct ComponentVariant {
 	pub name: &'static str,
 	pub variant_id: u32,
@@ -194,6 +195,7 @@ impl<T: Component> DynamicStorage for Storage<T> {
 	}
 }
 
+#[derive(Default)]
 pub struct ComponentsContainer {
 	map: HashMap<u32, RwLock<Box<dyn DynamicStorage>>>,
 	pub variants: Vec<ComponentVariant>,

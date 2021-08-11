@@ -51,7 +51,7 @@ impl Module for GpuExample {
 
 // Start the app runner
 fn main() {
-	Builder::new()
+	Engine::builder()
 		.module::<GpuExample>()
 		.name("Gpu Example")
 		.run()

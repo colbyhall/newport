@@ -42,9 +42,8 @@ impl RenderState {
 			.iter()
 			.map(|(_id, viewport)| {
 				let aspect_ratio = viewport.width as f32 / viewport.height as f32;
-				let projection = Matrix4::perspective(viewport.fov, aspect_ratio, 10000.0, 0.1);
+				Matrix4::perspective(viewport.fov, aspect_ratio, 10000.0, 0.1)
 				// TODO: View matrix
-				projection
 			})
 			.collect();
 

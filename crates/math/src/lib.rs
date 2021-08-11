@@ -1,6 +1,7 @@
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_float_classify)]
 
+#[allow(clippy::approx_constant)]
 pub const PI: f32 = 3.141592;
 pub const TAU: f32 = PI * 2.0;
 

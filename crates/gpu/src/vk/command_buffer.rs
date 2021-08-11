@@ -230,7 +230,7 @@ impl GraphicsCommandBuffer {
 		};
 
 		Ok(GraphicsCommandBuffer {
-			owner: owner,
+			owner,
 
 			command_buffer: handle,
 
@@ -472,7 +472,7 @@ impl GraphicsCommandBuffer {
 
 	pub fn clear(&mut self, color: Color) {
 		let attachments = self.current_attachments.as_ref().unwrap();
-		assert!(attachments.len() > 0);
+		assert!(!attachments.is_empty());
 
 		let mut clear = Vec::with_capacity(attachments.len());
 		for (index, _) in attachments.iter().enumerate() {

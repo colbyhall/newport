@@ -33,11 +33,11 @@ impl Shader {
 		let shader = shader.unwrap();
 
 		Ok(Arc::new(Shader {
-			owner: owner,
+			owner,
 
-			variant: variant,
+			variant,
 			module: shader,
-			main: main,
+			main,
 		}))
 	}
 }

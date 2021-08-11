@@ -26,7 +26,7 @@ impl Rect {
 	};
 
 	pub fn from_min_max(min: Vector2, max: Vector2) -> Self {
-		Self { min: min, max: max }
+		Self { min, max }
 	}
 
 	pub fn from_pos_size(pos: Vector2, size: Vector2) -> Self {
@@ -120,7 +120,7 @@ impl Rect {
 impl From<(Vector2, Vector2)> for Rect {
 	fn from(min_max: (Vector2, Vector2)) -> Self {
 		let (min, max) = min_max;
-		Self { min: min, max: max }
+		Self { min, max }
 	}
 }
 

@@ -24,17 +24,11 @@ pub enum ButtonResponse {
 
 impl ButtonResponse {
 	pub fn hovered(self) -> bool {
-		match self {
-			ButtonResponse::Hovered => true,
-			_ => false,
-		}
+		matches!(self, ButtonResponse::Hovered)
 	}
 
 	pub fn clicked(self) -> bool {
-		match self {
-			ButtonResponse::Clicked(_) => true,
-			_ => false,
-		}
+		matches!(self, ButtonResponse::Clicked(_))
 	}
 }
 
@@ -54,10 +48,8 @@ pub fn button_control(id: Id, bounds: Rect, builder: &mut Builder) -> ButtonResp
 		builder.unhover(id);
 	}
 
-	if builder.input().was_primary_released() {
-		if builder.unfocus(id) && is_over {
-			response = ButtonResponse::Clicked(0);
-		}
+	if builder.input().was_primary_released() && builder.unfocus(id) && is_over {
+		response = ButtonResponse::Clicked(0);
 	}
 
 	response
@@ -74,7 +66,7 @@ impl Button {
 
 		Self {
 			id: Id::from(&label),
-			label: label,
+			label,
 		}
 	}
 

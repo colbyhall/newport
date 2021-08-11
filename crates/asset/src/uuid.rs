@@ -21,6 +21,7 @@ pub struct UUID {
 }
 
 impl From<&str> for UUID {
+	#[allow(clippy::many_single_char_names)]
 	fn from(v: &str) -> Self {
 		if !v.starts_with('{') || !v.ends_with('}') {
 			panic!();
@@ -64,6 +65,7 @@ impl Serialize for UUID {
 }
 
 impl<'de> Deserialize<'de> for UUID {
+	#[allow(clippy::many_single_char_names)]
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where
 		D: Deserializer<'de>,

@@ -60,7 +60,7 @@ impl FontCollection {
 		let face = FREETYPE_LIB.with(|lib| lib.new_memory_face(file, 0))?;
 
 		Ok(FontCollection {
-			face: face,
+			face,
 			fonts: Mutex::new(HashMap::new()),
 		})
 	}
@@ -92,7 +92,7 @@ impl FontCollection {
 			let mut pen_x = 0;
 			let mut pen_y = tex_height - 1;
 
-			for i in 0..Self::NUM_GLYPHS {
+			for (i, my_glyph) in glyphs.iter_mut().enumerate() {
 				self.face
 					.load_char(
 						i,
@@ -136,9 +136,9 @@ impl FontCollection {
 				let uv0 = Vector2::new(x0 as f32 / tex_width as f32, y0 as f32 / tex_height as f32);
 				let uv1 = Vector2::new(x1 as f32 / tex_width as f32, y1 as f32 / tex_height as f32);
 
-				glyphs[i] = Glyph {
-					width: width,
-					height: height,
+				*my_glyph = Glyph {
+					width,
+					height,
 
 					bearing_x: (glyph.bitmap_left()) as f32 / dpi,
 					bearing_y: (glyph.bitmap_top()) as f32 / dpi,
@@ -264,10 +264,10 @@ impl Font {
 				}
 				_ => {
 					let g = self.glyph_from_char(c);
-					if g.is_none() {
-						x += self.glyph_from_char('?').unwrap().advance;
+					if let Some(g) = g {
+						x += g.advance;
 					} else {
-						x += g.unwrap().advance;
+						x += self.glyph_from_char('?').unwrap().advance;
 					}
 				}
 			}

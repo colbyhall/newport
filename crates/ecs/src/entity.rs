@@ -27,7 +27,7 @@ pub struct EntityInfo {
 	pub components: HashMap<u32, ComponentId>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 #[serde(crate = "self::serde")]
 pub struct EntitiesContainer {
 	in_use: Vec<bool>,

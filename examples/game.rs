@@ -1,13 +1,13 @@
 use newport::{
 	engine,
-	game,
+	game::Game,
 };
 
 use engine::{
+	Engine,
 	Builder,
 	Module,
 };
-use game::Game;
 
 struct GameExample;
 
@@ -24,7 +24,7 @@ impl Module for GameExample {
 
 // Start the app runner
 fn main() {
-	Builder::new()
+	Engine::builder()
 		.module::<GameExample>()
 		.name("Game Example")
 		.run();
