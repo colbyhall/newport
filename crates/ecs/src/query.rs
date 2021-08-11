@@ -9,12 +9,15 @@ use crate::{
 
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::marker::PhantomData;
+use std::ptr::NonNull;
+use std::slice::Iter;
 
 pub struct Query<'a> {
 	reads: HashMap<u32, ReadStorage<'a>>,
 	writes: HashMap<u32, WriteStorage<'a>>,
 
-	entities: &'a EntitiesContainer,
+	entities_collection: &'a EntitiesContainer,
 
 	found: Vec<Entity>,
 }
@@ -27,48 +30,81 @@ impl<'a> Query<'a> {
 		}
 	}
 
-	pub fn get<T: Component>(&self, entity: Entity) -> Option<&T> {
-		let info = self.entities.get_info(entity)?;
+	pub fn iter(&mut self) -> EntityComponentIterator<'a, '_> {
+		EntityComponentIterator {
+			reads: &mut self.reads,
+			writes: &mut self.writes,
+
+			entities_collection: self.entities_collection,
+
+			iter: self.found.iter(),
+		}
+	}
+}
+
+pub struct EntityComponentIterator<'a: 'b, 'b> {
+	reads: &'b mut HashMap<u32, ReadStorage<'a>>,
+	writes: &'b mut HashMap<u32, WriteStorage<'a>>,
+
+	entities_collection: &'a EntitiesContainer,
+
+	iter: Iter<'b, Entity>,
+}
+
+impl<'a: 'b, 'b> Iterator for EntityComponentIterator<'a, 'b> {
+	type Item = EntityComponents<'a, 'b>;
+
+	fn next(&mut self) -> Option<Self::Item> {
+		let e = self.iter.next()?;
+		Some(EntityComponents {
+			reads: NonNull::new(self.reads).unwrap(),
+			writes: NonNull::new(self.writes).unwrap(),
+
+			entities_collection: self.entities_collection,
+
+			phantom: PhantomData,
+
+			entity: *e,
+		})
+	}
+}
+
+pub struct EntityComponents<'a: 'b, 'b> {
+	reads: NonNull<HashMap<u32, ReadStorage<'a>>>,
+	writes: NonNull<HashMap<u32, WriteStorage<'a>>>,
+
+	entities_collection: &'a EntitiesContainer,
+
+	phantom: PhantomData<&'b i32>,
+
+	entity: Entity,
+}
+
+impl<'a: 'b, 'b> EntityComponents<'a, 'b> {
+	pub fn get<T: Component>(&self) -> Option<&T> {
+		let info = self.entities_collection.get_info(self.entity)?;
 
 		let id = info.components.get(&T::VARIANT_ID)?;
 
-		match self.reads.get(&T::VARIANT_ID) {
-			Some(read) => read.get(*id),
-			None => {
-				let write = self.writes.get(&T::VARIANT_ID)?;
-				write.get(*id)
+		unsafe {
+			match self.reads.as_ref().get(&T::VARIANT_ID) {
+				Some(read) => read.get(*id),
+				None => {
+					let write = self.writes.as_ref().get(&T::VARIANT_ID)?;
+					write.get(*id)
+				}
 			}
 		}
 	}
 
-	pub fn get_mut<T: Component>(&mut self, entity: Entity) -> Option<&mut T> {
-		let info = self.entities.get_info(entity)?;
+	pub fn get_mut<T: Component>(&mut self) -> Option<&mut T> {
+		let info = self.entities_collection.get_info(self.entity)?;
 
 		let id = info.components.get(&T::VARIANT_ID)?;
 
-		let write = self.writes.get_mut(&T::VARIANT_ID)?;
+		let write = unsafe { self.writes.as_mut().get_mut(&T::VARIANT_ID)? };
 		write.get_mut(*id)
 	}
-
-	// pub fn iter_mut(&mut self) -> impl Iterator<Item = EntityAndComponents<'a, '_>> {
-	// 	self.found.iter().map(|e| EntityAndComponents {
-	// 		reads: &self.reads,
-	// 		writes: &mut self.writes,
-
-	// 		entities_container: &mut self.entities,
-
-	// 		entity: *e,
-	// 	})
-	// }
-}
-
-pub struct EntityAndComponents<'a: 'b, 'b> {
-	reads: &'b HashMap<u32, ReadStorage<'a>>,
-	writes: &'b mut HashMap<u32, WriteStorage<'a>>,
-
-	entities_container: &'a EntitiesContainer,
-
-	entity: Entity,
 }
 
 pub struct QueryBuilder {
@@ -108,7 +144,7 @@ impl QueryBuilder {
 			reads,
 			writes,
 
-			entities: &world.entities,
+			entities_collection: &world.entities,
 
 			found,
 		}

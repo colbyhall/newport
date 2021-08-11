@@ -15,18 +15,3 @@ pub use {
 	query::*,
 	world::*,
 };
-
-struct TestComponent {
-	x: f32,
-	y: f32,
-	z: f32,
-}
-
-// fn test() {
-// 	let world = World::new(Default::default());
-
-// 	let mut query = Query::builder().write::<TestComponent>().execute(&world);
-// 	for e in query.into_iter() {
-// 		let result = query.get_mut::<TestComponent>(e);
-// 	}
-// }
