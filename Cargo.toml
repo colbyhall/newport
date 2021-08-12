@@ -21,16 +21,11 @@ newport_gpu       = { path = "crates/gpu", version = "0.2.0" }
 newport_graphics  = { path = "crates/graphics", version = "0.2.0" }
 newport_math      = { path = "crates/math", version = "0.2.0" }
 newport_ecs       = { path = "crates/ecs", version = "0.2.0" }
-newport_game      = { path = "crates/game", version = "0.2.0" }
 newport_imgui     = { path = "crates/imgui", version = "0.2.0" }
 
 [[example]]
 name = "hello_world"
 path = "examples/hello_world.rs"
-
-[[example]]
-name = "game"
-path = "examples/game.rs"
 
 [[example]]
 name = "gpu"

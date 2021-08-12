@@ -30,10 +30,6 @@ pub mod ecs {
 	pub use newport_ecs::*;
 }
 
-pub mod game {
-	pub use newport_game::*;
-}
-
 pub mod imgui {
 	pub use newport_imgui::*;
 }

@@ -1,5 +1,5 @@
-use crate::EntitiesContainer;
 use crate::Entity;
+use crate::VariantId;
 use crate::{
 	Component,
 	ReadStorage,
@@ -14,10 +14,10 @@ use std::ptr::NonNull;
 use std::slice::Iter;
 
 pub struct Query<'a> {
-	reads: HashMap<u32, ReadStorage<'a>>,
-	writes: HashMap<u32, WriteStorage<'a>>,
+	reads: HashMap<VariantId, ReadStorage<'a>>,
+	writes: HashMap<VariantId, WriteStorage<'a>>,
 
-	entities_collection: &'a EntitiesContainer,
+	world: &'a World,
 
 	found: Vec<Entity>,
 }
@@ -35,7 +35,7 @@ impl<'a> Query<'a> {
 			reads: &mut self.reads,
 			writes: &mut self.writes,
 
-			entities_collection: self.entities_collection,
+			world: self.world,
 
 			iter: self.found.iter(),
 		}
@@ -43,10 +43,10 @@ impl<'a> Query<'a> {
 }
 
 pub struct EntityComponentIterator<'a: 'b, 'b> {
-	reads: &'b mut HashMap<u32, ReadStorage<'a>>,
-	writes: &'b mut HashMap<u32, WriteStorage<'a>>,
+	reads: &'b mut HashMap<VariantId, ReadStorage<'a>>,
+	writes: &'b mut HashMap<VariantId, WriteStorage<'a>>,
 
-	entities_collection: &'a EntitiesContainer,
+	world: &'a World,
 
 	iter: Iter<'b, Entity>,
 }
@@ -60,7 +60,7 @@ impl<'a: 'b, 'b> Iterator for EntityComponentIterator<'a, 'b> {
 			reads: NonNull::new(self.reads).unwrap(),
 			writes: NonNull::new(self.writes).unwrap(),
 
-			entities_collection: self.entities_collection,
+			world: self.world,
 
 			phantom: PhantomData,
 
@@ -70,10 +70,10 @@ impl<'a: 'b, 'b> Iterator for EntityComponentIterator<'a, 'b> {
 }
 
 pub struct EntityComponents<'a: 'b, 'b> {
-	reads: NonNull<HashMap<u32, ReadStorage<'a>>>,
-	writes: NonNull<HashMap<u32, WriteStorage<'a>>>,
+	reads: NonNull<HashMap<VariantId, ReadStorage<'a>>>,
+	writes: NonNull<HashMap<VariantId, WriteStorage<'a>>>,
 
-	entities_collection: &'a EntitiesContainer,
+	world: &'a World,
 
 	phantom: PhantomData<&'b i32>,
 
@@ -82,7 +82,8 @@ pub struct EntityComponents<'a: 'b, 'b> {
 
 impl<'a: 'b, 'b> EntityComponents<'a, 'b> {
 	pub fn get<T: Component>(&self) -> Option<&T> {
-		let info = self.entities_collection.get_info(self.entity)?;
+		let entities = self.world.entities.read().unwrap();
+		let info = entities.get_info(self.entity)?;
 
 		let id = info.components.get(&T::VARIANT_ID)?;
 
@@ -98,7 +99,8 @@ impl<'a: 'b, 'b> EntityComponents<'a, 'b> {
 	}
 
 	pub fn get_mut<T: Component>(&mut self) -> Option<&mut T> {
-		let info = self.entities_collection.get_info(self.entity)?;
+		let entities = self.world.entities.read().unwrap();
+		let info = entities.get_info(self.entity)?;
 
 		let id = info.components.get(&T::VARIANT_ID)?;
 
@@ -108,8 +110,8 @@ impl<'a: 'b, 'b> EntityComponents<'a, 'b> {
 }
 
 pub struct QueryBuilder {
-	reads: HashSet<u32>,
-	writes: HashSet<u32>,
+	reads: HashSet<VariantId>,
+	writes: HashSet<VariantId>,
 }
 
 impl QueryBuilder {
@@ -138,13 +140,16 @@ impl QueryBuilder {
 			writes.insert(w, world.components.write_id(w).unwrap());
 		}
 
-		let found = world.entities.gather_with_active(components);
+		let found = {
+			let entities = world.entities.read().unwrap();
+			entities.gather_with_active(components)
+		};
 
 		Query {
 			reads,
 			writes,
 
-			entities_collection: &world.entities,
+			world,
 
 			found,
 		}

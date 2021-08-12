@@ -18,8 +18,31 @@ use std::{
 	},
 };
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
+#[serde(crate = "self::serde")]
+pub struct VariantId(u32);
+
+impl VariantId {
+	pub const fn new(name: &'static str) -> Self {
+		const FNV_OFFSET_BASIC: u32 = 2166136261;
+		const FNV_PRIME: u32 = 16777619;
+
+		const fn hash_rec(name: &'static str, index: usize, hash: u32) -> u32 {
+			let hash = hash * FNV_PRIME;
+			let hash = hash ^ name.as_bytes()[index] as u32;
+			if index != name.len() - 1 {
+				hash_rec(name, index + 1, hash)
+			} else {
+				hash
+			}
+		}
+
+		Self(hash_rec(name, 0, FNV_OFFSET_BASIC))
+	}
+}
+
 pub trait Component: 'static + Sized + Sync {
-	const VARIANT_ID: u32 = make_variant_id(type_name::<Self>());
+	const VARIANT_ID: VariantId = VariantId::new(type_name::<Self>());
 
 	const CAN_SAVE: bool;
 }
@@ -28,32 +51,15 @@ impl<T> Component for T
 where
 	T: Sync + Sized + 'static,
 {
-	default const VARIANT_ID: u32 = make_variant_id(type_name::<Self>());
+	default const VARIANT_ID: VariantId = VariantId::new(type_name::<Self>());
 
 	default const CAN_SAVE: bool = true;
-}
-
-pub const fn make_variant_id(name: &'static str) -> u32 {
-	const FNV_OFFSET_BASIC: u32 = 2166136261;
-	const FNV_PRIME: u32 = 16777619;
-
-	const fn hash_rec(name: &'static str, index: usize, hash: u32) -> u32 {
-		let hash = hash * FNV_PRIME;
-		let hash = hash ^ name.as_bytes()[index] as u32;
-		if index != name.len() - 1 {
-			hash_rec(name, index + 1, hash)
-		} else {
-			hash
-		}
-	}
-
-	hash_rec(name, 0, FNV_OFFSET_BASIC)
 }
 
 #[derive(Clone)]
 pub struct ComponentVariant {
 	pub name: &'static str,
-	pub variant_id: u32,
+	pub variant_id: VariantId,
 
 	create_storage: fn() -> Box<dyn DynamicStorage>,
 }
@@ -76,7 +82,7 @@ impl ComponentVariant {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
 pub struct ComponentId {
-	variant_id: u32,
+	variant_id: VariantId,
 
 	index: u32,
 	generation: u32,
@@ -197,7 +203,7 @@ impl<T: Component> DynamicStorage for Storage<T> {
 
 #[derive(Default)]
 pub struct ComponentsContainer {
-	map: HashMap<u32, RwLock<Box<dyn DynamicStorage>>>,
+	map: HashMap<VariantId, RwLock<Box<dyn DynamicStorage>>>,
 	pub variants: Vec<ComponentVariant>,
 }
 
@@ -210,7 +216,7 @@ impl ComponentsContainer {
 		Self { map, variants }
 	}
 
-	pub fn read_id(&self, variant_id: u32) -> Option<ReadStorage> {
+	pub fn read_id(&self, variant_id: VariantId) -> Option<ReadStorage> {
 		Some(ReadStorage {
 			read: self.map.get(&variant_id)?.read().unwrap(),
 		})
@@ -220,7 +226,7 @@ impl ComponentsContainer {
 		self.read_id(T::VARIANT_ID)
 	}
 
-	pub fn write_id(&self, variant_id: u32) -> Option<WriteStorage> {
+	pub fn write_id(&self, variant_id: VariantId) -> Option<WriteStorage> {
 		Some(WriteStorage {
 			write: self.map.get(&variant_id)?.write().unwrap(),
 		})

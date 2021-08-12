@@ -7,11 +7,15 @@
 mod component;
 mod entity;
 mod query;
+mod schedule;
+mod system;
 mod world;
 
 pub use {
 	component::*,
 	entity::*,
 	query::*,
+	schedule::*,
+	system::*,
 	world::*,
 };
