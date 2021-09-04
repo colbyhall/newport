@@ -738,14 +738,3 @@ impl Importer for GraphicsPipelineImporter {
 		Ok(device.create_graphics_pipeline(description).unwrap())
 	}
 }
-
-// impl Asset for GraphicsPipeline {
-// 	fn load(bytes: &[u8], _path: &Path) -> (UUID, Self) {
-// 		let engine = Engine::as_ref();
-// 		let gpu: &Gpu = engine.module().unwrap();
-// 		let device = gpu.device();
-
-// 		let (id, pipeline_file): (UUID, GraphicsPipelineFile) = deserialize(bytes).unwrap();
-
-// 	}
-// }

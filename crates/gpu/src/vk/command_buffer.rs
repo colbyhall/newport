@@ -514,6 +514,10 @@ impl GraphicsCommandBuffer {
 
 		let push_constant_size = current_pipeline.description.push_constant_size();
 
+		if push_constant_size == 0 {
+			return;
+		}
+
 		unsafe {
 			self.owner.logical.cmd_push_constants(
 				self.command_buffer,

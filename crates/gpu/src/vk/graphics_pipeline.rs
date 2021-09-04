@@ -100,9 +100,13 @@ impl GraphicsPipeline {
 			attributes.push(attr.build());
 		}
 
-		let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::builder()
-			.vertex_binding_descriptions(from_ref(&binding))
-			.vertex_attribute_descriptions(&attributes[..]);
+		let vertex_input_state = if stride > 0 {
+			vk::PipelineVertexInputStateCreateInfo::builder()
+				.vertex_binding_descriptions(from_ref(&binding))
+				.vertex_attribute_descriptions(&attributes[..])
+		} else {
+			vk::PipelineVertexInputStateCreateInfo::builder()
+		};
 
 		let input_assembly_state = vk::PipelineInputAssemblyStateCreateInfo::builder()
 			.topology(vk::PrimitiveTopology::TRIANGLE_LIST);
