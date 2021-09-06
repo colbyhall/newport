@@ -54,9 +54,9 @@ impl Asset for Mesh {}
 
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
-pub(crate) struct MeshImporter {}
+pub(crate) struct MeshGltfImporter {}
 
-impl Importer for MeshImporter {
+impl Importer for MeshGltfImporter {
 	type Target = Mesh;
 
 	fn import(&self, bytes: &[u8]) -> asset::Result<Self::Target> {

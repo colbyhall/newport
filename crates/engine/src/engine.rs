@@ -297,6 +297,14 @@ impl Engine {
 		module.downcast_ref::<T>()
 	}
 
+	pub unsafe fn module_mut<T: Module>(&self) -> Option<&mut T> {
+		let self_mut: &mut Self = &mut *(self as *const Self as *mut Self);
+
+		let id = TypeId::of::<T>();
+		let module = self_mut.modules.get_mut(&id)?;
+		module.downcast_mut::<T>()
+	}
+
 	pub fn register<T: Register>(&self) -> Option<Vec<T>> {
 		let id = TypeId::of::<T>();
 

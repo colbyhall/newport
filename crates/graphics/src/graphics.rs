@@ -1,5 +1,5 @@
 use crate::FontImporter;
-use crate::MeshImporter;
+use crate::MeshGltfImporter;
 use gpu::Gpu;
 
 use engine::{
@@ -18,6 +18,6 @@ impl Module for Graphics {
 		builder
 			.module::<Gpu>()
 			.register(asset::Variant::new::<FontImporter>(&["ttf"]))
-			.register(asset::Variant::new::<MeshImporter>(&["gltf"]))
+			.register(asset::Variant::new::<MeshGltfImporter>(&["gltf"]))
 	}
 }

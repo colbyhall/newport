@@ -1,4 +1,4 @@
 Meta(
     uuid: "{03383b92-566f-4036-aeb4-850b61685ea6}",
-    importer: MeshImporter(),
+    importer: MeshGltfImporter(),
 )
