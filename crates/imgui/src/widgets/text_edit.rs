@@ -188,8 +188,9 @@ impl<'a> TextEdit<'a> {
 			}
 
 			let shift_down =
-				builder.input().key_down[platform::input::KEY_SHIFT.as_key().0 as usize];
-			let ctrl_down = builder.input().key_down[platform::input::KEY_CTRL.as_key().0 as usize];
+				builder.input().key_down[platform::input::KEY_LSHIFT.as_key().0 as usize];
+			let ctrl_down =
+				builder.input().key_down[platform::input::KEY_LCTRL.as_key().0 as usize];
 
 			if builder.input().was_key_pressed(platform::input::KEY_LEFT) {
 				response = TextEditResponse::InputRecieved;

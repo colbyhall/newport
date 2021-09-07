@@ -3,7 +3,10 @@ use serde::{
 	Serialize,
 };
 
+use std::ops::Mul;
+
 use crate::Vector3;
+use crate::TO_RAD;
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Quaternion {
@@ -37,20 +40,26 @@ impl Quaternion {
 	}
 
 	pub fn from_euler(euler: impl Into<Vector3>) -> Self {
-		let euler = euler.into() * 0.5;
+		const RADS_DIV_BY_2: f32 = TO_RAD / 2.0;
 
-		let cr = euler.x.cos();
-		let sr = euler.x.sin();
+		let euler = euler.into();
 
-		let cp = euler.y.cos();
-		let sp = euler.y.sin();
+		let pitch = euler.x % 360.0;
+		let yaw = euler.y % 360.0;
+		let roll = euler.z % 360.0;
 
-		let cy = euler.z.cos();
-		let sy = euler.z.sin();
+		let sp = (pitch * RADS_DIV_BY_2).sin();
+		let cp = (pitch * RADS_DIV_BY_2).cos();
+
+		let sy = (yaw * RADS_DIV_BY_2).sin();
+		let cy = (yaw * RADS_DIV_BY_2).cos();
+
+		let sr = (roll * RADS_DIV_BY_2).sin();
+		let cr = (roll * RADS_DIV_BY_2).cos();
 
 		Self {
-			x: sr * cp * cy - cr * sp * sy,
-			y: cr * sp * cy + sr * cp * sy,
+			x: cr * sp * sy - sr * cp * cy,
+			y: -cr * sp * cy - sr * cp * sy,
 			z: cr * cp * sy - sr * sp * cy,
 			w: cr * cp * cy + sr * sp * sy,
 		}
@@ -91,8 +100,8 @@ impl Quaternion {
 	}
 
 	pub fn rotate(self, xyz: Vector3) -> Vector3 {
-		let t = self.xyz().cross(xyz) * 2.0 * self.w;
-		(xyz + t) + self.xyz().cross(t)
+		let t = self.xyz().cross(xyz) * 2.0;
+		xyz + (t * self.w) + self.xyz().cross(t)
 	}
 
 	pub fn forward(self) -> Vector3 {
@@ -113,5 +122,21 @@ impl Quaternion {
 			y: self.y,
 			z: self.z,
 		}
+	}
+}
+
+impl Mul for Quaternion {
+	type Output = Self;
+
+	fn mul(self, rhs: Self) -> Self::Output {
+		let result = Self {
+			x: (((self.w * rhs.x) + (self.x * rhs.w)) + (self.y * rhs.z)) - (self.z * rhs.y),
+			y: (((self.w * rhs.y) + (self.y * rhs.w)) + (self.z * rhs.x)) - (self.x * rhs.z),
+			z: (((self.w * rhs.z) + (self.z * rhs.w)) + (self.x * rhs.y)) - (self.y * rhs.x),
+			w: (((self.w * rhs.w) - (self.x * rhs.x)) - (self.y * rhs.y)) - (self.z * rhs.z),
+		};
+
+		let result = result.norm();
+		result
 	}
 }

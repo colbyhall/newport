@@ -12,4 +12,5 @@ pub enum Event {
 	MouseMove(f32, f32),
 	MouseLeave,
 	MouseEnter,
+	MouseMotion(f32, f32),
 }

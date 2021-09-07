@@ -19,6 +19,7 @@ use std::{
 	time::Instant,
 };
 
+use platform::winit::event::DeviceEvent;
 use platform::winit::{
 	event::{
 		ElementState,
@@ -131,13 +132,23 @@ impl Engine {
 					event: WindowEvent::KeyboardInput { input, .. },
 					..
 				} => {
-					let virt = input.virtual_keycode.unwrap();
-					println!("{:?}", virt as u32);
-					let key = Input::key_from_code(virt as u8).unwrap_or(platform::input::UNKNOWN);
+					let key = Input::key_from_code(input.virtual_keycode.unwrap())
+						.unwrap_or(platform::input::UNKNOWN);
 					let event = Event::Key {
 						key,
 						pressed: input.state == ElementState::Pressed,
 					};
+
+					builder
+						.process_input
+						.iter()
+						.for_each(|process| process(engine, &event));
+				}
+				WinitEvent::DeviceEvent {
+					event: DeviceEvent::MouseMotion { delta },
+					..
+				} => {
+					let event = Event::MouseMotion(delta.0 as f32, delta.1 as f32);
 
 					builder
 						.process_input
