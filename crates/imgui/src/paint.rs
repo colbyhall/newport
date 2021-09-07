@@ -597,7 +597,7 @@ impl DrawState {
 
 		let gfx = gfx
 			.render_pass(&self.render_pass, &[&backbuffer], |ctx| {
-				ctx.clear(Color::BLACK)
+				ctx.clear(Color::TRANSPARENT)
 					.bind_pipeline(&self.pipeline)
 					.bind_vertex_buffer(&vertex_buffer)
 					.bind_index_buffer(&index_buffer)

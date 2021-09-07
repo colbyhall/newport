@@ -1,3 +1,4 @@
+use super::vk_compare_op;
 use super::Device;
 use super::Sampler;
 use crate::Constant;
@@ -136,6 +137,11 @@ impl GraphicsPipeline {
 			cull |= vk::CullModeFlags::BACK;
 		}
 
+		let depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo::builder()
+			.depth_test_enable(description.depth_test)
+			.depth_write_enable(description.depth_write)
+			.depth_compare_op(vk_compare_op(description.depth_compare));
+
 		// NOTE: Depth Testing goes around here somewhere
 		let rasterizer_state = vk::PipelineRasterizationStateCreateInfo::builder()
 			.polygon_mode(polygon_mode)
@@ -244,6 +250,7 @@ impl GraphicsPipeline {
 			.rasterization_state(&rasterizer_state)
 			.multisample_state(&multisample_state)
 			.color_blend_state(&color_blend_state)
+			.depth_stencil_state(&depth_stencil_state)
 			.dynamic_state(&dynamic_state)
 			.layout(layout)
 			.render_pass(render_pass.handle)

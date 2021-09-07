@@ -26,6 +26,8 @@ impl Color {
 	pub const YELLOW: Self = Self::new(1.0, 1.0, 0.0, 1.0);
 	pub const MAGENTA: Self = Self::new(1.0, 0.0, 1.0, 1.0);
 
+	pub const TRANSPARENT: Self = Self::new(0.0, 0.0, 0.0, 0.0);
+
 	pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
 		Self { r, g, b, a }
 	}

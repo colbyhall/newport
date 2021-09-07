@@ -25,7 +25,7 @@ use image::LoadResult;
 use stb_image::image;
 
 #[allow(non_camel_case_types)]
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(crate = "self::serde")]
 pub enum Format {
 	Undefined,
@@ -38,6 +38,22 @@ pub enum Format {
 	RGBA_F16,
 
 	BGR_U8_SRGB,
+
+	D24_S8,
+}
+
+impl Format {
+	pub fn is_depth(self) -> bool {
+		self == Format::D24_S8
+	}
+
+	pub fn is_stencil(self) -> bool {
+		self == Format::D24_S8
+	}
+
+	pub fn is_color(self) -> bool {
+		!self.is_depth()
+	}
 }
 
 bitflags! {

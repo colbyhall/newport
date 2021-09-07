@@ -1,5 +1,6 @@
 use super::{
 	vk_format,
+	vk_format_aspect_mask,
 	Device,
 	DeviceAllocation,
 };
@@ -121,7 +122,7 @@ impl Texture {
 			.format(vk_format(format))
 			.subresource_range(
 				vk::ImageSubresourceRange::builder()
-					.aspect_mask(vk::ImageAspectFlags::COLOR)
+					.aspect_mask(vk_format_aspect_mask(format))
 					.level_count(1)
 					.layer_count(1)
 					.build(),

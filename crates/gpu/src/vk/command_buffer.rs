@@ -1,4 +1,5 @@
 use super::{
+	vk_format_aspect_mask,
 	Buffer,
 	Device,
 	DeviceThreadInfo,
@@ -137,7 +138,7 @@ impl GraphicsCommandBuffer {
 		// TODO: Mips
 		barrier = barrier.subresource_range(
 			vk::ImageSubresourceRange::builder()
-				.aspect_mask(vk::ImageAspectFlags::COLOR)
+				.aspect_mask(vk_format_aspect_mask(texture.format))
 				.base_mip_level(0)
 				.level_count(1)
 				.base_array_layer(0)
@@ -173,6 +174,15 @@ impl GraphicsCommandBuffer {
 			(Layout::Undefined, Layout::Present) => {
 				src_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;
 				dst_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;
+			}
+			(Layout::Undefined, Layout::DepthAttachment) => {
+				barrier = barrier.dst_access_mask(
+					vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
+						| vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
+				);
+
+				src_stage = vk::PipelineStageFlags::TOP_OF_PIPE;
+				dst_stage = vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS;
 			}
 			_ => unimplemented!(),
 		}
@@ -475,16 +485,25 @@ impl GraphicsCommandBuffer {
 		assert!(!attachments.is_empty());
 
 		let mut clear = Vec::with_capacity(attachments.len());
-		for (index, _) in attachments.iter().enumerate() {
-			let clear_value = vk::ClearValue {
-				color: vk::ClearColorValue {
-					float32: [color.r, color.g, color.b, color.a],
-				},
+		for (index, texture) in attachments.iter().enumerate() {
+			let clear_value = if texture.format.is_color() {
+				vk::ClearValue {
+					color: vk::ClearColorValue {
+						float32: [color.r, color.g, color.b, color.a],
+					},
+				}
+			} else {
+				vk::ClearValue {
+					depth_stencil: vk::ClearDepthStencilValue {
+						depth: 1.0,
+						stencil: 0,
+					},
+				}
 			};
 
 			clear.push(
 				vk::ClearAttachment::builder()
-					.aspect_mask(vk::ImageAspectFlags::COLOR)
+					.aspect_mask(vk_format_aspect_mask(texture.format))
 					.color_attachment(index as u32)
 					.clear_value(clear_value)
 					.build(),

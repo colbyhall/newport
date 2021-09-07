@@ -1,4 +1,4 @@
-use crate::Format;
+use crate::{ Format, CompareOp };
 use ash::vk;
 
 pub const ENABLED_LAYER_NAMES: [*const i8; 1] =
@@ -43,5 +43,35 @@ pub fn vk_format(format: Format) -> vk::Format {
 		Format::RGBA_U8_SRGB => vk::Format::R8G8B8A8_SRGB,
 		Format::RGBA_F16 => vk::Format::R16G16B16A16_SFLOAT,
 		Format::BGR_U8_SRGB => vk::Format::B8G8R8A8_SRGB,
+		Format::D24_S8 => vk::Format::D24_UNORM_S8_UINT,
+	}
+}
+
+pub fn vk_format_aspect_mask(format: Format) -> vk::ImageAspectFlags {
+	if format.is_color() {
+		return vk::ImageAspectFlags::COLOR;
+	}
+
+	let mut result = vk::ImageAspectFlags::empty();
+	if format.is_depth() {
+		result |= vk::ImageAspectFlags::DEPTH;
+	}
+	if format.is_stencil() {
+		result |= vk::ImageAspectFlags::STENCIL;
+	}
+
+	result
+}
+
+pub fn vk_compare_op(compare_op: CompareOp) -> vk::CompareOp {
+	match compare_op {
+		CompareOp::Never => vk::CompareOp::NEVER,
+		CompareOp::Less => vk::CompareOp::LESS,
+		CompareOp::Equal => vk::CompareOp::EQUAL,
+		CompareOp::LessOrEqual => vk::CompareOp::LESS_OR_EQUAL,
+		CompareOp::Greater => vk::CompareOp::GREATER,
+		CompareOp::NotEqual => vk::CompareOp::NOT_EQUAL,
+		CompareOp::GreaterOrEqual => vk::CompareOp::GREATER_OR_EQUAL,
+		CompareOp::Always => vk::CompareOp::ALWAYS,
 	}
 }

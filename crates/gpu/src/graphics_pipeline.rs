@@ -133,11 +133,17 @@ pub struct DepthStencilStates {
 	pub depth_write: bool,
 	#[serde(default = "DepthStencilStates::default_depth_compare")]
 	pub depth_compare: CompareOp,
+	#[serde(default = "DepthStencilStates::default_depth_stencil_format")]
+	pub depth_stencil_format: Format,
 }
 
 impl DepthStencilStates {
 	fn default_depth_compare() -> CompareOp {
 		CompareOp::Less
+	}
+
+	fn default_depth_stencil_format() -> Format {
+		Format::D24_S8
 	}
 }
 
@@ -147,6 +153,7 @@ impl Default for DepthStencilStates {
 			depth_test: false,
 			depth_write: false,
 			depth_compare: Self::default_depth_compare(),
+			depth_stencil_format: Self::default_depth_stencil_format(),
 		}
 	}
 }
@@ -703,9 +710,15 @@ impl Importer for GraphicsPipelineImporter {
 			)
 		};
 
+		let depth_attachment = if depth_stencil_states.depth_test {
+			Some(depth_stencil_states.depth_stencil_format)
+		} else {
+			None
+		};
+
 		let description = GraphicsPipelineDescription {
 			color_attachments,
-			depth_attachment: None, // TODO: Depth attachment,
+			depth_attachment,
 
 			shaders,
 

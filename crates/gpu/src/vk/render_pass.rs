@@ -78,7 +78,7 @@ impl RenderPass {
 			attachments.push(attachment.build());
 
 			let the_ref = vk::AttachmentReference::builder()
-				.attachment(num_attachments as u32)
+				.attachment((num_attachments - 1) as u32)
 				.layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 			Some(the_ref.build())
