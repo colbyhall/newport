@@ -131,8 +131,9 @@ impl Engine {
 					event: WindowEvent::KeyboardInput { input, .. },
 					..
 				} => {
-					let key = Input::key_from_code(input.scancode as u8)
-						.unwrap_or(platform::input::UNKNOWN);
+					let virt = input.virtual_keycode.unwrap();
+					println!("{:?}", virt as u32);
+					let key = Input::key_from_code(virt as u8).unwrap_or(platform::input::UNKNOWN);
 					let event = Event::Key {
 						key,
 						pressed: input.state == ElementState::Pressed,

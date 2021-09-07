@@ -1,8 +1,13 @@
+use winit::event::VirtualKeyCode;
+
 /// Variant enum for `Input` used to distinguish between input types
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InputVariant {
 	Unknown,
-	Key { code: u8, symbol: char },
+	Key {
+		virtual_code: VirtualKeyCode,
+		symbol: char,
+	},
 	MouseButton(u8),
 	MouseAxis,
 }
@@ -15,10 +20,13 @@ pub struct Input {
 }
 
 impl Input {
-	const fn key(display_name: &'static str, code: u8, symbol: char) -> Self {
+	const fn key(display_name: &'static str, virtual_code: VirtualKeyCode, symbol: char) -> Self {
 		Self {
 			display_name,
-			variant: InputVariant::Key { code, symbol },
+			variant: InputVariant::Key {
+				virtual_code,
+				symbol,
+			},
 		}
 	}
 
@@ -52,10 +60,14 @@ impl Input {
 	/// # Todo
 	///
 	/// * `(Speed)` - Use lookup table to speed up find.
-	pub fn key_from_code(in_code: u8) -> Option<Self> {
+	pub fn key_from_code(in_virtual_code: VirtualKeyCode) -> Option<Self> {
 		for input in ALL_INPUTS.iter() {
-			if let InputVariant::Key { code, symbol: _ } = input.variant {
-				if in_code == code {
+			if let InputVariant::Key {
+				virtual_code: code,
+				symbol: _,
+			} = input.variant
+			{
+				if in_virtual_code == code {
 					return Some(*input);
 				}
 			}
@@ -64,9 +76,12 @@ impl Input {
 		None
 	}
 
-	pub fn as_key(self) -> (u8, char) {
+	pub fn as_key(self) -> (VirtualKeyCode, char) {
 		match self.variant {
-			InputVariant::Key { code, symbol } => (code, symbol),
+			InputVariant::Key {
+				virtual_code: code,
+				symbol,
+			} => (code, symbol),
 			_ => unreachable!(),
 		}
 	}
@@ -84,47 +99,47 @@ pub const UNKNOWN: Input = Input {
 	variant: InputVariant::Unknown,
 };
 
-pub const KEY_BACKSPACE: Input = Input::key("Backspace", 0x08, '\0');
-pub const KEY_TAB: Input = Input::key("Tab", 0x09, '\t');
-pub const KEY_ENTER: Input = Input::key("Enter", 0x0D, '\0');
+pub const KEY_BACKSPACE: Input = Input::key("Backspace", VirtualKeyCode::Back, '\0');
+pub const KEY_TAB: Input = Input::key("Tab", VirtualKeyCode::Tab, '\t');
+pub const KEY_ENTER: Input = Input::key("Enter", VirtualKeyCode::Return, '\0');
 
-pub const KEY_0: Input = Input::key("Zero Key", 0x30, '0');
-pub const KEY_1: Input = Input::key("One Key", 0x31, '1');
-pub const KEY_2: Input = Input::key("Two Key", 0x32, '2');
-pub const KEY_3: Input = Input::key("Three Key", 0x33, '3');
-pub const KEY_4: Input = Input::key("Four Key", 0x34, '4');
-pub const KEY_5: Input = Input::key("Five Key", 0x35, '5');
-pub const KEY_6: Input = Input::key("Six Key", 0x36, '6');
-pub const KEY_7: Input = Input::key("Seven Key", 0x37, '7');
-pub const KEY_8: Input = Input::key("Eight Key", 0x38, '8');
-pub const KEY_9: Input = Input::key("Nine Key", 0x39, '9');
+pub const KEY_0: Input = Input::key("Zero Key", VirtualKeyCode::Key0, '0');
+pub const KEY_1: Input = Input::key("One Key", VirtualKeyCode::Key1, '1');
+pub const KEY_2: Input = Input::key("Two Key", VirtualKeyCode::Key2, '2');
+pub const KEY_3: Input = Input::key("Three Key", VirtualKeyCode::Key3, '3');
+pub const KEY_4: Input = Input::key("Four Key", VirtualKeyCode::Key4, '4');
+pub const KEY_5: Input = Input::key("Five Key", VirtualKeyCode::Key5, '5');
+pub const KEY_6: Input = Input::key("Six Key", VirtualKeyCode::Key6, '6');
+pub const KEY_7: Input = Input::key("Seven Key", VirtualKeyCode::Key7, '7');
+pub const KEY_8: Input = Input::key("Eight Key", VirtualKeyCode::Key8, '8');
+pub const KEY_9: Input = Input::key("Nine Key", VirtualKeyCode::Key9, '9');
 
-pub const KEY_A: Input = Input::key("A Key", 0x41, 'A');
-pub const KEY_B: Input = Input::key("B Key", 0x42, 'B');
-pub const KEY_C: Input = Input::key("C Key", 0x43, 'C');
-pub const KEY_D: Input = Input::key("D Key", 0x44, 'D');
-pub const KEY_E: Input = Input::key("E Key", 0x45, 'E');
-pub const KEY_F: Input = Input::key("F Key", 0x46, 'F');
-pub const KEY_G: Input = Input::key("G Key", 0x47, 'G');
-pub const KEY_H: Input = Input::key("H Key", 0x48, 'H');
-pub const KEY_I: Input = Input::key("I Key", 0x49, 'I');
-pub const KEY_J: Input = Input::key("J Key", 0x4A, 'J');
-pub const KEY_K: Input = Input::key("K Key", 0x4B, 'K');
-pub const KEY_L: Input = Input::key("L Key", 0x4C, 'L');
-pub const KEY_M: Input = Input::key("M Key", 0x4D, 'M');
-pub const KEY_N: Input = Input::key("N Key", 0x4E, 'N');
-pub const KEY_O: Input = Input::key("O Key", 0x4F, 'O');
-pub const KEY_P: Input = Input::key("P Key", 0x50, 'P');
-pub const KEY_Q: Input = Input::key("Q Key", 0x51, 'Q');
-pub const KEY_R: Input = Input::key("R Key", 0x52, 'R');
-pub const KEY_S: Input = Input::key("S Key", 0x53, 'S');
-pub const KEY_T: Input = Input::key("T Key", 0x54, 'T');
-pub const KEY_U: Input = Input::key("U Key", 0x55, 'U');
-pub const KEY_V: Input = Input::key("V Key", 0x56, 'V');
-pub const KEY_W: Input = Input::key("W Key", 0x57, 'W');
-pub const KEY_X: Input = Input::key("X Key", 0x58, 'X');
-pub const KEY_Y: Input = Input::key("Y Key", 0x59, 'Y');
-pub const KEY_Z: Input = Input::key("Z Key", 0x5A, 'Z');
+pub const KEY_A: Input = Input::key("A Key", VirtualKeyCode::A, 'A');
+pub const KEY_B: Input = Input::key("B Key", VirtualKeyCode::B, 'B');
+pub const KEY_C: Input = Input::key("C Key", VirtualKeyCode::C, 'C');
+pub const KEY_D: Input = Input::key("D Key", VirtualKeyCode::D, 'D');
+pub const KEY_E: Input = Input::key("E Key", VirtualKeyCode::E, 'E');
+pub const KEY_F: Input = Input::key("F Key", VirtualKeyCode::F, 'F');
+pub const KEY_G: Input = Input::key("G Key", VirtualKeyCode::G, 'G');
+pub const KEY_H: Input = Input::key("H Key", VirtualKeyCode::H, 'H');
+pub const KEY_I: Input = Input::key("I Key", VirtualKeyCode::I, 'I');
+pub const KEY_J: Input = Input::key("J Key", VirtualKeyCode::J, 'J');
+pub const KEY_K: Input = Input::key("K Key", VirtualKeyCode::K, 'K');
+pub const KEY_L: Input = Input::key("L Key", VirtualKeyCode::L, 'L');
+pub const KEY_M: Input = Input::key("M Key", VirtualKeyCode::M, 'M');
+pub const KEY_N: Input = Input::key("N Key", VirtualKeyCode::N, 'N');
+pub const KEY_O: Input = Input::key("O Key", VirtualKeyCode::O, 'O');
+pub const KEY_P: Input = Input::key("P Key", VirtualKeyCode::P, 'P');
+pub const KEY_Q: Input = Input::key("Q Key", VirtualKeyCode::Q, 'Q');
+pub const KEY_R: Input = Input::key("R Key", VirtualKeyCode::R, 'R');
+pub const KEY_S: Input = Input::key("S Key", VirtualKeyCode::S, 'S');
+pub const KEY_T: Input = Input::key("T Key", VirtualKeyCode::T, 'T');
+pub const KEY_U: Input = Input::key("U Key", VirtualKeyCode::U, 'U');
+pub const KEY_V: Input = Input::key("V Key", VirtualKeyCode::V, 'V');
+pub const KEY_W: Input = Input::key("W Key", VirtualKeyCode::W, 'W');
+pub const KEY_X: Input = Input::key("X Key", VirtualKeyCode::X, 'X');
+pub const KEY_Y: Input = Input::key("Y Key", VirtualKeyCode::Y, 'Y');
+pub const KEY_Z: Input = Input::key("Z Key", VirtualKeyCode::Z, 'Z');
 
 pub const KEY_ESCAPE: Input = Input::key("Escape Key", 0x1B, '\0');
 pub const KEY_SHIFT: Input = Input::key("Shift Key", 0x10, '\0');

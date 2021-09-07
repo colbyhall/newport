@@ -33,3 +33,7 @@ pub mod ecs {
 pub mod imgui {
 	pub use newport_imgui::*;
 }
+
+pub mod platform {
+	pub use newport_platform::*;
+}
