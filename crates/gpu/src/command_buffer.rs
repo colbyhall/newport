@@ -53,8 +53,13 @@ impl GraphicsRecorder {
 pub struct RenderPassRecorder(GraphicsRecorder);
 
 impl RenderPassRecorder {
-	pub fn clear(mut self, color: impl Into<Color>) -> Self {
-		self.0 .0.clear(color.into());
+	pub fn clear_color(mut self, color: impl Into<Color>) -> Self {
+		self.0 .0.clear_color(color.into());
+		self
+	}
+
+	pub fn clear_depth(mut self, depth: f32) -> Self {
+		self.0 .0.clear_depth(depth);
 		self
 	}
 

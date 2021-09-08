@@ -35,7 +35,7 @@ impl Module for GpuExample {
 				let gfx = device
 					.create_graphics_recorder()
 					.render_pass(&render_pass, &[&backbuffer], |recorder| {
-						recorder.clear(math::Color::GREEN)
+						recorder.clear_color(math::Color::GREEN)
 					})
 					.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present)
 					.finish();

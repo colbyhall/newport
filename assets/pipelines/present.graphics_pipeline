@@ -1,4 +1,9 @@
 GraphicsPipeline(
+	color_blend: Some((
+		src_blend_factor: SrcAlpha,
+		dst_blend_factor: OneMinusSrcAlpha,
+	)),
+	
 	resources: {
 		"texture": Texture,
 	},

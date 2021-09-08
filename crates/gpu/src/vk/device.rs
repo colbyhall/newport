@@ -32,6 +32,7 @@ use std::sync::{
 };
 use std::thread::ThreadId;
 
+use math::Vector2;
 use platform::raw_window_handle::{
 	HasRawWindowHandle,
 	RawWindowHandle,

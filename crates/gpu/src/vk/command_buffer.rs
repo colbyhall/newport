@@ -480,25 +480,58 @@ impl GraphicsCommandBuffer {
 		};
 	}
 
-	pub fn clear(&mut self, color: Color) {
+	pub fn clear_color(&mut self, color: Color) {
 		let attachments = self.current_attachments.as_ref().unwrap();
 		assert!(!attachments.is_empty());
 
 		let mut clear = Vec::with_capacity(attachments.len());
 		for (index, texture) in attachments.iter().enumerate() {
-			let clear_value = if texture.format.is_color() {
-				vk::ClearValue {
-					color: vk::ClearColorValue {
-						float32: [color.r, color.g, color.b, color.a],
-					},
-				}
-			} else {
-				vk::ClearValue {
-					depth_stencil: vk::ClearDepthStencilValue {
-						depth: 1.0,
-						stencil: 0,
-					},
-				}
+			if !texture.format.is_color() {
+				continue;
+			}
+
+			let clear_value = vk::ClearValue {
+				color: vk::ClearColorValue {
+					float32: [color.r, color.g, color.b, color.a],
+				},
+			};
+
+			clear.push(
+				vk::ClearAttachment::builder()
+					.aspect_mask(vk::ImageAspectFlags::COLOR)
+					.color_attachment(index as u32)
+					.clear_value(clear_value)
+					.build(),
+			);
+		}
+
+		let extent = vk::Extent2D::builder()
+			.width(attachments[0].width)
+			.height(attachments[0].height)
+			.build();
+		let clear_rect = vk::ClearRect::builder()
+			.rect(vk::Rect2D::builder().extent(extent).build())
+			.layer_count(1)
+			.build();
+		unsafe {
+			self.owner
+				.logical
+				.cmd_clear_attachments(self.command_buffer, &clear[..], &[clear_rect])
+		};
+	}
+
+	pub fn clear_depth(&mut self, depth: f32) {
+		let attachments = self.current_attachments.as_ref().unwrap();
+		assert!(!attachments.is_empty());
+
+		let mut clear = Vec::with_capacity(attachments.len());
+		for (index, texture) in attachments.iter().enumerate() {
+			if !texture.format.is_depth() {
+				continue;
+			}
+
+			let clear_value = vk::ClearValue {
+				depth_stencil: vk::ClearDepthStencilValue { depth, stencil: 0 },
 			};
 
 			clear.push(
