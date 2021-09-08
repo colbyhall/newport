@@ -3,6 +3,7 @@
 #![allow(incomplete_features)]
 #![feature(const_fn)]
 #![feature(const_type_name)]
+#![allow(arithmetic_overflow)]
 
 mod component;
 mod entity;

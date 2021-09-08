@@ -184,6 +184,15 @@ impl GraphicsCommandBuffer {
 				src_stage = vk::PipelineStageFlags::TOP_OF_PIPE;
 				dst_stage = vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS;
 			}
+			(Layout::Undefined, Layout::ColorAttachment) => {
+				barrier = barrier.dst_access_mask(
+					vk::AccessFlags::COLOR_ATTACHMENT_READ
+						| vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+				);
+
+				src_stage = vk::PipelineStageFlags::TOP_OF_PIPE;
+				dst_stage = vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
+			}
 			_ => unimplemented!(),
 		}
 

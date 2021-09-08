@@ -41,8 +41,8 @@ impl Schedule {
 		}
 	}
 
-	pub fn execute(&mut self, world: &World) {
-		for entry in self.entries.iter_mut() {
+	pub fn execute(&self, world: &World) {
+		for entry in self.entries.iter() {
 			match entry {
 				ScheduleEntry::Single(single) => single.run(world),
 				ScheduleEntry::Multiple(_) => todo!(),

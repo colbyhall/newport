@@ -37,3 +37,7 @@ pub mod imgui {
 pub mod platform {
 	pub use newport_platform::*;
 }
+
+pub mod serde {
+	pub use newport_serde::*;
+}

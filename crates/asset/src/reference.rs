@@ -48,6 +48,8 @@ pub struct AssetRef<T: Asset> {
 	pub(crate) uuid: UUID,
 }
 
+unsafe impl<T: Asset> Sync for AssetRef<T> {}
+
 impl<T: Asset> AssetRef<T> {
 	pub fn new(id: impl Into<UUID>) -> Result<AssetRef<T>> {
 		let engine = Engine::as_ref();

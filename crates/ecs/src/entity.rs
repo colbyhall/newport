@@ -16,7 +16,7 @@ use std::collections::{
 };
 use std::ops::Index;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
 #[serde(crate = "self::serde")]
 pub struct Entity {
 	index: u32,
@@ -87,7 +87,7 @@ impl EntitiesContainer {
 	pub fn get_info(&self, entity: Entity) -> Option<&EntityInfo> {
 		let index = entity.index as usize;
 
-		if self.entity_info.index(index).is_some() {
+		if self.entity_info.index(index).is_none() {
 			return None;
 		}
 
@@ -100,7 +100,7 @@ impl EntitiesContainer {
 
 	pub fn gather_with_active(&self, components: HashSet<VariantId>) -> Vec<Entity> {
 		let mut result = Vec::new();
-		for (index, _) in self
+		'outer: for (index, _) in self
 			.entity_info
 			.iter()
 			.enumerate()
@@ -110,7 +110,7 @@ impl EntitiesContainer {
 
 			for c in components.iter() {
 				if !active.contains(&c) {
-					continue;
+					continue 'outer;
 				}
 			}
 

@@ -28,7 +28,7 @@ impl VariantId {
 		const FNV_PRIME: u32 = 16777619;
 
 		const fn hash_rec(name: &'static str, index: usize, hash: u32) -> u32 {
-			let hash = hash * FNV_PRIME;
+			// let hash = hash * FNV_PRIME;
 			let hash = hash ^ name.as_bytes()[index] as u32;
 			if index != name.len() - 1 {
 				hash_rec(name, index + 1, hash)

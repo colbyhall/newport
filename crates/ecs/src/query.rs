@@ -40,6 +40,14 @@ impl<'a> Query<'a> {
 			iter: self.found.iter(),
 		}
 	}
+
+	pub fn len(&self) -> usize {
+		self.found.len()
+	}
+
+	pub fn is_empty(&self) -> bool {
+		self.len() == 0
+	}
 }
 
 pub struct EntityComponentIterator<'a: 'b, 'b> {
@@ -98,13 +106,13 @@ impl<'a: 'b, 'b> EntityComponents<'a, 'b> {
 		}
 	}
 
-	pub fn get_mut<T: Component>(&mut self) -> Option<&mut T> {
+	pub fn get_mut<T: Component>(&self) -> Option<&mut T> {
 		let entities = self.world.entities.read().unwrap();
 		let info = entities.get_info(self.entity)?;
 
 		let id = info.components.get(&T::VARIANT_ID)?;
 
-		let write = unsafe { self.writes.as_mut().get_mut(&T::VARIANT_ID)? };
+		let write = unsafe { (&mut *self.writes.as_ptr()).get_mut(&T::VARIANT_ID)? };
 		write.get_mut(*id)
 	}
 }
