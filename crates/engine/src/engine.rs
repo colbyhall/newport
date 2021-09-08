@@ -127,6 +127,11 @@ impl Engine {
 					..
 				} => {
 					*control_flow = ControlFlow::Exit;
+
+					// Set the window to be invisible immedietely
+					if let Some(window) = engine.window() {
+						window.set_visible(false);
+					}
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::KeyboardInput { input, .. },
