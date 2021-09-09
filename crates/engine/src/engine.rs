@@ -110,6 +110,7 @@ impl Engine {
 		let mut frame_count = 0;
 		let mut time = 0.0;
 		let mut do_first_show = true;
+		let mut displayed = false;
 
 		let mut last_frame_time = Instant::now();
 		event_loop.run(move |event, _, control_flow| {
@@ -130,6 +131,7 @@ impl Engine {
 
 					// Set the window to be invisible immedietely
 					if let Some(window) = engine.window() {
+						window.set_maximized(false);
 						window.set_visible(false);
 					}
 				}
@@ -137,17 +139,19 @@ impl Engine {
 					event: WindowEvent::KeyboardInput { input, .. },
 					..
 				} => {
-					let key = Input::key_from_code(input.virtual_keycode.unwrap())
-						.unwrap_or(platform::input::UNKNOWN);
-					let event = Event::Key {
-						key,
-						pressed: input.state == ElementState::Pressed,
-					};
+					if let Some(virtual_keycode) = input.virtual_keycode {
+						let key = Input::key_from_code(virtual_keycode)
+							.unwrap_or(platform::input::UNKNOWN);
+						let event = Event::Key {
+							key,
+							pressed: input.state == ElementState::Pressed,
+						};
 
-					builder
-						.process_input
-						.iter()
-						.for_each(|process| process(engine, &event));
+						builder
+							.process_input
+							.iter()
+							.for_each(|process| process(engine, &event));
+					}
 				}
 				WinitEvent::DeviceEvent {
 					event: DeviceEvent::MouseMotion { delta },
@@ -274,13 +278,18 @@ impl Engine {
 
 					builder.tick.iter().for_each(|tick| tick(engine, dt));
 
-					if let Some(window) = engine.window.as_ref() {
-						window.request_redraw();
+					if !displayed {
+						if let Some(window) = engine.window.as_ref() {
+							window.request_redraw();
+						}
+					} else {
+						displayed = false;
 					}
 				}
 				WinitEvent::RedrawRequested(_) => match &builder.display {
 					Some(display) => {
 						(display)(engine);
+						displayed = true;
 
 						if do_first_show {
 							engine.window.as_ref().unwrap().set_visible(true);
