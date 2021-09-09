@@ -149,6 +149,16 @@ impl Matrix4 {
 
 		result
 	}
+
+	pub fn scale(xyz: impl Into<Vector3>) -> Self {
+		let xyz = xyz.into();
+		Self {
+			x_axis: Vector4::new(xyz.x, 0.0, 0.0, 0.0),
+			y_axis: Vector4::new(0.0, xyz.y, 0.0, 0.0),
+			z_axis: Vector4::new(0.0, 0.0, xyz.z, 0.0),
+			w_axis: Vector4::new(0.0, 0.0, 0.0, 1.0),
+		}
+	}
 }
 
 impl Mul for Matrix4 {

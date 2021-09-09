@@ -39,7 +39,11 @@ pub struct EntityBuilder<'a> {
 
 impl<'a> EntityBuilder<'a> {
 	pub fn with<T: Component>(mut self, t: T) -> Self {
-		let mut write = self.world.components.write::<T>().unwrap();
+		let mut write = self
+			.world
+			.components
+			.write::<T>()
+			.expect("Component type \"{}\" not registered.");
 		self.entity_info
 			.components
 			.insert(T::VARIANT_ID, write.insert(t));

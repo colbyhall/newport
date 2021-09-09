@@ -25,7 +25,7 @@ pub struct VariantId(u32);
 impl VariantId {
 	pub const fn new(name: &'static str) -> Self {
 		const FNV_OFFSET_BASIC: u32 = 2166136261;
-		const FNV_PRIME: u32 = 16777619;
+		// const FNV_PRIME: u32 = 16777619;
 
 		const fn hash_rec(name: &'static str, index: usize, hash: u32) -> u32 {
 			// let hash = hash * FNV_PRIME;

@@ -467,9 +467,11 @@ impl Importer for GraphicsPipelineImporter {
 					result.push_str(&name_capitalized);
 					result.push_str(" result = buffer.Load<");
 					result.push_str(&name_capitalized);
-					result.push_str(">(push_constants.");
+					result.push_str(">((push_constants.");
 					result.push_str(name);
-					result.push_str(" & 0xffff);\n\n");
+					result.push_str(" & 0xffff) * sizeof(");
+					result.push_str(&name_capitalized);
+					result.push_str("));");
 
 					// Transpose any matrices
 					for ConstantMember(name, variant) in constants.iter() {
