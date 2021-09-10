@@ -24,7 +24,7 @@ impl Module for GpuExample {
 
 	fn depends_on(builder: Builder) -> Builder {
 		builder
-			.display(|_engine| {
+			.display(|| {
 				let device = Gpu::device();
 
 				let backbuffer = device

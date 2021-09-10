@@ -113,7 +113,7 @@ impl Engine {
 		event_loop.run(move |event, _, control_flow| {
 			*control_flow = ControlFlow::Poll;
 
-			let height = if let Some(window) = engine.window() {
+			let height = if let Some(window) = Engine::window() {
 				window.inner_size().height as f32
 			} else {
 				0.0
@@ -127,7 +127,7 @@ impl Engine {
 					*control_flow = ControlFlow::Exit;
 
 					// Set the window to be invisible immedietely
-					if let Some(window) = engine.window() {
+					if let Some(window) = Engine::window() {
 						window.set_maximized(false);
 						window.set_visible(false);
 					}
@@ -147,7 +147,7 @@ impl Engine {
 						builder
 							.process_input
 							.iter()
-							.for_each(|process| process(engine, &event));
+							.for_each(|process| process(&event));
 					}
 				}
 				WinitEvent::DeviceEvent {
@@ -159,7 +159,7 @@ impl Engine {
 					builder
 						.process_input
 						.iter()
-						.for_each(|process| process(engine, &event));
+						.for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::MouseInput { button, state, .. },
@@ -179,7 +179,7 @@ impl Engine {
 					builder
 						.process_input
 						.iter()
-						.for_each(|process| process(engine, &event));
+						.for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::CursorMoved { position, .. },
@@ -189,7 +189,7 @@ impl Engine {
 					builder
 						.process_input
 						.iter()
-						.for_each(|process| process(engine, &event));
+						.for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::Resized(size),
@@ -199,7 +199,7 @@ impl Engine {
 					builder
 						.process_input
 						.iter()
-						.for_each(|process| process(engine, &event));
+						.for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::MouseWheel { delta, .. },
@@ -214,7 +214,7 @@ impl Engine {
 					builder
 						.process_input
 						.iter()
-						.for_each(|process| process(engine, &event));
+						.for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::ReceivedCharacter(c),
@@ -224,7 +224,7 @@ impl Engine {
 					builder
 						.process_input
 						.iter()
-						.for_each(|process| process(engine, &event));
+						.for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::Focused(focused),
@@ -238,7 +238,7 @@ impl Engine {
 					builder
 						.process_input
 						.iter()
-						.for_each(|process| process(engine, &event));
+						.for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::CursorEntered { .. },
@@ -248,7 +248,7 @@ impl Engine {
 					builder
 						.process_input
 						.iter()
-						.for_each(|process| process(engine, &event));
+						.for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::CursorLeft { .. },
@@ -258,7 +258,7 @@ impl Engine {
 					builder
 						.process_input
 						.iter()
-						.for_each(|process| process(engine, &event));
+						.for_each(|process| process(&event));
 				}
 				WinitEvent::MainEventsCleared => {
 					let now = Instant::now();
@@ -273,7 +273,7 @@ impl Engine {
 					}
 					frame_count += 1;
 
-					builder.tick.iter().for_each(|tick| tick(engine, dt));
+					builder.tick.iter().for_each(|tick| tick(dt));
 
 					if !displayed {
 						if let Some(window) = engine.window.as_ref() {
@@ -285,7 +285,7 @@ impl Engine {
 				}
 				WinitEvent::RedrawRequested(_) => match &builder.display {
 					Some(display) => {
-						(display)(engine);
+						(display)();
 						displayed = true;
 
 						if do_first_show {
@@ -301,48 +301,55 @@ impl Engine {
 	}
 
 	/// Returns the global [`Engine`] as a ref
-	pub fn as_ref() -> &'static Engine {
+	fn as_ref() -> &'static Engine {
 		unsafe { ENGINE.as_ref().unwrap() }
 	}
 
-	pub fn module<T: Module>(&self) -> Option<&T> {
+	unsafe fn as_mut() -> &'static mut Engine {
+		ENGINE.as_mut().unwrap()
+	}
+
+	pub fn module<T: Module>() -> Option<&'static T> {
+		let engine = Engine::as_ref();
+
 		let id = TypeId::of::<T>();
 
-		let module = self.modules.get(&id)?;
+		let module = engine.modules.get(&id)?;
 		module.downcast_ref::<T>()
 	}
 
-	pub unsafe fn module_mut<T: Module>(&self) -> Option<&mut T> {
-		let self_mut: &mut Self = &mut *(self as *const Self as *mut Self);
+	pub unsafe fn module_mut<T: Module>() -> Option<&'static mut T> {
+		let engine = Engine::as_mut();
 
 		let id = TypeId::of::<T>();
-		let module = self_mut.modules.get_mut(&id)?;
+		let module = engine.modules.get_mut(&id)?;
 		module.downcast_mut::<T>()
 	}
 
-	pub fn register<T: Register>(&self) -> Option<Vec<T>> {
+	pub fn register<T: Register>() -> Option<Vec<T>> {
+		let engine = Engine::as_ref();
 		let id = TypeId::of::<T>();
 
-		let register = self.registers.get(&id)?;
+		let register = engine.registers.get(&id)?;
 		Some(register.downcast_ref::<Vec<T>>()?.clone())
 	}
 
 	/// Returns the name of the engine runnable
-	pub fn name(&self) -> &str {
-		&self.name
+	pub fn name() -> &'static str {
+		&Engine::as_ref().name
 	}
 
 	/// Returns the window that the engine draws into
-	pub fn window(&self) -> Option<&Window> {
-		self.window.as_ref()
+	pub fn window() -> Option<&'static Window> {
+		Engine::as_ref().window.as_ref()
 	}
 
-	pub fn shutdown(&self) {
-		self.is_running.store(false, Ordering::Relaxed);
+	pub fn shutdown() {
+		Engine::as_ref().is_running.store(false, Ordering::Relaxed);
 	}
 
-	pub fn fps(&self) -> i32 {
-		self.fps.load(Ordering::Relaxed)
+	pub fn fps() -> i32 {
+		Engine::as_ref().fps.load(Ordering::Relaxed)
 	}
 
 	pub fn builder() -> Builder {

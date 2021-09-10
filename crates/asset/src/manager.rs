@@ -50,12 +50,11 @@ pub struct AssetManager {
 
 impl Module for AssetManager {
 	fn new() -> Self {
-		let engine = Engine::as_ref();
 		let asset_cache = CacheRef::<PathCache>::new().unwrap();
 
 		let mut assets = HashMap::with_capacity(asset_cache.uuid_to_path.len());
 
-		let variants = engine.register::<Variant>().unwrap_or_default();
+		let variants = Engine::register::<Variant>().unwrap_or_default();
 		for (id, path) in asset_cache.uuid_to_path.iter() {
 			let ext = path.extension().unwrap_or_default();
 
@@ -84,7 +83,7 @@ impl Module for AssetManager {
 			);
 		}
 
-		let collections = engine.register::<Collection>().unwrap_or_default();
+		let collections = Engine::register::<Collection>().unwrap_or_default();
 
 		Self {
 			variants,

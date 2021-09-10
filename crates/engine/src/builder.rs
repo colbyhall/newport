@@ -25,9 +25,9 @@ pub struct Builder {
 	pub(crate) entries: Vec<BuilderEntry>,
 	pub(crate) name: Option<String>,
 
-	pub(crate) process_input: Vec<Box<dyn Fn(&Engine, &Event) + 'static>>,
-	pub(crate) tick: Vec<Box<dyn Fn(&Engine, f32) + 'static>>,
-	pub(crate) display: Option<Box<dyn Fn(&Engine) + 'static>>, // There can only be one display method
+	pub(crate) process_input: Vec<Box<dyn Fn(&Event) + 'static>>,
+	pub(crate) tick: Vec<Box<dyn Fn(f32) + 'static>>,
+	pub(crate) display: Option<Box<dyn Fn() + 'static>>, // There can only be one display method
 
 	pub(crate) registers: Option<HashMap<TypeId, Box<dyn Any>>>,
 }
@@ -86,18 +86,18 @@ impl Builder {
 		self
 	}
 
-	pub fn process_input(mut self, f: impl Fn(&Engine, &Event) + 'static) -> Self {
+	pub fn process_input(mut self, f: impl Fn(&Event) + 'static) -> Self {
 		self.process_input.push(Box::new(f));
 		self
 	}
 
 	/// Adds a tick closure to the list
-	pub fn tick(mut self, f: impl Fn(&Engine, f32) + 'static) -> Self {
+	pub fn tick(mut self, f: impl Fn(f32) + 'static) -> Self {
 		self.tick.push(Box::new(f));
 		self
 	}
 
-	pub fn display(mut self, f: impl Fn(&Engine) + 'static) -> Self {
+	pub fn display(mut self, f: impl Fn() + 'static) -> Self {
 		self.display = Some(Box::new(f));
 		self
 	}

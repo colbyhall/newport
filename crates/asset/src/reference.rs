@@ -52,8 +52,7 @@ unsafe impl<T: Asset> Sync for AssetRef<T> {}
 
 impl<T: Asset> AssetRef<T> {
 	pub fn new(id: impl Into<UUID>) -> Result<AssetRef<T>> {
-		let engine = Engine::as_ref();
-		let manager: &AssetManager = engine.module().ok_or(AssetRefError::NoManager)?;
+		let manager: &AssetManager = Engine::module().ok_or(AssetRefError::NoManager)?;
 
 		let id = id.into();
 		let assets = manager.assets.read().unwrap();

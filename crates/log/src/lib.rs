@@ -71,7 +71,7 @@ static LOGS_PATH: &str = "logs/";
 
 impl Logger {
 	pub fn log(verb: Verbosity, message: &str) {
-		let logger: &Logger = Engine::as_ref().module().unwrap();
+		let logger: &Logger = Engine::module().unwrap();
 
 		// Get verbosity as a &'static str
 		let output = {

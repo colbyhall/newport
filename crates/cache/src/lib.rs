@@ -40,8 +40,7 @@ pub struct CacheRef<T: Cache> {
 
 impl<T: Cache> CacheRef<T> {
 	pub fn new() -> Option<Self> {
-		let engine = Engine::as_ref();
-		let manager: &CacheManager = engine.module()?;
+		let manager: &CacheManager = Engine::module()?;
 
 		let cache = manager.caches.get(&TypeId::of::<T>())?;
 
@@ -61,14 +60,12 @@ impl<T: Cache> Deref for CacheRef<T> {
 
 impl Module for CacheManager {
 	fn new() -> Self {
-		let engine = Engine::as_ref();
-
 		let path = Path::new(CACHE_PATH);
 		if !path.exists() {
 			fs::create_dir(path).unwrap();
 		}
 
-		let mut cache_registers: Vec<CacheRegister> = engine.register().unwrap_or_default();
+		let mut cache_registers: Vec<CacheRegister> = Engine::register().unwrap_or_default();
 		let mut registers = HashMap::with_capacity(cache_registers.len());
 		cache_registers.drain(..).for_each(|f| {
 			registers.insert(f.id, f);
@@ -97,7 +94,7 @@ impl Module for CacheManager {
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
-		builder.tick(|_engine: &Engine, _: f32| {
+		builder.tick(|_| {
 			// TODO: Reload
 		})
 	}

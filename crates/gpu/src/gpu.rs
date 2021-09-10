@@ -18,8 +18,7 @@ pub struct Gpu {
 
 impl Gpu {
 	pub fn device() -> &'static Device {
-		let gpu: &Gpu = Engine::as_ref()
-			.module()
+		let gpu: &Gpu = Engine::module()
 			.expect("Engine must depend on Gpu module if the global device is to be used. ");
 		&gpu.device
 	}
@@ -27,10 +26,8 @@ impl Gpu {
 
 impl Module for Gpu {
 	fn new() -> Self {
-		let engine = Engine::as_ref();
-
 		let instance = Instance::new().unwrap();
-		let device = instance.create_device(engine.window()).unwrap();
+		let device = instance.create_device(Engine::window()).unwrap();
 
 		Self { device }
 	}
