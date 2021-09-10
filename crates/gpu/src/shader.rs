@@ -20,8 +20,6 @@ use crate::{
 	Result,
 };
 
-use engine::Engine;
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ShaderVariant {
 	Vertex,
@@ -50,13 +48,7 @@ impl<'a> ShaderBuilder<'a> {
 	pub fn spawn(self) -> Result<Shader> {
 		let device = match self.device {
 			Some(device) => device,
-			None => {
-				let engine = Engine::as_ref();
-				let gpu: &Gpu = engine
-					.module()
-					.expect("Engine must depend on Gpu module if no device is provided.");
-				gpu.device()
-			}
+			None => Gpu::device(),
 		};
 
 		Ok(Shader(api::Shader::new(
@@ -72,7 +64,7 @@ impl<'a> ShaderBuilder<'a> {
 pub struct Shader(pub(crate) Arc<api::Shader>);
 
 impl Shader {
-	pub fn builder<'a>(binary: &'a [u8], variant: ShaderVariant) -> ShaderBuilder<'a> {
+	pub fn builder(binary: &'_ [u8], variant: ShaderVariant) -> ShaderBuilder<'_> {
 		ShaderBuilder {
 			binary,
 			variant,

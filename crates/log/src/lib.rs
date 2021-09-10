@@ -5,13 +5,13 @@ use std::fs::{
 	create_dir,
 	File,
 };
-use std::io::Write;
 use std::panic;
 use std::path::{
 	Path,
 	PathBuf,
 };
-use std::ptr::null_mut;
+
+use std::io::Write;
 use std::sync::Mutex;
 
 /// Global structure that contains the current log file
@@ -57,15 +57,6 @@ impl Module for Logger {
 			file: Mutex::new(file),
 		}
 	}
-
-	fn depends_on(builder: Builder) -> Builder {
-		builder.post_init(|engine: &Engine| {
-			let logger = engine.module::<Logger>().unwrap();
-
-			// UNSAFE: Set the global ptr
-			unsafe { LOGGER = logger as *const Logger as *mut Logger };
-		})
-	}
 }
 
 /// Level of verbosity in a log
@@ -77,14 +68,11 @@ pub enum Verbosity {
 }
 
 static LOGS_PATH: &str = "logs/";
-static mut LOGGER: *mut Logger = null_mut();
 
 impl Logger {
-	pub fn set_global(&mut self) {
-		unsafe { LOGGER = self };
-	}
-
 	pub fn log(verb: Verbosity, message: &str) {
+		let logger: &Logger = Engine::as_ref().module().unwrap();
+
 		// Get verbosity as a &'static str
 		let output = {
 			let verb = match verb {
@@ -110,16 +98,9 @@ impl Logger {
 			)
 		};
 
-		unsafe {
-			if LOGGER.is_null() {
-				println!("{}", output); // UNSAFE: Not a thread safe print
-			} else {
-				let logger = LOGGER.as_ref().unwrap();
-				let mut file = logger.file.lock().unwrap();
-				writeln!(file, "{}", output).unwrap();
-				println!("{}", output)
-			}
-		}
+		let mut file = logger.file.lock().unwrap();
+		writeln!(file, "{}", output).unwrap();
+		println!("{}", output)
 	}
 }
 

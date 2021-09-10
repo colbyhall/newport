@@ -6,8 +6,6 @@ use crate::{
 	Result,
 };
 
-use engine::Engine;
-
 use std::{
 	marker::PhantomData,
 	sync::Arc,
@@ -43,13 +41,7 @@ impl<'a, T: Sized> BufferBuilder<'a, T> {
 	pub fn spawn(self) -> Result<Buffer<T>> {
 		let device = match self.device {
 			Some(device) => device,
-			None => {
-				let engine = Engine::as_ref();
-				let gpu: &Gpu = engine
-					.module()
-					.expect("Engine must depend on Gpu module if no device is provided.");
-				gpu.device()
-			}
+			None => Gpu::device(),
 		};
 
 		Ok(Buffer {
@@ -73,6 +65,19 @@ pub struct Buffer<T: Sized> {
 }
 
 impl<T: Sized> Buffer<T> {
+	pub fn new(usage: BufferUsage, memory: MemoryType, len: usize) -> Result<Buffer<T>> {
+		Buffer::builder(usage, memory, len).spawn()
+	}
+
+	pub fn new_in(
+		usage: BufferUsage,
+		memory: MemoryType,
+		len: usize,
+		device: &Device,
+	) -> Result<Buffer<T>> {
+		Buffer::builder(usage, memory, len).device(device).spawn()
+	}
+
 	pub fn copy_to(&self, data: &[T]) {
 		self.api.copy_to::<T>(data)
 	}

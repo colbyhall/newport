@@ -73,6 +73,10 @@ impl Quaternion {
 		self.len_sq().sqrt()
 	}
 
+	pub fn is_empty(self) -> bool {
+		self.len() < crate::SMALL_NUMBER
+	}
+
 	pub fn norm(self) -> Self {
 		let len = self.len();
 

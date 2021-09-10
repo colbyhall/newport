@@ -104,9 +104,6 @@ impl Engine {
 			ENGINE.as_ref().unwrap()
 		};
 
-		// Do post init
-		builder.post_inits.drain(..).for_each(|init| init(engine));
-
 		let mut frame_count = 0;
 		let mut time = 0.0;
 		let mut do_first_show = true;
@@ -300,14 +297,6 @@ impl Engine {
 				},
 				_ => (),
 			}
-
-			// Do pre shutdowns
-			if *control_flow == ControlFlow::Exit {
-				builder
-					.pre_shutdown
-					.drain(..)
-					.for_each(|shutdown| shutdown(engine));
-			}
 		});
 	}
 
@@ -323,13 +312,13 @@ impl Engine {
 		module.downcast_ref::<T>()
 	}
 
-	pub unsafe fn module_mut<T: Module>(&self) -> Option<&mut T> {
-		let self_mut: &mut Self = &mut *(self as *const Self as *mut Self);
+	// pub unsafe fn module_mut<T: Module>(&self) -> Option<&mut T> {
+	// 	let self_mut: &mut Self = &mut *(self as *const Self as *mut Self);
 
-		let id = TypeId::of::<T>();
-		let module = self_mut.modules.get_mut(&id)?;
-		module.downcast_mut::<T>()
-	}
+	// 	let id = TypeId::of::<T>();
+	// 	let module = self_mut.modules.get_mut(&id)?;
+	// 	module.downcast_mut::<T>()
+	// }
 
 	pub fn register<T: Register>(&self) -> Option<Vec<T>> {
 		let id = TypeId::of::<T>();

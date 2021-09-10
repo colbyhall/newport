@@ -61,6 +61,10 @@ impl Vector3 {
 		self.len_sq().sqrt()
 	}
 
+	pub fn is_empty(self) -> bool {
+		self.len() < crate::SMALL_NUMBER
+	}
+
 	pub fn abs(self) -> Self {
 		Self::new(self.x.abs(), self.y.abs(), self.z.abs())
 	}

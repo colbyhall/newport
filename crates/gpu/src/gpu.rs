@@ -17,8 +17,11 @@ pub struct Gpu {
 }
 
 impl Gpu {
-	pub fn device(&self) -> &Device {
-		&self.device
+	pub fn device() -> &'static Device {
+		let gpu: &Gpu = Engine::as_ref()
+			.module()
+			.expect("Engine must depend on Gpu module if the global device is to be used. ");
+		&gpu.device
 	}
 }
 

@@ -1,5 +1,5 @@
 use newport::{
-	asset,
+	asset::AssetManager,
 	engine::{
 		Builder,
 		Engine,
@@ -7,12 +7,11 @@ use newport::{
 	},
 	gpu::{
 		Gpu,
+		GraphicsRecorder,
 		Layout,
 	},
 	math,
 };
-
-use asset::AssetManager;
 
 // First thing first is to define our module struct
 struct GpuExample;
@@ -25,24 +24,18 @@ impl Module for GpuExample {
 
 	fn depends_on(builder: Builder) -> Builder {
 		builder
-			.tick(|engine: &Engine, _dt| {
-				let gpu = engine.module::<Gpu>().unwrap();
-				let device = gpu.device();
+			.display(|_engine| {
+				let device = Gpu::device();
 
-				let backbuffer = device.acquire_backbuffer();
-				let render_pass = gpu.backbuffer_render_pass();
+				let backbuffer = device
+					.acquire_backbuffer()
+					.expect("Something is wrong with the swapchain");
 
-				let gfx = device
-					.create_graphics_recorder()
-					.render_pass(&render_pass, &[&backbuffer], |recorder| {
-						recorder.clear_color(math::Color::GREEN)
-					})
+				let receipt = GraphicsRecorder::new()
+					.render_pass(&[&backbuffer], |ctx| ctx.clear_color(math::Color::GREEN))
 					.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present)
-					.finish();
-
-				let receipt = device.submit_graphics(vec![gfx], &[]);
+					.submit();
 				device.display(&[receipt]);
-				device.wait_for_idle();
 			})
 			.module::<AssetManager>()
 			.module::<Gpu>()

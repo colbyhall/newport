@@ -51,19 +51,19 @@ struct Swapchain {
 }
 
 impl Swapchain {
-	fn new(device: Arc<Device>) -> Self {
+	fn new(device: Arc<Device>) -> Result<Self> {
 		assert_eq!(device.surface.is_some(), true);
 
 		let swapchain_khr = khr::Swapchain::new(&device.owner.instance, &device.logical);
 		let surface_khr = khr::Surface::new(&device.owner.entry, &device.owner.instance);
 
 		unsafe {
-			let capabilities = surface_khr
-				.get_physical_device_surface_capabilities(device.physical, device.surface.unwrap())
-				.unwrap();
+			let capabilities = surface_khr.get_physical_device_surface_capabilities(
+				device.physical,
+				device.surface.unwrap(),
+			)?;
 			let formats = surface_khr
-				.get_physical_device_surface_formats(device.physical, device.surface.unwrap())
-				.unwrap();
+				.get_physical_device_surface_formats(device.physical, device.surface.unwrap())?;
 
 			let mut selected_format = None;
 			for it in formats.iter() {
@@ -100,9 +100,9 @@ impl Swapchain {
 				.clipped(true)
 				.build();
 
-			let handle = swapchain_khr.create_swapchain(&create_info, None).unwrap();
+			let handle = swapchain_khr.create_swapchain(&create_info, None)?;
 
-			let images = swapchain_khr.get_swapchain_images(handle).unwrap();
+			let images = swapchain_khr.get_swapchain_images(handle)?;
 
 			let mut backbuffers = Vec::with_capacity(images.len());
 			for it in images.iter() {
@@ -124,10 +124,7 @@ impl Swapchain {
 						layer_count: 1,
 					});
 
-				let view = device
-					.logical
-					.create_image_view(&create_info, None)
-					.unwrap();
+				let view = device.logical.create_image_view(&create_info, None)?;
 
 				backbuffers.push(Arc::new(Texture {
 					owner: device.clone(),
@@ -148,12 +145,12 @@ impl Swapchain {
 				}));
 			}
 
-			Self {
+			Ok(Self {
 				handle,
 
 				backbuffers,
 				current: None,
-			}
+			})
 		}
 	}
 }
@@ -552,7 +549,7 @@ impl Device {
 
 		{
 			let mut swapchain = result.swapchain.lock().unwrap();
-			*swapchain = Some(Swapchain::new(result.clone()));
+			*swapchain = Some(Swapchain::new(result.clone())?);
 		}
 
 		// Create null texture
@@ -588,7 +585,7 @@ impl Device {
 		Ok(result)
 	}
 
-	pub fn acquire_backbuffer(&self) -> Arc<Texture> {
+	pub fn acquire_backbuffer(&self) -> Result<Arc<Texture>> {
 		assert_eq!(self.surface.is_some(), true);
 
 		let mut swapchain = self.swapchain.lock().unwrap();
@@ -596,39 +593,24 @@ impl Device {
 		let semaphore_create_info = vk::SemaphoreCreateInfo::builder();
 		let semaphore = unsafe {
 			self.logical
-				.create_semaphore(&semaphore_create_info, None)
-				.unwrap()
+				.create_semaphore(&semaphore_create_info, None)?
 		};
 
 		let swapchain_khr = khr::Swapchain::new(&self.owner.instance, &self.logical);
-		let mut result = unsafe {
+		let (index, _) = unsafe {
 			swapchain_khr.acquire_next_image(
 				swapchain.as_ref().unwrap().handle,
 				1 << 63,
 				semaphore,
 				vk::Fence::default(),
 			)
-		};
-		if result.is_err() {
-			*swapchain = Some(Swapchain::new(
-				swapchain.as_ref().unwrap().backbuffers[0].owner.clone(),
-			));
-			result = unsafe {
-				swapchain_khr.acquire_next_image(
-					swapchain.as_ref().unwrap().handle,
-					1 << 63,
-					semaphore,
-					vk::Fence::default(),
-				)
-			};
-		}
-		let (index, _) = result.unwrap();
+		}?;
 
 		swapchain.as_mut().unwrap().current = Some(index as usize);
 
 		unsafe { self.logical.destroy_semaphore(semaphore, None) };
 
-		swapchain.as_ref().unwrap().backbuffers[index as usize].clone()
+		Ok(swapchain.as_ref().unwrap().backbuffers[index as usize].clone())
 	}
 
 	pub fn submit_graphics(
@@ -735,9 +717,8 @@ impl Device {
 			swapchain_khr.queue_present(*queue, &present_info)
 		};
 		if result.is_err() {
-			*swapchain = Some(Swapchain::new(
-				swapchain.as_ref().unwrap().backbuffers[0].owner.clone(),
-			));
+			*swapchain =
+				Swapchain::new(swapchain.as_ref().unwrap().backbuffers[0].owner.clone()).ok();
 		}
 	}
 

@@ -3,6 +3,7 @@ use crate::{
 
 	GraphicsCommandBuffer,
 	Receipt,
+	Result,
 	Texture,
 };
 
@@ -12,8 +13,8 @@ use std::sync::Arc;
 pub struct Device(pub(crate) Arc<api::Device>);
 
 impl Device {
-	pub fn acquire_backbuffer(&self) -> Texture {
-		Texture(self.0.acquire_backbuffer())
+	pub fn acquire_backbuffer(&self) -> Result<Texture> {
+		Ok(Texture(self.0.acquire_backbuffer()?))
 	}
 
 	pub fn submit_graphics(

@@ -103,40 +103,35 @@ impl Importer for MeshGltfImporter {
 			}
 		}
 
-		let transfer_vertex = gpu::Buffer::builder(
+		let transfer_vertex = gpu::Buffer::new(
 			BufferUsage::TRANSFER_SRC,
 			MemoryType::HostVisible,
 			vertices.len(),
-		)
-		.spawn()?;
+		)?;
 		transfer_vertex.copy_to(&vertices[..]);
 
-		let transfer_index = gpu::Buffer::builder(
+		let transfer_index = gpu::Buffer::new(
 			BufferUsage::TRANSFER_SRC,
 			MemoryType::HostVisible,
 			indices.len(),
-		)
-		.spawn()?;
+		)?;
 		transfer_index.copy_to(&indices[..]);
 
-		let vertex_buffer = gpu::Buffer::builder(
+		let vertex_buffer = gpu::Buffer::new(
 			BufferUsage::TRANSFER_DST | BufferUsage::VERTEX,
 			MemoryType::DeviceLocal,
 			vertices.len(),
-		)
-		.spawn()?;
+		)?;
 
-		let index_buffer = gpu::Buffer::builder(
+		let index_buffer = gpu::Buffer::new(
 			BufferUsage::TRANSFER_DST | BufferUsage::INDEX,
 			MemoryType::DeviceLocal,
 			indices.len(),
-		)
-		.spawn()?;
+		)?;
 
 		GraphicsRecorder::new()
 			.copy_buffer_to_buffer(&vertex_buffer, &transfer_vertex)
 			.copy_buffer_to_buffer(&index_buffer, &transfer_index)
-			.finish()
 			.submit()
 			.wait();
 

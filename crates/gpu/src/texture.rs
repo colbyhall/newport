@@ -10,8 +10,6 @@ use crate::{
 	Result,
 };
 
-use engine::Engine;
-
 use bitflags::bitflags;
 
 use asset::Asset;
@@ -121,13 +119,7 @@ impl<'a> TextureBuilder<'a> {
 	pub fn spawn(self) -> Result<Texture> {
 		let device = match self.device {
 			Some(device) => device,
-			None => {
-				let engine = Engine::as_ref();
-				let gpu: &Gpu = engine
-					.module()
-					.expect("Engine must depend on Gpu module if no device is provided.");
-				gpu.device()
-			}
+			None => Gpu::device(),
 		};
 
 		Ok(Texture(api::Texture::new(
@@ -184,6 +176,29 @@ impl Texture {
 			device: None,
 		}
 	}
+
+	pub fn new(
+		usage: TextureUsage,
+		format: Format,
+		width: u32,
+		height: u32,
+		depth: u32,
+	) -> Result<Self> {
+		Texture::builder(usage, format, width, height, depth).spawn()
+	}
+
+	pub fn new_in(
+		usage: TextureUsage,
+		format: Format,
+		width: u32,
+		height: u32,
+		depth: u32,
+		device: &Device,
+	) -> Result<Self> {
+		Texture::builder(usage, format, width, height, depth)
+			.device(device)
+			.spawn()
+	}
 }
 
 impl Asset for Texture {}
@@ -207,12 +222,11 @@ impl Importer for TextureImporter {
 					"Currently vulkan only supports 4 byte formats"
 				);
 
-				let pixel_buffer = crate::Buffer::builder(
+				let pixel_buffer = crate::Buffer::new(
 					BufferUsage::TRANSFER_SRC,
 					MemoryType::HostVisible,
 					image.data.len(),
-				)
-				.spawn()?;
+				)?;
 				pixel_buffer.copy_to(&image.data[..]);
 
 				let format = if self.srgb {
@@ -238,7 +252,6 @@ impl Importer for TextureImporter {
 						Layout::TransferDst,
 						Layout::ShaderReadOnly,
 					)
-					.finish()
 					.submit()
 					.wait();
 

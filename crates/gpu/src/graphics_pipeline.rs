@@ -9,8 +9,6 @@ use asset::{
 	Asset,
 	Importer,
 };
-use engine::Engine;
-
 use serde::{
 	self as serde,
 	ron,
@@ -235,13 +233,7 @@ impl<'a> GraphicsPipelineBuilder<'a> {
 	pub fn spawn(self) -> Result<GraphicsPipeline> {
 		let device = match self.device {
 			Some(device) => device,
-			None => {
-				let engine = Engine::as_ref();
-				let gpu: &Gpu = engine
-					.module()
-					.expect("Engine must depend on Gpu module if no device is provided.");
-				gpu.device()
-			}
+			None => Gpu::device(),
 		};
 
 		Ok(GraphicsPipeline(api::GraphicsPipeline::new(

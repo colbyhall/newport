@@ -1,7 +1,5 @@
 use crate::*;
 
-use engine::Engine;
-
 pub struct GraphicsCommandBuffer(pub(crate) api::GraphicsCommandBuffer);
 
 impl GraphicsCommandBuffer {
@@ -20,11 +18,7 @@ pub struct GraphicsRecorder(pub(crate) api::GraphicsCommandBuffer);
 
 impl GraphicsRecorder {
 	pub fn new() -> Self {
-		let engine = Engine::as_ref();
-		let gpu: &Gpu = engine
-			.module()
-			.expect("Engine must depend on Gpu module if no device is provided.");
-		Self::new_in(gpu.device())
+		Self::new_in(Gpu::device())
 	}
 
 	pub fn new_in(device: &Device) -> Self {
@@ -74,6 +68,20 @@ impl GraphicsRecorder {
 	pub fn finish(mut self) -> GraphicsCommandBuffer {
 		self.0.end();
 		GraphicsCommandBuffer(self.0)
+	}
+
+	pub fn submit(self) -> Receipt {
+		self.finish().submit()
+	}
+
+	pub fn submit_but_wait_on(self, receipts: &[Receipt]) -> Receipt {
+		self.finish().submit_but_wait_on(receipts)
+	}
+}
+
+impl Default for GraphicsRecorder {
+	fn default() -> Self {
+		Self::new()
 	}
 }
 

@@ -13,6 +13,7 @@ use serde::{
 use std::fmt;
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Hash, Debug)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct UUID {
 	a: u32,
 	b: u16,
