@@ -41,3 +41,7 @@ pub mod platform {
 pub mod serde {
 	pub use newport_serde::*;
 }
+
+pub mod game3d {
+	pub use newport_game3d::*;
+}
