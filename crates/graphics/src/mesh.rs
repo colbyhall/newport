@@ -4,11 +4,9 @@ use asset::Importer;
 use gpu::{
 	Buffer,
 	BufferUsage,
-	Gpu,
+	GraphicsRecorder,
 	MemoryType,
 };
-
-use engine::Engine;
 
 use math::{
 	Vector2,
@@ -105,52 +103,42 @@ impl Importer for MeshGltfImporter {
 			}
 		}
 
-		let engine = Engine::as_ref();
-		let gpu = engine.module::<Gpu>().unwrap();
-		let device = gpu.device();
-
-		let transfer_vertex = device
-			.create_buffer(
-				BufferUsage::TRANSFER_SRC,
-				MemoryType::HostVisible,
-				vertices.len(),
-			)
-			.unwrap();
+		let transfer_vertex = gpu::Buffer::builder(
+			BufferUsage::TRANSFER_SRC,
+			MemoryType::HostVisible,
+			vertices.len(),
+		)
+		.spawn()?;
 		transfer_vertex.copy_to(&vertices[..]);
 
-		let transfer_index = device
-			.create_buffer(
-				BufferUsage::TRANSFER_SRC,
-				MemoryType::HostVisible,
-				indices.len(),
-			)
-			.unwrap();
+		let transfer_index = gpu::Buffer::builder(
+			BufferUsage::TRANSFER_SRC,
+			MemoryType::HostVisible,
+			indices.len(),
+		)
+		.spawn()?;
 		transfer_index.copy_to(&indices[..]);
 
-		let vertex_buffer = device
-			.create_buffer(
-				BufferUsage::TRANSFER_DST | BufferUsage::VERTEX,
-				MemoryType::DeviceLocal,
-				vertices.len(),
-			)
-			.unwrap();
+		let vertex_buffer = gpu::Buffer::builder(
+			BufferUsage::TRANSFER_DST | BufferUsage::VERTEX,
+			MemoryType::DeviceLocal,
+			vertices.len(),
+		)
+		.spawn()?;
 
-		let index_buffer = device
-			.create_buffer(
-				BufferUsage::TRANSFER_DST | BufferUsage::INDEX,
-				MemoryType::DeviceLocal,
-				indices.len(),
-			)
-			.unwrap();
+		let index_buffer = gpu::Buffer::builder(
+			BufferUsage::TRANSFER_DST | BufferUsage::INDEX,
+			MemoryType::DeviceLocal,
+			indices.len(),
+		)
+		.spawn()?;
 
-		let gfx = device
-			.create_graphics_recorder()
+		GraphicsRecorder::new()
 			.copy_buffer_to_buffer(&vertex_buffer, &transfer_vertex)
 			.copy_buffer_to_buffer(&index_buffer, &transfer_index)
-			.finish();
-
-		let receipt = device.submit_graphics(vec![gfx], &[]);
-		receipt.wait();
+			.finish()
+			.submit()
+			.wait();
 
 		Ok(Self::Target {
 			vertices,

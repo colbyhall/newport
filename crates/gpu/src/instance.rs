@@ -2,7 +2,6 @@ use crate::{
 	api,
 
 	Device,
-	DeviceCreateError,
 };
 
 use platform::winit::window::Window;
@@ -25,7 +24,7 @@ impl Instance {
 		Ok(Self(inner))
 	}
 
-	pub fn create_device(&self, window: Option<&Window>) -> Result<Device, DeviceCreateError> {
+	pub fn create_device(&self, window: Option<&Window>) -> crate::Result<Device> {
 		let inner = api::Device::new(self.0.clone(), window)?;
 		Ok(Device(inner))
 	}

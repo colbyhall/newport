@@ -13,7 +13,14 @@ use std::{
 
 use path::PathBuf;
 
-use crate::api;
+use crate::{
+	api,
+	Device,
+	Gpu,
+	Result,
+};
+
+use engine::Engine;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ShaderVariant {
@@ -21,7 +28,60 @@ pub enum ShaderVariant {
 	Pixel,
 }
 
+pub struct ShaderBuilder<'a> {
+	binary: &'a [u8],
+	variant: ShaderVariant,
+	main: &'static str,
+
+	device: Option<&'a Device>,
+}
+
+impl<'a> ShaderBuilder<'a> {
+	pub fn main(mut self, main: &'static str) -> Self {
+		self.main = main;
+		self
+	}
+
+	pub fn device(mut self, device: &'a Device) -> Self {
+		self.device = Some(device);
+		self
+	}
+
+	pub fn spawn(self) -> Result<Shader> {
+		let device = match self.device {
+			Some(device) => device,
+			None => {
+				let engine = Engine::as_ref();
+				let gpu: &Gpu = engine
+					.module()
+					.expect("Engine must depend on Gpu module if no device is provided.");
+				gpu.device()
+			}
+		};
+
+		Ok(Shader(api::Shader::new(
+			device.0.clone(),
+			self.binary,
+			self.variant,
+			self.main.to_string(),
+		)?))
+	}
+}
+
+#[derive(Clone)]
 pub struct Shader(pub(crate) Arc<api::Shader>);
+
+impl Shader {
+	pub fn builder<'a>(binary: &'a [u8], variant: ShaderVariant) -> ShaderBuilder<'a> {
+		ShaderBuilder {
+			binary,
+			variant,
+			main: "main",
+
+			device: None,
+		}
+	}
+}
 
 // This is copied from utils.rs in hassle-rs
 struct DefaultIncludeHandler {}
@@ -77,7 +137,7 @@ pub fn compile(
 	source: &str,
 	main: &str,
 	variant: ShaderVariant,
-) -> Result<Vec<u8>, String> {
+) -> std::result::Result<Vec<u8>, String> {
 	DXC_COMPILER.with(|f| {
 		let target_profile = match variant {
 			ShaderVariant::Pixel => "ps_6_1",

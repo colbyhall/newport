@@ -7,7 +7,7 @@ use super::{
 use crate::{
 	Format,
 	MemoryType,
-	ResourceCreateError,
+	Result,
 	TextureUsage,
 };
 
@@ -16,6 +16,7 @@ use ash::vk;
 
 use std::sync::Arc;
 
+// TODO: Do mip mapping
 pub struct Texture {
 	pub owner: Arc<Device>,
 
@@ -45,7 +46,7 @@ impl Texture {
 		width: u32,
 		height: u32,
 		depth: u32,
-	) -> Result<Arc<Texture>, ResourceCreateError> {
+	) -> Result<Arc<Texture>> {
 		let mut image_type = vk::ImageType::TYPE_3D;
 		if depth == 1 {
 			image_type = vk::ImageType::TYPE_2D;
@@ -88,24 +89,15 @@ impl Texture {
 			.sharing_mode(vk::SharingMode::EXCLUSIVE)
 			.extent(extent);
 
-		let image = unsafe { owner.logical.create_image(&create_info, None) };
-		if image.is_err() {
-			return Err(ResourceCreateError::Unknown);
-		}
-		let image = image.unwrap();
+		let image = unsafe { owner.logical.create_image(&create_info, None)? };
 
 		let requirements = unsafe { owner.logical.get_image_memory_requirements(image) };
-		let memory = owner.allocate_memory(requirements, memory_type);
-		if memory.is_err() {
-			return Err(ResourceCreateError::OutOfMemory);
-		}
-		let memory = memory.unwrap();
+		let memory = owner.allocate_memory(requirements, memory_type)?;
 
 		unsafe {
 			owner
 				.logical
-				.bind_image_memory(image, memory.memory, memory.offset)
-				.unwrap()
+				.bind_image_memory(image, memory.memory, memory.offset)?
 		};
 
 		let mut image_view_type = vk::ImageViewType::TYPE_3D;
@@ -128,11 +120,7 @@ impl Texture {
 					.build(),
 			);
 
-		let view = unsafe { owner.logical.create_image_view(&create_info, None) };
-		if view.is_err() {
-			return Err(ResourceCreateError::Unknown);
-		}
-		let view = view.unwrap();
+		let view = unsafe { owner.logical.create_image_view(&create_info, None)? };
 
 		// Add a weak reference to the device for bindless
 		if usage.contains(TextureUsage::SAMPLED) {

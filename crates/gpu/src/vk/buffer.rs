@@ -5,7 +5,7 @@ use super::{
 use crate::{
 	BufferUsage,
 	MemoryType,
-	ResourceCreateError,
+	Result,
 };
 
 use ash::version::DeviceV1_0;
@@ -35,7 +35,7 @@ impl Buffer {
 		usage: BufferUsage,
 		memory: MemoryType,
 		size: usize,
-	) -> Result<Arc<Buffer>, ResourceCreateError> {
+	) -> Result<Arc<Buffer>> {
 		let mut vk_usage = vk::BufferUsageFlags::default();
 		if usage.contains(BufferUsage::TRANSFER_SRC) {
 			vk_usage |= vk::BufferUsageFlags::TRANSFER_SRC;
@@ -57,21 +57,14 @@ impl Buffer {
 			let create_info = vk::BufferCreateInfo::builder()
 				.size(size as vk::DeviceSize)
 				.usage(vk_usage)
-				.sharing_mode(vk::SharingMode::EXCLUSIVE); // TODO: Look into this more
+				.sharing_mode(vk::SharingMode::EXCLUSIVE);
 
-			let handle = owner.logical.create_buffer(&create_info, None).unwrap();
+			let handle = owner.logical.create_buffer(&create_info, None)?;
 
 			// Allocate memory for buffer
-			let memory =
-				owner.allocate_memory(owner.logical.get_buffer_memory_requirements(handle), memory);
-			if memory.is_err() {
-				return Err(ResourceCreateError::OutOfMemory);
-			}
-			let memory = memory.unwrap();
-			owner
-				.logical
-				.bind_buffer_memory(handle, memory.memory, 0)
-				.unwrap();
+			let memory = owner
+				.allocate_memory(owner.logical.get_buffer_memory_requirements(handle), memory)?;
+			owner.logical.bind_buffer_memory(handle, memory.memory, 0)?;
 
 			// Add a weak reference to the device for bindless
 			if usage.contains(BufferUsage::CONSTANTS) {

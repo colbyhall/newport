@@ -1,10 +1,38 @@
 use crate::*;
 
+use engine::Engine;
+
 pub struct GraphicsCommandBuffer(pub(crate) api::GraphicsCommandBuffer);
+
+impl GraphicsCommandBuffer {
+	pub fn submit(self) -> Receipt {
+		let device = self.0.owner.clone();
+		device.submit_graphics(vec![self.0], &[])
+	}
+
+	pub fn submit_but_wait_on(self, receipts: &[Receipt]) -> Receipt {
+		let device = self.0.owner.clone();
+		device.submit_graphics(vec![self.0], receipts)
+	}
+}
 
 pub struct GraphicsRecorder(pub(crate) api::GraphicsCommandBuffer);
 
 impl GraphicsRecorder {
+	pub fn new() -> Self {
+		let engine = Engine::as_ref();
+		let gpu: &Gpu = engine
+			.module()
+			.expect("Engine must depend on Gpu module if no device is provided.");
+		Self::new_in(gpu.device())
+	}
+
+	pub fn new_in(device: &Device) -> Self {
+		let mut inner = api::GraphicsCommandBuffer::new(device.0.clone()).unwrap();
+		inner.begin();
+		GraphicsRecorder(inner)
+	}
+
 	pub fn resource_barrier_texture(
 		mut self,
 		texture: &Texture,
@@ -30,14 +58,13 @@ impl GraphicsRecorder {
 
 	pub fn render_pass(
 		mut self,
-		render_pass: &RenderPass,
 		attachments: &[&Texture],
 		pass: impl FnOnce(RenderPassRecorder) -> RenderPassRecorder,
 	) -> Self {
 		let mut a = Vec::with_capacity(attachments.len());
 		attachments.iter().for_each(|e| a.push(e.0.clone()));
 
-		self.0.begin_render_pass(render_pass.0.clone(), &a[..]);
+		self.0.begin_render_pass(&a[..]).unwrap();
 		let mut recorder = pass(RenderPassRecorder(self)).0;
 		recorder.0.end_render_pass();
 

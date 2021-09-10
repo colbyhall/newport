@@ -52,7 +52,6 @@ mod gpu;
 mod graphics_pipeline;
 mod instance;
 mod receipt;
-mod render_pass;
 mod shader;
 mod texture;
 
@@ -64,7 +63,6 @@ pub use {
 	graphics_pipeline::*,
 	instance::*,
 	receipt::*,
-	render_pass::*,
 	shader::*,
 	texture::*,
 };
@@ -78,11 +76,7 @@ pub enum MemoryType {
 	DeviceLocal,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum ResourceCreateError {
-	Unknown,
-	OutOfMemory,
-}
+pub type Result<T> = std::result::Result<T, api::Error>;
 
 #[derive(Serialize, Deserialize, Copy, Clone)]
 #[serde(crate = "self::serde")]

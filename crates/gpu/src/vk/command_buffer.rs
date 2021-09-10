@@ -3,11 +3,14 @@ use super::{
 	Buffer,
 	Device,
 	DeviceThreadInfo,
+	Format,
 	GraphicsPipeline,
-	RenderPass,
 	Texture,
 };
-use crate::Layout;
+use crate::{
+	Layout,
+	Result,
+};
 
 use math::{
 	Color,
@@ -211,7 +214,7 @@ impl GraphicsCommandBuffer {
 }
 
 impl GraphicsCommandBuffer {
-	pub fn new(owner: Arc<Device>) -> Result<GraphicsCommandBuffer, ()> {
+	pub fn new(owner: Arc<Device>) -> Result<GraphicsCommandBuffer> {
 		let handle = {
 			let mut thread_infos = owner.thread_info.lock().unwrap();
 			let thread_id = std::thread::current().id();
@@ -228,12 +231,8 @@ impl GraphicsCommandBuffer {
 					.flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER)
 					.queue_family_index(owner.graphics_family_index.unwrap());
 
-				thread_info.graphics_pool = unsafe {
-					owner
-						.logical
-						.create_command_pool(&create_info, None)
-						.unwrap()
-				};
+				thread_info.graphics_pool =
+					unsafe { owner.logical.create_command_pool(&create_info, None)? };
 			}
 
 			let alloc_info = vk::CommandBufferAllocateInfo::builder()
@@ -241,11 +240,7 @@ impl GraphicsCommandBuffer {
 				.level(vk::CommandBufferLevel::PRIMARY)
 				.command_buffer_count(1);
 
-			let handle = unsafe { owner.logical.allocate_command_buffers(&alloc_info) };
-			if handle.is_err() {
-				return Err(());
-			}
-			handle.unwrap()[0]
+			(unsafe { owner.logical.allocate_command_buffers(&alloc_info)? })[0]
 		};
 
 		Ok(GraphicsCommandBuffer {
@@ -266,15 +261,15 @@ impl GraphicsCommandBuffer {
 		})
 	}
 
-	pub fn begin_render_pass(
-		&mut self,
-		render_pass: Arc<RenderPass>,
-		attachments: &[Arc<Texture>],
-	) {
+	pub fn begin_render_pass(&mut self, attachments: &[Arc<Texture>]) -> Result<()> {
 		let extent = vk::Extent2D::builder()
 			.width(attachments[0].width)
 			.height(attachments[0].height)
 			.build();
+
+		let formats: Vec<Format> = attachments.iter().map(|a| a.format).collect();
+
+		let render_pass = self.owner.get_or_create_render_pass(&formats)?;
 
 		let render_pass_handle = render_pass.handle;
 
@@ -296,12 +291,7 @@ impl GraphicsCommandBuffer {
 			.height(extent.height)
 			.layers(1);
 
-		let framebuffer = unsafe {
-			self.owner
-				.logical
-				.create_framebuffer(&create_info, None)
-				.unwrap()
-		};
+		let framebuffer = unsafe { self.owner.logical.create_framebuffer(&create_info, None)? };
 		self.framebuffers.push(framebuffer);
 
 		let render_area = vk::Rect2D::builder().extent(extent);
@@ -318,6 +308,8 @@ impl GraphicsCommandBuffer {
 				vk::SubpassContents::INLINE,
 			)
 		};
+
+		Ok(())
 	}
 
 	pub fn end_render_pass(&mut self) {

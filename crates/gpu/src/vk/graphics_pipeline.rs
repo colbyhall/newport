@@ -10,6 +10,7 @@ use crate::{
 	DrawMode,
 	GraphicsPipelineDescription,
 	Resource,
+	Result,
 	ShaderVariant,
 };
 
@@ -43,7 +44,7 @@ impl GraphicsPipeline {
 	pub fn new(
 		owner: Arc<Device>,
 		description: GraphicsPipelineDescription,
-	) -> Result<Arc<GraphicsPipeline>, ()> {
+	) -> Result<Arc<GraphicsPipeline>> {
 		assert!(!description.shaders.is_empty());
 
 		// Create all the shader staage info for pipeline
@@ -229,18 +230,10 @@ impl GraphicsPipeline {
 		let layout = unsafe {
 			owner
 				.logical
-				.create_pipeline_layout(&pipeline_layout_info, None)
+				.create_pipeline_layout(&pipeline_layout_info, None)?
 		};
-		if layout.is_err() {
-			return Err(());
-		}
-		let layout = layout.unwrap();
 
-		let render_pass = super::RenderPass::new(
-			owner.clone(),
-			description.color_attachments.clone(),
-			description.depth_attachment,
-		)?;
+		let render_pass = owner.get_or_create_render_pass(&description.attachments)?;
 
 		let create_info = vk::GraphicsPipelineCreateInfo::builder()
 			.stages(&shader_stages[..])
@@ -263,8 +256,9 @@ impl GraphicsPipeline {
 				None,
 			)
 		};
+
 		if handle.is_err() {
-			return Err(());
+			return Err(handle.err().unwrap().1);
 		}
 		let handle = handle.unwrap();
 

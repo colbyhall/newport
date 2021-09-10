@@ -2,9 +2,7 @@ use crate::GraphicsPipelineImporter;
 use crate::TextureImporter;
 use crate::{
 	Device,
-	Format,
 	Instance,
-	RenderPass,
 };
 
 use asset::Variant;
@@ -16,16 +14,11 @@ use engine::{
 
 pub struct Gpu {
 	device: Device,
-	backbuffer_render_pass: RenderPass,
 }
 
 impl Gpu {
 	pub fn device(&self) -> &Device {
 		&self.device
-	}
-
-	pub fn backbuffer_render_pass(&self) -> &RenderPass {
-		&self.backbuffer_render_pass
 	}
 }
 
@@ -36,14 +29,7 @@ impl Module for Gpu {
 		let instance = Instance::new().unwrap();
 		let device = instance.create_device(engine.window()).unwrap();
 
-		let backbuffer_render_pass = device
-			.create_render_pass(vec![Format::BGR_U8_SRGB], None)
-			.unwrap();
-
-		Self {
-			device,
-			backbuffer_render_pass,
-		}
+		Self { device }
 	}
 
 	fn depends_on(builder: Builder) -> Builder {

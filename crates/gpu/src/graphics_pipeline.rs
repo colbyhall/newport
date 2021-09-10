@@ -83,8 +83,7 @@ bitflags! {
 }
 
 pub struct GraphicsPipelineDescription {
-	pub color_attachments: Vec<Format>,
-	pub depth_attachment: Option<Format>,
+	pub attachments: Vec<Format>,
 
 	pub shaders: Vec<Shader>,
 
@@ -120,7 +119,174 @@ impl GraphicsPipelineDescription {
 	}
 }
 
+pub struct GraphicsPipelineBuilder<'a> {
+	description: GraphicsPipelineDescription,
+	device: Option<&'a Device>,
+}
+
+impl<'a> GraphicsPipelineBuilder<'a> {
+	pub fn attachments(mut self, attachments: &[Format]) -> Self {
+		self.description.attachments = attachments.to_vec();
+		self
+	}
+
+	pub fn shaders(mut self, shaders: &[Shader]) -> Self {
+		self.description.shaders = shaders.to_owned().to_vec();
+		self
+	}
+
+	pub fn vertex_attributes(mut self, vertex_attributes: &[Constant]) -> Self {
+		self.description.vertex_attributes = vertex_attributes.to_owned().to_vec();
+		self
+	}
+
+	pub fn draw_mode(mut self, draw_mode: DrawMode) -> Self {
+		self.description.draw_mode = draw_mode;
+		self
+	}
+
+	pub fn line_width(mut self, line_width: f32) -> Self {
+		self.description.line_width = line_width;
+		self
+	}
+
+	pub fn cull_mode(mut self, cull_mode: CullMode) -> Self {
+		self.description.cull_mode = cull_mode;
+		self
+	}
+
+	pub fn color_mask(mut self, color_mask: ColorMask) -> Self {
+		self.description.color_mask = color_mask;
+		self
+	}
+
+	pub fn blend_enabled(mut self, blend_enabled: bool) -> Self {
+		self.description.blend_enabled = blend_enabled;
+		self
+	}
+
+	pub fn src_color_blend_factor(mut self, src_color_blend_factor: BlendFactor) -> Self {
+		self.description.src_color_blend_factor = src_color_blend_factor;
+		self
+	}
+
+	pub fn dst_color_blend_factor(mut self, dst_color_blend_factor: BlendFactor) -> Self {
+		self.description.dst_color_blend_factor = dst_color_blend_factor;
+		self
+	}
+
+	pub fn color_blend_op(mut self, color_blend_op: BlendOp) -> Self {
+		self.description.color_blend_op = color_blend_op;
+		self
+	}
+
+	pub fn src_alpha_blend_factor(mut self, src_alpha_blend_factor: BlendFactor) -> Self {
+		self.description.src_alpha_blend_factor = src_alpha_blend_factor;
+		self
+	}
+
+	pub fn dst_alpha_blend_factor(mut self, dst_alpha_blend_factor: BlendFactor) -> Self {
+		self.description.dst_alpha_blend_factor = dst_alpha_blend_factor;
+		self
+	}
+
+	pub fn alpha_blend_op(mut self, alpha_blend_op: BlendOp) -> Self {
+		self.description.alpha_blend_op = alpha_blend_op;
+		self
+	}
+
+	pub fn depth_test(mut self, depth_test: bool) -> Self {
+		self.description.depth_test = depth_test;
+		self
+	}
+
+	pub fn depth_write(mut self, depth_write: bool) -> Self {
+		self.description.depth_write = depth_write;
+		self
+	}
+
+	pub fn depth_compare(mut self, depth_compare: CompareOp) -> Self {
+		self.description.depth_compare = depth_compare;
+		self
+	}
+
+	pub fn constant(mut self, name: impl ToString, members: Vec<ConstantMember>) -> Self {
+		self.description.constants.insert(name.to_string(), members);
+		self
+	}
+
+	pub fn constants(mut self, constants: HashMap<String, Vec<ConstantMember>>) -> Self {
+		self.description.constants = constants;
+		self
+	}
+
+	pub fn resource(mut self, name: impl ToString, resource: Resource) -> Self {
+		self.description
+			.resources
+			.insert(name.to_string(), resource);
+		self
+	}
+
+	pub fn resources(mut self, resources: HashMap<String, Resource>) -> Self {
+		self.description.resources = resources;
+		self
+	}
+
+	pub fn spawn(self) -> Result<GraphicsPipeline> {
+		let device = match self.device {
+			Some(device) => device,
+			None => {
+				let engine = Engine::as_ref();
+				let gpu: &Gpu = engine
+					.module()
+					.expect("Engine must depend on Gpu module if no device is provided.");
+				gpu.device()
+			}
+		};
+
+		Ok(GraphicsPipeline(api::GraphicsPipeline::new(
+			device.0.clone(),
+			self.description,
+		)?))
+	}
+}
+
 pub struct GraphicsPipeline(pub(crate) Arc<api::GraphicsPipeline>);
+
+impl GraphicsPipeline {
+	pub fn builder<'a>() -> GraphicsPipelineBuilder<'a> {
+		GraphicsPipelineBuilder {
+			description: GraphicsPipelineDescription {
+				attachments: Default::default(),
+				shaders: Default::default(),
+				vertex_attributes: Default::default(),
+				draw_mode: DrawMode::Fill,
+				line_width: 1.0,
+
+				cull_mode: CullMode::BACK,
+				color_mask: ColorMask::all(),
+
+				blend_enabled: false,
+
+				src_color_blend_factor: BlendFactor::One,
+				dst_color_blend_factor: BlendFactor::One,
+				color_blend_op: BlendOp::Add,
+
+				src_alpha_blend_factor: BlendFactor::One,
+				dst_alpha_blend_factor: BlendFactor::One,
+				alpha_blend_op: BlendOp::Add,
+
+				depth_test: false,
+				depth_write: false,
+				depth_compare: CompareOp::Always,
+
+				constants: Default::default(),
+				resources: Default::default(),
+			},
+			device: None,
+		}
+	}
+}
 
 impl Asset for GraphicsPipeline {}
 
@@ -376,10 +542,6 @@ impl Importer for GraphicsPipelineImporter {
 	type Target = GraphicsPipeline;
 
 	fn import(&self, bytes: &[u8]) -> asset::Result<Self::Target> {
-		let engine = Engine::as_ref();
-		let gpu: &Gpu = engine.module().ok_or(asset::AssetRefError::NoManager)?;
-		let device = gpu.device();
-
 		let contents = std::str::from_utf8(bytes)?;
 		let file = ron::from_str(contents)?;
 
@@ -520,13 +682,13 @@ impl Importer for GraphicsPipelineImporter {
 			result
 		};
 
-		let color_attachments = pixel_shader
+		let mut attachments: Vec<Format> = pixel_shader
 			.exports
 			.iter()
 			.map(|(_, format)| *format)
 			.collect();
 
-		let vertex_attributes = vertex_shader
+		let vertex_attributes: Vec<Constant> = vertex_shader
 			.attributes
 			.iter()
 			.map(|ConstantMember(_, variant)| *variant)
@@ -602,14 +764,11 @@ impl Importer for GraphicsPipelineImporter {
 			source.push_str(&code);
 			source.push_str("\n}\n");
 
-			let main = "main";
-
 			// Compile to binary and then pass to device
 			let binary =
-				shader::compile("pixel.hlsl", &source, main, ShaderVariant::Pixel).unwrap();
-			device
-				.create_shader(&binary[..], ShaderVariant::Pixel, main)
-				.unwrap()
+				shader::compile("pixel.hlsl", &source, "main", ShaderVariant::Pixel).unwrap();
+
+			Shader::builder(&binary, ShaderVariant::Pixel).spawn()?
 		};
 
 		// Generate the vertex shader
@@ -673,15 +832,11 @@ impl Importer for GraphicsPipelineImporter {
 			source.push_str(&code);
 			source.push_str("\n}\n");
 
-			let main = "main";
-
 			// Compile to binary and then pass to device
 			let binary =
-				shader::compile("vertex.hlsl", &source, main, ShaderVariant::Vertex).unwrap();
+				shader::compile("vertex.hlsl", &source, "main", ShaderVariant::Vertex).unwrap();
 
-			device
-				.create_shader(&binary[..], ShaderVariant::Vertex, main)
-				.unwrap()
+			Shader::builder(&binary, ShaderVariant::Vertex).spawn()?
 		};
 		let shaders = vec![pixel_shader, vertex_shader];
 
@@ -712,44 +867,31 @@ impl Importer for GraphicsPipelineImporter {
 			)
 		};
 
-		let depth_attachment = if depth_stencil_states.depth_test {
-			Some(depth_stencil_states.depth_stencil_format)
-		} else {
-			None
-		};
+		if depth_stencil_states.depth_test {
+			attachments.push(depth_stencil_states.depth_stencil_format);
+		}
 
-		let description = GraphicsPipelineDescription {
-			color_attachments,
-			depth_attachment,
-
-			shaders,
-
-			vertex_attributes,
-
-			draw_mode,
-			line_width,
-
-			cull_mode,
-			color_mask,
-
-			blend_enabled,
-
-			src_color_blend_factor: color_blend.src_blend_factor,
-			dst_color_blend_factor: color_blend.dst_blend_factor,
-			color_blend_op: color_blend.blend_op,
-
-			src_alpha_blend_factor: alpha_blend.src_blend_factor,
-			dst_alpha_blend_factor: alpha_blend.dst_blend_factor,
-			alpha_blend_op: alpha_blend.blend_op,
-
-			depth_test: depth_stencil_states.depth_test,
-			depth_write: depth_stencil_states.depth_write,
-			depth_compare: depth_stencil_states.depth_compare,
-
-			constants,
-			resources,
-		};
-
-		Ok(device.create_graphics_pipeline(description).unwrap())
+		GraphicsPipeline::builder()
+			.attachments(&attachments)
+			.shaders(&shaders)
+			.vertex_attributes(&vertex_attributes)
+			.draw_mode(draw_mode)
+			.line_width(line_width)
+			.cull_mode(cull_mode)
+			.color_mask(color_mask)
+			.blend_enabled(blend_enabled)
+			.src_color_blend_factor(color_blend.src_blend_factor)
+			.dst_color_blend_factor(color_blend.dst_blend_factor)
+			.color_blend_op(color_blend.blend_op)
+			.src_alpha_blend_factor(alpha_blend.src_blend_factor)
+			.dst_alpha_blend_factor(alpha_blend.dst_blend_factor)
+			.alpha_blend_op(alpha_blend.blend_op)
+			.depth_test(depth_stencil_states.depth_test)
+			.depth_write(depth_stencil_states.depth_write)
+			.depth_compare(depth_stencil_states.depth_compare)
+			.constants(constants)
+			.resources(resources)
+			.spawn()
+			.map_err(|err| -> Box<dyn std::error::Error + 'static> { Box::new(err) })
 	}
 }

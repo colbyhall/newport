@@ -1,5 +1,4 @@
 use asset::Importer;
-use engine::Engine;
 use freetype::FtResult;
 use math::{
 	Rect,
@@ -9,7 +8,6 @@ use math::{
 use gpu::{
 	BufferUsage,
 	Format,
-	Gpu,
 	Layout,
 	MemoryType,
 	Texture,
@@ -158,38 +156,32 @@ impl FontCollection {
 			let ascent = ascent * scale;
 			let descent = descent * scale;
 
-			let gpu = Engine::as_ref().module::<Gpu>()?;
-			let device = gpu.device();
-
-			let pixel_buffer = device
-				.create_buffer(
-					BufferUsage::TRANSFER_SRC,
-					MemoryType::HostVisible,
-					pixels.len(),
-				)
-				.ok()?;
+			let pixel_buffer = gpu::Buffer::builder(
+				BufferUsage::TRANSFER_SRC,
+				MemoryType::HostVisible,
+				pixels.len(),
+			)
+			.spawn()
+			.ok()?;
 			pixel_buffer.copy_to(&pixels[..]);
 
-			let atlas = device
-				.create_texture(
-					TextureUsage::TRANSFER_DST | TextureUsage::SAMPLED,
-					MemoryType::DeviceLocal,
-					Format::RGBA_U8,
-					tex_width as u32,
-					tex_height as u32,
-					1,
-				)
-				.ok()?;
+			let atlas = gpu::Texture::builder(
+				TextureUsage::TRANSFER_DST | TextureUsage::SAMPLED,
+				Format::RGBA_U8,
+				tex_width as u32,
+				tex_height as u32,
+				1,
+			)
+			.spawn()
+			.ok()?;
 
-			let gfx = device
-				.create_graphics_recorder()
+			gpu::GraphicsRecorder::new()
 				.resource_barrier_texture(&atlas, Layout::Undefined, Layout::TransferDst)
 				.copy_buffer_to_texture(&atlas, &pixel_buffer)
 				.resource_barrier_texture(&atlas, Layout::TransferDst, Layout::ShaderReadOnly)
-				.finish();
-
-			let receipt = device.submit_graphics(vec![gfx], &[]);
-			receipt.wait();
+				.finish()
+				.submit()
+				.wait();
 
 			fonts.insert(
 				(size, (dpi * 96.0) as u32),

@@ -1,13 +1,9 @@
 use crate::Context;
 
-use {
-	asset::AssetRef,
-	engine::Engine,
-};
+use asset::AssetRef;
 
 use gpu::GraphicsRecorder;
 use gpu::{
-	Gpu,
 	GraphicsPipeline,
 	Texture,
 };
@@ -523,20 +519,12 @@ impl Canvas {
 
 pub struct DrawState {
 	pipeline: AssetRef<GraphicsPipeline>,
-	render_pass: gpu::RenderPass,
 }
 
 impl DrawState {
 	pub fn new() -> Self {
-		let engine = Engine::as_ref();
-		let gpu: &Gpu = engine.module().unwrap();
-		let device = gpu.device();
-
 		Self {
 			pipeline: AssetRef::new("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}").unwrap(),
-			render_pass: device
-				.create_render_pass(vec![gpu::Format::RGBA_U8], None)
-				.unwrap(),
 		}
 	}
 
@@ -546,29 +534,26 @@ impl DrawState {
 		gfx: GraphicsRecorder,
 		ctx: &Context,
 	) -> (GraphicsRecorder, Result<gpu::Texture, ()>) {
-		let gpu = Engine::as_ref().module::<Gpu>().unwrap();
-		let device = gpu.device();
-
 		if canvas.vertices.is_empty() {
 			return (gfx, Err(()));
 		}
 
-		let vertex_buffer = device
-			.create_buffer(
-				gpu::BufferUsage::VERTEX,
-				gpu::MemoryType::HostVisible,
-				canvas.vertices.len(),
-			)
-			.unwrap();
+		let vertex_buffer = gpu::Buffer::builder(
+			gpu::BufferUsage::VERTEX,
+			gpu::MemoryType::HostVisible,
+			canvas.vertices.len(),
+		)
+		.spawn()
+		.unwrap();
 		vertex_buffer.copy_to(&canvas.vertices[..]);
 
-		let index_buffer = device
-			.create_buffer(
-				gpu::BufferUsage::INDEX,
-				gpu::MemoryType::HostVisible,
-				canvas.indices.len(),
-			)
-			.unwrap();
+		let index_buffer = gpu::Buffer::builder(
+			gpu::BufferUsage::INDEX,
+			gpu::MemoryType::HostVisible,
+			canvas.indices.len(),
+		)
+		.spawn()
+		.unwrap();
 		index_buffer.copy_to(&canvas.indices[..]);
 
 		let viewport = ctx.input.viewport.size();
@@ -579,24 +564,24 @@ impl DrawState {
 		struct Import {
 			_view: Matrix4,
 		}
-		let import_buffer = device
-			.create_buffer(gpu::BufferUsage::CONSTANTS, gpu::MemoryType::HostVisible, 1)
-			.unwrap();
+		let import_buffer =
+			gpu::Buffer::builder(gpu::BufferUsage::CONSTANTS, gpu::MemoryType::HostVisible, 1)
+				.spawn()
+				.unwrap();
 		import_buffer.copy_to(&[Import { _view: proj * view }]);
 
-		let backbuffer = device
-			.create_texture(
-				gpu::TextureUsage::SAMPLED | gpu::TextureUsage::COLOR_ATTACHMENT,
-				gpu::MemoryType::DeviceLocal,
-				gpu::Format::RGBA_U8,
-				canvas.width,
-				canvas.height,
-				1,
-			)
-			.unwrap();
+		let backbuffer = gpu::Texture::builder(
+			gpu::TextureUsage::SAMPLED | gpu::TextureUsage::COLOR_ATTACHMENT,
+			gpu::Format::RGBA_U8,
+			canvas.width,
+			canvas.height,
+			1,
+		)
+		.spawn()
+		.unwrap();
 
 		let gfx = gfx
-			.render_pass(&self.render_pass, &[&backbuffer], |ctx| {
+			.render_pass(&[&backbuffer], |ctx| {
 				ctx.clear_color(Color::TRANSPARENT)
 					.bind_pipeline(&self.pipeline)
 					.bind_vertex_buffer(&vertex_buffer)

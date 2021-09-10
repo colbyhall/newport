@@ -1,4 +1,7 @@
-use crate::{ Format, CompareOp };
+use crate::{
+	CompareOp,
+	Format,
+};
 use ash::vk;
 
 pub const ENABLED_LAYER_NAMES: [*const i8; 1] =
@@ -75,3 +78,5 @@ pub fn vk_compare_op(compare_op: CompareOp) -> vk::CompareOp {
 		CompareOp::Always => vk::CompareOp::ALWAYS,
 	}
 }
+
+pub use ash::vk::Result as Error;

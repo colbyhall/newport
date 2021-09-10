@@ -1,10 +1,13 @@
+use crate::Device;
 use crate::{
 	api,
 
 	BufferUsage,
 	Gpu,
 
+	GraphicsRecorder,
 	MemoryType,
+	Result,
 };
 
 use engine::Engine;
@@ -93,6 +96,52 @@ pub enum Filter {
 	Linear,
 }
 
+pub struct TextureBuilder<'a> {
+	usage: TextureUsage,
+	memory: MemoryType,
+	format: Format,
+	width: u32,
+	height: u32,
+	depth: u32,
+
+	device: Option<&'a Device>,
+}
+
+impl<'a> TextureBuilder<'a> {
+	pub fn memory(mut self, memory: MemoryType) -> Self {
+		self.memory = memory;
+		self
+	}
+
+	pub fn device(mut self, device: &'a Device) -> Self {
+		self.device = Some(device);
+		self
+	}
+
+	pub fn spawn(self) -> Result<Texture> {
+		let device = match self.device {
+			Some(device) => device,
+			None => {
+				let engine = Engine::as_ref();
+				let gpu: &Gpu = engine
+					.module()
+					.expect("Engine must depend on Gpu module if no device is provided.");
+				gpu.device()
+			}
+		};
+
+		Ok(Texture(api::Texture::new(
+			device.0.clone(),
+			self.memory,
+			self.usage,
+			self.format,
+			self.width,
+			self.height,
+			self.depth,
+		)?))
+	}
+}
+
 #[derive(Clone)]
 pub struct Texture(pub(crate) Arc<api::Texture>);
 
@@ -116,6 +165,25 @@ impl Texture {
 	pub fn bindless(&self) -> Option<u32> {
 		self.0.bindless()
 	}
+
+	pub fn builder<'a>(
+		usage: TextureUsage,
+		format: Format,
+		width: u32,
+		height: u32,
+		depth: u32,
+	) -> TextureBuilder<'a> {
+		TextureBuilder {
+			usage,
+			memory: MemoryType::DeviceLocal,
+			format,
+			width,
+			height,
+			depth,
+
+			device: None,
+		}
+	}
 }
 
 impl Asset for Texture {}
@@ -134,22 +202,17 @@ impl Importer for TextureImporter {
 		Ok(match image::load_from_memory(bytes) {
 			LoadResult::Error(err) => panic!("Failed to load texture from file due to {}", err),
 			LoadResult::ImageU8(image) => {
-				let engine = Engine::as_ref();
-				let gpu = engine.module::<Gpu>().unwrap();
-				let device = gpu.device();
-
 				assert_eq!(
 					image.depth, 4,
 					"Currently vulkan only supports 4 byte formats"
 				);
 
-				let pixel_buffer = device
-					.create_buffer(
-						BufferUsage::TRANSFER_SRC,
-						MemoryType::HostVisible,
-						image.data.len(),
-					)
-					.unwrap();
+				let pixel_buffer = crate::Buffer::builder(
+					BufferUsage::TRANSFER_SRC,
+					MemoryType::HostVisible,
+					image.data.len(),
+				)
+				.spawn()?;
 				pixel_buffer.copy_to(&image.data[..]);
 
 				let format = if self.srgb {
@@ -158,19 +221,16 @@ impl Importer for TextureImporter {
 					Format::RGBA_U8
 				};
 
-				let gpu_texture = device
-					.create_texture(
-						TextureUsage::TRANSFER_DST | TextureUsage::SAMPLED,
-						MemoryType::DeviceLocal,
-						format,
-						image.width as u32,
-						image.height as u32,
-						1,
-					)
-					.unwrap();
+				let gpu_texture = Texture::builder(
+					TextureUsage::TRANSFER_DST | TextureUsage::SAMPLED,
+					format,
+					image.width as u32,
+					image.height as u32,
+					1,
+				)
+				.spawn()?;
 
-				let gfx = device
-					.create_graphics_recorder()
+				GraphicsRecorder::new()
 					.resource_barrier_texture(&gpu_texture, Layout::Undefined, Layout::TransferDst)
 					.copy_buffer_to_texture(&gpu_texture, &pixel_buffer)
 					.resource_barrier_texture(
@@ -178,10 +238,9 @@ impl Importer for TextureImporter {
 						Layout::TransferDst,
 						Layout::ShaderReadOnly,
 					)
-					.finish();
-
-				let receipt = device.submit_graphics(vec![gfx], &[]);
-				receipt.wait();
+					.finish()
+					.submit()
+					.wait();
 
 				gpu_texture
 			}

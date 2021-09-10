@@ -12,7 +12,7 @@ use serde::{
 	Serialize,
 };
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(crate = "self::serde")]
 pub struct Transform {
 	pub location: Vector3,
@@ -29,8 +29,8 @@ impl Transform {
 	}
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
-pub struct MeshRender {
-	pub mesh: AssetRef<Mesh>,
-}
+// #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+// #[serde(crate = "self::serde")]
+// pub struct MeshRender {
+// 	pub mesh: AssetRef<Mesh>,
+// }

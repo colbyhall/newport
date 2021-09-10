@@ -1,4 +1,3 @@
-use super::Sampler;
 use super::{
 	Buffer,
 	GraphicsCommandBuffer,
@@ -7,11 +6,15 @@ use super::{
 	Texture,
 	ENABLED_LAYER_NAMES,
 };
+use super::{
+	RenderPass,
+	Sampler,
+};
 use crate::{
 	BufferUsage,
-	DeviceCreateError,
 	Format,
 	MemoryType,
+	Result,
 	TextureUsage,
 };
 
@@ -221,6 +224,8 @@ pub struct Device {
 	pub bindless_layout: vk::DescriptorSetLayout,
 	pub bindless_pool: vk::DescriptorPool,
 	pub bindless_set: vk::DescriptorSet,
+
+	pub render_passes: Mutex<Vec<Arc<RenderPass>>>,
 }
 
 impl Device {
@@ -228,7 +233,7 @@ impl Device {
 		&self,
 		requirements: vk::MemoryRequirements,
 		memory_type: MemoryType,
-	) -> Result<DeviceAllocation, ()> {
+	) -> Result<DeviceAllocation> {
 		let property_flag = match memory_type {
 			MemoryType::DeviceLocal => vk::MemoryPropertyFlags::DEVICE_LOCAL,
 			MemoryType::HostVisible => {
@@ -258,13 +263,8 @@ impl Device {
 				.allocation_size(requirements.size)
 				.memory_type_index(index);
 
-			let memory = self.logical.allocate_memory(&alloc_info, None);
-			if memory.is_err() {
-				return Err(());
-			}
-
 			Ok(DeviceAllocation {
-				memory: memory.unwrap(),
+				memory: self.logical.allocate_memory(&alloc_info, None)?,
 				offset: 0,
 				size: requirements.size,
 			})
@@ -277,6 +277,18 @@ impl Device {
 		}
 	}
 
+	pub fn get_or_create_render_pass(&self, attachments: &[Format]) -> Result<Arc<RenderPass>> {
+		let mut render_passes = self.render_passes.lock().unwrap();
+		match render_passes.iter().find(|a| a.attachments == attachments) {
+			Some(render_pass) => Ok(render_pass.clone()),
+			None => {
+				let render_pass = RenderPass::new(self, attachments.to_vec())?;
+				render_passes.push(render_pass.clone());
+				Ok(render_pass)
+			}
+		}
+	}
+
 	fn push_work(&self, entry: WorkEntry) -> usize {
 		let mut work = self.work.lock().unwrap();
 
@@ -286,18 +298,11 @@ impl Device {
 		id
 	}
 
-	pub fn new(
-		instance: Arc<Instance>,
-		window: Option<&Window>,
-	) -> Result<Arc<Self>, DeviceCreateError> {
+	pub fn new(instance: Arc<Instance>, window: Option<&Window>) -> Result<Arc<Self>> {
 		// Find a physical device based off of some parameters
 		let physical_device;
 		unsafe {
-			let physical_devices = instance.instance.enumerate_physical_devices();
-			if physical_devices.is_err() {
-				return Err(DeviceCreateError::NoValidPhysicalDevice);
-			}
-			let physical_devices = physical_devices.unwrap();
+			let physical_devices = instance.instance.enumerate_physical_devices()?;
 
 			let mut selected_device = None;
 			for it in physical_devices.iter() {
@@ -332,7 +337,7 @@ impl Device {
 			}
 
 			if selected_device.is_none() {
-				return Err(DeviceCreateError::NoValidPhysicalDevice);
+				return Err(super::Error::ERROR_DEVICE_LOST);
 			}
 
 			physical_device = selected_device.unwrap();
@@ -353,11 +358,7 @@ impl Device {
 							.hinstance(handle.hinstance)
 							.hwnd(handle.hwnd);
 
-						surface = Some(
-							surface_khr
-								.create_win32_surface(&create_info, None)
-								.unwrap(),
-						);
+						surface = Some(surface_khr.create_win32_surface(&create_info, None)?);
 					}
 					_ => todo!(),
 				}
@@ -429,10 +430,10 @@ impl Device {
 				.enabled_extension_names(&extensions)
 				.enabled_features(&device_features);
 
-			logical_device = instance
-				.instance
-				.create_device(physical_device, &create_info, None)
-				.unwrap();
+			logical_device =
+				instance
+					.instance
+					.create_device(physical_device, &create_info, None)?;
 			graphics_queue =
 				Some(logical_device.get_device_queue(graphics_family_index.unwrap(), 0));
 
@@ -476,11 +477,8 @@ impl Device {
 			.push_next(&mut extension)
 			.bindings(&bindless_bindings)
 			.flags(vk::DescriptorSetLayoutCreateFlags::UPDATE_AFTER_BIND_POOL);
-		let bindless_layout = unsafe {
-			logical_device
-				.create_descriptor_set_layout(&create_info, None)
-				.unwrap()
-		};
+		let bindless_layout =
+			unsafe { logical_device.create_descriptor_set_layout(&create_info, None)? };
 
 		let pool_sizes = [
 			vk::DescriptorPoolSize::builder()
@@ -501,22 +499,14 @@ impl Device {
 			.pool_sizes(&pool_sizes)
 			.max_sets(1)
 			.flags(vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND);
-		let bindless_pool = unsafe {
-			logical_device
-				.create_descriptor_pool(&create_info, None)
-				.unwrap()
-		};
+		let bindless_pool = unsafe { logical_device.create_descriptor_pool(&create_info, None)? };
 
 		let layouts = [bindless_layout];
 
 		let create_info = vk::DescriptorSetAllocateInfo::builder()
 			.descriptor_pool(bindless_pool)
 			.set_layouts(&layouts);
-		let bindless_set = unsafe {
-			logical_device
-				.allocate_descriptor_sets(&create_info)
-				.unwrap()
-		};
+		let bindless_set = unsafe { logical_device.allocate_descriptor_sets(&create_info)? };
 
 		let bindles_info = BindlessInfo {
 			textures: Vec::new(),
@@ -556,6 +546,8 @@ impl Device {
 			bindless_layout,
 			bindless_pool,
 			bindless_set: bindless_set[0],
+
+			render_passes: Mutex::new(Vec::with_capacity(128)),
 		});
 
 		{

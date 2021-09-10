@@ -21,7 +21,6 @@ pub use {
 pub(crate) use path_cache::*;
 
 use std::{
-	error,
 	path::{
 		Path,
 		PathBuf,
@@ -31,7 +30,7 @@ use std::{
 
 pub trait Asset: Sized + 'static {}
 
-pub type Result<T> = result::Result<T, Box<dyn error::Error>>;
+pub type Result<T> = result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Clone)]
 pub struct Collection {

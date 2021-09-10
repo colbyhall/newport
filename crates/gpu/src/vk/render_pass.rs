@@ -2,7 +2,10 @@ use super::{
 	vk_format,
 	Device,
 };
-use crate::Format;
+use crate::{
+	Format,
+	Result,
+};
 
 use ash::version::DeviceV1_0;
 use ash::vk;
@@ -11,51 +14,57 @@ use std::slice::from_ref;
 use std::sync::Arc;
 
 pub struct RenderPass {
-	pub owner: Arc<Device>,
-
 	pub handle: vk::RenderPass,
 
-	pub colors: Vec<Format>,
-	pub depth: Option<Format>,
+	pub attachments: Vec<Format>,
 }
 
 impl RenderPass {
-	pub fn new(
-		owner: Arc<Device>,
-		colors: Vec<Format>,
-		depth: Option<Format>,
-	) -> Result<Arc<RenderPass>, ()> {
-		let mut color_refs = Vec::with_capacity(colors.len());
+	pub fn new(owner: &Device, attachment_values: Vec<Format>) -> Result<Arc<RenderPass>> {
+		let mut color_refs = Vec::with_capacity(attachment_values.len());
+		let mut depth_ref = None;
 
-		let num_attachments = {
-			let num = colors.len();
-			if depth.is_some() {
-				num + 1
+		let mut attachments = Vec::with_capacity(attachment_values.len());
+
+		for (index, it) in attachment_values.iter().enumerate() {
+			if it.is_depth() {
+				let format = vk_format(*it);
+
+				let attachment = vk::AttachmentDescription::builder()
+					.format(format)
+					.samples(vk::SampleCountFlags::TYPE_1)
+					.load_op(vk::AttachmentLoadOp::DONT_CARE)
+					.store_op(vk::AttachmentStoreOp::STORE)
+					.stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+					.stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+					.initial_layout(vk::ImageLayout::UNDEFINED)
+					.final_layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+				attachments.push(attachment.build());
+
+				let the_ref = vk::AttachmentReference::builder()
+					.attachment((attachment_values.len() - 1) as u32)
+					.layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+				depth_ref = Some(the_ref.build())
 			} else {
-				num
+				let format = vk_format(*it);
+
+				let attachment = vk::AttachmentDescription::builder()
+					.format(format)
+					.samples(vk::SampleCountFlags::TYPE_1)
+					.load_op(vk::AttachmentLoadOp::DONT_CARE)
+					.store_op(vk::AttachmentStoreOp::STORE)
+					.stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+					.stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+					.initial_layout(vk::ImageLayout::UNDEFINED)
+					.final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+				attachments.push(attachment.build());
+
+				let the_ref = vk::AttachmentReference::builder()
+					.attachment(index as u32)
+					.layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+				color_refs.push(the_ref.build());
 			}
-		};
-
-		let mut attachments = Vec::with_capacity(num_attachments);
-
-		for (index, it) in colors.iter().enumerate() {
-			let format = vk_format(*it);
-
-			let attachment = vk::AttachmentDescription::builder()
-				.format(format)
-				.samples(vk::SampleCountFlags::TYPE_1)
-				.load_op(vk::AttachmentLoadOp::DONT_CARE)
-				.store_op(vk::AttachmentStoreOp::STORE)
-				.stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-				.stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-				.initial_layout(vk::ImageLayout::UNDEFINED)
-				.final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
-			attachments.push(attachment.build());
-
-			let the_ref = vk::AttachmentReference::builder()
-				.attachment(index as u32)
-				.layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
-			color_refs.push(the_ref.build());
 		}
 
 		// Currently we're only going to support 1 subpass as no other API has subpasses
@@ -63,42 +72,19 @@ impl RenderPass {
 			.pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
 			.color_attachments(&color_refs[..]);
 
-		let depth_refs = if let Some(depth) = depth {
-			let format = vk_format(depth);
-
-			let attachment = vk::AttachmentDescription::builder()
-				.format(format)
-				.samples(vk::SampleCountFlags::TYPE_1)
-				.load_op(vk::AttachmentLoadOp::DONT_CARE)
-				.store_op(vk::AttachmentStoreOp::STORE)
-				.stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-				.stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-				.initial_layout(vk::ImageLayout::UNDEFINED)
-				.final_layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-			attachments.push(attachment.build());
-
-			let the_ref = vk::AttachmentReference::builder()
-				.attachment((num_attachments - 1) as u32)
-				.layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-			Some(the_ref.build())
-		} else {
-			None
-		};
-
-		if depth_refs.is_some() {
-			subpass = subpass.depth_stencil_attachment(depth_refs.as_ref().unwrap());
+		if let Some(depth) = &depth_ref {
+			subpass = subpass.depth_stencil_attachment(depth);
 		}
 
 		let mut stage_mask = vk::PipelineStageFlags::empty();
 		let mut access_mask = vk::AccessFlags::empty();
 
-		if !colors.is_empty() {
+		if !color_refs.is_empty() {
 			stage_mask |= vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT;
 			access_mask |= vk::AccessFlags::COLOR_ATTACHMENT_WRITE;
 		}
 
-		if depth.is_some() {
+		if depth_ref.is_some() {
 			stage_mask |= vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS;
 			access_mask |= vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE;
 		}
@@ -115,17 +101,11 @@ impl RenderPass {
 			.dependencies(from_ref(&dependency));
 
 		unsafe {
-			let handle = owner.logical.create_render_pass(&create_info, None);
-			if handle.is_err() {
-				return Err(());
-			}
-			let handle = handle.unwrap();
+			let handle = owner.logical.create_render_pass(&create_info, None)?;
 
 			Ok(Arc::new(RenderPass {
-				owner,
 				handle,
-				colors,
-				depth,
+				attachments: attachment_values,
 			}))
 		}
 	}
