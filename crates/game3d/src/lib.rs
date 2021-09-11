@@ -98,15 +98,14 @@ impl Module for Game3d {
 
 				let Game3d { game_state, frames, .. } = game3d;
 
-				let simulation = async {
-					game_state.simulate(dt).await;
-					let scene = Scene::build(game_state).await;
-					frames.push_scene(scene);
-				};
-
-				let render = frames.render_scene();
-
 				Engine::wait_on(async {
+					let simulation = async {
+						game_state.simulate(dt).await;
+						let scene = Scene::build(game_state).await;
+						frames.push_scene(scene);
+					};
+					let render = frames.render_scene();
+	
 					join!(simulation, render)
 				});
 
