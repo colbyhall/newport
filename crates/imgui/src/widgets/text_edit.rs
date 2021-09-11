@@ -126,7 +126,7 @@ impl<'a> TextEdit<'a> {
 	pub fn build(self, builder: &mut Builder) -> TextEditResponse {
 		let text: TextStyle = builder.style().get();
 
-		let label_size = text.string_rect(&self.text, text.label_size, None).size();
+		let label_size = text.string_rect(self.text, text.label_size, None).size();
 		let bounds = builder.content_bounds(label_size);
 
 		let mut retained: TextEditRetained = builder.retained(self.id);
@@ -198,7 +198,7 @@ impl<'a> TextEdit<'a> {
 				if retained.cursor != retained.selection {
 					if shift_down && retained.cursor > 0 {
 						if ctrl_down {
-							retained.cursor = retained.seek(true, &self.text);
+							retained.cursor = retained.seek(true, self.text);
 						} else {
 							retained.cursor -= 1;
 						}
@@ -207,7 +207,7 @@ impl<'a> TextEdit<'a> {
 					}
 				} else if retained.cursor > 0 {
 					if ctrl_down {
-						retained.cursor = retained.seek(true, &self.text);
+						retained.cursor = retained.seek(true, self.text);
 					} else {
 						retained.cursor -= 1;
 					}
@@ -225,7 +225,7 @@ impl<'a> TextEdit<'a> {
 				if retained.cursor != retained.selection {
 					if shift_down && retained.cursor < self.text.len() {
 						if ctrl_down {
-							retained.cursor = retained.seek(false, &self.text);
+							retained.cursor = retained.seek(false, self.text);
 						} else {
 							retained.cursor += 1;
 						}
@@ -234,7 +234,7 @@ impl<'a> TextEdit<'a> {
 					}
 				} else if retained.cursor < self.text.len() {
 					if ctrl_down {
-						retained.cursor = retained.seek(false, &self.text);
+						retained.cursor = retained.seek(false, self.text);
 					} else {
 						retained.cursor += 1;
 					}

@@ -109,7 +109,7 @@ impl EntitiesContainer {
 			let active = &self.active_components[index];
 
 			for c in components.iter() {
-				if !active.contains(&c) {
+				if !active.contains(c) {
 					continue 'outer;
 				}
 			}

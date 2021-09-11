@@ -52,7 +52,7 @@ struct Swapchain {
 
 impl Swapchain {
 	fn new(device: Arc<Device>) -> Result<Self> {
-		assert_eq!(device.surface.is_some(), true);
+		assert!(device.surface.is_some());
 
 		let swapchain_khr = khr::Swapchain::new(&device.owner.instance, &device.logical);
 		let surface_khr = khr::Surface::new(&device.owner.entry, &device.owner.instance);
@@ -586,7 +586,7 @@ impl Device {
 	}
 
 	pub fn acquire_backbuffer(&self) -> Result<Arc<Texture>> {
-		assert_eq!(self.surface.is_some(), true);
+		assert!(self.surface.is_some());
 
 		let mut swapchain = self.swapchain.lock().unwrap();
 
@@ -679,7 +679,7 @@ impl Device {
 	}
 
 	pub fn display(&self, wait_on: &[Receipt]) {
-		assert_eq!(self.surface.is_some(), true);
+		assert!(self.surface.is_some());
 
 		self.remove_finished_work();
 

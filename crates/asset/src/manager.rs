@@ -24,19 +24,17 @@ use std::sync::Weak;
 use std::{
 	any::Any,
 	collections::HashMap,
-	fs,
+	// fs,
 	path::{
 		Path,
 		PathBuf,
 	},
 	sync::RwLock,
-	time::SystemTime,
+	// time::SystemTime,
 };
 
 pub(crate) struct AssetEntry {
 	pub variant: usize, // Index into AssetManager::variants
-	pub write_time: SystemTime,
-
 	pub asset: Mutex<Weak<Box<dyn Any>>>,
 }
 
@@ -70,14 +68,13 @@ impl Module for AssetManager {
 				_ => continue,
 			};
 
-			let write_time = fs::metadata(path).unwrap().modified().unwrap();
+			// let write_time = fs::metadata(path).unwrap().modified().unwrap();
 
 			assets.insert(
 				*id,
 				AssetEntry {
 					variant: index,
-					write_time,
-
+					// write_time,
 					asset: Mutex::new(Weak::new()),
 				},
 			);
