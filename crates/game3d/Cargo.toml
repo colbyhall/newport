@@ -13,3 +13,4 @@ engine 		= { path = "../engine", version = "0.2.0", package = "newport_engine" }
 serde 		= { path = "../serde", version = "0.2.0", package = "newport_serde" }
 sync 		= { path = "../sync", version = "0.1.0", package = "newport_sync" }
 platform 		= { path = "../platform", version = "0.2.0", package = "newport_platform" }
+physics3d 		= { path = "../physics3d", version = "0.1.0", package = "newport_physics3d" }

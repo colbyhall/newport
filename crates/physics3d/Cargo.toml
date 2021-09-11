@@ -1,0 +1,13 @@
+[package]
+name = "newport_physics3d"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+math 		= { path = "../math", version = "0.2.0", package = "newport_math" }
+serde 		= { path = "../serde", version = "0.2.0", package = "newport_serde" }
+ecs 		= { path = "../ecs", version = "0.2.0", package = "newport_ecs" }
+
+rapier3d = { version = "0.11", features=["serde-serialize"] }
