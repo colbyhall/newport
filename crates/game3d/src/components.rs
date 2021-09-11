@@ -1,5 +1,7 @@
 use asset::AssetRef;
 use ecs::ComponentVariant;
+use engine::Builder;
+use gpu::GraphicsPipeline;
 use graphics::Mesh;
 use math::{
 	Matrix4,
@@ -12,7 +14,7 @@ use serde::{
 	Serialize,
 };
 
-#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize, Default)]
 #[serde(crate = "self::serde")]
 pub struct Transform {
 	pub location: Vector3,
@@ -21,16 +23,57 @@ pub struct Transform {
 }
 
 impl Transform {
-	pub fn matrix4(self) -> Matrix4 {
-		//TODO: Do this without mat4 multiplication
+	pub fn to_matrix4(self) -> Matrix4 {
+		// TODO: Do this without mat4 multiplication
 		Matrix4::translate(self.location)
 			* Matrix4::rotate(self.rotation)
 			* Matrix4::scale(self.scale)
 	}
 }
 
-// #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-// #[serde(crate = "self::serde")]
-// pub struct MeshRender {
-// 	pub mesh: AssetRef<Mesh>,
-// }
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
+pub struct MeshRender {
+	pub mesh: AssetRef<Mesh>,
+	pub pipeline: AssetRef<GraphicsPipeline>,
+}
+
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[serde(crate = "self::serde")]
+pub struct Camera {
+	pub fov: f32,
+}
+
+impl Default for Camera {
+	fn default() -> Self {
+		Self { fov: 90.0 }
+	}
+}
+
+#[derive(Default)]
+pub struct CameraController {
+	pub pitch: f32,
+	pub yaw: f32,
+}
+
+#[derive(Clone, Copy)]
+pub struct Spinner {
+	pub speed: f32,
+}
+
+#[derive(Clone, Copy)]
+pub struct Scaler {
+	pub speed: f32,
+	pub max: f32,
+	pub time: f32,
+}
+
+pub(crate) fn register_components(builder: Builder) -> Builder {
+	builder
+		.register(ComponentVariant::new::<Transform>())
+		.register(ComponentVariant::new::<MeshRender>())
+		.register(ComponentVariant::new::<Camera>())
+		.register(ComponentVariant::new::<CameraController>())
+		.register(ComponentVariant::new::<Spinner>())
+		.register(ComponentVariant::new::<Scaler>())
+}

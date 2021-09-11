@@ -47,22 +47,8 @@ impl Builder {
 		}
 	}
 
-	/// Adds a module to the list
-	///
-	/// # Arguments
-	///
-	/// * `T` - A [`Module`] that will be initialized and used at runtime
-	///
-	/// # Examples
-	///
-	/// ```
-	/// use newport_engine::Builder;
-	///
-	/// let builder = Builder::new()
-	///     .module::<Test>();
-	/// ```
 	pub fn module<T: Module>(mut self) -> Self {
-		// Don't add another module thats already added
+		// Don't add a module thats already on the list
 		let id = TypeId::of::<T>();
 		for it in self.entries.iter() {
 			if it.id == id {
@@ -127,7 +113,7 @@ impl Builder {
 	}
 
 	// TODO: Document
-	pub fn run(self) {
-		Engine::run(self);
+	pub fn run(self) -> Result<(), std::io::Error> {
+		Engine::run(self)
 	}
 }

@@ -1,27 +1,22 @@
 use crate::World;
-
 use std::any::type_name;
-use std::any::Any;
+use sync::async_trait;
 
-pub trait System: SystemAsAny + 'static {
+#[async_trait]
+pub trait System: BoxSystemClone + 'static + Send + Sync{
 	fn name(&self) -> &'static str {
 		type_name::<Self>()
 	}
 
-	fn run(&self, world: &World);
+	async fn run(&self, world: &World, dt: f32);
 }
 
-pub trait SystemAsAny {
-	fn as_any(&self) -> &dyn Any;
-	fn as_any_mut(&mut self) -> &mut dyn Any;
+pub trait BoxSystemClone {
+	fn clone_to_box(&self) -> Box<dyn System>;
 }
 
-impl<T: System + 'static> SystemAsAny for T {
-	fn as_any(&self) -> &dyn Any {
-		self
-	}
-
-	fn as_any_mut(&mut self) -> &mut dyn Any {
-		self
+impl<T: System + Clone> BoxSystemClone for T {
+	fn clone_to_box(&self) -> Box<dyn System> {
+		Box::new(self.clone())
 	}
 }

@@ -11,3 +11,5 @@ keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
 serde  = { path = "../serde", version = "0.2.0", package = "newport_serde" }
+sync  = { path = "../sync", version = "0.1.0", package = "newport_sync" }
+engine  = { path = "../engine", version = "0.2.0", package = "newport_engine" }

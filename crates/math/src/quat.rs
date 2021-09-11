@@ -8,12 +8,18 @@ use std::ops::Mul;
 use crate::Vector3;
 use crate::TO_RAD;
 
-#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Quaternion {
 	pub x: f32,
 	pub y: f32,
 	pub z: f32,
 	pub w: f32,
+}
+
+impl Default for Quaternion {
+	fn default() -> Self {
+		Self::IDENTITY
+	}
 }
 
 impl Quaternion {

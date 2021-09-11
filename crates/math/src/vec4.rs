@@ -1,4 +1,6 @@
 use std::convert::From;
+use std::ops::Index;
+use std::ops::IndexMut;
 use std::ops::{
 	Add,
 	AddAssign,
@@ -42,6 +44,32 @@ impl Vector4 {
 
 	pub const fn to_tuple(self) -> (f32, f32, f32, f32) {
 		(self.x, self.y, self.z, self.w)
+	}
+}
+
+impl Index<usize> for Vector4 {
+	type Output = f32;
+
+	fn index(&self, index: usize) -> &Self::Output {
+		match index {
+			0 => &self.x,
+			1 => &self.y,
+			2 => &self.z,
+			3 => &self.w,
+			_ => unreachable!(),
+		}
+	}
+}
+
+impl IndexMut<usize> for Vector4 {
+	fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+		match index {
+			0 => &mut self.x,
+			1 => &mut self.y,
+			2 => &mut self.z,
+			3 => &mut self.w,
+			_ => unreachable!(),
+		}
 	}
 }
 

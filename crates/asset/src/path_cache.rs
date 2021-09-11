@@ -30,8 +30,8 @@ pub(crate) struct PathCache {
 
 impl Cache for PathCache {
 	fn new() -> Self {
-		let collections = Engine::register::<Collection>().unwrap_or_default();
-		let variants = Engine::register::<Variant>().unwrap_or_default();
+		let collections = Engine::register::<Collection>();
+		let variants = Engine::register::<Variant>();
 
 		// Run through all the collections and create a directory if one is not created
 		for it in collections.iter() {

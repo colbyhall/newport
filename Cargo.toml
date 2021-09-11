@@ -32,3 +32,7 @@ path = "examples/hello_world.rs"
 [[example]]
 name = "gpu"
 path = "examples/gpu.rs"
+
+[[example]]
+name = "game3d"
+path = "examples/game3d.rs"

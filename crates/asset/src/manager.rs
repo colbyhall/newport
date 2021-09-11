@@ -54,7 +54,7 @@ impl Module for AssetManager {
 
 		let mut assets = HashMap::with_capacity(asset_cache.uuid_to_path.len());
 
-		let variants = Engine::register::<Variant>().unwrap_or_default();
+		let variants = Engine::register::<Variant>();
 		for (id, path) in asset_cache.uuid_to_path.iter() {
 			let ext = path.extension().unwrap_or_default();
 
@@ -83,7 +83,7 @@ impl Module for AssetManager {
 			);
 		}
 
-		let collections = Engine::register::<Collection>().unwrap_or_default();
+		let collections = Engine::register::<Collection>();
 
 		Self {
 			variants,

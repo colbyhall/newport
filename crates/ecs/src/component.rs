@@ -41,7 +41,7 @@ impl VariantId {
 	}
 }
 
-pub trait Component: 'static + Sized + Sync {
+pub trait Component: 'static + Sized + Sync + Send {
 	const VARIANT_ID: VariantId = VariantId::new(type_name::<Self>());
 
 	const CAN_SAVE: bool;
@@ -49,7 +49,7 @@ pub trait Component: 'static + Sized + Sync {
 
 impl<T> Component for T
 where
-	T: Sync + Sized + 'static,
+	T: Sync + Send + Sized + 'static,
 {
 	default const VARIANT_ID: VariantId = VariantId::new(type_name::<Self>());
 
@@ -96,7 +96,7 @@ struct Storage<T: Component> {
 	available: VecDeque<usize>,
 }
 
-trait DynamicStorage {
+trait DynamicStorage: Send + Sync + 'static {
 	fn remove(&mut self, id: ComponentId) -> bool;
 
 	fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -174,7 +174,7 @@ impl<T: Component> Storage<T> {
 	}
 }
 
-impl<T: Component> DynamicStorage for Storage<T> {
+impl<T: Component + Send + Sync> DynamicStorage for Storage<T> {
 	fn remove(&mut self, id: ComponentId) -> bool {
 		assert_eq!(T::VARIANT_ID, id.variant_id);
 

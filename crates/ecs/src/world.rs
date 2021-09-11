@@ -1,13 +1,12 @@
 use crate::{
 	Component,
-	ComponentVariant,
 	ComponentsContainer,
 	EntitiesContainer,
 
 	Entity,
 	EntityInfo,
 };
-
+use engine::Engine;
 use std::sync::RwLock;
 
 #[derive(Default)]
@@ -17,7 +16,8 @@ pub struct World {
 }
 
 impl World {
-	pub fn new(component_variants: Vec<ComponentVariant>) -> Self {
+	pub fn new() -> Self {
+		let component_variants = Engine::register();
 		Self {
 			entities: RwLock::new(EntitiesContainer::new()),
 			components: ComponentsContainer::new(component_variants),
@@ -39,11 +39,12 @@ pub struct EntityBuilder<'a> {
 
 impl<'a> EntityBuilder<'a> {
 	pub fn with<T: Component>(mut self, t: T) -> Self {
-		let mut write = self
-			.world
-			.components
-			.write::<T>()
-			.expect("Component type \"{}\" not registered.");
+		let mut write = self.world.components.write::<T>().unwrap_or_else(|| {
+			panic!(
+				"Component type \"{}\" not registered.",
+				std::any::type_name::<T>()
+			)
+		});
 		self.entity_info
 			.components
 			.insert(T::VARIANT_ID, write.insert(t));

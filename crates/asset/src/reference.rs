@@ -28,6 +28,14 @@ use std::{
 	sync::Arc,
 };
 
+use serde::{
+	self,
+	Deserialize,
+	Deserializer,
+	Serialize,
+	Serializer,
+};
+
 #[derive(Debug)]
 pub enum AssetRefError {
 	NoManager,
@@ -49,6 +57,7 @@ pub struct AssetRef<T: Asset> {
 }
 
 unsafe impl<T: Asset> Sync for AssetRef<T> {}
+unsafe impl<T: Asset> Send for AssetRef<T> {}
 
 impl<T: Asset> AssetRef<T> {
 	pub fn new(id: impl Into<UUID>) -> Result<AssetRef<T>> {
@@ -147,5 +156,50 @@ impl<T: Asset> Clone for AssetRef<T> {
 			uuid: self.uuid,
 			phantom: PhantomData,
 		}
+	}
+}
+
+impl<T: Asset> PartialEq for AssetRef<T> {
+	fn eq(&self, rhs: &Self) -> bool {
+		self.uuid == rhs.uuid
+	}
+}
+
+impl<T: Asset> Serialize for AssetRef<T> {
+	fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		Serialize::serialize(&self.uuid, serializer)
+	}
+}
+
+impl<'de, T: Asset> Deserialize<'de> for AssetRef<T> {
+	#[allow(clippy::many_single_char_names)]
+	fn deserialize<D>(deserializer: D) -> std::result::Result<AssetRef<T>, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let uuid: UUID = Deserialize::deserialize(deserializer)?;
+		Ok(AssetRef::new(uuid).unwrap_or_default())
+	}
+}
+
+impl<T: Asset> Default for AssetRef<T> {
+	fn default() -> AssetRef<T> {
+		let uuid = T::default_uuid().unwrap_or_else(|| {
+			panic!(
+				"Asset of type {} has no default_uuid",
+				std::any::type_name::<T>()
+			)
+		});
+
+		AssetRef::new(uuid).unwrap_or_else(|err| {
+			panic!(
+				"Asset of type {} has default_uuid but can not load asset due to {:?}",
+				std::any::type_name::<T>(),
+				err
+			)
+		})
 	}
 }

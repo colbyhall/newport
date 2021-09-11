@@ -40,6 +40,9 @@ use platform::winit::{
 
 use platform::input::Input;
 
+use sync::executor::ThreadPool;
+use sync::Future;
+
 static mut ENGINE: Option<Engine> = None;
 
 /// Global runnable structure used for instantiating engine modules and handling app code
@@ -53,11 +56,13 @@ pub struct Engine {
 	is_running: AtomicBool,
 	fps: AtomicI32,
 
+	executor: Option<ThreadPool>, // Not available during module initialization process
+
 	window: Option<Window>,
 }
 
 impl Engine {
-	pub(crate) fn run(mut builder: Builder) {
+	pub(crate) fn run(mut builder: Builder) -> Result<(), std::io::Error> {
 		let event_loop = EventLoop::new();
 
 		// UNSAFE: Set the global state
@@ -90,16 +95,20 @@ impl Engine {
 				is_running: AtomicBool::new(true),
 				fps: AtomicI32::new(0),
 
+				executor: None,
+
 				window,
 			});
 
 			let engine = ENGINE.as_mut().unwrap();
 
 			// NOTE: All modules a module depends on will be available at initialization
-			// TODO: Worry about thread safety here.
 			builder.entries.drain(..).for_each(|it| {
 				engine.modules.insert(it.id, (it.spawn)());
 			});
+
+			// Initializer after module initialization because engine is being modified on main thread during module initialization
+			engine.executor = Some(ThreadPool::new()?);
 
 			ENGINE.as_ref().unwrap()
 		};
@@ -326,12 +335,14 @@ impl Engine {
 		module.downcast_mut::<T>()
 	}
 
-	pub fn register<T: Register>() -> Option<Vec<T>> {
+	pub fn register<T: Register>() -> Vec<T> {
 		let engine = Engine::as_ref();
 		let id = TypeId::of::<T>();
 
-		let register = engine.registers.get(&id)?;
-		Some(register.downcast_ref::<Vec<T>>()?.clone())
+		match engine.registers.get(&id) {
+			Some(reg) => reg.downcast_ref::<Vec<T>>().unwrap().clone(),
+			None => Default::default(),
+		}
 	}
 
 	/// Returns the name of the engine runnable
@@ -354,5 +365,14 @@ impl Engine {
 
 	pub fn builder() -> Builder {
 		Builder::new()
+	}
+
+	pub fn wait_on<F: Future + Send>(future: F) -> F::Output {
+		Engine::as_ref()
+			.executor
+			.as_ref()
+			.expect("ThreadPool executor is only avaible after module initialization.");
+
+		sync::block_on(future)
 	}
 }

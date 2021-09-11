@@ -43,7 +43,7 @@ impl Module for GpuExample {
 }
 
 // Start the app runner
-fn main() {
+fn main() -> Result<(), std::io::Error> {
 	Engine::builder()
 		.module::<GpuExample>()
 		.name("Gpu Example")

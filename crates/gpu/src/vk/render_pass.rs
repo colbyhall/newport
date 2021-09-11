@@ -27,9 +27,9 @@ impl RenderPass {
 		let mut attachments = Vec::with_capacity(attachment_values.len());
 
 		for (index, it) in attachment_values.iter().enumerate() {
-			if it.is_depth() {
-				let format = vk_format(*it);
+			let format = vk_format(*it);
 
+			if it.is_depth() {
 				let attachment = vk::AttachmentDescription::builder()
 					.format(format)
 					.samples(vk::SampleCountFlags::TYPE_1)
@@ -47,8 +47,6 @@ impl RenderPass {
 
 				depth_ref = Some(the_ref.build())
 			} else {
-				let format = vk_format(*it);
-
 				let attachment = vk::AttachmentDescription::builder()
 					.format(format)
 					.samples(vk::SampleCountFlags::TYPE_1)

@@ -28,7 +28,11 @@ use std::{
 	result,
 };
 
-pub trait Asset: Sized + 'static {}
+pub trait Asset: Sized + 'static {
+	fn default_uuid() -> Option<UUID> {
+		None
+	}
+}
 
 pub type Result<T> = result::Result<T, Box<dyn std::error::Error>>;
 

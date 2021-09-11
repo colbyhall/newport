@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use asset::Asset;
 
 use asset::Importer;
@@ -19,7 +21,7 @@ use serde::{
 	Serialize,
 };
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
 #[serde(crate = "self::serde")]
 pub struct Vertex {
 	pub position: Vector3,
@@ -46,6 +48,15 @@ pub struct Mesh {
 
 	pub vertex_buffer: Buffer<Vertex>,
 	pub index_buffer: Buffer<u32>,
+}
+
+impl Debug for Mesh {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Mesh")
+			.field("vertices", &self.vertices)
+			.field("indices", &self.indices)
+			.finish()
+	}
 }
 
 impl Asset for Mesh {}

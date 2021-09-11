@@ -14,7 +14,7 @@ impl Module for HelloWorld {
 }
 
 // Start the app runner
-fn main() {
+fn main() -> Result<(), std::io::Error> {
 	Engine::builder()
 		.module::<HelloWorld>()
 		.name("Hello World")
