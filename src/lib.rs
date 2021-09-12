@@ -45,3 +45,7 @@ pub mod serde {
 pub mod game3d {
 	pub use newport_game3d::*;
 }
+
+pub mod editor {
+	pub use newport_editor::*;
+}

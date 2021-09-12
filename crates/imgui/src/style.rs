@@ -195,7 +195,7 @@ pub struct ColorStyle {
 impl Default for ColorStyle {
 	fn default() -> Self {
 		Self {
-			inactive_background: DARK.bg1,
+			inactive_background: DARK.bg_s,
 			inactive_foreground: DARK.fg,
 
 			unhovered_background: DARK.bg,

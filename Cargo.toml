@@ -24,6 +24,7 @@ newport_ecs       = { path = "crates/ecs", version = "0.2.0" }
 newport_imgui     = { path = "crates/imgui", version = "0.2.0" }
 newport_serde     = { path = "crates/serde", version = "0.2.0" }
 newport_game3d    = { path = "crates/game3d", version = "0.1.0" }
+newport_editor    = { path = "crates/editor", version = "0.1.0" }
 
 [[example]]
 name = "hello_world"
@@ -36,3 +37,7 @@ path = "examples/gpu.rs"
 [[example]]
 name = "game3d"
 path = "examples/game3d.rs"
+
+[[example]]
+name = "editor"
+path = "examples/editor.rs"
