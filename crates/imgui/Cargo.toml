@@ -16,5 +16,3 @@ graphics  = { path = "../graphics", version = "0.2.0", package = "newport_graphi
 asset     = { path = "../asset", version = "0.2.0", package = "newport_asset" }
 platform  = { path = "../platform", version = "0.2.0", package = "newport_platform" }
 engine    = { path = "../engine", version = "0.2.0", package = "newport_engine" }
-
-lazy_static = "1.4.0"

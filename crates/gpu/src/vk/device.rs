@@ -664,7 +664,7 @@ impl Device {
 			}
 			self.logical
 				.queue_submit(*queue, from_ref(&submit_info), fence)
-				.unwrap();
+				.expect("Failed to submit graphics commands to gpu");
 		}
 
 		let owner = command_buffers[0].owner.clone();

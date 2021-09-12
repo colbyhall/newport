@@ -572,7 +572,7 @@ impl DrawState {
 
 		let backbuffer = gpu::Texture::builder(
 			gpu::TextureUsage::SAMPLED | gpu::TextureUsage::COLOR_ATTACHMENT,
-			gpu::Format::RGBA_U8,
+			gpu::Format::RGBA_U8_SRGB,
 			canvas.width,
 			canvas.height,
 			1,

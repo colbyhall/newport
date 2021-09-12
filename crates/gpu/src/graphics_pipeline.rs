@@ -706,7 +706,8 @@ impl Importer for GraphicsPipelineImporter {
 					| Format::RGB_U8
 					| Format::RGB_U8_SRGB
 					| Format::RGBA_U8
-					| Format::RGBA_U8_SRGB => "float4",
+					| Format::RGBA_U8_SRGB
+					| Format::RGBA_F32 => "float4",
 					_ => unreachable!(),
 				};
 

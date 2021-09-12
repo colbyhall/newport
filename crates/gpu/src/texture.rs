@@ -37,6 +37,8 @@ pub enum Format {
 
 	RGBA_F16,
 
+	RGBA_F32,
+
 	BGR_U8_SRGB,
 
 	D24_S8,

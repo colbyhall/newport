@@ -15,7 +15,7 @@ GraphicsPipeline(
 			("position", Vector2),
 			("uv",       Vector2),
 			("scissor",  Vector4),
-			("color",    Vector4),
+			("color",    Color),
 			("texture",  Uint32),
 		],
 
@@ -23,7 +23,7 @@ GraphicsPipeline(
 			("screen_pos", Vector2),
 			("uv",         Vector2),
 			("scissor",    Vector4),
-			("color",      Vector4),
+			("color",      Color),
 			("texture",    Uint32),
 		],
 
@@ -44,7 +44,7 @@ GraphicsPipeline(
 
 	pixel_shader: (
 		exports: [
-			("color", RGBA_U8)
+			("color", RGBA_U8_SRGB)
 		],
 
 		code: r#"

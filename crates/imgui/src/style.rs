@@ -198,7 +198,7 @@ impl Default for ColorStyle {
 			inactive_background: DARK.bg_s,
 			inactive_foreground: DARK.fg,
 
-			unhovered_background: DARK.bg,
+			unhovered_background: DARK.bg_s,
 			unhovered_foreground: DARK.fg,
 
 			hovered_background: DARK.bg2,

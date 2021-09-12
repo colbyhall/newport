@@ -51,9 +51,8 @@ impl Module for Logger {
 			let thread = std::thread::current();
 			let name = thread.name().unwrap_or("<unnamed>");
 
-			error!("thread '{}' panicked at '{}', {}", name, msg, location);
-
 			(og_hook)(info);
+			error!("thread '{}' panicked at '{}', {}", name, msg, location);
 		}));
 
 		Logger {
