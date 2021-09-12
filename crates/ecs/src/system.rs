@@ -3,7 +3,7 @@ use std::any::type_name;
 use sync::async_trait;
 
 #[async_trait]
-pub trait System: BoxSystemClone + 'static + Send + Sync{
+pub trait System: BoxSystemClone + 'static + Send + Sync {
 	fn name(&self) -> &'static str {
 		type_name::<Self>()
 	}

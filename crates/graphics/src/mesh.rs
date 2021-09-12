@@ -22,7 +22,6 @@ use serde::{
 };
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
-#[serde(crate = "self::serde")]
 pub struct Vertex {
 	pub position: Vector3,
 
@@ -66,7 +65,6 @@ impl Asset for Mesh {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub(crate) struct MeshGltfImporter {}
 
 impl Importer for MeshGltfImporter {
@@ -102,19 +100,35 @@ impl Importer for MeshGltfImporter {
 			}
 
 			let mut normals = reader.read_normals().unwrap();
-			let mut uvs = reader.read_tex_coords(0).unwrap().into_f32();
 
-			let positions = reader.read_positions().unwrap();
-			for position in positions {
-				let normal = normals.next().unwrap_or_default();
-				let uv = uvs.next().unwrap();
+			match reader.read_tex_coords(0) {
+				Some(uvs) => {
+					let mut uvs = uvs.into_f32();
+					let positions = reader.read_positions().unwrap();
+					for position in positions {
+						let normal = normals.next().unwrap_or_default();
+						let uv = uvs.next().unwrap();
 
-				vertices.push(Vertex {
-					position: position.into(),
-					normal: normal.into(),
-					uv0: uv.into(),
-					..Default::default()
-				});
+						vertices.push(Vertex {
+							position: position.into(),
+							normal: normal.into(),
+							uv0: uv.into(),
+							..Default::default()
+						});
+					}
+				}
+				None => {
+					let positions = reader.read_positions().unwrap();
+					for position in positions {
+						let normal = normals.next().unwrap_or_default();
+
+						vertices.push(Vertex {
+							position: position.into(),
+							normal: normal.into(),
+							..Default::default()
+						});
+					}
+				}
 			}
 		}
 

@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use serde::{
 	self,
+	bincode,
 	de::DeserializeOwned,
 	ron,
 	Deserialize,
@@ -31,7 +32,6 @@ pub trait Importer: Sized + Serialize + DeserializeOwned + 'static {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub struct NativeImporter<T: Asset> {
 	phantom: PhantomData<T>,
 }
@@ -42,6 +42,20 @@ impl<T: Asset + Serialize + DeserializeOwned> Importer for NativeImporter<T> {
 	fn import(&self, bytes: &[u8]) -> Result<Self::Target> {
 		let contents = str::from_utf8(bytes)?;
 		Ok(ron::from_str(contents)?)
+	}
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BinaryImporter<T: Asset> {
+	#[serde(default)]
+	phantom: PhantomData<T>,
+}
+
+impl<T: Asset + Serialize + DeserializeOwned> Importer for BinaryImporter<T> {
+	type Target = T;
+
+	fn import(&self, bytes: &[u8]) -> Result<Self::Target> {
+		Ok(bincode::deserialize(bytes)?)
 	}
 }
 
@@ -68,7 +82,7 @@ impl Variant {
 
 		fn load_meta<T: Importer>(bytes: &[u8]) -> Result<(UUID, Box<dyn Any>)> {
 			#[derive(Serialize, Deserialize)]
-			#[serde(crate = "self::serde", rename = "Meta")]
+			#[serde(rename = "Meta")]
 			struct MetaFile<T> {
 				uuid: UUID,
 				#[serde(bound(deserialize = "T: Deserialize<'de>"))]

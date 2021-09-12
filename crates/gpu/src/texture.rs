@@ -27,7 +27,6 @@ use stb_image::image;
 
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(crate = "self::serde")]
 pub enum Format {
 	Undefined,
 
@@ -81,14 +80,12 @@ pub enum Layout {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub enum Wrap {
 	Clamp,
 	Repeat,
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub enum Filter {
 	Nearest,
 	Linear,
@@ -204,7 +201,6 @@ impl Texture {
 impl Asset for Texture {}
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub(crate) struct TextureImporter {
 	#[serde(default)]
 	srgb: bool,

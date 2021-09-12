@@ -79,7 +79,6 @@ pub enum MemoryType {
 pub type Result<T> = std::result::Result<T, api::Error>;
 
 #[derive(Serialize, Deserialize, Copy, Clone)]
-#[serde(crate = "self::serde")]
 pub struct SamplerDescription {
 	min_filter: Filter,
 	mag_filter: Filter,

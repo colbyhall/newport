@@ -7,13 +7,30 @@ use crate::{
 	EntityInfo,
 };
 use engine::Engine;
+use serde::{
+	Deserialize,
+	Serialize,
+};
 use std::sync::RwLock;
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct World {
 	pub(crate) entities: RwLock<EntitiesContainer>,
 	pub(crate) components: ComponentsContainer,
 }
+
+impl Clone for World {
+	fn clone(&self) -> Self {
+		let read = self.entities.read().unwrap();
+
+		Self {
+			entities: RwLock::new((*read).clone()),
+			components: self.components.clone(),
+		}
+	}
+}
+
+impl asset::Asset for World {}
 
 impl World {
 	pub fn new() -> Self {

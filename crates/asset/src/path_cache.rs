@@ -23,7 +23,6 @@ use std::{
 };
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(crate = "self::serde")]
 pub(crate) struct PathCache {
 	pub uuid_to_path: HashMap<UUID, PathBuf>,
 }

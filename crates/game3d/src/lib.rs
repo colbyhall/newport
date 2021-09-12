@@ -1,4 +1,4 @@
-use asset::AssetRef;
+use asset::{ AssetRef, BinaryImporter };
 use engine::{
 	Builder,
 	Engine,
@@ -6,6 +6,7 @@ use engine::{
 	Event,
 };
 use math::{ Vector2, Color };
+use ecs::World;
 
 use gpu::GraphicsPipeline;
 use gpu::{ GraphicsRecorder, Gpu, Layout };
@@ -50,6 +51,7 @@ impl Module for Game3d {
 
 	fn depends_on(builder: Builder) -> Builder {
 		register_components(builder)
+			.register(asset::Variant::new::<BinaryImporter<World>>(&["level"]))
 			.module::<Graphics>()
 			.module::<AssetManager>()
 			.process_input(|event| {

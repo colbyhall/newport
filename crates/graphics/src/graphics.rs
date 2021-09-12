@@ -18,6 +18,6 @@ impl Module for Graphics {
 		builder
 			.module::<Gpu>()
 			.register(asset::Variant::new::<FontImporter>(&["ttf"]))
-			.register(asset::Variant::new::<MeshGltfImporter>(&["gltf"]))
+			.register(asset::Variant::new::<MeshGltfImporter>(&["gltf", "glb"]))
 	}
 }

@@ -17,20 +17,17 @@ use std::collections::{
 use std::ops::Index;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
-#[serde(crate = "self::serde")]
 pub struct Entity {
 	index: u32,
 	generation: u32,
 }
 
-#[derive(Serialize, Deserialize, Default)]
-#[serde(crate = "self::serde")]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct EntityInfo {
 	pub components: HashMap<VariantId, ComponentId>,
 }
 
-#[derive(Serialize, Deserialize, Default)]
-#[serde(crate = "self::serde")]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct EntitiesContainer {
 	generations: Vec<u32>,
 	available: VecDeque<u32>,

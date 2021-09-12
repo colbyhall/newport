@@ -82,6 +82,7 @@ impl Engine {
 				Some(_) => WindowBuilder::new()
 					.with_title(name.clone())
 					.with_maximized(true)
+					.with_visible(false)
 					.build(&event_loop)
 					.ok(),
 				None => None,
@@ -115,8 +116,8 @@ impl Engine {
 
 		let mut frame_count = 0;
 		let mut time = 0.0;
-		let mut do_first_show = true;
 		let mut displayed = false;
+		let mut do_first_show = true;
 
 		let mut last_frame_time = Instant::now();
 		event_loop.run(move |event, _, control_flow| {
@@ -291,6 +292,13 @@ impl Engine {
 					} else {
 						displayed = false;
 					}
+
+					if do_first_show {
+						if let Some(window) = engine.window.as_ref() {
+							window.set_visible(true);
+						}
+						do_first_show = false;
+					}
 				}
 				WinitEvent::RedrawRequested(_) => match &builder.display {
 					Some(display) => {
@@ -298,7 +306,9 @@ impl Engine {
 						displayed = true;
 
 						if do_first_show {
-							engine.window.as_ref().unwrap().set_visible(true);
+							if let Some(window) = engine.window.as_ref() {
+								window.set_visible(true);
+							}
 							do_first_show = false;
 						}
 					}

@@ -12,7 +12,6 @@ pub mod rigid_body;
 use std::sync::RwLock;
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 struct PhysicsStateInner {
 	gravity: Vector3,
 	integration_parameters: IntegrationParameters,

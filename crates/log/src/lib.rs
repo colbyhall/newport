@@ -35,7 +35,9 @@ impl Module for Logger {
 
 		let file = File::create(&path).unwrap();
 
-		panic::set_hook(Box::new(|info| {
+		let og_hook = panic::take_hook();
+
+		panic::set_hook(Box::new(move |info| {
 			// The current implementation always returns `Some`.
 			let location = info.location().unwrap();
 
@@ -50,7 +52,8 @@ impl Module for Logger {
 			let name = thread.name().unwrap_or("<unnamed>");
 
 			error!("thread '{}' panicked at '{}', {}", name, msg, location);
-			// error!("{:?}", std::backtrace::capture());
+
+			(og_hook)(info);
 		}));
 
 		Logger {

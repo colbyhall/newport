@@ -19,7 +19,6 @@ use serde::{
 use bitflags::bitflags;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub enum DrawMode {
 	Fill,
 	Line,
@@ -34,7 +33,6 @@ bitflags! {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub enum CompareOp {
 	Never,
 	Less,           // A < B
@@ -47,7 +45,6 @@ pub enum CompareOp {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub enum BlendOp {
 	Add,
 	Subtract,
@@ -57,7 +54,6 @@ pub enum BlendOp {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub enum BlendFactor {
 	Zero,
 	One,
@@ -283,7 +279,6 @@ impl GraphicsPipeline {
 impl Asset for GraphicsPipeline {}
 
 #[derive(Serialize, Deserialize, Clone)]
-#[serde(crate = "self::serde")]
 pub struct DepthStencilStates {
 	#[serde(default)]
 	pub depth_test: bool,
@@ -317,14 +312,14 @@ impl Default for DepthStencilStates {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(rename = "CullMode", crate = "self::serde")]
+#[serde(rename = "CullMode")]
 pub enum CullModeSerde {
 	Front,
 	Back,
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(rename = "ColorMask", crate = "self::serde")]
+#[serde(rename = "ColorMask")]
 pub enum ColorMaskSerde {
 	Red,
 	Green,
@@ -333,7 +328,6 @@ pub enum ColorMaskSerde {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub struct RenderStates {
 	#[serde(default = "RenderStates::default_draw_mode")]
 	pub draw_mode: DrawMode,
@@ -379,7 +373,6 @@ impl Default for RenderStates {
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone)]
-#[serde(crate = "self::serde")]
 pub struct BlendStates {
 	#[serde(default = "BlendStates::default_blend_factor")]
 	pub src_blend_factor: BlendFactor,
@@ -402,11 +395,9 @@ impl BlendStates {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub struct ConstantMember(String, Constant);
 
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
-#[serde(crate = "self::serde")]
 pub enum Constant {
 	Uint32,
 	Int32,
@@ -447,20 +438,17 @@ impl Constant {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub enum Resource {
 	Texture,
 	Sampler(SamplerDescription),
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub enum SystemSemantics {
 	VertexId,
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub struct VertexShader {
 	#[serde(default)]
 	pub attributes: Vec<ConstantMember>,
@@ -473,14 +461,13 @@ pub struct VertexShader {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub struct PixelShader {
 	pub exports: Vec<(String, Format)>,
 	pub code: String,
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(rename = "GraphicsPipeline", crate = "self::serde")]
+#[serde(rename = "GraphicsPipeline")]
 pub struct GraphicsPipelineFile {
 	#[serde(default)]
 	pub render_states: RenderStates,
@@ -508,7 +495,6 @@ pub struct GraphicsPipelineFile {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub(crate) struct GraphicsPipelineImporter {}
 
 static SHADER_HEADER: &str = "

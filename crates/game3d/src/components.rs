@@ -15,7 +15,6 @@ use serde::{
 };
 
 #[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize, Default)]
-#[serde(crate = "self::serde")]
 pub struct Transform {
 	pub location: Vector3,
 	pub rotation: Quaternion,
@@ -32,14 +31,12 @@ impl Transform {
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub struct MeshRender {
 	pub mesh: AssetRef<Mesh>,
 	pub pipeline: AssetRef<GraphicsPipeline>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub struct Camera {
 	pub fov: f32,
 }
@@ -50,18 +47,18 @@ impl Default for Camera {
 	}
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct CameraController {
 	pub pitch: f32,
 	pub yaw: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct Spinner {
 	pub speed: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct Scaler {
 	pub speed: f32,
 	pub max: f32,

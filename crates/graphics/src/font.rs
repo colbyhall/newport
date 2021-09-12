@@ -203,7 +203,6 @@ impl FontCollection {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub(crate) struct FontImporter {}
 
 impl Importer for FontImporter {

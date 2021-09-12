@@ -1,8 +1,13 @@
+use serde::de::DeserializeOwned;
+use serde::ser::SerializeMap;
 use serde::{
 	self,
+	bincode,
 	Deserialize,
 	Serialize,
 };
+
+use log::warn;
 
 use std::collections::HashMap;
 use std::{
@@ -18,8 +23,9 @@ use std::{
 	},
 };
 
+use engine::Engine;
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
-#[serde(crate = "self::serde")]
 pub struct VariantId(u32);
 
 impl VariantId {
@@ -41,7 +47,7 @@ impl VariantId {
 	}
 }
 
-pub trait Component: 'static + Sized + Sync + Send {
+pub trait Component: 'static + Sized + Sync + Send + Clone {
 	const VARIANT_ID: VariantId = VariantId::new(type_name::<Self>());
 
 	const CAN_SAVE: bool;
@@ -49,7 +55,7 @@ pub trait Component: 'static + Sized + Sync + Send {
 
 impl<T> Component for T
 where
-	T: Sync + Send + Sized + 'static,
+	T: Sync + Send + Sized + Clone + 'static,
 {
 	default const VARIANT_ID: VariantId = VariantId::new(type_name::<Self>());
 
@@ -60,6 +66,7 @@ where
 pub struct ComponentVariant {
 	pub name: &'static str,
 	pub variant_id: VariantId,
+	pub can_save: bool,
 
 	create_storage: fn() -> Box<dyn DynamicStorage>,
 }
@@ -73,6 +80,7 @@ impl ComponentVariant {
 		Self {
 			name: type_name::<T>(),
 			variant_id: T::VARIANT_ID,
+			can_save: T::CAN_SAVE,
 
 			create_storage: create_storage::<T>,
 		}
@@ -80,7 +88,6 @@ impl ComponentVariant {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(crate = "self::serde")]
 pub struct ComponentId {
 	variant_id: VariantId,
 
@@ -88,19 +95,75 @@ pub struct ComponentId {
 	generation: u32,
 }
 
-struct Storage<T: Component> {
+#[derive(Serialize, Deserialize, Clone)]
+struct Storage<T> {
 	// SPEED: We're also going to need to keep these somehow organized for best iteration order
+	#[serde(bound(deserialize = "T: Deserialize<'de>"))]
 	components: Vec<Option<T>>,
 	generations: Vec<u32>,
 
 	available: VecDeque<usize>,
 }
 
-trait DynamicStorage: Send + Sync + 'static {
+// impl<T: Component + Serialize> Serialize for Storage<T> {
+// 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+// 	where
+// 			S: serde::Serializer {
+// 		let mut st = serializer.serialize_struct("Storage", 3)?;
+// 		st.serialize_field("components", &self.components)?;
+// 		st.serialize_field("generations", &self.generations)?;
+// 		st.serialize_field("available", &self.available)?;
+// 		st.end()
+// 	}
+// }
+
+// impl<'de, T: Component + Deserialize<'de>> Deserialize<'de> for Storage<T> {
+// 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+// 	where
+// 			D: serde::Deserializer<'de> {
+// 		struct StorageVisitor;
+
+// 		impl<'de, T: Component + Deserialize<'de>> Visitor<'de> for StorageVisitor {
+// 			type Value = Storage<T>;
+
+// 			fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+// 				formatter
+// 					.write_str("TODO")
+// 			}
+
+// 			fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+// 			where
+// 				E: de::Error,
+// 			{
+
+// 				Ok(Self::Value { a, b, c, d })
+// 			}
+// 		}
+// 		deserializer.deserialize_struct("Storage", &["components", "generations", "available"], visitor)
+
+// 	}
+// }
+
+pub(crate) trait DynamicStorage: Send + Sync + DynamicStorageClone + 'static {
 	fn remove(&mut self, id: ComponentId) -> bool;
+
+	fn serialize(&self) -> Vec<u8>;
+	fn deserialize(&mut self, bincode: &[u8]);
+
+	fn can_save(&self) -> bool;
 
 	fn as_any_mut(&mut self) -> &mut dyn Any;
 	fn as_any(&self) -> &dyn Any;
+}
+
+pub(crate) trait DynamicStorageClone {
+	fn clone_to_box(&self) -> Box<dyn DynamicStorage>;
+}
+
+impl<T: DynamicStorage + Clone> DynamicStorageClone for T {
+	fn clone_to_box(&self) -> Box<dyn DynamicStorage> {
+		Box::new(self.clone())
+	}
 }
 
 impl<T: Component> Storage<T> {
@@ -146,7 +209,7 @@ impl<T: Component> Storage<T> {
 
 		let index = id.index as usize;
 
-		if self.components.len() - 1 < index {
+		if self.components.len() <= index {
 			return None;
 		}
 
@@ -174,7 +237,7 @@ impl<T: Component> Storage<T> {
 	}
 }
 
-impl<T: Component + Send + Sync> DynamicStorage for Storage<T> {
+impl<T: Component> DynamicStorage for Storage<T> {
 	fn remove(&mut self, id: ComponentId) -> bool {
 		assert_eq!(T::VARIANT_ID, id.variant_id);
 
@@ -192,12 +255,34 @@ impl<T: Component + Send + Sync> DynamicStorage for Storage<T> {
 		self.components[index].take().is_some()
 	}
 
+	fn can_save(&self) -> bool {
+		T::CAN_SAVE
+	}
+
 	fn as_any_mut(&mut self) -> &mut dyn Any {
 		self
 	}
 
 	fn as_any(&self) -> &dyn Any {
 		self
+	}
+
+	default fn serialize(&self) -> Vec<u8> {
+		Vec::default()
+	}
+
+	default fn deserialize(&mut self, _bincode: &[u8]) {}
+}
+
+impl<T: Component + Serialize + DeserializeOwned> DynamicStorage for Storage<T> {
+	fn serialize(&self) -> Vec<u8> {
+		let mut result = bincode::serialize(self).expect("Somehow failed to serialize");
+		result.push(0); // EOF
+		result
+	}
+
+	fn deserialize(&mut self, bincode: &[u8]) {
+		*self = bincode::deserialize(bincode).expect("Somehow failed to deserialize");
 	}
 }
 
@@ -234,6 +319,71 @@ impl ComponentsContainer {
 
 	pub fn write<T: Component>(&self) -> Option<WriteStorage> {
 		self.write_id(T::VARIANT_ID)
+	}
+}
+
+impl Serialize for ComponentsContainer {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		let mut seq = serializer.serialize_map(Some(self.map.len()))?;
+		for (key, value) in self.map.iter() {
+			let read = value.read().unwrap();
+
+			if read.can_save() {
+				seq.serialize_key(key)?;
+				seq.serialize_value(&read.serialize())?;
+			}
+		}
+		seq.end()
+	}
+}
+
+impl<'de> Deserialize<'de> for ComponentsContainer {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: serde::Deserializer<'de>,
+	{
+		let raw_data: HashMap<VariantId, Vec<u8>> = Deserialize::deserialize(deserializer)?;
+		let variants: Vec<ComponentVariant> = Engine::register();
+
+		let mut map = HashMap::with_capacity(raw_data.len());
+		for (key, value) in raw_data.iter() {
+			let variant = match variants.iter().find(|v| v.variant_id == *key) {
+				Some(variant) => variant,
+				None => {
+					warn!("[ECS] Failed to deserialize component variant due to component variant {:?} not existing", *key);
+					continue;
+				}
+			};
+
+			if !variant.can_save {
+				warn!("[ECS] Found component \"{}\" save data even though it is marked as can not save", variant.name);
+				continue;
+			}
+
+			let mut storage = (variant.create_storage)();
+			storage.deserialize(value);
+
+			map.insert(*key, RwLock::new(storage));
+		}
+
+		Ok(Self { map, variants })
+	}
+}
+
+impl Clone for ComponentsContainer {
+	fn clone(&self) -> Self {
+		let mut map = HashMap::with_capacity(self.map.len());
+		self.map.iter().for_each(|(key, value)| {
+			let read = value.read().unwrap();
+			map.insert(*key, RwLock::new(read.clone_to_box()));
+		});
+		Self {
+			map,
+			variants: self.variants.clone(),
+		}
 	}
 }
 
