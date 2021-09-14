@@ -1,32 +1,45 @@
-use asset::{ AssetRef, BinaryImporter };
+use asset::{
+	
+	AssetRef,
+	BinaryImporter,
+};
+use ecs::World;
 use engine::{
 	Builder,
 	Engine,
-	Module,
 	Event,
+	Module,
 };
-use math::{ Vector2, Color };
-use ecs::World;
-
-use gpu::GraphicsPipeline;
-use gpu::{ GraphicsRecorder, Gpu, Layout };
+use math::{
+	Color,
+	Vector2,
+};
+#[cfg(not(feature = "editor"))]
+use gpu::{
+	Gpu,
+	GraphicsRecorder,
+	Layout,
+	GraphicsPipeline
+};
 
 use asset::AssetManager;
 use graphics::Graphics;
 
 pub mod components;
-use components::register_components;
-
+#[cfg(feature = "editor")]
+pub(crate) mod editor;
 pub mod game;
-use game::GameState;
-
-pub mod render;
-use render::{ FrameContainer, Scene };
-
 mod input;
-use input::*;
-
+pub mod render;
 pub mod systems;
+
+use components::register_components;
+use game::GameState;
+use input::*;
+use render::{
+	FrameContainer,
+	Scene,
+};
 
 use sync::join;
 
@@ -35,6 +48,7 @@ pub struct Game3d {
 	frames: FrameContainer,
 	input_state: InputState,
 
+	#[cfg(not(feature = "editor"))]
 	present_pipeline: AssetRef<GraphicsPipeline>,
 }
 
@@ -45,12 +59,14 @@ impl Module for Game3d {
 			frames: FrameContainer::new(),
 			input_state: InputState::default(),
 
-			present_pipeline: AssetRef::new("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}").unwrap_or_default()
+			#[cfg(not(feature = "editor"))]
+			present_pipeline: AssetRef::new("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}")
+				.unwrap_or_default(),
 		}
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
-		register_components(builder)
+		let builder = register_components(builder)
 			.register(asset::Variant::new::<BinaryImporter<World>>(&["level"]))
 			.module::<Graphics>()
 			.module::<AssetManager>()
@@ -71,12 +87,10 @@ impl Module for Game3d {
 							}
 
 							window
-								.set_cursor_position(
-									platform::winit::dpi::PhysicalPosition::new(
-										size.width / 2,
-										size.height / 2,
-									),
-								)
+								.set_cursor_position(platform::winit::dpi::PhysicalPosition::new(
+									size.width / 2,
+									size.height / 2,
+								))
 								.unwrap();
 						}
 
@@ -98,7 +112,9 @@ impl Module for Game3d {
 			.tick(|dt| {
 				let game3d: &Game3d = Engine::module().unwrap();
 
-				let Game3d { game_state, frames, .. } = game3d;
+				let Game3d {
+					game_state, frames, ..
+				} = game3d;
 
 				Engine::wait_on(async {
 					let simulation = async {
@@ -107,50 +123,59 @@ impl Module for Game3d {
 						frames.push_scene(scene);
 					};
 					let render = frames.render_scene();
-	
+
 					join!(simulation, render)
 				});
 
 				frames.advance_frame();
 
 				// UNSAFE: Nothing should be touching input by this time
-				let game3d: &mut Game3d = unsafe{ Engine::module_mut().unwrap() };
+				let game3d: &mut Game3d = unsafe { Engine::module_mut().unwrap() };
 				game3d.input_state.last_key_down = game3d.input_state.key_down;
 				game3d.input_state.last_mouse_button_down = game3d.input_state.mouse_button_down;
 				game3d.input_state.last_mouse_location = game3d.input_state.mouse_location.take();
 				game3d.input_state.mouse_delta = Vector2::ZERO;
-			})
-			.display(|| {
+			});
+
+			#[cfg(feature = "editor")]
+			let builder = builder.module::<editor::Editor>();
+
+			#[cfg(not(feature = "editor"))]
+			let builder = builder.display(|| {
 				let game3d: &Game3d = Engine::module().unwrap();
 
 				let device = Gpu::device();
-				let backbuffer = device.acquire_backbuffer().expect("Swapchain failed to find a back buffer");
+				let backbuffer = device
+					.acquire_backbuffer()
+					.expect("Swapchain failed to find a back buffer");
 
 				let receipt = match game3d.frames.to_display() {
-					Some(scene) => {
-						GraphicsRecorder::new()
-							.render_pass(&[&backbuffer], |ctx| {
-								ctx.bind_pipeline(&game3d.present_pipeline)
-									.bind_texture(
-										"texture",
-										&scene.diffuse_buffer,
-									)
-									.draw(3, 0)
-							})
-							.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present)
-							.submit()
-					},
-					None => {
-						GraphicsRecorder::new()
-							.render_pass(&[&backbuffer], |ctx| {
-								ctx.clear_color(Color::BLACK)
-							})
-							.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present)
-							.submit()
-					}
+					Some(scene) => GraphicsRecorder::new()
+						.render_pass(&[&backbuffer], |ctx| {
+							ctx.bind_pipeline(&game3d.present_pipeline)
+								.bind_texture("texture", &scene.diffuse_buffer)
+								.draw(3, 0)
+						})
+						.resource_barrier_texture(
+							&backbuffer,
+							Layout::ColorAttachment,
+							Layout::Present,
+						)
+						.submit(),
+					None => GraphicsRecorder::new()
+						.render_pass(&[&backbuffer], |ctx| ctx.clear_color(Color::BLACK))
+						.resource_barrier_texture(
+							&backbuffer,
+							Layout::ColorAttachment,
+							Layout::Present,
+						)
+						.submit(),
 				};
 
 				device.display(&[receipt]);
-			})
+			});
+
+			#[allow(clippy::let_and_return)]
+			builder
 	}
 }

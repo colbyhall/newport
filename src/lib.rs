@@ -30,10 +30,6 @@ pub mod ecs {
 	pub use newport_ecs::*;
 }
 
-pub mod imgui {
-	pub use newport_imgui::*;
-}
-
 pub mod platform {
 	pub use newport_platform::*;
 }
@@ -44,8 +40,4 @@ pub mod serde {
 
 pub mod game3d {
 	pub use newport_game3d::*;
-}
-
-pub mod editor {
-	pub use newport_editor::*;
 }

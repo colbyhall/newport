@@ -15,7 +15,8 @@ pub struct GameState {
 
 impl GameState {
 	pub fn new() -> Self {
-		let level: AssetRef<World> = AssetRef::new("{5AFC655B-8468-40DA-9091-9A332B61A6F9}").unwrap();
+		let level: AssetRef<World> =
+			AssetRef::new("{5AFC655B-8468-40DA-9091-9A332B61A6F9}").unwrap();
 
 		let schedule = Schedule::builder()
 			.single(Box::new(SpinDriver))

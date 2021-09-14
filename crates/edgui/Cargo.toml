@@ -1,11 +1,11 @@
 [package]
-name = "newport_imgui"
-version = "0.2.0"
+name = "newport_edgui"
+version = "0.1.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
 license = "Apache-2.0"
 repository = "https://github.com/colbyhall/newport"
-description = "Immediate Mode GUI for Newport"
+description = "Immediate Mode GUI for Newport Editor"
 categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 

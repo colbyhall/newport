@@ -1,13 +1,16 @@
+use crate::components::*;
 use ecs::{
+	Query,
 	System,
 	World,
-	Query,
 };
-use crate::components::*;
-use math::{ Quaternion, Vector3 };
-use sync::async_trait;
 use engine::Engine;
+use math::{
+	Quaternion,
+	Vector3,
+};
 use platform::input::*;
+use sync::async_trait;
 
 #[derive(Clone)]
 pub struct CameraDriver;
@@ -15,7 +18,7 @@ pub struct CameraDriver;
 #[async_trait]
 impl System for CameraDriver {
 	async fn run(&self, world: &World, dt: f32) {
-		let game3d: &mut crate::Game3d = unsafe{ Engine::module_mut().unwrap() };
+		let game3d: &mut crate::Game3d = unsafe { Engine::module_mut().unwrap() };
 
 		let mut query = Query::builder()
 			.read::<Camera>()
@@ -91,7 +94,6 @@ impl System for CameraDriver {
 	}
 }
 
-
 #[derive(Clone)]
 pub struct SpinDriver;
 
@@ -107,11 +109,8 @@ impl System for SpinDriver {
 			let transform: &mut Transform = it.get_mut().unwrap();
 			let spinner: &Spinner = it.get().unwrap();
 
-			let rotation = Quaternion::from_euler([
-				spinner.speed * dt,
-				0.0,
-				spinner.speed * dt * 0.5,
-			]);
+			let rotation =
+				Quaternion::from_euler([spinner.speed * dt, 0.0, spinner.speed * dt * 0.5]);
 
 			transform.rotation = transform.rotation * rotation;
 		}

@@ -1,20 +1,4 @@
-use asset::{
-	AssetManager,
-	AssetRef,
-};
-use engine::{
-	Builder,
-	Engine,
-	Module,
-};
-use gpu::{
-	Gpu,
-	GraphicsPipeline,
-	GraphicsRecorder,
-	Layout,
-};
-use graphics::Graphics;
-use imgui::{
+use edgui::{
 	Context,
 	DrawState,
 	LayoutStyle,
@@ -23,22 +7,45 @@ use imgui::{
 	TextStyle,
 };
 
+use gpu::{
+	Gpu,
+	GraphicsPipeline,
+	GraphicsRecorder,
+};
+
+use engine::{
+	Builder,
+	Engine,
+	Module,
+};
+
+use asset::{
+	AssetManager,
+	AssetRef,
+};
+
+use graphics::Graphics;
+
 pub struct Editor {
-	imgui: Context,
+	context: Context,
 	draw_state: DrawState,
 	input: Option<RawInput>,
 
 	present_pipeline: AssetRef<GraphicsPipeline>,
+
+	dt: f32,
 }
 
 impl Module for Editor {
 	fn new() -> Self {
 		Self {
-			imgui: Context::new(),
+			context: Context::new(),
 			draw_state: DrawState::new(),
 			input: None,
 
 			present_pipeline: AssetRef::new("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}").unwrap(),
+
+			dt: 0.0,
 		}
 	}
 
@@ -62,29 +69,19 @@ impl Module for Editor {
 			})
 			.tick(|dt| {
 				let editor: &mut Editor = unsafe { Engine::module_mut().unwrap() };
-
-				if editor.input.is_none() {
-					editor.input = Some(RawInput::default());
-				}
-
-				editor.input.as_mut().unwrap().dt = dt;
+				editor.dt = dt;
 			})
 			.display(|| {
 				let device = Gpu::device();
-				let backbuffer = device
-					.acquire_backbuffer()
-					.expect("Swapchain failed to find a back buffer");
+
+				let backbuffer = device.acquire_backbuffer().unwrap();
 
 				let editor: &mut Editor = unsafe { Engine::module_mut().unwrap() };
-				let Editor {
-					imgui,
-					draw_state,
-					input,
-					present_pipeline,
-				} = editor;
 
 				let canvas = {
-					let mut input = input.take().unwrap_or_default();
+					let context = &mut editor.context;
+
+					let mut input = editor.input.take().unwrap_or_default();
 
 					input.viewport = (
 						0.0,
@@ -94,33 +91,37 @@ impl Module for Editor {
 					)
 						.into();
 
+					input.dt = editor.dt;
 					input.dpi = Engine::window().unwrap().scale_factor() as f32;
 
-					imgui.begin_frame(input);
-					let layout_style: LayoutStyle = imgui.style().get();
-					let text_style: TextStyle = imgui.style().get();
+					context.begin_frame(input);
+					let layout_style: LayoutStyle = context.style().get();
+					let text_style: TextStyle = context.style().get();
 
 					let height = text_style.label_height()
 						+ layout_style.padding.min.y
 						+ layout_style.padding.max.y;
-					Panel::top("menu_bar", height).build(imgui, |builder| {
-						builder.button("Position").clicked();
-
-						builder.button("Rotation").clicked();
+					Panel::top("menu_bar", height).build(context, |builder| {
+						builder.button("Testing123").clicked();
 					});
-					imgui.end_frame()
+					context.end_frame()
 				};
 
-				let (gfx, imgui) = draw_state.record(canvas, GraphicsRecorder::new(), imgui);
+				let gfx = GraphicsRecorder::new();
+				let (gfx, imgui) = editor.draw_state.record(canvas, gfx, &editor.context);
 				let imgui = imgui.unwrap();
 
 				let receipt = gfx
 					.render_pass(&[&backbuffer], |ctx| {
-						ctx.bind_pipeline(present_pipeline)
+						ctx.bind_pipeline(&editor.present_pipeline)
 							.bind_texture("texture", &imgui)
 							.draw(3, 0)
 					})
-					.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present)
+					.resource_barrier_texture(
+						&backbuffer,
+						gpu::Layout::ColorAttachment,
+						gpu::Layout::Present,
+					)
 					.submit();
 
 				device.display(&[receipt]);
