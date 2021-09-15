@@ -1,3 +1,4 @@
+use crate::Sense;
 use crate::{
 	Alignment,
 	ColorStyle,
@@ -34,29 +35,16 @@ impl Widget for Label {
 		let layout_style: LayoutStyle = gui.style().get();
 
 		let label_rect = text.string_rect(&self.label, text.label_size, None).size();
-		let bounds = gui.content_bounds(label_rect);
+		let (bounds, response) = gui.allocate_bounds(None, label_rect, Sense::hover());
 
-		let at = match text.alignment {
-			Alignment::Left => {
-				bounds.top_left()
-					+ Vector2::new(
-						layout_style.padding.top_left().x,
-						-layout_style.padding.top_left().y,
-					)
-			}
-			Alignment::Center => Rect::from_pos_size(bounds.pos(), label_rect).top_left(),
-			Alignment::Right => bounds.top_right() - layout_style.padding.top_right(),
-		};
-
-		gui.painter.push_shape(Shape::text(
+		gui.painter().push_text(
 			self.label,
-			at,
+			bounds,
 			&text.font,
 			text.label_size,
-			gui.input().dpi,
 			color.inactive_foreground,
-		));
-
-		Response::none(bounds)
+			Alignment::Center,
+		);
+		response
 	}
 }

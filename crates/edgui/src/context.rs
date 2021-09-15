@@ -1,3 +1,5 @@
+use crate::Response;
+use crate::Sense;
 use crate::{
 	Canvas,
 	Event,
@@ -81,6 +83,77 @@ impl Context {
 		}
 	}
 
+	pub fn is_hovered(&self, id: Id) -> bool {
+		if let Some(hovered) = self.hovered {
+			return hovered == id;
+		}
+		false
+	}
+
+	pub fn hover(&mut self, id: Id) {
+		self.hovered = Some(id)
+	}
+
+	pub fn unhover(&mut self, id: Id) -> bool {
+		if self.is_hovered(id) {
+			self.hovered = None;
+			return true;
+		}
+		false
+	}
+
+	pub fn is_focused(&self, id: Id) -> bool {
+		if let Some(focused) = self.focused {
+			return focused == id;
+		}
+		false
+	}
+
+	pub fn focus(&mut self, id: Id) {
+		self.focused = Some(id)
+	}
+
+	pub fn unfocus(&mut self, id: Id) -> bool {
+		if self.is_focused(id) {
+			self.focused = None;
+			return true;
+		}
+		false
+	}
+
+	pub(crate) fn interact(
+		&mut self,
+		id: Id,
+		scissor: Rect,
+		bounds: Rect,
+		sense: Sense,
+	) -> Response {
+		let mut response = Response::none();
+		response.id = Some(id);
+		response.bounds = bounds;
+		response.sense = sense;
+
+		let cursor_over_bounds = self.input.mouse_is_over(bounds);
+		if cursor_over_bounds {
+			if !self.is_hovered(id) {
+				response.hovered = true;
+				self.hover(id);
+			}
+
+			if self.input.was_primary_clicked() {
+				self.focus(id);
+			}
+		} else {
+			self.unhover(id);
+		}
+
+		if self.input.was_primary_released() && self.unfocus(id) && cursor_over_bounds {
+			response.clicked[0] = true;
+		}
+
+		response
+	}
+
 	pub(crate) fn push_layer(&mut self, painter: Painter) {
 		self.layers.push(Layer { painter });
 	}
@@ -142,6 +215,8 @@ impl Context {
 
 			width: (self.input.viewport.width() * self.input.dpi) as u32,
 			height: (self.input.viewport.height() * self.input.dpi) as u32,
+
+			dpi: self.input.dpi,
 		};
 
 		self.layers

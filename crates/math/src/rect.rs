@@ -7,7 +7,7 @@ use serde::{
 	Serialize,
 };
 
-#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Rect {
 	pub min: Vector2,
 	pub max: Vector2,
@@ -23,6 +23,11 @@ impl Rect {
 			x: f32::INFINITY,
 			y: f32::INFINITY,
 		},
+	};
+
+	pub const ZERO: Rect = Rect {
+		min: Vector2::ZERO,
+		max: Vector2::ZERO,
 	};
 
 	pub fn from_min_max(min: Vector2, max: Vector2) -> Self {

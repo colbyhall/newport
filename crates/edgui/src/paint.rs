@@ -1,3 +1,4 @@
+use crate::Alignment;
 use crate::Context;
 
 use asset::AssetRef;
@@ -245,29 +246,27 @@ impl RectShape {
 
 pub struct TextShape {
 	text: String,
-	at: Vector2,
-
-	scissor: Rect,
-
+	bounds: Rect,
 	font: AssetRef<FontCollection>,
 	size: u32,
-	dpi: f32,
-
 	color: Color,
+	alignment: Alignment,
+
+	scissor: Rect,
 }
 
 impl TextShape {
 	pub fn tesselate(&self, canvas: &mut Canvas) {
-		let font = self.font.font_at_size(self.size, self.dpi).unwrap();
+		let font = self.font.font_at_size(self.size, canvas.dpi).unwrap();
 
-		let mut pos = self.at;
+		let mut pos = self.bounds.top_left();
 		for c in self.text.chars() {
 			match c {
 				'\n' => {
-					pos.x = self.at.x;
+					pos.x = self.bounds.top_left().x;
 					pos.y -= self.size as f32;
 				}
-				'\r' => pos.x = self.at.x,
+				'\r' => pos.x = self.bounds.top_left().x,
 				'\t' => {
 					let g = font.glyph_from_char(' ').unwrap();
 					pos.x += g.advance;
@@ -367,23 +366,22 @@ impl Shape {
 	}
 
 	pub fn text(
-		text: impl Into<String>,
-		at: impl Into<Vector2>,
+		text: impl ToString,
+		bounds: impl Into<Rect>,
 		font: &AssetRef<FontCollection>,
 		size: u32,
-		dpi: f32,
 		color: impl Into<Color>,
+		alignment: Alignment,
 	) -> Self {
 		Self::Text(TextShape {
-			text: text.into(),
-			at: at.into(),
-
-			scissor: Rect::INFINITY,
-
+			text: text.to_string(),
+			bounds: bounds.into(),
 			font: font.clone(),
 			size,
-			dpi,
 			color: color.into(),
+			alignment,
+
+			scissor: Rect::INFINITY,
 		})
 	}
 
@@ -426,6 +424,37 @@ impl Painter {
 		self.shapes.insert(index, shape);
 	}
 
+	pub fn push_rect(
+		&mut self,
+		bounds: impl Into<Rect>,
+		color: impl Into<Color>,
+		roundness: impl Into<Roundness>,
+	) {
+		self.push_shape(Shape::solid_rect(bounds, color, roundness))
+	}
+
+	pub fn push_texture(
+		&mut self,
+		texture: &Texture,
+		bounds: impl Into<Rect>,
+		color: impl Into<Color>,
+		roundness: impl Into<Roundness>,
+	) {
+		self.push_shape(Shape::textured_rect(bounds, color, roundness, texture))
+	}
+
+	pub fn push_text(
+		&mut self,
+		text: impl ToString,
+		bounds: impl Into<Rect>,
+		font: &AssetRef<FontCollection>,
+		size: u32,
+		color: impl Into<Color>,
+		alignment: Alignment,
+	) {
+		self.push_shape(Shape::text(text, bounds, font, size, color, alignment))
+	}
+
 	pub fn tesselate(mut self, canvas: &mut Canvas) {
 		self.shapes.drain(..).for_each(|it| match it {
 			Shape::Rect(rect) => rect.tesselate(canvas),
@@ -457,6 +486,8 @@ pub struct Canvas {
 
 	pub width: u32,
 	pub height: u32,
+
+	pub(crate) dpi: f32,
 }
 
 impl Canvas {

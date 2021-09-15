@@ -52,7 +52,7 @@ impl Panel {
 
 		let mut builder = ctx.builder(self.id, layout);
 		let color: ColorStyle = builder.style().get();
-		builder.painter.push_shape(Shape::solid_rect(
+		builder.painter().push_shape(Shape::solid_rect(
 			layout.bounds(),
 			color.inactive_background,
 			0.0,

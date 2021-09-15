@@ -8,6 +8,7 @@ use crate::{
 	Painter,
 	Response,
 	Retained,
+	Sense,
 	Sizing,
 	Style,
 	StyleMap,
@@ -21,22 +22,34 @@ use math::{
 };
 
 pub struct Gui<'a> {
-	pub id: Id,
-	pub layout: Layout,
+	pub(crate) id: Id,
+	pub(crate) layout: Layout,
 
-	pub painter: Painter,
+	pub(crate) painter: Painter,
 	pub(crate) context: &'a mut Context,
 }
 
+/// # General API
 impl<'a> Gui<'a> {
-	pub fn finish(self) {
-		self.context.push_layer(self.painter)
+	pub fn id(&self) -> Id {
+		self.id
+	}
+
+	pub fn painter(&mut self) -> &mut Painter {
+		&mut self.painter
 	}
 
 	pub fn input(&self) -> &InputState {
 		&self.context.input
 	}
 
+	pub fn finish(self) {
+		self.context.push_layer(self.painter)
+	}
+}
+
+/// # Interaction
+impl<'a> Gui<'a> {
 	pub fn is_focused(&self, id: Id) -> bool {
 		match &self.context.focused {
 			Some(focused) => *focused == id,
@@ -49,6 +62,11 @@ impl<'a> Gui<'a> {
 			Some(hovered) => *hovered == id,
 			None => false,
 		}
+	}
+
+	pub fn interact(&mut self, id: Id, bounds: Rect, sense: Sense) -> Response {
+		self.context
+			.interact(id, self.layout.bounds(), bounds, sense)
 	}
 }
 
@@ -74,15 +92,28 @@ impl<'a> Gui<'a> {
 		self.layout.available_rect()
 	}
 
-	pub fn content_bounds(&mut self, space_needed: Vector2) -> Rect {
+	pub fn allocate_bounds(
+		&mut self,
+		id: Option<Id>,
+		desired: Vector2,
+		sense: Sense,
+	) -> (Rect, Response) {
 		let style: LayoutStyle = self.style().get();
 
 		let space_available = self.layout.space_left();
-		let content_size = style.content_size(space_needed, space_available);
+		let content_size = style.content_size(desired, space_available);
 
 		let layout_rect = self.layout.push_size(style.spacing_size(content_size));
 
-		Rect::from_pos_size(layout_rect.pos(), content_size)
+		let bounds = Rect::from_pos_size(layout_rect.pos(), content_size);
+
+		let response = if let Some(id) = id {
+			self.interact(id, bounds, sense)
+		} else {
+			Response::none()
+		};
+
+		(bounds, response)
 	}
 
 	pub fn add_spacing(&mut self, amount: f32) {
