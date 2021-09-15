@@ -1,7 +1,7 @@
 use crate::{
-	Builder,
 	ColorStyle,
 	Context,
+	Gui,
 	Id,
 	Layout,
 	Shape,
@@ -38,7 +38,7 @@ impl Panel {
 }
 
 impl Panel {
-	pub fn build(self, ctx: &mut Context, contents: impl FnOnce(&mut Builder)) {
+	pub fn build(self, ctx: &mut Context, contents: impl FnOnce(&mut Gui)) {
 		let layout = match self.variant {
 			PanelVariant::Top => {
 				let rect = ctx.split_canvas_top(self.size);

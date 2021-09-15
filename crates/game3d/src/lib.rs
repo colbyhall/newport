@@ -1,5 +1,4 @@
 use asset::{
-	
 	AssetRef,
 	BinaryImporter,
 };

@@ -17,6 +17,9 @@ pub struct RawInput {
 	pub events: VecDeque<Event>,
 }
 
+pub const NUM_MOUSE_BUTTONS: usize = 3;
+pub const NUM_KEYS: usize = 256;
+
 #[derive(Clone)]
 pub struct InputState {
 	pub mouse_location: Option<Vector2>,
@@ -25,12 +28,12 @@ pub struct InputState {
 	pub dt: f32,
 	pub dpi: f32,
 
-	pub key_pressed: [bool; 256],
-	pub key_down: [bool; 256],
-	pub last_key_down: [bool; 256],
+	pub key_pressed: [bool; NUM_KEYS],
+	pub key_down: [bool; NUM_KEYS],
+	pub last_key_down: [bool; NUM_KEYS],
 
-	pub mouse_button_down: [bool; 3],
-	pub last_mouse_button_down: [bool; 3],
+	pub mouse_button_down: [bool; NUM_MOUSE_BUTTONS],
+	pub last_mouse_button_down: [bool; NUM_MOUSE_BUTTONS],
 
 	pub scroll: f32,
 

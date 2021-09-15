@@ -1,7 +1,7 @@
 use crate::{
-	Builder,
 	Canvas,
 	Event,
+	Gui,
 	Id,
 	InputState,
 	Layout,
@@ -69,10 +69,10 @@ impl Context {
 		}
 	}
 
-	pub fn builder(&mut self, id: impl Into<Id>, layout: Layout) -> Builder {
+	pub fn builder(&mut self, id: impl Into<Id>, layout: Layout) -> Gui {
 		let mut painter = Painter::new();
 		painter.push_scissor(layout.bounds());
-		Builder {
+		Gui {
 			id: id.into(),
 			layout,
 

@@ -1,6 +1,7 @@
 use edgui::{
 	Context,
 	DrawState,
+	Label,
 	LayoutStyle,
 	Panel,
 	RawInput,
@@ -101,8 +102,8 @@ impl Module for Editor {
 					let height = text_style.label_height()
 						+ layout_style.padding.min.y
 						+ layout_style.padding.max.y;
-					Panel::top("menu_bar", height).build(context, |builder| {
-						builder.button("Testing123").clicked();
+					Panel::top("menu_bar", height).build(context, |gui| {
+						gui.add(Label::new("Testing 123"));
 					});
 					context.end_frame()
 				};

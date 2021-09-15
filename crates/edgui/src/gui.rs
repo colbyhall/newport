@@ -1,6 +1,4 @@
 use crate::{
-	Button,
-	ButtonResponse,
 	Context,
 	Id,
 	InputState,
@@ -8,11 +6,13 @@ use crate::{
 	Layout,
 	LayoutStyle,
 	Painter,
+	Response,
 	Retained,
 	Sizing,
 	Style,
 	StyleMap,
 	TextStyle,
+	Widget,
 };
 
 use math::{
@@ -20,7 +20,7 @@ use math::{
 	Vector2,
 };
 
-pub struct Builder<'a> {
+pub struct Gui<'a> {
 	pub id: Id,
 	pub layout: Layout,
 
@@ -28,7 +28,7 @@ pub struct Builder<'a> {
 	pub(crate) context: &'a mut Context,
 }
 
-impl<'a> Builder<'a> {
+impl<'a> Gui<'a> {
 	pub fn finish(self) {
 		self.context.push_layer(self.painter)
 	}
@@ -50,41 +50,16 @@ impl<'a> Builder<'a> {
 			None => false,
 		}
 	}
+}
 
-	pub fn focus(&mut self, id: Id) {
-		self.context.focused = Some(id);
+impl<'a> Gui<'a> {
+	pub fn add(&mut self, widget: impl Widget) -> Response {
+		widget.add(self)
 	}
+}
 
-	pub fn unfocus(&mut self, id: Id) -> bool {
-		if self.is_focused(id) {
-			self.context.focused = None;
-			return true;
-		}
-		false
-	}
-
-	pub fn hover(&mut self, id: Id) {
-		self.context.hovered = Some(id);
-	}
-
-	pub fn unhover(&mut self, id: Id) -> bool {
-		if self.is_hovered(id) {
-			self.context.hovered = None;
-			return true;
-		}
-		false
-	}
-
-	#[must_use = "If a response is not being used then use a label"]
-	pub fn button(&mut self, label: impl Into<String>) -> ButtonResponse {
-		Button::new(label).build(self)
-	}
-
-	pub fn label(&mut self, label: impl Into<String>) {
-		Label::new(label).build(self)
-	}
-
-	pub fn layout(&mut self, layout: Layout, content: impl FnOnce(&mut Builder)) -> Layout {
+impl<'a> Gui<'a> {
+	pub fn layout(&mut self, layout: Layout, content: impl FnOnce(&mut Gui)) -> Layout {
 		let current = self.layout;
 		self.layout = layout;
 		self.painter.push_scissor(layout.bounds());
@@ -126,7 +101,7 @@ impl<'a> Builder<'a> {
 		&mut self.context.style
 	}
 
-	pub fn scoped_style<T: Style>(&mut self, in_style: T, contents: impl FnOnce(&mut Builder)) {
+	pub fn scoped_style<T: Style>(&mut self, in_style: T, contents: impl FnOnce(&mut Gui)) {
 		self.style().push(in_style);
 		contents(self);
 		self.style().pop::<T>();
@@ -139,7 +114,7 @@ impl<'a> Builder<'a> {
 		text_style.label_height() + layout_style.padding.min.y + layout_style.padding.max.y
 	}
 
-	pub fn fill(&mut self, contents: impl FnOnce(&mut Builder)) {
+	pub fn fill(&mut self, contents: impl FnOnce(&mut Gui)) {
 		let mut layout_style: LayoutStyle = self.style().get();
 		layout_style.width_sizing = Sizing::Fill;
 		self.scoped_style(layout_style, contents);
