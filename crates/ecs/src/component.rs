@@ -62,7 +62,7 @@ where
 {
 	default const VARIANT_ID: VariantId = VariantId::new(type_name::<Self>());
 
-	default const CAN_SAVE: bool = false;
+	default const CAN_SAVE: bool = true;
 
 	default const SINGLETON: bool = false;
 }

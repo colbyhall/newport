@@ -1,3 +1,6 @@
+use crate::Config;
+use crate::ConfigMap;
+use crate::ConfigRegister;
 use crate::{
 	info,
 	Builder,
@@ -64,7 +67,21 @@ pub struct Engine {
 	window: Option<Window>,
 
 	logger: Logger,
+	config: ConfigMap,
 }
+
+use serde::{
+	Deserialize,
+	Serialize,
+};
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct Test {
+	foo: i32,
+	poopoo: Option<String>,
+}
+
+impl crate::Config for Test {}
 
 impl Engine {
 	pub(crate) fn run(mut builder: Builder) -> Result<(), std::io::Error> {
@@ -98,6 +115,16 @@ impl Engine {
 				None => None,
 			};
 
+			let id = TypeId::of::<ConfigRegister>();
+			let config_registers: Vec<ConfigRegister> =
+				match builder.registers.as_ref().unwrap().get(&id) {
+					Some(any_vec) => any_vec
+						.downcast_ref::<Vec<ConfigRegister>>()
+						.unwrap()
+						.clone(),
+					None => Vec::default(),
+				};
+
 			ENGINE = Some(Engine {
 				name,
 				modules: HashMap::with_capacity(builder.modules.len()),
@@ -111,6 +138,7 @@ impl Engine {
 				window,
 
 				logger: Logger::new(),
+				config: ConfigMap::new(config_registers),
 			});
 
 			info!(ENGINE_CATEGORY, "Registration process took {:.2}ms", dur);
@@ -374,6 +402,20 @@ impl Engine {
 			Some(reg) => reg.downcast_ref::<Vec<T>>().unwrap().clone(),
 			None => Default::default(),
 		}
+	}
+
+	pub fn config<T: Config>() -> &'static T {
+		let engine = Engine::as_ref();
+		let id = TypeId::of::<T>();
+
+		let entry = engine.config.entries.get(&id).unwrap_or_else(|| {
+			panic!(
+				"Config of type \"{}\" is not registered.",
+				std::any::type_name::<T>()
+			)
+		});
+
+		entry.value.downcast_ref().unwrap()
 	}
 
 	/// Returns the name of the engine runnable
