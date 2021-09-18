@@ -17,5 +17,5 @@ physics3d 	= { path = "../physics3d", version = "0.1.0", package = "newport_phys
 edgui 		= { path = "../edgui", version = "0.1.0", package = "newport_edgui" }
 
 [features]
-default = ["editor"]
+default = []
 editor = []

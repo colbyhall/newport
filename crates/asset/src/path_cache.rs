@@ -4,8 +4,6 @@ use crate::{
 	UUID,
 };
 
-use log::info;
-
 use cache::Cache;
 
 use serde::{
@@ -14,7 +12,10 @@ use serde::{
 	Serialize,
 };
 
-use engine::Engine;
+use engine::{
+	info,
+	Engine,
+};
 
 use std::{
 	collections::HashMap,

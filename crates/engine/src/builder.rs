@@ -10,19 +10,22 @@ use std::{
 		TypeId,
 	},
 	collections::HashMap,
+	time::Instant,
 };
 
-pub(crate) struct BuilderEntry {
+pub(crate) struct ModuleEntry {
 	pub id: TypeId,
+	pub name: &'static str,
 	pub spawn: fn() -> Box<dyn Any>,
 }
 
 pub trait Register = Sized + Clone + 'static;
 
 /// Structure used to define engine structure and execution
-#[derive(Default)]
 pub struct Builder {
-	pub(crate) entries: Vec<BuilderEntry>,
+	pub(crate) creation: Instant,
+
+	pub(crate) modules: Vec<ModuleEntry>,
 	pub(crate) name: Option<String>,
 
 	pub(crate) process_input: Vec<Box<dyn Fn(&Event) + 'static>>,
@@ -36,7 +39,9 @@ impl Builder {
 	/// Creates a new [`Builder`]
 	pub fn new() -> Self {
 		Self {
-			entries: Vec::with_capacity(32),
+			creation: Instant::now(),
+
+			modules: Vec::with_capacity(32),
 			name: None,
 
 			process_input: Vec::new(),
@@ -50,7 +55,7 @@ impl Builder {
 	pub fn module<T: Module>(mut self) -> Self {
 		// Don't add a module thats already on the list
 		let id = TypeId::of::<T>();
-		for it in self.entries.iter() {
+		for it in self.modules.iter() {
 			if it.id == id {
 				return self;
 			}
@@ -64,8 +69,9 @@ impl Builder {
 		self = T::depends_on(self);
 
 		// Push entry with generic spawn func and type id
-		self.entries.push(BuilderEntry {
+		self.modules.push(ModuleEntry {
 			id,
+			name: std::any::type_name::<T>(),
 			spawn: spawn::<T>,
 		});
 
@@ -115,5 +121,14 @@ impl Builder {
 	// TODO: Document
 	pub fn run(self) -> Result<(), std::io::Error> {
 		Engine::run(self)
+	}
+}
+
+impl Default for Builder {
+	fn default() -> Self {
+		Self {
+			creation: Instant::now(),
+			..Default::default()
+		}
 	}
 }

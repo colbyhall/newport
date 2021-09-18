@@ -7,7 +7,7 @@ use serde::{
 	Serialize,
 };
 
-use log::warn;
+use engine::warn;
 
 use std::collections::HashMap;
 use std::{
@@ -51,7 +51,10 @@ pub trait Component: 'static + Sized + Sync + Send + Clone {
 	const VARIANT_ID: VariantId = VariantId::new(type_name::<Self>());
 
 	const CAN_SAVE: bool;
+	const SINGLETON: bool;
 }
+
+pub trait Singleton {}
 
 impl<T> Component for T
 where
@@ -59,12 +62,26 @@ where
 {
 	default const VARIANT_ID: VariantId = VariantId::new(type_name::<Self>());
 
-	default const CAN_SAVE: bool = true;
+	default const CAN_SAVE: bool = false;
+
+	default const SINGLETON: bool = false;
+}
+
+impl<T> Component for T
+where
+	T: Sync + Send + Sized + Clone + 'static + Singleton,
+{
+	default const VARIANT_ID: VariantId = VariantId::new(type_name::<Self>());
+
+	default const CAN_SAVE: bool = false;
+
+	default const SINGLETON: bool = true;
 }
 
 #[derive(Clone)]
 pub struct ComponentVariant {
 	pub name: &'static str,
+
 	pub variant_id: VariantId,
 	pub can_save: bool,
 
@@ -104,45 +121,6 @@ struct Storage<T> {
 
 	available: VecDeque<usize>,
 }
-
-// impl<T: Component + Serialize> Serialize for Storage<T> {
-// 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-// 	where
-// 			S: serde::Serializer {
-// 		let mut st = serializer.serialize_struct("Storage", 3)?;
-// 		st.serialize_field("components", &self.components)?;
-// 		st.serialize_field("generations", &self.generations)?;
-// 		st.serialize_field("available", &self.available)?;
-// 		st.end()
-// 	}
-// }
-
-// impl<'de, T: Component + Deserialize<'de>> Deserialize<'de> for Storage<T> {
-// 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-// 	where
-// 			D: serde::Deserializer<'de> {
-// 		struct StorageVisitor;
-
-// 		impl<'de, T: Component + Deserialize<'de>> Visitor<'de> for StorageVisitor {
-// 			type Value = Storage<T>;
-
-// 			fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-// 				formatter
-// 					.write_str("TODO")
-// 			}
-
-// 			fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-// 			where
-// 				E: de::Error,
-// 			{
-
-// 				Ok(Self::Value { a, b, c, d })
-// 			}
-// 		}
-// 		deserializer.deserialize_struct("Storage", &["components", "generations", "available"], visitor)
-
-// 	}
-// }
 
 pub(crate) trait DynamicStorage: Send + Sync + DynamicStorageClone + 'static {
 	fn remove(&mut self, id: ComponentId) -> bool;

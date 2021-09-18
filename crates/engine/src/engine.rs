@@ -1,8 +1,11 @@
 use crate::{
+	info,
 	Builder,
 	Event,
+	Logger,
 	Module,
 	Register,
+	ENGINE_CATEGORY,
 };
 
 use std::{
@@ -59,11 +62,18 @@ pub struct Engine {
 	executor: Option<ThreadPool>, // Not available during module initialization process
 
 	window: Option<Window>,
+
+	logger: Logger,
 }
 
 impl Engine {
 	pub(crate) fn run(mut builder: Builder) -> Result<(), std::io::Error> {
 		let event_loop = EventLoop::new();
+
+		let dur = Instant::now()
+			.duration_since(builder.creation)
+			.as_secs_f64()
+			* 1000.0;
 
 		// UNSAFE: Set the global state
 		let engine = unsafe {
@@ -90,7 +100,7 @@ impl Engine {
 
 			ENGINE = Some(Engine {
 				name,
-				modules: HashMap::with_capacity(builder.entries.len()),
+				modules: HashMap::with_capacity(builder.modules.len()),
 				registers: builder.registers.take().unwrap(),
 
 				is_running: AtomicBool::new(true),
@@ -99,14 +109,25 @@ impl Engine {
 				executor: None,
 
 				window,
+
+				logger: Logger::new(),
 			});
+
+			info!(ENGINE_CATEGORY, "Registration process took {:.2}ms", dur);
 
 			let engine = ENGINE.as_mut().unwrap();
 
+			info!(ENGINE_CATEGORY, "Starting module initialization.");
+			let now = Instant::now();
+
 			// NOTE: All modules a module depends on will be available at initialization
-			builder.entries.drain(..).for_each(|it| {
+			builder.modules.drain(..).for_each(|it| {
+				info!(ENGINE_CATEGORY, "Initializing module \"{}\".", it.name);
 				engine.modules.insert(it.id, (it.spawn)());
 			});
+
+			let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
+			info!(ENGINE_CATEGORY, "Module initialization took {:.2}ms.", dur);
 
 			// Initializer after module initialization because engine is being modified on main thread during module initialization
 			engine.executor = Some(ThreadPool::new()?);
@@ -384,5 +405,9 @@ impl Engine {
 			.expect("ThreadPool executor is only avaible after module initialization.");
 
 		sync::block_on(future)
+	}
+
+	pub fn logger() -> &'static Logger {
+		&Engine::as_ref().logger
 	}
 }

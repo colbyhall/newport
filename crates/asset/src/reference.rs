@@ -6,9 +6,9 @@ use crate::{
 	Result,
 };
 
-use {
-	engine::Engine,
-	log::info,
+use engine::{
+	info,
+	Engine,
 };
 
 use cache::CacheRef;

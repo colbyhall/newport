@@ -12,8 +12,6 @@ use engine::{
 	Module,
 };
 
-use log::Logger;
-
 use cache::{
 	CacheManager,
 	CacheRegister,
@@ -103,7 +101,6 @@ impl Module for AssetManager {
 		engine_assets.push("assets/");
 
 		builder
-			.module::<Logger>()
 			.module::<CacheManager>()
 			.register(CacheRegister::new::<PathCache>("assets"))
 			.register(Collection::new(engine_assets))

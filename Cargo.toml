@@ -15,7 +15,6 @@ members = ["crates/*"]
 [dependencies]
 newport_platform  = { path = "crates/platform", version = "0.2.0" }
 newport_asset     = { path = "crates/asset", version = "0.2.0" }
-newport_log       = { path = "crates/log", version = "0.2.0" }
 newport_engine    = { path = "crates/engine", version = "0.2.0" }
 newport_gpu       = { path = "crates/gpu", version = "0.2.0" }
 newport_graphics  = { path = "crates/graphics", version = "0.2.0" }
