@@ -1,6 +1,7 @@
 use crate::{
 	Collection,
 	Variant,
+	ASSET_MANAGER_CATEGORY,
 	UUID,
 };
 
@@ -37,7 +38,11 @@ impl Cache for PathCache {
 		for it in collections.iter() {
 			if !it.path.exists() {
 				fs::create_dir(&it.path).unwrap();
-				info!("Created collection directory ({})", it.path.display());
+				info!(
+					ASSET_MANAGER_CATEGORY,
+					"Created collection directory ({})",
+					it.path.display()
+				);
 			}
 		}
 
@@ -72,7 +77,7 @@ impl Cache for PathCache {
 							Ok(contents) => contents,
 							_ => continue,
 						};
-						info!("Caching asset ({})", path.display());
+						info!(ASSET_MANAGER_CATEGORY, "Caching asset ({})", path.display());
 						let uuid = (variant.load_meta)(&contents).unwrap().0;
 
 						uuid_to_path.insert(uuid, path);
@@ -87,7 +92,11 @@ impl Cache for PathCache {
 
 		let mut uuid_to_path = HashMap::new();
 		for it in collections.iter() {
-			info!("Discovering assets in ({})", it.path.display());
+			info!(
+				ASSET_MANAGER_CATEGORY,
+				"Discovering assets in ({})",
+				it.path.display()
+			);
 			discover(it.path.clone(), &mut uuid_to_path, &variants);
 		}
 

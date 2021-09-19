@@ -28,6 +28,10 @@ use std::{
 	result,
 };
 
+use engine::define_log_category;
+
+define_log_category!(AssetManager, ASSET_MANAGER_CATEGORY);
+
 pub trait Asset: Sized + 'static {
 	fn default_uuid() -> Option<UUID> {
 		None

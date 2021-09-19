@@ -4,6 +4,7 @@ use crate::{
 	AssetManager,
 	PathCache,
 	Result,
+	ASSET_MANAGER_CATEGORY,
 };
 
 use engine::{
@@ -98,7 +99,8 @@ impl<T: Asset> AssetRef<T> {
 			let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
 
 			info!(
-				"[AssetManager] Loaded asset ({}) in {:.2}ms",
+				ASSET_MANAGER_CATEGORY,
+				"Loaded asset ({}) in {:.2}ms",
 				path.display(),
 				dur
 			);
