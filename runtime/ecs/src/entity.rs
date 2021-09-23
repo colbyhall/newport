@@ -3,12 +3,6 @@ use crate::{
 	VariantId,
 };
 
-use serde::{
-	self,
-	Deserialize,
-	Serialize,
-};
-
 use std::collections::{
 	HashMap,
 	HashSet,
@@ -16,18 +10,18 @@ use std::collections::{
 };
 use std::ops::Index;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Entity {
 	index: u32,
 	generation: u32,
 }
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Default, Clone)]
 pub struct EntityInfo {
 	pub components: HashMap<VariantId, ComponentId>,
 }
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Default, Clone)]
 pub struct EntitiesContainer {
 	generations: Vec<u32>,
 	available: VecDeque<u32>,

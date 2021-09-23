@@ -1,102 +1,40 @@
 [
 	Entity(
-		id: 123123123,
-		components: [
-			Transform(
+		id: "{03383b92-566f-4036-aeb4-850b61685ea6}",
+		components: {
+			"Transform": (
 				postition: [123.0, 342.0, 123.0],
 				rotation: [0.123, 0.123, 0.3252, 0.123],
 				scale: [1.0, 1.0, 1.0],
 			),
-		],
+		},
 	),
 	Entity(
-		id: 324242342,
-		components: [
-			Transform(
+		id: "{99F7BCE0-2CB2-4564-9243-E535807B5C71}",
+		components: {
+			"Transform": (
 				postition: [123.0, 342.0, 123.0],
 				rotation: [0.123, 0.123, 0.3252, 0.123],
 				scale: [1.0, 1.0, 1.0],
 			),
-		],
+			"Named": ("Jeff"),
+			"MeshRender": (
+				mesh: "{C76CC8A7-5204-45B8-85C4-8D42A69FF1FD}",
+			),
+		},
 	),
 	Entity(
-		id: 324242342,
-		components: [
-			Transform(
+		id: "{918CC965-2A01-4485-B062-F47711189850}",
+		components: {
+			"Transform": (
 				postition: [123.0, 342.0, 123.0],
 				rotation: [0.123, 0.123, 0.3252, 0.123],
 				scale: [1.0, 1.0, 1.0],
 			),
-		],
+			"Camera": (
+				fov: 90.0,
+			),
+			"FreeCameraController": (),
+		}, 
 	),
-	Entity(
-		id: 324242342,
-		components: [
-			Transform(
-				postition: [123.0, 342.0, 123.0],
-				rotation: [0.123, 0.123, 0.3252, 0.123],
-				scale: [1.0, 1.0, 1.0],
-			),
-		],
-	),
-	Entity(
-		id: 324242342,
-		components: [
-			Transform(
-				postition: [123.0, 342.0, 123.0],
-				rotation: [0.123, 0.123, 0.3252, 0.123],
-				scale: [1.0, 1.0, 1.0],
-			),
-		],
-	),
-	Entity(
-		id: 324242342,
-		components: [
-			Transform(
-				postition: [123.0, 342.0, 123.0],
-				rotation: [0.123, 0.123, 0.3252, 0.123],
-				scale: [1.0, 1.0, 1.0],
-			),
-		],
-	),
-	Entity(
-		id: 324242342,
-		components: [
-			Transform(
-				postition: [123.0, 342.0, 123.0],
-				rotation: [0.123, 0.123, 0.3252, 0.123],
-				scale: [1.0, 1.0, 1.0],
-			),
-		],
-	),
-	Entity(
-		id: 324242342,
-		components: [
-			Transform(
-				postition: [123.0, 342.0, 123.0],
-				rotation: [0.123, 0.123, 0.3252, 0.123],
-				scale: [1.0, 1.0, 1.0],
-			),
-		],
-	),
-	Entity(
-		id: 324242342,
-		components: [
-			Transform(
-				postition: [123.0, 342.0, 123.0],
-				rotation: [0.123, 0.123, 0.3252, 0.123],
-				scale: [1.0, 1.0, 1.0],
-			),
-		],
-	),
-	Entity(
-		id: 324242342,
-		components: [
-			Transform(
-				postition: [123.0, 342.0, 123.0],
-				rotation: [0.123, 0.123, 0.3252, 0.123],
-				scale: [1.0, 1.0, 1.0],
-			),
-		],
-	)
 ]

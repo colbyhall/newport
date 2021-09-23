@@ -65,11 +65,11 @@ impl Module for CacheManager {
 			fs::create_dir(path).unwrap();
 		}
 
-		let mut cache_registers: Vec<CacheRegister> = Engine::register();
-		let mut registers = HashMap::with_capacity(cache_registers.len());
-		cache_registers.drain(..).for_each(|f| {
-			registers.insert(f.id, f);
-		});
+		let registers: HashMap<TypeId, CacheRegister> = Engine::register::<CacheRegister>()
+			.unwrap()
+			.iter()
+			.map(|f| (f.id, f.clone()))
+			.collect();
 
 		let mut caches = HashMap::with_capacity(registers.len());
 		for (id, register) in registers.iter() {

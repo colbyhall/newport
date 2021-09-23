@@ -19,7 +19,7 @@ pub(crate) struct ModuleEntry {
 	pub spawn: fn() -> Box<dyn Any>,
 }
 
-pub trait Register = Sized + Clone + 'static;
+pub trait Register = Sized + 'static;
 
 /// Structure used to define engine structure and execution
 pub struct Builder {

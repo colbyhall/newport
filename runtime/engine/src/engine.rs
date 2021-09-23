@@ -394,13 +394,13 @@ impl Engine {
 		module.downcast_mut::<T>()
 	}
 
-	pub fn register<T: Register>() -> Vec<T> {
+	pub fn register<T: Register>() -> Option<&'static Vec<T>> {
 		let engine = Engine::as_ref();
 		let id = TypeId::of::<T>();
 
 		match engine.registers.get(&id) {
-			Some(reg) => reg.downcast_ref::<Vec<T>>().unwrap().clone(),
-			None => Default::default(),
+			Some(reg) => Some(reg.downcast_ref::<Vec<T>>().unwrap()),
+			None => None,
 		}
 	}
 

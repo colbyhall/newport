@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::panic::PanicInfo;
 
 use asset::{
@@ -6,6 +7,8 @@ use asset::{
 };
 
 use engine::info;
+use engine::Engine;
+use engine::Uuid;
 
 use serde::{
 	ron::{
@@ -15,6 +18,8 @@ use serde::{
 	Deserialize,
 	Serialize,
 };
+
+use crate::ComponentVariant;
 
 pub struct Scene;
 
@@ -30,6 +35,12 @@ impl Importer for SceneImporter {
 		let id_key = Value::String("id".to_string());
 		let components_key = Value::String("components".to_string());
 
+		let variants: HashMap<String, ComponentVariant> = Engine::register::<ComponentVariant>()
+			.unwrap()
+			.iter()
+			.map(|it| (it.name.to_string(), it))
+			.collect();
+
 		let value: Value = ron::from_str(std::str::from_utf8(bytes)?)?;
 		match value {
 			Value::Seq(seq) => {
@@ -42,6 +53,25 @@ impl Importer for SceneImporter {
 
 							let id = map[&id_key].clone();
 							let components = &map[&components_key];
+
+							let id: Uuid = id.into_rust()?;
+							info!("{:?}", id);
+
+							match components {
+								Value::Map(map) => {
+									for (key, value) in map.iter() {
+										let name = match key {
+											Value::String(s) => s,
+											_ => todo!(),
+										};
+
+										let variant = variants.get(name).unwrap_or_else(|| todo!());
+
+										info!("{:?}", it);
+									}
+								}
+								_ => todo!(),
+							}
 						}
 						_ => todo!(),
 					}
