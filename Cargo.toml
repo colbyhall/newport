@@ -10,18 +10,18 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [workspace]
-members = ["crates/*"]
+members = ["runtime/*"]
 
 [dependencies]
-newport_platform  = { path = "crates/platform", version = "0.2.0" }
-newport_asset     = { path = "crates/asset", version = "0.2.0" }
-newport_engine    = { path = "crates/engine", version = "0.2.0" }
-newport_gpu       = { path = "crates/gpu", version = "0.2.0" }
-newport_graphics  = { path = "crates/graphics", version = "0.2.0" }
-newport_math      = { path = "crates/math", version = "0.2.0" }
-newport_ecs       = { path = "crates/ecs", version = "0.2.0" }
-newport_serde     = { path = "crates/serde", version = "0.2.0" }
-newport_game3d    = { path = "crates/game3d", version = "0.1.0" }
+newport_platform  = { path = "runtime/platform", version = "0.2.0" }
+newport_asset     = { path = "runtime/asset", version = "0.2.0" }
+newport_engine    = { path = "runtime/engine", version = "0.2.0" }
+newport_gpu       = { path = "runtime/gpu", version = "0.2.0" }
+newport_graphics  = { path = "runtime/graphics", version = "0.2.0" }
+newport_math      = { path = "runtime/math", version = "0.2.0" }
+newport_ecs       = { path = "runtime/ecs", version = "0.2.0" }
+newport_serde     = { path = "runtime/serde", version = "0.2.0" }
+newport_game3d    = { path = "runtime/game3d", version = "0.1.0" }
 
 [[example]]
 name = "hello_world"

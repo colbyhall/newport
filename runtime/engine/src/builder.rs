@@ -68,10 +68,16 @@ impl Builder {
 		// Add dependencies to the entries list. There will be duplicates
 		self = T::depends_on(self);
 
+		// Get only the identifier and not modules
+		let name = std::any::type_name::<T>()
+			.rsplit_once("::")
+			.unwrap_or(("", std::any::type_name::<T>()))
+			.1;
+
 		// Push entry with generic spawn func and type id
 		self.modules.push(ModuleEntry {
 			id,
-			name: std::any::type_name::<T>(),
+			name,
 			spawn: spawn::<T>,
 		});
 

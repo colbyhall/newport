@@ -150,7 +150,7 @@ impl Engine {
 
 			// NOTE: All modules a module depends on will be available at initialization
 			builder.modules.drain(..).for_each(|it| {
-				info!(ENGINE_CATEGORY, "Initializing module \"{}\".", it.name);
+				info!(ENGINE_CATEGORY, "Initializing module {}.", it.name);
 				engine.modules.insert(it.id, (it.spawn)());
 			});
 
