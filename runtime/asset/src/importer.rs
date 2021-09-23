@@ -12,7 +12,7 @@ use serde::{
 use crate::{
 	Asset,
 	Result,
-	UUID,
+	Uuid,
 };
 
 use std::{
@@ -60,7 +60,7 @@ impl<T: Asset + Serialize + DeserializeOwned> Importer for BinaryImporter<T> {
 }
 
 type LoadAsset = fn(&Box<dyn Any>, &[u8]) -> Result<Box<dyn Any>>;
-type LoadMeta = fn(&[u8]) -> Result<(UUID, Box<dyn Any>)>;
+type LoadMeta = fn(&[u8]) -> Result<(Uuid, Box<dyn Any>)>;
 
 #[derive(Clone)]
 pub struct Variant {
@@ -80,11 +80,11 @@ impl Variant {
 			Ok(Box::new(meta.import(bytes)?))
 		}
 
-		fn load_meta<T: Importer>(bytes: &[u8]) -> Result<(UUID, Box<dyn Any>)> {
+		fn load_meta<T: Importer>(bytes: &[u8]) -> Result<(Uuid, Box<dyn Any>)> {
 			#[derive(Serialize, Deserialize)]
 			#[serde(rename = "Meta")]
 			struct MetaFile<T> {
-				uuid: UUID,
+				uuid: Uuid,
 				#[serde(bound(deserialize = "T: Deserialize<'de>"))]
 				importer: T,
 			}

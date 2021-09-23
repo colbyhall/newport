@@ -1,5 +1,5 @@
 use crate::Asset;
-use crate::UUID;
+use crate::Uuid;
 use crate::{
 	AssetManager,
 	PathCache,
@@ -54,14 +54,14 @@ impl Error for AssetRefError {}
 pub struct AssetRef<T: Asset> {
 	pub(crate) arc: Arc<Box<dyn Any>>,
 	pub(crate) phantom: PhantomData<T>,
-	pub(crate) uuid: UUID,
+	pub(crate) uuid: Uuid,
 }
 
 unsafe impl<T: Asset> Sync for AssetRef<T> {}
 unsafe impl<T: Asset> Send for AssetRef<T> {}
 
 impl<T: Asset> AssetRef<T> {
-	pub fn new(id: impl Into<UUID>) -> Result<AssetRef<T>> {
+	pub fn new(id: impl Into<Uuid>) -> Result<AssetRef<T>> {
 		let manager: &AssetManager = Engine::module().ok_or(AssetRefError::NoManager)?;
 
 		let id = id.into();
@@ -182,7 +182,7 @@ impl<'de, T: Asset> Deserialize<'de> for AssetRef<T> {
 	where
 		D: Deserializer<'de>,
 	{
-		let uuid: UUID = Deserialize::deserialize(deserializer)?;
+		let uuid: Uuid = Deserialize::deserialize(deserializer)?;
 		Ok(AssetRef::new(uuid).unwrap_or_default())
 	}
 }

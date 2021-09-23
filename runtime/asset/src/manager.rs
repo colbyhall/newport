@@ -1,8 +1,8 @@
 use crate::{
 	Collection,
 	PathCache,
+	Uuid,
 	Variant,
-	UUID,
 };
 
 use cache::CacheRef;
@@ -41,7 +41,7 @@ pub struct AssetManager {
 	pub variants: Vec<Variant>,
 	pub collections: Vec<Collection>,
 
-	pub(crate) assets: RwLock<HashMap<UUID, AssetEntry>>,
+	pub(crate) assets: RwLock<HashMap<Uuid, AssetEntry>>,
 }
 
 impl Module for AssetManager {

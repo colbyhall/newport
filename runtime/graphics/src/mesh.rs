@@ -59,7 +59,7 @@ impl Debug for Mesh {
 }
 
 impl Asset for Mesh {
-	fn default_uuid() -> Option<asset::UUID> {
+	fn default_uuid() -> Option<engine::Uuid> {
 		Some("{03383b92-566f-4036-aeb4-850b61685ea6}".into())
 	}
 }

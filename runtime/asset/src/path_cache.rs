@@ -1,8 +1,8 @@
 use crate::{
 	Collection,
+	Uuid,
 	Variant,
 	ASSET_MANAGER_CATEGORY,
-	UUID,
 };
 
 use cache::Cache;
@@ -26,7 +26,7 @@ use std::{
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct PathCache {
-	pub uuid_to_path: HashMap<UUID, PathBuf>,
+	pub uuid_to_path: HashMap<Uuid, PathBuf>,
 }
 
 impl Cache for PathCache {
@@ -48,7 +48,7 @@ impl Cache for PathCache {
 
 		fn discover(
 			mut path: PathBuf,
-			uuid_to_path: &mut HashMap<UUID, PathBuf>,
+			uuid_to_path: &mut HashMap<Uuid, PathBuf>,
 			variants: &[Variant],
 		) -> PathBuf {
 			for entry in fs::read_dir(&path).unwrap() {

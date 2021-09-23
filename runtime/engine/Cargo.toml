@@ -16,3 +16,4 @@ sync     = { path = "../sync", version = "0.1.0", package = "newport_sync" }
 serde    = { path = "../serde", version = "0.2.0", package = "newport_serde" }
 
 toml = "0.5"
+getrandom = "0.2"

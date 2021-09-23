@@ -11,18 +11,35 @@ use serde::{
 };
 
 use std::fmt;
+use std::intrinsics::copy_nonoverlapping;
 
-#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Hash, Debug)]
-#[allow(clippy::upper_case_acronyms)]
-pub struct UUID {
+#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Hash, Debug, Default)]
+pub struct Uuid {
 	a: u32,
 	b: u16,
 	c: u16,
 	d: u64,
 }
 
-impl From<&str> for UUID {
-	#[allow(clippy::many_single_char_names)]
+impl Uuid {
+	pub fn new() -> Self {
+		let mut bytes = [0u8; 16];
+		getrandom::getrandom(&mut bytes)
+			.unwrap_or_else(|err| panic!("Could not generate random bytes for uuid: {}", err));
+
+		let mut result = Uuid::default();
+		unsafe {
+			copy_nonoverlapping(
+				bytes.as_ptr(),
+				&mut result as *mut Uuid as *mut u8,
+				bytes.len(),
+			)
+		};
+		result
+	}
+}
+
+impl From<&str> for Uuid {
 	fn from(v: &str) -> Self {
 		if !v.starts_with('{') || !v.ends_with('}') {
 			panic!();
@@ -49,7 +66,7 @@ impl From<&str> for UUID {
 	}
 }
 
-impl Serialize for UUID {
+impl Serialize for Uuid {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: Serializer,
@@ -65,7 +82,7 @@ impl Serialize for UUID {
 	}
 }
 
-impl<'de> Deserialize<'de> for UUID {
+impl<'de> Deserialize<'de> for Uuid {
 	#[allow(clippy::many_single_char_names)]
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where
@@ -74,7 +91,7 @@ impl<'de> Deserialize<'de> for UUID {
 		struct UUIDString;
 
 		impl<'de> Visitor<'de> for UUIDString {
-			type Value = UUID;
+			type Value = Uuid;
 
 			fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
 				formatter
@@ -125,7 +142,7 @@ mod tests {
 
 	#[test]
 	fn serialize() {
-		let uuid = UUID {
+		let uuid = Uuid {
 			a: 0x123456,
 			b: 0x789A,
 			c: 0xBCDE,
@@ -140,10 +157,10 @@ mod tests {
 	fn deserialize() {
 		let uuid_string = "\"{123456-789a-bcde-f012-3456789abcde}\"";
 
-		let deserialized: UUID = serde::ron::from_str(uuid_string).unwrap();
+		let deserialized: Uuid = serde::ron::from_str(uuid_string).unwrap();
 		assert_eq!(
 			deserialized,
-			UUID {
+			Uuid {
 				a: 0x123456,
 				b: 0x789A,
 				c: 0xBCDE,

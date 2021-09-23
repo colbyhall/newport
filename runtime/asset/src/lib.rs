@@ -1,6 +1,5 @@
 #![feature(box_syntax)]
 #![feature(trait_alias)]
-#![feature(string_remove_matches)]
 //! This crate provides a completely thread safe asset manager which
 //! handles defining assets, loading assets, ref counting assets, and
 //! serialization.
@@ -9,13 +8,13 @@ mod importer;
 mod manager;
 mod path_cache;
 mod reference;
-mod uuid;
+
+pub(crate) use engine::Uuid;
 
 pub use {
 	importer::*,
 	manager::*,
 	reference::*,
-	uuid::*,
 };
 
 pub(crate) use path_cache::*;
@@ -33,7 +32,7 @@ use engine::define_log_category;
 define_log_category!(AssetManager, ASSET_MANAGER_CATEGORY);
 
 pub trait Asset: Sized + 'static {
-	fn default_uuid() -> Option<UUID> {
+	fn default_uuid() -> Option<Uuid> {
 		None
 	}
 }
