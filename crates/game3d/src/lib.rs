@@ -9,16 +9,16 @@ use engine::{
 	Event,
 	Module,
 };
-use math::{
-	Color,
-	Vector2,
-};
 #[cfg(not(feature = "editor"))]
 use gpu::{
 	Gpu,
+	GraphicsPipeline,
 	GraphicsRecorder,
 	Layout,
-	GraphicsPipeline
+};
+use math::{
+	Color,
+	Vector2,
 };
 
 use asset::AssetManager;
@@ -66,9 +66,9 @@ impl Module for Game3d {
 
 	fn depends_on(builder: Builder) -> Builder {
 		let builder = register_components(builder)
-			.register(asset::Variant::new::<BinaryImporter<World>>(&["level"]))
 			.module::<Graphics>()
 			.module::<AssetManager>()
+			.module::<ecs::Ecs>()
 			.process_input(|event| {
 				let game3d: &mut Game3d = unsafe { Engine::module_mut().unwrap() };
 
@@ -136,45 +136,37 @@ impl Module for Game3d {
 				game3d.input_state.mouse_delta = Vector2::ZERO;
 			});
 
-			#[cfg(feature = "editor")]
-			let builder = builder.module::<editor::Editor>();
+		#[cfg(feature = "editor")]
+		let builder = builder.module::<editor::Editor>();
 
-			#[cfg(not(feature = "editor"))]
-			let builder = builder.display(|| {
-				let game3d: &Game3d = Engine::module().unwrap();
+		#[cfg(not(feature = "editor"))]
+		let builder = builder.display(|| {
+			let game3d: &Game3d = Engine::module().unwrap();
 
-				let device = Gpu::device();
-				let backbuffer = device
-					.acquire_backbuffer()
-					.expect("Swapchain failed to find a back buffer");
+			let device = Gpu::device();
+			let backbuffer = device
+				.acquire_backbuffer()
+				.expect("Swapchain failed to find a back buffer");
 
-				let receipt = match game3d.frames.to_display() {
-					Some(scene) => GraphicsRecorder::new()
-						.render_pass(&[&backbuffer], |ctx| {
-							ctx.bind_pipeline(&game3d.present_pipeline)
-								.bind_texture("texture", &scene.diffuse_buffer)
-								.draw(3, 0)
-						})
-						.resource_barrier_texture(
-							&backbuffer,
-							Layout::ColorAttachment,
-							Layout::Present,
-						)
-						.submit(),
-					None => GraphicsRecorder::new()
-						.render_pass(&[&backbuffer], |ctx| ctx.clear_color(Color::BLACK))
-						.resource_barrier_texture(
-							&backbuffer,
-							Layout::ColorAttachment,
-							Layout::Present,
-						)
-						.submit(),
-				};
+			let receipt = match game3d.frames.to_display() {
+				Some(scene) => GraphicsRecorder::new()
+					.render_pass(&[&backbuffer], |ctx| {
+						ctx.bind_pipeline(&game3d.present_pipeline)
+							.bind_texture("texture", &scene.diffuse_buffer)
+							.draw(3, 0)
+					})
+					.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present)
+					.submit(),
+				None => GraphicsRecorder::new()
+					.render_pass(&[&backbuffer], |ctx| ctx.clear_color(Color::BLACK))
+					.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present)
+					.submit(),
+			};
 
-				device.display(&[receipt]);
-			});
+			device.display(&[receipt]);
+		});
 
-			#[allow(clippy::let_and_return)]
-			builder
+		#[allow(clippy::let_and_return)]
+		builder
 	}
 }
