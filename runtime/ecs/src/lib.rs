@@ -27,15 +27,11 @@ use engine::{
 	Module,
 };
 
-pub struct Ecs {
-	test_scene: asset::AssetRef<Scene>,
-}
+pub struct Ecs;
 
 impl Module for Ecs {
 	fn new() -> Self {
-		Self{
-			test_scene: asset::AssetRef::new("{CB80A291-A3D8-4D1A-A702-33EFBCA02DDE}").unwrap()
-		}
+		Self
 	}
 
 	fn depends_on(builder: Builder) -> Builder {

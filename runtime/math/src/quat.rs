@@ -1,6 +1,8 @@
 use serde::{
 	Deserialize,
+	Deserializer,
 	Serialize,
+	Serializer,
 };
 
 use std::ops::Mul;
@@ -8,7 +10,7 @@ use std::ops::Mul;
 use crate::Vector3;
 use crate::TO_RAD;
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct Quaternion {
 	pub x: f32,
 	pub y: f32,
@@ -146,5 +148,30 @@ impl Mul for Quaternion {
 			w: (((self.w * rhs.w) - (self.x * rhs.x)) - (self.y * rhs.y)) - (self.z * rhs.z),
 		}
 		.norm()
+	}
+}
+
+impl Serialize for Quaternion {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		let xyzw = [self.x, self.y, self.z, self.w];
+		xyzw.serialize(serializer)
+	}
+}
+
+impl<'de> Deserialize<'de> for Quaternion {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let xyzw = <[f32; 4]>::deserialize(deserializer)?;
+		Ok(Quaternion {
+			x: xyzw[0],
+			y: xyzw[1],
+			z: xyzw[2],
+			w: xyzw[3],
+		})
 	}
 }

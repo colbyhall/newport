@@ -30,7 +30,7 @@ use std::mem;
 
 pub enum Frame {
 	None,
-	Scene(Scene),
+	DrawList(DrawList),
 	RenderedScene(RenderedScene),
 }
 
@@ -42,13 +42,13 @@ struct FrameContainerInner {
 pub struct FrameContainer(Mutex<FrameContainerInner>);
 
 impl FrameContainer {
-	pub fn push_scene(&self, scene: Scene) {
+	pub fn push_scene(&self, scene: DrawList) {
 		let mut inner = self.0.lock().unwrap();
 
 		let current = inner.current;
 		let len = inner.frames.len();
 
-		inner.frames[current % len] = Frame::Scene(scene);
+		inner.frames[current % len] = Frame::DrawList(scene);
 	}
 
 	pub async fn render_scene(&self) {
@@ -62,7 +62,7 @@ impl FrameContainer {
 		};
 
 		let scene = match frame {
-			Frame::Scene(scene) => scene,
+			Frame::DrawList(scene) => scene,
 			_ => return,
 		};
 
@@ -191,7 +191,7 @@ impl Default for FrameContainer {
 }
 
 #[derive(Clone)]
-pub struct Scene {
+pub struct DrawList {
 	meshes: Vec<MeshRender>,
 	world_transforms: Vec<Matrix4>,
 
@@ -199,7 +199,7 @@ pub struct Scene {
 	camera: Camera,
 }
 
-impl Scene {
+impl DrawList {
 	pub async fn build(game_state: &GameState) -> Self {
 		let mut query = Query::builder()
 			.read::<MeshRender>()

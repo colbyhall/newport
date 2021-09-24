@@ -1,5 +1,5 @@
+use crate::ComponentVariantId;
 use crate::Entity;
-use crate::VariantId;
 use crate::{
 	Component,
 	ReadStorage,
@@ -14,8 +14,8 @@ use std::ptr::NonNull;
 use std::slice::Iter;
 
 pub struct Query<'a> {
-	reads: HashMap<VariantId, ReadStorage<'a>>,
-	writes: HashMap<VariantId, WriteStorage<'a>>,
+	reads: HashMap<ComponentVariantId, ReadStorage<'a>>,
+	writes: HashMap<ComponentVariantId, WriteStorage<'a>>,
 
 	world: &'a World,
 
@@ -51,8 +51,8 @@ impl<'a> Query<'a> {
 }
 
 pub struct EntityComponentIterator<'a: 'b, 'b> {
-	reads: &'b mut HashMap<VariantId, ReadStorage<'a>>,
-	writes: &'b mut HashMap<VariantId, WriteStorage<'a>>,
+	reads: &'b mut HashMap<ComponentVariantId, ReadStorage<'a>>,
+	writes: &'b mut HashMap<ComponentVariantId, WriteStorage<'a>>,
 
 	world: &'a World,
 
@@ -78,8 +78,8 @@ impl<'a: 'b, 'b> Iterator for EntityComponentIterator<'a, 'b> {
 }
 
 pub struct EntityComponents<'a: 'b, 'b> {
-	reads: NonNull<HashMap<VariantId, ReadStorage<'a>>>,
-	writes: NonNull<HashMap<VariantId, WriteStorage<'a>>>,
+	reads: NonNull<HashMap<ComponentVariantId, ReadStorage<'a>>>,
+	writes: NonNull<HashMap<ComponentVariantId, WriteStorage<'a>>>,
 
 	world: &'a World,
 
@@ -90,8 +90,8 @@ pub struct EntityComponents<'a: 'b, 'b> {
 
 impl<'a: 'b, 'b> EntityComponents<'a, 'b> {
 	pub fn get<T: Component>(&self) -> Option<&T> {
-		let entities = self.world.entities.read().unwrap();
-		let info = entities.get_info(self.entity)?;
+		let scene = self.world.persistent_scene.read().unwrap();
+		let info = scene.entities.get(&self.entity)?;
 
 		let id = info.components.get(&T::VARIANT_ID)?;
 
@@ -107,8 +107,8 @@ impl<'a: 'b, 'b> EntityComponents<'a, 'b> {
 	}
 
 	pub fn get_mut<T: Component>(&self) -> Option<&mut T> {
-		let entities = self.world.entities.read().unwrap();
-		let info = entities.get_info(self.entity)?;
+		let scene = self.world.persistent_scene.read().unwrap();
+		let info = scene.entities.get(&self.entity)?;
 
 		let id = info.components.get(&T::VARIANT_ID)?;
 
@@ -118,8 +118,8 @@ impl<'a: 'b, 'b> EntityComponents<'a, 'b> {
 }
 
 pub struct QueryBuilder {
-	reads: HashSet<VariantId>,
-	writes: HashSet<VariantId>,
+	reads: HashSet<ComponentVariantId>,
+	writes: HashSet<ComponentVariantId>,
 }
 
 impl QueryBuilder {
@@ -149,8 +149,13 @@ impl QueryBuilder {
 		}
 
 		let found = {
-			let entities = world.entities.read().unwrap();
-			entities.gather_with_active(components)
+			let scene = world.persistent_scene.read().unwrap();
+			scene
+				.entities
+				.iter()
+				.filter(|(_, info)| !components.iter().any(|c| info.components.get(c).is_none()))
+				.map(|(id, _)| *id)
+				.collect()
 		};
 
 		Query {

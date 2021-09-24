@@ -3,10 +3,12 @@ use std::convert::From;
 
 use serde::{
 	Deserialize,
+	Deserializer,
 	Serialize,
+	Serializer,
 };
 
-#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Color {
 	pub r: f32,
 	pub g: f32,
@@ -360,3 +362,28 @@ const sRGB_TO_LINEAR_TABLE: [f32; 256] = [
 	0.991102093719252,
 	1.0,
 ];
+
+impl Serialize for Color {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		let rgba = [self.r, self.g, self.b, self.a];
+		rgba.serialize(serializer)
+	}
+}
+
+impl<'de> Deserialize<'de> for Color {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let rgba = <[f32; 4]>::deserialize(deserializer)?;
+		Ok(Color {
+			r: rgba[0],
+			g: rgba[1],
+			b: rgba[2],
+			a: rgba[3],
+		})
+	}
+}

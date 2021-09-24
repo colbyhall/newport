@@ -30,7 +30,7 @@ impl Transform {
 	}
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct MeshRender {
 	pub mesh: AssetRef<Mesh>,
 	pub pipeline: AssetRef<GraphicsPipeline>,
@@ -53,12 +53,12 @@ pub struct CameraController {
 	pub yaw: f32,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Default)]
 pub struct Spinner {
 	pub speed: f32,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Default)]
 pub struct Scaler {
 	pub speed: f32,
 	pub max: f32,

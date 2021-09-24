@@ -1,3 +1,5 @@
+#![allow(clippy::many_single_char_names)]
+
 use serde::{
 	self,
 	de::{
@@ -11,9 +13,10 @@ use serde::{
 };
 
 use std::fmt;
+use std::fmt::Debug;
 use std::intrinsics::copy_nonoverlapping;
 
-#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Hash, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Hash, Default)]
 pub struct Uuid {
 	a: u32,
 	b: u16,
@@ -167,5 +170,12 @@ mod tests {
 				d: 0xF0123456789ABCDE
 			}
 		);
+	}
+}
+
+impl Debug for Uuid {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let serialized = serde::ron::to_string(self).unwrap();
+		f.write_str(&serialized)
 	}
 }

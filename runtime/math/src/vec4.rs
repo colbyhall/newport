@@ -20,10 +20,12 @@ use crate::Vector3;
 
 use serde::{
 	Deserialize,
+	Deserializer,
 	Serialize,
+	Serializer,
 };
 
-#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Vector4 {
 	pub x: f32,
 	pub y: f32,
@@ -272,5 +274,30 @@ impl From<(Vector3, f32)> for Vector4 {
 	fn from(xyzw: (Vector3, f32)) -> Self {
 		let (xyz, w) = xyzw;
 		Vector4::new(xyz.x, xyz.y, xyz.z, w)
+	}
+}
+
+impl Serialize for Vector4 {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		let xyzw = [self.x, self.y, self.z, self.w];
+		xyzw.serialize(serializer)
+	}
+}
+
+impl<'de> Deserialize<'de> for Vector4 {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let xyzw = <[f32; 4]>::deserialize(deserializer)?;
+		Ok(Vector4 {
+			x: xyzw[0],
+			y: xyzw[1],
+			z: xyzw[2],
+			w: xyzw[3],
+		})
 	}
 }

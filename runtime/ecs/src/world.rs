@@ -1,38 +1,59 @@
+use crate::Scene;
+use crate::SceneRuntime;
 use crate::{
 	Component,
 	ComponentsContainer,
-	EntitiesContainer,
 
 	Entity,
 	EntityInfo,
 };
+use asset::AssetRef;
 use engine::Engine;
+
 use std::sync::RwLock;
 
 #[derive(Default)]
 pub struct World {
-	pub(crate) entities: RwLock<EntitiesContainer>,
+	pub(crate) persistent_scene: RwLock<SceneRuntime>,
 	pub(crate) components: ComponentsContainer,
 }
 
 impl Clone for World {
 	fn clone(&self) -> Self {
-		let read = self.entities.read().unwrap();
+		let read = self.persistent_scene.read().unwrap();
 
 		Self {
-			entities: RwLock::new((*read).clone()),
+			persistent_scene: RwLock::new((*read).clone()),
 			components: self.components.clone(),
 		}
 	}
 }
 
 impl World {
-	pub fn new() -> Self {
-		let component_variants = Engine::register();
-		Self {
-			entities: RwLock::new(EntitiesContainer::new()),
-			components: ComponentsContainer::new(component_variants),
+	pub fn new(persistent_scene: &AssetRef<Scene>) -> Self {
+		let result = Self {
+			persistent_scene: Default::default(),
+			components: ComponentsContainer::new(Engine::register().unwrap().clone()),
+		};
+
+		{
+			let mut scene = result.persistent_scene.write().unwrap();
+
+			for it in persistent_scene.entities.iter() {
+				let components = it
+					.components
+					.iter()
+					.map(|(key, value)| {
+						let mut write = result.components.write_id(*key).unwrap();
+						(*key, write.insert_box(value))
+					})
+					.collect();
+
+				scene.entities.insert(it.id, EntityInfo { components });
+			}
 		}
+
+		result
 	}
 
 	pub fn create(&self) -> EntityBuilder<'_> {
@@ -63,7 +84,9 @@ impl<'a> EntityBuilder<'a> {
 	}
 
 	pub fn spawn(self) -> Entity {
-		let mut entities = self.world.entities.write().unwrap();
-		entities.insert(self.entity_info)
+		let mut scene = self.world.persistent_scene.write().unwrap();
+		let id = Entity::new();
+		scene.entities.insert(id, self.entity_info);
+		id
 	}
 }

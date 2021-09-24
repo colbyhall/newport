@@ -17,10 +17,12 @@ use std::convert::From;
 
 use serde::{
 	Deserialize,
+	Deserializer,
 	Serialize,
+	Serializer,
 };
 
-#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Vector2 {
 	pub x: f32,
 	pub y: f32,
@@ -279,5 +281,25 @@ impl From<(f32, f32)> for Vector2 {
 impl From<[f32; 2]> for Vector2 {
 	fn from(xy: [f32; 2]) -> Self {
 		Self { x: xy[0], y: xy[1] }
+	}
+}
+
+impl Serialize for Vector2 {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		let xy = [self.x, self.y];
+		xy.serialize(serializer)
+	}
+}
+
+impl<'de> Deserialize<'de> for Vector2 {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let xy = <[f32; 2]>::deserialize(deserializer)?;
+		Ok(Vector2 { x: xy[0], y: xy[1] })
 	}
 }

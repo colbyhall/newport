@@ -1,12 +1,16 @@
+use std::any::Any;
 use std::collections::HashMap;
-use std::panic::PanicInfo;
 
 use asset::{
 	Asset,
 	Importer,
 };
 
-use engine::info;
+use crate::{
+	Entity,
+	EntityInfo,
+};
+
 use engine::Engine;
 use engine::Uuid;
 
@@ -20,8 +24,18 @@ use serde::{
 };
 
 use crate::ComponentVariant;
+use crate::ComponentVariantId;
 
-pub struct Scene;
+#[derive(Debug)]
+pub struct SceneEntry {
+	pub id: Uuid,
+	pub components: HashMap<ComponentVariantId, Box<dyn Any>>,
+}
+
+#[derive(Debug)]
+pub struct Scene {
+	pub entities: Vec<SceneEntry>,
+}
 
 impl Asset for Scene {}
 
@@ -38,12 +52,13 @@ impl Importer for SceneImporter {
 		let variants: HashMap<String, ComponentVariant> = Engine::register::<ComponentVariant>()
 			.unwrap()
 			.iter()
-			.map(|it| (it.name.to_string(), it))
+			.map(|it| (it.name.to_string(), it.clone()))
 			.collect();
 
 		let value: Value = ron::from_str(std::str::from_utf8(bytes)?)?;
 		match value {
 			Value::Seq(seq) => {
+				let mut entries = Vec::with_capacity(seq.len());
 				for it in seq.iter() {
 					match it {
 						Value::Map(map) => {
@@ -52,13 +67,12 @@ impl Importer for SceneImporter {
 							}
 
 							let id = map[&id_key].clone();
-							let components = &map[&components_key];
-
 							let id: Uuid = id.into_rust()?;
-							info!("{:?}", id);
 
+							let components = &map[&components_key];
 							match components {
 								Value::Map(map) => {
+									let mut components = HashMap::with_capacity(map.len());
 									for (key, value) in map.iter() {
 										let name = match key {
 											Value::String(s) => s,
@@ -66,9 +80,11 @@ impl Importer for SceneImporter {
 										};
 
 										let variant = variants.get(name).unwrap_or_else(|| todo!());
+										let component = (variant.parse_value)(value.clone())?;
 
-										info!("{:?}", it);
+										components.insert(variant.id, component);
 									}
+									entries.push(SceneEntry { id, components });
 								}
 								_ => todo!(),
 							}
@@ -76,10 +92,14 @@ impl Importer for SceneImporter {
 						_ => todo!(),
 					}
 				}
+				Ok(Scene { entities: entries })
 			}
 			_ => todo!(),
 		}
-		// info!("{:?}", value);
-		Ok(Scene)
 	}
+}
+
+#[derive(Default, Clone)]
+pub struct SceneRuntime {
+	pub entities: HashMap<Entity, EntityInfo>,
 }

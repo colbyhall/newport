@@ -31,8 +31,8 @@ pub(crate) struct PathCache {
 
 impl Cache for PathCache {
 	fn new() -> Self {
-		let collections = Engine::register::<Collection>();
-		let variants = Engine::register::<Variant>();
+		let collections = Engine::register::<Collection>().unwrap();
+		let variants = Engine::register::<Variant>().unwrap();
 
 		// Run through all the collections and create a directory if one is not created
 		for it in collections.iter() {
@@ -97,7 +97,7 @@ impl Cache for PathCache {
 				"Discovering assets in ({})",
 				it.path.display()
 			);
-			discover(it.path.clone(), &mut uuid_to_path, &variants);
+			discover(it.path.clone(), &mut uuid_to_path, variants);
 		}
 
 		Self { uuid_to_path }

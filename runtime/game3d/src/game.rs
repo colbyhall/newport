@@ -1,9 +1,8 @@
+use asset::AssetRef;
 use ecs::{
 	Schedule,
 	World,
 };
-
-use asset::AssetRef;
 
 use crate::systems::*;
 
@@ -21,8 +20,10 @@ impl GameState {
 			.single(Box::new(CameraDriver))
 			.spawn();
 
+		let default_scene = AssetRef::new("{CB80A291-A3D8-4D1A-A702-33EFBCA02DDE}").unwrap();
+
 		Self {
-			world: World::new(),
+			world: World::new(&default_scene),
 			schedule,
 		}
 	}

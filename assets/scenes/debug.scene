@@ -1,40 +1,55 @@
 [
-	Entity(
-		id: "{03383b92-566f-4036-aeb4-850b61685ea6}",
-		components: {
-			"Transform": (
-				postition: [123.0, 342.0, 123.0],
-				rotation: [0.123, 0.123, 0.3252, 0.123],
-				scale: [1.0, 1.0, 1.0],
+    Entity(
+        id: "{A0866744-20EB-4115-8484-0D916BA63572}",
+        components: {
+            "Transform": (
+                location: [0.0, 0.0, 0.0],
+                rotation: [0.0, 0.0, 0.0, 1.0],
+                scale: [10000.0, 10000.0, 1.0],
+            ),
+            "MeshRender": (
+                mesh: "{08FBEEC7-62E6-4834-8EA3-F92BF16D8364}",
+                pipeline: "{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}",
+            )
+        },
+    ),
+    Entity(
+        id: "{DA2ECADD-F65E-4A62-8BA7-00D6FE5C30F6}",
+        components: {
+            "Transform": (
+                location: [10.0, 0.0, 10.0],
+                rotation: [0.0, 0.0, 0.0, 1.0],
+                scale: [1.0, 1.0, 1.0],
+            ),
+            "MeshRender": (
+                mesh: "{03383b92-566f-4036-aeb4-850b61685ea6}",
+                pipeline: "{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}",
+            ),
+			"Spinner": (
+				speed: 20.0,
 			),
-		},
-	),
-	Entity(
-		id: "{99F7BCE0-2CB2-4564-9243-E535807B5C71}",
-		components: {
-			"Transform": (
-				postition: [123.0, 342.0, 123.0],
-				rotation: [0.123, 0.123, 0.3252, 0.123],
-				scale: [1.0, 1.0, 1.0],
-			),
-			"Named": ("Jeff"),
-			"MeshRender": (
-				mesh: "{C76CC8A7-5204-45B8-85C4-8D42A69FF1FD}",
-			),
-		},
-	),
-	Entity(
-		id: "{918CC965-2A01-4485-B062-F47711189850}",
-		components: {
-			"Transform": (
-				postition: [123.0, 342.0, 123.0],
-				rotation: [0.123, 0.123, 0.3252, 0.123],
-				scale: [1.0, 1.0, 1.0],
-			),
-			"Camera": (
-				fov: 90.0,
-			),
-			"FreeCameraController": (),
-		}, 
-	),
+			"Scaler": (
+				speed: 0.5,
+				max: 4.0,
+				time: 0.0,
+			)
+        },
+    ),
+    Entity(
+        id: "{D124EEA5-7845-4D84-84B1-02D7EA1E812D}",
+        components: {
+            "Transform": (
+                location: [0.0, 0.0, 0.0],
+                rotation: [0.0, 0.0, 0.0, 1.0],
+                scale: [1.0, 1.0, 1.0],
+            ),
+            "Camera": (
+                fov: 90.0,
+            ),
+            "CameraController": (
+                pitch: 0.0,
+                yaw: 0.0,
+            ),
+        },
+    ),
 ]

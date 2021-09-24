@@ -1,8 +1,6 @@
 use asset::{
 	AssetRef,
-	BinaryImporter,
 };
-use ecs::World;
 use engine::{
 	Builder,
 	Engine,
@@ -37,7 +35,7 @@ use game::GameState;
 use input::*;
 use render::{
 	FrameContainer,
-	Scene,
+	DrawList,
 };
 
 use sync::join;
@@ -118,7 +116,7 @@ impl Module for Game3d {
 				Engine::wait_on(async {
 					let simulation = async {
 						game_state.simulate(dt).await;
-						let scene = Scene::build(game_state).await;
+						let scene = DrawList::build(game_state).await;
 						frames.push_scene(scene);
 					};
 					let render = frames.render_scene();

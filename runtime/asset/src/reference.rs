@@ -144,7 +144,8 @@ impl<T: Asset> Deref for AssetRef<T> {
 impl<T: Asset + fmt::Debug> fmt::Debug for AssetRef<T> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("AssetRef")
-			.field("asset", &*self)
+			.field("uuid", &self.uuid)
+			.field("asset", self.arc.downcast_ref::<T>().unwrap())
 			.field("strong_count", &self.strong_count())
 			.field("weak_count", &self.weak_count())
 			.finish()
