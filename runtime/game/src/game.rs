@@ -1,8 +1,8 @@
-use asset::AssetRef;
 use crate::ecs::{
 	Schedule,
 	World,
 };
+use asset::AssetRef;
 
 use crate::systems::*;
 

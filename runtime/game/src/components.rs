@@ -16,7 +16,7 @@ use serde::{
 
 #[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize, Default)]
 pub struct Transform {
-	pub location: Vector3,
+	pub position: Vector3,
 	pub rotation: Quaternion,
 	pub scale: Vector3,
 }
@@ -24,7 +24,7 @@ pub struct Transform {
 impl Transform {
 	pub fn to_matrix4(self) -> Matrix4 {
 		// TODO: Do this without mat4 multiplication
-		Matrix4::translate(self.location)
+		Matrix4::translate(self.position)
 			* Matrix4::rotate(self.rotation)
 			* Matrix4::scale(self.scale)
 	}

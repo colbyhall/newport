@@ -12,11 +12,52 @@ GraphicsPipeline(
 	constants: {
 		"camera": [
 			("view", Matrix4),
+			("position", Vector3),
 		],
 		"imports": [
-			("world", Matrix4),
+			("model", Matrix4),
 		],
 	},
+
+	common: r#"
+		#define PI 3.141569
+
+		float3 fresnel_schlick(float cos_theta, float3 f0) {
+			return f0 + (1.0 - f0) * pow(clamp(1.0 - cos_theta, 0.0, 1.0), 5.0);
+		}
+
+		float distribution_ggx(float3 n, float3 h, float roughness) {
+			float a = roughness * roughness;
+			float a2 = a * a;
+			float n_dot_h = max(dot(n, h), 0.0);
+			float n_dot_h_2 = n_dot_h * n_dot_h;
+
+			float num = a2;
+			float denom = n_dot_h_2 * (a2 - 1.0) + 1.0;
+			denom = PI * denom * denom;
+
+			return num / denom;
+		}
+
+		float geometry_schlick_ggx(float n_dot_v, float roughness) {
+			float r = roughness + 1.0;
+			float k = (r * r) / 8.0;
+
+			float num = n_dot_v;
+			float denom = n_dot_v * (1.0 - k) + k;
+
+			return num / denom;
+		}
+
+		float geometry_smith(float3 n, float3 v, float3 l, float roughness) {
+			float n_dot_v = max(dot(n, v), 0.0);
+			float n_dot_l = max(dot(n, l), 0.0);
+			float ggx2 = geometry_schlick_ggx(n_dot_v, roughness);
+			float ggx1 = geometry_schlick_ggx(n_dot_l, roughness);
+
+			return ggx1 * ggx2;
+		}
+	"#,
 
 	vertex_shader: (
 		attributes: [
@@ -29,15 +70,17 @@ GraphicsPipeline(
 		],
 
 		exports: [
-			("uv",         Vector2),
+			("frag_position", Vector3),
+			("normal", Vector3),
 		],
 
 		code: r#"
 			Imports imports = get_imports();
 			Camera camera = get_camera();
 
-			output.position = mul(camera.view, mul(imports.world, float4(input.position, 1.0)));
-			output.uv = input.uv0;
+			output.position = mul(camera.view, mul(imports.model, float4(input.position, 1.0)));
+			output.frag_position = mul(imports.model, float4(input.position, 1.0)).xyz;
+			output.normal = mul(imports.model, float4(input.normal, 0.0)).xyz;
 
 			return output;
 		"#,
@@ -49,7 +92,53 @@ GraphicsPipeline(
 		],
 
 		code: r#"
-			output.color = float4(input.uv.x, input.uv.y, 0.0, 1.0);
+			Camera camera = get_camera();
+
+			float3 albedo = float3(1.0, 0.0, 0.0);
+			float metallic = 0.0;
+			float roughness = 1.0;
+			float ao = 0.5;
+			
+			float3 light_position = float3(0.0, 0.0, 10.0);
+			float3 light_color = float3(150.0, 150.0, 150.0);
+
+			float3 normal = normalize(input.normal);
+			float ambient = 0.1;
+			
+			float3 camera_to_frag = normalize(camera.position - input.frag_position);
+
+			float3 f0 = float3(0.04, 0.04, 0.04);
+			f0 = lerp(f0, albedo, metallic);
+
+
+			// reflectance equation
+			// calculate light radiance
+			float3 light_to_frag = normalize(light_position - input.frag_position);
+			float3 half = normalize(camera_to_frag + light_to_frag);
+			float distance = length(light_position - input.frag_position);
+			float attenuation = 1.0 / (distance * distance); // inverse square law
+			float3 radiance = light_color * attenuation;
+
+			// cook-torrance brdf
+			float ndf = distribution_ggx(normal, half, roughness);
+			float g = geometry_smith(normal, camera_to_frag, light_to_frag, roughness);
+			float3 f = fresnel_schlick(max(dot(half, camera_to_frag), 0.0), f0);
+
+			float3 kS = f;
+			float3 kD = float3(1.0, 1.0, 1.0) - kS;
+			kD *= 1.0 - metallic;
+
+			float3 num = ndf * g * f;
+			float denom = 4.0 * max(dot(normal, camera_to_frag), 0.0) * max(dot(normal, light_to_frag), 0.0) + 0.0001;
+			float3 specular = num / denom;
+
+			float n_dot_l = max(dot(normal, light_to_frag), 0.0);
+			float3 lo = (kD * albedo / PI + specular) * radiance * n_dot_l;
+
+			float3 color = (ambient * ao * albedo) + lo;
+			// color = color / (color + float3(1.0, 1.0, 1.0));
+
+			output.color = float4(color, 1.0);
 			
 			return output;
 		"#

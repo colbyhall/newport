@@ -4,9 +4,7 @@
 #![feature(const_type_name)]
 #![allow(arithmetic_overflow)]
 
-use asset::{
-	AssetRef,
-};
+use asset::AssetRef;
 use engine::{
 	Builder,
 	Engine,
@@ -29,20 +27,20 @@ use asset::AssetManager;
 use graphics::Graphics;
 
 pub mod components;
+pub mod ecs;
 #[cfg(feature = "editor")]
 pub(crate) mod editor;
 pub mod game;
 mod input;
 pub mod render;
 pub mod systems;
-pub mod ecs;
 
 use components::register_components;
 use game::GameState;
 use input::*;
 use render::{
-	FrameContainer,
 	DrawList,
+	FrameContainer,
 };
 
 use sync::join;
@@ -156,7 +154,8 @@ impl Module for Game3d {
 			let receipt = match game3d.frames.to_display() {
 				Some(scene) => GraphicsRecorder::new()
 					.render_pass(&[&backbuffer], |ctx| {
-						ctx.bind_pipeline(&game3d.present_pipeline)
+						ctx.clear_color(Color::BLACK)
+							.bind_pipeline(&game3d.present_pipeline)
 							.bind_texture("texture", &scene.diffuse_buffer)
 							.draw(3, 0)
 					})

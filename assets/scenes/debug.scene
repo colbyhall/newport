@@ -1,45 +1,37 @@
 [
     Entity(
-        id: "{A0866744-20EB-4115-8484-0D916BA63572}",
-        components: {
-            "Transform": (
-                location: [0.0, 0.0, 0.0],
-                rotation: [0.0, 0.0, 0.0, 1.0],
-                scale: [10000.0, 10000.0, 1.0],
-            ),
-            "MeshRender": (
-                mesh: "{08FBEEC7-62E6-4834-8EA3-F92BF16D8364}",
-                pipeline: "{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}",
-            )
-        },
-    ),
-    Entity(
         id: "{DA2ECADD-F65E-4A62-8BA7-00D6FE5C30F6}",
         components: {
             "Transform": (
-                location: [10.0, 0.0, 10.0],
+                position: [10.0, 0.0, 10.0],
                 rotation: [0.0, 0.0, 0.0, 1.0],
                 scale: [1.0, 1.0, 1.0],
             ),
             "MeshRender": (
-                mesh: "{03383b92-566f-4036-aeb4-850b61685ea6}",
+                mesh: "{EE54C6E5-DDA9-4B1D-9077-60718CEA598D}",
                 pipeline: "{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}",
             ),
-			"Spinner": (
-				speed: 20.0,
-			),
-			"Scaler": (
-				speed: 0.5,
-				max: 4.0,
-				time: 0.0,
-			)
+        },
+    ),
+	Entity(
+        id: "{49EF94F7-952A-4927-A927-FCCB6E8E6EF7}",
+        components: {
+            "Transform": (
+                position: [1.0, 0.0, 0.0],
+                rotation: [0.0, 0.0, 0.0, 1.0],
+                scale: [100000.0, 100000.0, 1.0],
+            ),
+            "MeshRender": (
+                mesh: "{08FBEEC7-62E6-4834-8EA3-F92BF16D8364}",
+                pipeline: "{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}",
+            ),
         },
     ),
     Entity(
         id: "{D124EEA5-7845-4D84-84B1-02D7EA1E812D}",
         components: {
             "Transform": (
-                location: [0.0, 0.0, 0.0],
+                position: [0.0, 0.0, 0.0],
                 rotation: [0.0, 0.0, 0.0, 1.0],
                 scale: [1.0, 1.0, 1.0],
             ),

@@ -14,6 +14,7 @@ use math::{
 	Color,
 	Matrix4,
 	Vector2,
+	Vector3,
 	Vector4,
 };
 
@@ -98,7 +99,7 @@ impl FrameContainer {
 		let viewport = Vector2::new(window_size.width as f32, window_size.height as f32);
 		let proj = Matrix4::perspective(scene.camera.fov, viewport.x / viewport.y, 1000.0, 0.1);
 		let view = Matrix4::rotate(scene.camera_transform.rotation.inverse())
-			* Matrix4::translate(-scene.camera_transform.location);
+			* Matrix4::translate(-scene.camera_transform.position);
 
 		let axis_adjustment = Matrix4 {
 			x_column: Vector4::new(0.0, 0.0, -1.0, 0.0),
@@ -107,8 +108,16 @@ impl FrameContainer {
 			w_column: Vector4::new(0.0, 0.0, 0.0, 1.0),
 		};
 
+		struct CameraProperties {
+			_view: Matrix4,
+			_position: Vector3,
+		}
+
 		let view_buffer = Buffer::new(BufferUsage::CONSTANTS, MemoryType::HostVisible, 1).unwrap();
-		view_buffer.copy_to(&[proj * axis_adjustment * view]);
+		view_buffer.copy_to(&[CameraProperties {
+			_view: proj * axis_adjustment * view,
+			_position: scene.camera_transform.position,
+		}]);
 
 		GraphicsRecorder::new()
 			.resource_barrier_texture(&diffuse_buffer, Layout::Undefined, Layout::ColorAttachment)

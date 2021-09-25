@@ -45,25 +45,25 @@ impl System for CameraDriver {
 			let right = rotation.right();
 
 			if game3d.input_state.is_key_down(KEY_W) {
-				transform.location += forward * dt * SPEED;
+				transform.position += forward * dt * SPEED;
 			}
 			if game3d.input_state.is_key_down(KEY_S) {
-				transform.location += -forward * dt * SPEED;
+				transform.position += -forward * dt * SPEED;
 			}
 
 			if game3d.input_state.is_key_down(KEY_D) {
-				transform.location += right * dt * SPEED;
+				transform.position += right * dt * SPEED;
 			}
 			if game3d.input_state.is_key_down(KEY_A) {
-				transform.location += -right * dt * SPEED;
+				transform.position += -right * dt * SPEED;
 			}
 
 			if game3d.input_state.is_key_down(KEY_SPACE) {
-				transform.location += Vector3::UP * dt * SPEED;
+				transform.position += Vector3::UP * dt * SPEED;
 			}
 
 			if game3d.input_state.is_key_down(KEY_LCTRL) {
-				transform.location += -Vector3::UP * dt * SPEED;
+				transform.position += -Vector3::UP * dt * SPEED;
 			}
 
 			if game3d.input_state.was_key_pressed(KEY_L)
