@@ -1,4 +1,4 @@
-// mod button;
+mod button;
 // mod checkbox;
 mod label;
 mod panel;
@@ -11,7 +11,7 @@ use crate::{
 };
 
 pub use {
-	// button::*,
+	button::*,
 	// checkbox::*,
 	label::*,
 	panel::*,

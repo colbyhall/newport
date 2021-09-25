@@ -4,7 +4,6 @@
 #![feature(const_type_name)]
 #![allow(arithmetic_overflow)]
 
-use asset::AssetRef;
 use engine::{
 	Builder,
 	Engine,
@@ -19,7 +18,6 @@ use gpu::{
 	Layout,
 };
 use math::{
-	Color,
 	Vector2,
 };
 

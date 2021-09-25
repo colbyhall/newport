@@ -1,5 +1,4 @@
 use crate::{
-	ColorStyle,
 	Context,
 	Gui,
 	Id,
@@ -50,14 +49,12 @@ impl Panel {
 			}
 		};
 
-		let mut builder = ctx.builder(self.id, layout);
-		let color: ColorStyle = builder.style().get();
-		builder.painter().push_shape(Shape::solid_rect(
-			layout.bounds(),
-			color.inactive_background,
-			0.0,
-		));
-		contents(&mut builder);
-		builder.finish();
+		let mut gui = ctx.builder(self.id, layout);
+		let color = gui.style().theme.window_background;
+
+		gui.painter()
+			.push_shape(Shape::solid_rect(layout.bounds(), color, 0.0));
+		contents(&mut gui);
+		gui.finish();
 	}
 }

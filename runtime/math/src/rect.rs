@@ -34,7 +34,7 @@ impl Rect {
 		Self { min, max }
 	}
 
-	pub fn from_pos_size(pos: Vector2, size: Vector2) -> Self {
+	pub fn from_center(pos: Vector2, size: Vector2) -> Self {
 		let min = pos - size / 2.0;
 		let max = pos + size / 2.0;
 		Self { min, max }
@@ -52,7 +52,7 @@ impl Rect {
 		Vector2::new(self.width(), self.height())
 	}
 
-	pub fn pos(self) -> Vector2 {
+	pub fn center(self) -> Vector2 {
 		let x = self.min.x + self.width() / 2.0;
 		let y = self.min.y + self.height() / 2.0;
 		Vector2::new(x, y)

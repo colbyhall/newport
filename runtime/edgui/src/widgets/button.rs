@@ -1,19 +1,14 @@
 use crate::{
-	Builder,
-	ColorStyle,
+	Alignment,
+	Gui,
 	Id,
-	Shape,
-
-	TextStyle,
+	Response,
+	Sense,
 	ToId,
+	Widget,
 };
 
-use asset::AssetRef;
-use gpu::Texture;
-use math::{
-	Rect,
-	Vector2,
-};
+use math::Rect;
 
 pub struct Button {
 	id: Id,
@@ -21,8 +16,8 @@ pub struct Button {
 }
 
 impl Button {
-	pub fn new(label: impl Into<String>) -> Self {
-		let label = label.into();
+	pub fn new(label: impl ToString) -> Self {
+		let label = label.to_string();
 
 		Self {
 			id: Id::from(&label),
@@ -36,53 +31,33 @@ impl Button {
 	}
 }
 
-impl Button {
-	#[must_use = "If a response is not being used then use a label"]
-	pub fn build(self, builder: &mut Builder) -> ButtonResponse {
-		let color: ColorStyle = builder.style().get();
-		let text: TextStyle = builder.style().get();
+impl Widget for Button {
+	fn add(self, gui: &mut Gui) -> Response {
+		let style = gui.style();
 
-		let label_rect = text.string_rect(&self.label, text.label_size, None).size();
-		let bounds = builder.content_bounds(label_rect);
+		let text_size = style.text_size(&self.label, None);
+		let (bounds, response) = gui.allocate_desired(
+			text_size + style.button_padding * 2.0,
+			Sense::click(self.id),
+		);
 
-		let response = button_control(self.id, bounds, builder);
-
-		let is_focused = builder.is_focused(self.id);
-		let is_hovered = builder.is_hovered(self.id);
-
-		let (background_color, foreground_color) = {
-			let background_color = if is_focused {
-				color.focused_background
-			} else if is_hovered {
-				color.hovered_background
-			} else {
-				color.unhovered_background
-			};
-
-			let foreground_color = if is_focused {
-				color.focused_foreground
-			} else if is_hovered {
-				color.hovered_foreground
-			} else {
-				color.unhovered_foreground
-			};
-
-			(background_color, foreground_color)
+		let background_color = if gui.is_focused(self.id) {
+			style.theme.focused_button
+		} else if gui.is_hovered(self.id) {
+			style.theme.hovered_button
+		} else {
+			style.theme.unhovered_button
 		};
 
-		builder
-			.painter
-			.push_shape(Shape::solid_rect(bounds, background_color, 0.0));
-
-		let at = Rect::from_pos_size(bounds.pos(), label_rect).top_left();
-		builder.painter.push_shape(Shape::text(
+		gui.painter().push_rect(bounds, background_color, 0.0);
+		gui.painter().push_text(
 			self.label,
-			at,
-			&text.font,
-			text.label_size,
-			builder.input().dpi,
-			foreground_color,
-		));
+			Rect::from_center(bounds.center(), text_size),
+			&style.font_collection,
+			style.text_size,
+			style.theme.text,
+			Alignment::Center,
+		);
 
 		response
 	}

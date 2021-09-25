@@ -3,15 +3,11 @@ use crate::{
 	Id,
 	InputState,
 	Layout,
-	LayoutStyle,
 	Painter,
 	Response,
 	Retained,
 	Sense,
-	Sizing,
 	Style,
-	StyleMap,
-	TextStyle,
 	Widget,
 };
 
@@ -50,22 +46,15 @@ impl<'a> Gui<'a> {
 /// # Interaction
 impl<'a> Gui<'a> {
 	pub fn is_focused(&self, id: Id) -> bool {
-		match &self.context.focused {
-			Some(focused) => *focused == id,
-			None => false,
-		}
+		self.context.is_focused(id)
 	}
 
 	pub fn is_hovered(&self, id: Id) -> bool {
-		match &self.context.hovered {
-			Some(hovered) => *hovered == id,
-			None => false,
-		}
+		self.context.is_hovered(id)
 	}
 
-	pub fn interact(&mut self, id: Id, bounds: Rect, sense: Sense) -> Response {
-		self.context
-			.interact(id, self.layout.bounds(), bounds, sense)
+	pub fn interact(&mut self, bounds: Rect, sense: Sense) -> Response {
+		self.context.interact(self.layout.bounds(), bounds, sense)
 	}
 }
 
@@ -91,28 +80,14 @@ impl<'a> Gui<'a> {
 		self.layout.available_rect()
 	}
 
-	pub fn allocate_bounds(
-		&mut self,
-		id: Option<Id>,
-		desired: Vector2,
-		sense: Sense,
-	) -> (Rect, Response) {
-		let style: LayoutStyle = self.style().get();
+	pub fn allocate_desired(&mut self, desired: Vector2, sense: Sense) -> (Rect, Response) {
+		let size = desired; // TODO: Wrapping and justified
 
-		let space_available = self.layout.space_left();
-		let content_size = style.content_size(desired, space_available);
+		let style = self.style();
+		let layout_rect = self.layout.push_size(size + style.margin * 2.0);
+		let bounds = Rect::from_center(layout_rect.center(), size);
 
-		let layout_rect = self.layout.push_size(style.spacing_size(content_size));
-
-		let bounds = Rect::from_pos_size(layout_rect.pos(), content_size);
-
-		let response = if let Some(id) = id {
-			self.interact(id, bounds, sense)
-		} else {
-			Response::none()
-		};
-
-		(bounds, response)
+		(bounds, self.interact(bounds, sense))
 	}
 
 	pub fn add_spacing(&mut self, amount: f32) {
@@ -127,26 +102,7 @@ impl<'a> Gui<'a> {
 		self.context.set_retained(id, t);
 	}
 
-	pub fn style(&mut self) -> &mut StyleMap {
-		&mut self.context.style
-	}
-
-	pub fn scoped_style<T: Style>(&mut self, in_style: T, contents: impl FnOnce(&mut Gui)) {
-		self.style().push(in_style);
-		contents(self);
-		self.style().pop::<T>();
-	}
-
-	pub fn label_height_with_padding(&mut self) -> f32 {
-		let layout_style: LayoutStyle = self.style().get();
-		let text_style: TextStyle = self.style().get();
-
-		text_style.label_height() + layout_style.padding.min.y + layout_style.padding.max.y
-	}
-
-	pub fn fill(&mut self, contents: impl FnOnce(&mut Gui)) {
-		let mut layout_style: LayoutStyle = self.style().get();
-		layout_style.width_sizing = Sizing::Fill;
-		self.scoped_style(layout_style, contents);
+	pub fn style(&self) -> Style {
+		self.context.style.clone()
 	}
 }

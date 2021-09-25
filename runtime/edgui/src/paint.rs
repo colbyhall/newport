@@ -99,7 +99,7 @@ impl RectShape {
 		let radius = max.min(size.x.min(size.y) / 2.0);
 
 		canvas.vertices.push(Vertex {
-			position: self.bounds.pos(),
+			position: self.bounds.center(),
 			uv: Vector2::ZERO,
 			color: self.color,
 			scissor: self.scissor,

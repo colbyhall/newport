@@ -1,6 +1,6 @@
 use math::Color;
 
-pub struct Palette {
+pub struct Gruvbox {
 	pub bg: Color,
 	pub fg: Color,
 
@@ -38,7 +38,7 @@ pub struct Palette {
 	pub orange1: Color,
 }
 
-pub const DARK: Palette = Palette {
+pub const GRUVBOX: Gruvbox = Gruvbox {
 	bg: Color::from_srgb(0x282828ff),
 	fg: Color::from_srgb(0xebdbb2ff),
 

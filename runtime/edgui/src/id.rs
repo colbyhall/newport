@@ -4,7 +4,7 @@ use std::hash::{
 	Hasher,
 };
 
-#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug)]
 pub struct Id(u64);
 
 pub trait ToId {

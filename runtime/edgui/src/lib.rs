@@ -27,3 +27,10 @@ pub use {
 	style::*,
 	widgets::*,
 };
+
+#[derive(Clone)]
+pub enum Alignment {
+	Left,
+	Center,
+	Right,
+}

@@ -15,5 +15,5 @@ platform 	= { path = "../platform", version = "0.2.0", package = "newport_platfo
 edgui 		= { path = "../edgui", version = "0.1.0", package = "newport_edgui" }
 
 [features]
-default = []
+default = ["editor"]
 editor = []

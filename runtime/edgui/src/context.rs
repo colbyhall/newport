@@ -10,7 +10,7 @@ use crate::{
 	Painter,
 	RawInput,
 	Retained,
-	StyleMap,
+	Style,
 };
 use math::{
 	Rect,
@@ -31,7 +31,7 @@ pub struct Context {
 	pub(crate) hovered: Option<Id>,
 	pub(crate) focused: Option<Id>,
 
-	pub(crate) style: StyleMap,
+	pub(crate) style: Style,
 
 	canvas: Rect,
 }
@@ -65,7 +65,7 @@ impl Context {
 			hovered: None,
 			focused: None,
 
-			style: StyleMap::new(),
+			style: Style::new(),
 
 			canvas: Rect::default(),
 		}
@@ -121,14 +121,13 @@ impl Context {
 		false
 	}
 
-	pub(crate) fn interact(
-		&mut self,
-		id: Id,
-		_scissor: Rect,
-		bounds: Rect,
-		sense: Sense,
-	) -> Response {
+	pub(crate) fn interact(&mut self, _scissor: Rect, bounds: Rect, sense: Sense) -> Response {
 		let mut response = Response::none();
+		if sense.id.is_none() {
+			return response;
+		}
+
+		let id = sense.id.unwrap();
 		response.id = Some(id);
 		response.bounds = bounds;
 		response.sense = sense;
@@ -226,8 +225,8 @@ impl Context {
 		mesh
 	}
 
-	pub fn style(&mut self) -> &mut StyleMap {
-		&mut self.style
+	pub fn style(&self) -> &Style {
+		&self.style
 	}
 }
 
