@@ -1,5 +1,5 @@
 use crate::components::*;
-use ecs::{
+use crate::ecs::{
 	Query,
 	System,
 	World,

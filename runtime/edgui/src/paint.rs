@@ -250,7 +250,7 @@ pub struct TextShape {
 	font: AssetRef<FontCollection>,
 	size: u32,
 	color: Color,
-	alignment: Alignment,
+	_alignment: Alignment,
 
 	scissor: Rect,
 }
@@ -379,7 +379,7 @@ impl Shape {
 			font: font.clone(),
 			size,
 			color: color.into(),
-			alignment,
+			_alignment: alignment,
 
 			scissor: Rect::INFINITY,
 		})

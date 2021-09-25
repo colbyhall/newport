@@ -4,7 +4,7 @@ use newport::{
 		Engine,
 		Module,
 	},
-	game3d::Game3d,
+	game::Game3d,
 };
 
 // First thing first is to define our module struct

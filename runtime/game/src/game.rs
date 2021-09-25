@@ -1,5 +1,5 @@
 use asset::AssetRef;
-use ecs::{
+use crate::ecs::{
 	Schedule,
 	World,
 };

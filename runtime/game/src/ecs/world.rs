@@ -1,6 +1,6 @@
-use crate::Scene;
-use crate::SceneRuntime;
-use crate::{
+use super::Scene;
+use super::SceneRuntime;
+use super::{
 	Component,
 	ComponentsContainer,
 

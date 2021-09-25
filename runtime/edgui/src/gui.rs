@@ -2,7 +2,6 @@ use crate::{
 	Context,
 	Id,
 	InputState,
-	Label,
 	Layout,
 	LayoutStyle,
 	Painter,

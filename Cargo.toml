@@ -19,9 +19,8 @@ newport_engine    = { path = "runtime/engine", version = "0.2.0" }
 newport_gpu       = { path = "runtime/gpu", version = "0.2.0" }
 newport_graphics  = { path = "runtime/graphics", version = "0.2.0" }
 newport_math      = { path = "runtime/math", version = "0.2.0" }
-newport_ecs       = { path = "runtime/ecs", version = "0.2.0" }
 newport_serde     = { path = "runtime/serde", version = "0.2.0" }
-newport_game3d    = { path = "runtime/game3d", version = "0.1.0" }
+newport_game    = { path = "runtime/game", version = "0.1.0" }
 
 [[example]]
 name = "hello_world"

@@ -1,5 +1,5 @@
+use crate::ecs::ComponentVariant;
 use asset::AssetRef;
-use ecs::ComponentVariant;
 use engine::Builder;
 use gpu::GraphicsPipeline;
 use graphics::Mesh;

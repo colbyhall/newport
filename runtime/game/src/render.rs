@@ -1,4 +1,4 @@
-use ecs::Query;
+use crate::ecs::Query;
 use engine::Engine;
 use gpu::{
 	Buffer,

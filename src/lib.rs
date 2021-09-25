@@ -23,10 +23,6 @@ pub mod math {
 	pub use newport_math::*;
 }
 
-pub mod ecs {
-	pub use newport_ecs::*;
-}
-
 pub mod platform {
 	pub use newport_platform::*;
 }
@@ -35,6 +31,6 @@ pub mod serde {
 	pub use newport_serde::*;
 }
 
-pub mod game3d {
-	pub use newport_game3d::*;
+pub mod game {
+	pub use newport_game::*;
 }

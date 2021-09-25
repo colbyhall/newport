@@ -1,3 +1,9 @@
+#![feature(trait_alias)]
+#![feature(specialization)]
+#![allow(incomplete_features)]
+#![feature(const_type_name)]
+#![allow(arithmetic_overflow)]
+
 use asset::{
 	AssetRef,
 };
@@ -29,6 +35,7 @@ pub mod game;
 mod input;
 pub mod render;
 pub mod systems;
+pub mod ecs;
 
 use components::register_components;
 use game::GameState;

@@ -1,4 +1,4 @@
-use crate::World;
+use super::World;
 use std::any::type_name;
 use sync::async_trait;
 

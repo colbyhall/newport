@@ -1,6 +1,6 @@
-use crate::ComponentVariantId;
-use crate::Entity;
-use crate::{
+use super::ComponentVariantId;
+use super::Entity;
+use super::{
 	Component,
 	ReadStorage,
 	World,

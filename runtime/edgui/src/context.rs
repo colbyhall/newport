@@ -124,7 +124,7 @@ impl Context {
 	pub(crate) fn interact(
 		&mut self,
 		id: Id,
-		scissor: Rect,
+		_scissor: Rect,
 		bounds: Rect,
 		sense: Sense,
 	) -> Response {

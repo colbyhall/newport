@@ -3,17 +3,10 @@ use crate::{
 	Alignment,
 	ColorStyle,
 	Gui,
-	LayoutStyle,
 
 	Response,
-	Shape,
 	TextStyle,
 	Widget,
-};
-
-use math::{
-	Rect,
-	Vector2,
 };
 
 pub struct Label {
@@ -32,7 +25,7 @@ impl Widget for Label {
 	fn add(self, gui: &mut Gui) -> Response {
 		let color: ColorStyle = gui.style().get();
 		let text: TextStyle = gui.style().get();
-		let layout_style: LayoutStyle = gui.style().get();
+		// let layout_style: LayoutStyle = gui.style().get();
 
 		let label_rect = text.string_rect(&self.label, text.label_size, None).size();
 		let (bounds, response) = gui.allocate_bounds(None, label_rect, Sense::hover());

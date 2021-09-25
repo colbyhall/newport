@@ -6,7 +6,7 @@ use asset::{
 	Importer,
 };
 
-use crate::{
+use super::{
 	Entity,
 	EntityInfo,
 };
@@ -23,8 +23,8 @@ use serde::{
 	Serialize,
 };
 
-use crate::ComponentVariant;
-use crate::ComponentVariantId;
+use super::ComponentVariant;
+use super::ComponentVariantId;
 
 #[derive(Debug)]
 pub struct SceneEntry {

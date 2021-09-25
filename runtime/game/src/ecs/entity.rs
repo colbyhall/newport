@@ -1,6 +1,6 @@
 use engine::Uuid;
 
-use crate::{
+use super::{
 	ComponentId,
 	ComponentVariantId,
 };
