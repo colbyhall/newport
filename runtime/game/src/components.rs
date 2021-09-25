@@ -62,6 +62,9 @@ pub struct Spinner {
 pub struct Scaler {
 	pub speed: f32,
 	pub max: f32,
+	pub min: f32,
+
+	#[serde(default)]
 	pub time: f32,
 }
 

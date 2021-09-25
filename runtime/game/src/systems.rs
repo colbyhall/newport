@@ -33,8 +33,8 @@ impl System for CameraDriver {
 			let controller: &mut CameraController = it.get_mut().unwrap();
 
 			if game3d.input_state.mouse_locked {
-				controller.yaw += game3d.input_state.mouse_delta.x / 2.0;
-				controller.pitch -= game3d.input_state.mouse_delta.y / 2.0;
+				controller.yaw += game3d.input_state.mouse_delta.x / 10.0;
+				controller.pitch -= game3d.input_state.mouse_delta.y / 10.0;
 			}
 
 			transform.rotation =
@@ -134,7 +134,7 @@ impl System for ScaleDriver {
 
 			scaler.time += dt * scaler.speed;
 
-			let scale = 1.0 + scaler.time.sin().abs() * scaler.max;
+			let scale = 1.0 + scaler.time.sin().abs() * scaler.max + scaler.min;
 			transform.scale = [scale, scale, scale].into();
 		}
 	}

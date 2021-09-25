@@ -94,9 +94,9 @@ GraphicsPipeline(
 		code: r#"
 			Camera camera = get_camera();
 
-			float3 albedo = float3(1.0, 0.0, 0.0);
+			float3 albedo = float3(1.0, 1.0, 0.0);
 			float metallic = 0.0;
-			float roughness = 1.0;
+			float roughness = 0.9;
 			float ao = 0.5;
 			
 			float3 light_position = float3(0.0, 0.0, 10.0);
@@ -136,7 +136,7 @@ GraphicsPipeline(
 			float3 lo = (kD * albedo / PI + specular) * radiance * n_dot_l;
 
 			float3 color = (ambient * ao * albedo) + lo;
-			// color = color / (color + float3(1.0, 1.0, 1.0));
+			color = color / (color + float3(1.0, 1.0, 1.0));
 
 			output.color = float4(color, 1.0);
 			
