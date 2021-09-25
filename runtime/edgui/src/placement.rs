@@ -3,71 +3,74 @@ use math::{
 	Vector2,
 };
 
+// use crate::Alignment;
+
 #[derive(Copy, Clone, Debug)]
 pub enum Direction {
 	LeftToRight,
 	RightToLeft,
-	UpToDown,
-	DownToUp,
+	TopToBottom,
+	BottomToTop,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct Layout {
-	bounds: Rect,
 	direction: Direction,
-	cursor: f32,
+	// wrap: bool,
+	// alignment: Alignment,
+	// justify: bool,
+	// cross_alignment: Alignment,
+	// cross_justify: bool,
 }
 
 impl Layout {
-	pub fn up_to_down(bounds: impl Into<Rect>) -> Layout {
+	pub fn new(direction: Direction) -> Self {
+		Self { direction }
+	}
+
+	pub fn top_to_bottom() -> Layout {
 		Layout {
-			bounds: bounds.into(),
-			direction: Direction::UpToDown,
-			cursor: 0.0,
+			direction: Direction::TopToBottom,
 		}
 	}
 
-	pub fn down_to_up(bounds: impl Into<Rect>) -> Layout {
+	pub fn bottom_to_top() -> Layout {
 		Layout {
-			bounds: bounds.into(),
-			direction: Direction::DownToUp,
-			cursor: 0.0,
+			direction: Direction::BottomToTop,
 		}
 	}
 
-	pub fn left_to_right(bounds: impl Into<Rect>) -> Layout {
+	pub fn left_to_right() -> Layout {
 		Layout {
-			bounds: bounds.into(),
 			direction: Direction::LeftToRight,
-			cursor: 0.0,
 		}
 	}
 
-	pub fn right_to_left(bounds: impl Into<Rect>) -> Layout {
+	pub fn right_to_left() -> Layout {
 		Layout {
-			bounds: bounds.into(),
 			direction: Direction::RightToLeft,
-			cursor: 0.0,
 		}
-	}
-
-	pub fn new(bounds: impl Into<Rect>, direction: Direction) -> Self {
-		Layout {
-			bounds: bounds.into(),
-			direction,
-			cursor: 0.0,
-		}
-	}
-
-	pub fn with_cursor(mut self, cursor: f32) -> Self {
-		self.cursor = cursor;
-		self
 	}
 }
 
-impl Layout {
+#[derive(Copy, Clone, Debug)]
+pub struct Placer {
+	pub bounds: Rect,
+	pub layout: Layout,
+	pub cursor: f32,
+}
+
+impl Placer {
+	pub fn new(bounds: Rect, layout: Layout) -> Self {
+		Self {
+			bounds,
+			layout,
+			cursor: 0.0,
+		}
+	}
+
 	pub fn push_size(&mut self, size: Vector2) -> Rect {
-		match &self.direction {
+		match &self.layout.direction {
 			Direction::LeftToRight => {
 				let min = (self.bounds.min.x + self.cursor, self.bounds.min.y).into();
 				self.cursor += size.x;
@@ -80,13 +83,13 @@ impl Layout {
 				let min = (self.bounds.max.x - self.cursor, self.bounds.min.y).into();
 				Rect::from_min_max(min, max)
 			}
-			Direction::UpToDown => {
+			Direction::TopToBottom => {
 				let max = (self.bounds.max.x, self.bounds.max.y - self.cursor).into();
 				self.cursor += size.y;
 				let min = (self.bounds.min.x, self.bounds.max.y - self.cursor).into();
 				Rect::from_min_max(min, max)
 			}
-			Direction::DownToUp => {
+			Direction::BottomToTop => {
 				let min = (self.bounds.min.x, self.bounds.min.y + self.cursor).into();
 				self.cursor += size.y;
 				let max = (self.bounds.max.x, self.bounds.min.y + self.cursor).into();
@@ -96,11 +99,11 @@ impl Layout {
 	}
 
 	pub fn space_left(&self) -> Vector2 {
-		match &self.direction {
+		match &self.layout.direction {
 			Direction::LeftToRight | Direction::RightToLeft => {
 				(self.bounds.width() - self.cursor, self.bounds.height()).into()
 			}
-			Direction::UpToDown | Direction::DownToUp => {
+			Direction::TopToBottom | Direction::BottomToTop => {
 				(self.bounds.width(), self.bounds.height() - self.cursor).into()
 			}
 		}
@@ -111,7 +114,7 @@ impl Layout {
 	}
 
 	pub fn available_rect(&self) -> Rect {
-		match &self.direction {
+		match &self.layout.direction {
 			Direction::LeftToRight => {
 				let min = (self.bounds.min.x + self.cursor, self.bounds.min.y).into();
 				let max = (
@@ -130,7 +133,7 @@ impl Layout {
 					.into();
 				Rect::from_min_max(min, max)
 			}
-			Direction::UpToDown => {
+			Direction::TopToBottom => {
 				let max = (self.bounds.max.x, self.bounds.max.y - self.cursor).into();
 				let min = (
 					self.bounds.min.x,
@@ -139,7 +142,7 @@ impl Layout {
 					.into();
 				Rect::from_min_max(min, max)
 			}
-			Direction::DownToUp => {
+			Direction::BottomToTop => {
 				let min = (self.bounds.min.x, self.bounds.min.y + self.cursor).into();
 				let max = (
 					self.bounds.max.x,

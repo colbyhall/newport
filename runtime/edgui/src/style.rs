@@ -40,7 +40,7 @@ impl Default for Style {
 			text_size: 12,
 			header_size: 16,
 
-			margin: [10.0, 10.0].into(),
+			margin: [4.0, 4.0].into(),
 			button_padding: [10.0, 10.0].into(),
 
 			theme: Theme {

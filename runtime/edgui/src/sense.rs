@@ -1,7 +1,4 @@
-use crate::{
-	Id,
-	ToId,
-};
+use crate::Id;
 
 // This is copied from egui but modified for my needs
 

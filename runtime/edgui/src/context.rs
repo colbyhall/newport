@@ -8,6 +8,7 @@ use crate::{
 	InputState,
 	Layout,
 	Painter,
+	Placer,
 	RawInput,
 	Retained,
 	Style,
@@ -71,12 +72,12 @@ impl Context {
 		}
 	}
 
-	pub fn builder(&mut self, id: impl Into<Id>, layout: Layout) -> Gui {
+	pub fn builder(&mut self, id: impl Into<Id>, bounds: Rect, layout: Layout) -> Gui {
 		let mut painter = Painter::new();
-		painter.push_scissor(layout.bounds());
+		painter.push_scissor(bounds);
 		Gui {
 			id: id.into(),
-			layout,
+			placer: Placer::new(bounds, layout),
 
 			painter,
 			context: self,

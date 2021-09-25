@@ -1,8 +1,7 @@
 use edgui::{
-	Button,
 	Context,
 	DrawState,
-	Label,
+	Layout,
 	Panel,
 	RawInput,
 };
@@ -101,25 +100,23 @@ impl Module for Editor {
 
 					context.begin_frame(input);
 					Panel::top("menu_bar", 50.0).build(context, |gui| {
-						gui.add(Label::new("Testing 123"));
-						gui.add(Label::new("Testing 123"));
-						gui.add(Label::new("Testing 123"));
-						gui.add(Label::new("Testing 123"));
-						gui.add(Label::new("Testing 123"));
+						gui.horizontal(|gui| {
+							gui.label("Your Mom");
+							gui.label("Your Mom");
+							gui.label("Your Mom");
+							gui.label("Your Mom");
 
-						if gui.add(Button::new("Hello World")).clicked() {
-							info!("Hello World");
-						}
-						if gui.add(Button::new("Hello World2")).clicked() {
-							info!("Hello World");
-						}
+							gui.layout(Layout::right_to_left(), |gui| {
+								if gui.button("This is a button").clicked() {
+									info!("test123");
+								}
+							});
+						});
 					});
 					Panel::bottom("context_bar", 24.0).build(context, |gui| {
-						gui.add(Label::new(format!(
-							"{:.2}ms/{}fps",
-							dt * 1000.0,
-							Engine::fps()
-						)));
+						gui.layout(Layout::right_to_left(), |gui| {
+							gui.label(format!("{:.2}ms/{}fps", dt * 1000.0, Engine::fps()));
+						});
 					});
 					context.end_frame()
 				};

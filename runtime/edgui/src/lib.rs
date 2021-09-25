@@ -5,8 +5,8 @@ mod gruvbox;
 mod gui;
 mod id;
 mod input;
-mod layout;
 mod paint;
+mod placement;
 mod response;
 mod retained;
 mod sense;
@@ -19,8 +19,8 @@ pub use {
 	gui::*,
 	id::*,
 	input::*,
-	layout::*,
 	paint::*,
+	placement::*,
 	response::*,
 	retained::*,
 	sense::*,
@@ -28,9 +28,33 @@ pub use {
 	widgets::*,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Copy, Debug)]
 pub enum Alignment {
-	Left,
+	Min,
 	Center,
-	Right,
+	Max,
+}
+
+impl Alignment {
+	pub const LEFT: Alignment = Alignment::Min;
+	pub const RIGHT: Alignment = Alignment::Max;
+
+	pub const TOP: Alignment = Alignment::Min;
+	pub const BOTTOM: Alignment = Alignment::Max;
+
+	pub fn to_factor(self) -> f32 {
+		match self {
+			Alignment::Min => 0.0,
+			Alignment::Center => 0.5,
+			Alignment::Max => 1.0,
+		}
+	}
+
+	pub fn to_sign(self) -> f32 {
+		match self {
+			Alignment::Min => -1.0,
+			Alignment::Center => 0.0,
+			Alignment::Max => 1.0,
+		}
+	}
 }
