@@ -36,7 +36,7 @@ impl Widget for Button {
 		let style = gui.style();
 
 		let text_size = style.text_size(&self.label, None);
-		let (bounds, response) = gui.allocate_desired(
+		let (bounds, response) = gui.allocate_space(
 			text_size + style.button_padding * 2.0,
 			Sense::click(self.id),
 		);

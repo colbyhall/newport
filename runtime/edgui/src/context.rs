@@ -77,7 +77,7 @@ impl Context {
 		painter.push_scissor(bounds);
 		Gui {
 			id: id.into(),
-			placer: Placer::new(bounds, layout),
+			placer: Placer::layout(bounds, layout),
 
 			painter,
 			context: self,
@@ -256,6 +256,10 @@ impl Context {
 		let result = self.canvas;
 		self.canvas = Default::default();
 		result
+	}
+
+	pub fn canvas(&self) -> Rect {
+		self.canvas
 	}
 }
 

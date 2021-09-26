@@ -24,7 +24,7 @@ impl Widget for Label {
 		let style = gui.style();
 
 		let (bounds, response) =
-			gui.allocate_desired(style.text_size(&self.label, None), Sense::hover());
+			gui.allocate_space(style.text_size(&self.label, None), Sense::hover());
 
 		gui.painter().push_text(
 			self.label,

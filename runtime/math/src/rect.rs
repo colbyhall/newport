@@ -1,6 +1,9 @@
 use crate::Vector2;
 
-use std::convert::From;
+use std::{
+	convert::From,
+	ops::RangeInclusive,
+};
 
 use serde::{
 	Deserialize,
@@ -30,8 +33,11 @@ impl Rect {
 		max: Vector2::ZERO,
 	};
 
-	pub fn from_min_max(min: Vector2, max: Vector2) -> Self {
-		Self { min, max }
+	pub fn from_min_max(min: impl Into<Vector2>, max: impl Into<Vector2>) -> Self {
+		Self {
+			min: min.into(),
+			max: max.into(),
+		}
 	}
 
 	pub fn from_center(pos: Vector2, size: Vector2) -> Self {
@@ -40,12 +46,28 @@ impl Rect {
 		Self { min, max }
 	}
 
+	pub fn from_ranges(x: RangeInclusive<f32>, y: RangeInclusive<f32>) -> Rect {
+		(
+			Vector2::new(*x.start(), *y.start()),
+			Vector2::new(*x.end(), *y.end()),
+		)
+			.into()
+	}
+
 	pub fn width(self) -> f32 {
 		self.max.x - self.min.x
 	}
 
 	pub fn height(self) -> f32 {
 		self.max.y - self.min.y
+	}
+
+	pub fn x_range(self) -> RangeInclusive<f32> {
+		self.min.x..=self.max.x
+	}
+
+	pub fn y_range(self) -> RangeInclusive<f32> {
+		self.min.y..=self.max.y
 	}
 
 	pub fn size(self) -> Vector2 {
@@ -119,6 +141,62 @@ impl Rect {
 		let min = Vector2::new(self.max.x, self.min.y);
 
 		(min, max).into()
+	}
+
+	pub fn intersect(self, other: Self) -> Self {
+		let min = (self.min.x.max(other.min.x), self.min.y.max(other.min.y)).into();
+		let max = (self.max.x.min(other.max.x), self.max.y.min(other.max.y)).into();
+		(min, max).into()
+	}
+
+	pub fn overlaps(self, other: Self) -> bool {
+		self.min.x <= other.max.x
+			&& other.min.x <= self.max.x
+			&& self.min.y <= other.max.y
+			&& other.min.y <= self.max.y
+	}
+
+	pub fn translate(self, amount: Vector2) -> Self {
+		Self {
+			min: self.min + amount,
+			max: self.max + amount,
+		}
+	}
+
+	pub fn expand_to_include_x(&mut self, x: f32) {
+		self.min.x = self.min.x.min(x);
+		self.max.x = self.max.x.max(x);
+	}
+
+	pub fn expand_to_include_y(&mut self, y: f32) {
+		self.min.y = self.min.y.min(y);
+		self.max.y = self.max.y.max(y);
+	}
+
+	pub fn expand(self, other: Self) -> Self {
+		let min = (self.min.x.min(other.min.x), self.min.y.min(other.min.y)).into();
+		let max = (self.max.x.max(other.max.x), self.max.y.max(other.max.y)).into();
+		(min, max).into()
+	}
+
+	pub fn shrink(self, amount: f32) -> Self {
+		(self.min + amount, self.max - amount).into()
+	}
+
+	pub fn left(self) -> f32 {
+		self.min.x
+	}
+
+	pub fn right(self) -> f32 {
+		self.max.x
+	}
+
+	pub fn top(self) -> f32 {
+		self.max.y
+	}
+
+	pub fn bottom(self) -> f32 {
+		self.min.y
 	}
 }
 

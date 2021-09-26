@@ -69,7 +69,7 @@ impl<'a> Gui<'a> {
 	}
 
 	pub fn interact(&mut self, bounds: Rect, sense: Sense) -> Response {
-		self.context.interact(self.placer.bounds(), bounds, sense)
+		self.context.interact(self.placer.bounds, bounds, sense)
 	}
 }
 
@@ -91,29 +91,31 @@ impl<'a> Gui<'a> {
 impl<'a> Gui<'a> {
 	pub fn layout(&mut self, layout: Layout, content: impl FnOnce(&mut Gui)) {
 		let current = self.placer;
-		self.placer = Placer::new(self.available_rect(), layout);
-		self.painter.push_scissor(self.placer.bounds());
+		self.placer = Placer::layout(self.available_rect(), layout);
+		self.painter.push_scissor(self.placer.bounds);
 		content(self);
 		self.painter.pop_scissor();
 		self.placer = current;
 	}
 
 	pub fn available_rect(&self) -> Rect {
-		self.placer.available_rect()
+		self.placer.available_rect_before_wrap()
 	}
 
-	pub fn allocate_desired(&mut self, desired: Vector2, sense: Sense) -> (Rect, Response) {
-		let size = desired; // TODO: Wrapping and justified
-
+	pub fn allocate_space(&mut self, desired: Vector2, sense: Sense) -> (Rect, Response) {
 		let style = self.style();
-		let layout_rect = self.placer.push_size(size + style.margin * 2.0);
-		let bounds = Rect::from_center(layout_rect.center(), size);
 
-		(bounds, self.interact(bounds, sense))
+		let frame_rect = self.placer.next_space(desired, style.margin);
+		let widget_rect = self.placer.justify_and_align(frame_rect, desired);
+
+		self.placer
+			.advance_after_rects(frame_rect, widget_rect, style.margin);
+
+		(widget_rect, self.interact(widget_rect, sense))
 	}
 
 	pub fn add_spacing(&mut self, amount: f32) {
-		self.placer.push_size(Vector2::new(amount, amount));
+		self.placer.advance_cursor(amount)
 	}
 
 	pub fn horizontal(&mut self, content: impl FnOnce(&mut Gui)) {

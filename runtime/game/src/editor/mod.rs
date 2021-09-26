@@ -29,7 +29,7 @@ use asset::{
 
 use graphics::Graphics;
 
-// use crate::Game;
+use crate::Game;
 
 pub struct Editor {
 	context: Context,
@@ -113,42 +113,39 @@ impl Module for Editor {
 					input.dpi = Engine::window().unwrap().scale_factor() as f32;
 
 					context.begin_frame(input);
-					Panel::top("menu_bar", 50.0).build(context, |gui| {
+					Panel::top("menu_bar").build(context, |gui| {
+						gui.label("Your Mom");
+						gui.label("Your Mom");
+						gui.label("Your Mom");
 						gui.horizontal(|gui| {
 							gui.label("Your Mom");
-							gui.label("Your Mom");
-							gui.label("Your Mom");
-							gui.label("Your Mom");
-
-							gui.layout(Layout::right_to_left(), |gui| {
-								if gui.button("This is a button").clicked() {
-									info!("test123");
-								}
-							});
+							if gui.button("This is a button").clicked() {
+								info!("test123");
+							}
 						});
 					});
-					Panel::bottom("context_bar", 24.0).build(context, |gui| {
-						gui.layout(Layout::right_to_left(), |gui| {
-							gui.label(format!("{:.2}ms/{}fps", dt * 1000.0, Engine::fps()));
-						});
-					});
-					Panel::center("center").build(context, |gui| {
-						// let game: &mut Game = unsafe { Engine::module_mut().unwrap() };
+					// Panel::bottom("context_bar").build(context, |gui| {
+					// 	gui.layout(Layout::right_to_left(), |gui| {
+					// 		gui.label(format!("{:.2}ms/{}fps", dt * 1000.0, Engine::fps()));
+					// 	});
+					// });
+					// Panel::center("center").build(context, |gui| {
+					// 	let game: &mut Game = unsafe { Engine::module_mut().unwrap() };
 
-						// let bounds = gui.available_rect();
-						// if let Some(scene) = game.frames.to_display() {
-						// 	gui.painter().push_texture(
-						// 		&scene.diffuse_buffer,
-						// 		bounds,
-						// 		Color::WHITE,
-						// 		0.0,
-						// 	);
+					// 	let bounds = gui.available_rect();
+					// 	if let Some(scene) = game.frames.to_display() {
+					// 		gui.painter().push_texture(
+					// 			&scene.diffuse_buffer,
+					// 			bounds,
+					// 			Color::WHITE,
+					// 			0.0,
+					// 		);
 
-						// 	game.viewport = bounds.size();
-						// }
+					// 		game.viewport = bounds.size();
+					// 	}
 
-						view.add(gui);
-					});
+					// 	// view.add(gui);
+					// });
 					context.end_frame()
 				};
 

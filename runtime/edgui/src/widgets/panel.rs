@@ -11,23 +11,20 @@ use crate::{
 pub struct Panel {
 	id: Id,
 	direction: Direction,
-	size: Option<f32>,
 }
 
 impl Panel {
-	pub fn top(id: impl ToId, size: f32) -> Self {
+	pub fn top(id: impl ToId) -> Self {
 		Self {
 			id: id.to_id(),
 			direction: Direction::TopToBottom,
-			size: Some(size),
 		}
 	}
 
-	pub fn bottom(id: impl ToId, size: f32) -> Self {
+	pub fn bottom(id: impl ToId) -> Self {
 		Self {
 			id: id.to_id(),
 			direction: Direction::BottomToTop,
-			size: Some(size),
 		}
 	}
 
@@ -35,29 +32,20 @@ impl Panel {
 		Self {
 			id: id.to_id(),
 			direction: Direction::TopToBottom,
-			size: None,
 		}
 	}
 }
 
 impl Panel {
 	pub fn build(self, ctx: &mut Context, contents: impl FnOnce(&mut Gui)) {
-		let bounds = if let Some(size) = self.size {
-			match self.direction {
-				Direction::TopToBottom => ctx.split_canvas_top(size),
-				Direction::BottomToTop => ctx.split_canvas_bottom(size),
-				_ => unimplemented!(),
-			}
-		} else {
-			ctx.take_canvas()
-		};
+		let bounds = ctx.canvas();
 
 		let mut gui = ctx.builder(self.id, bounds, Layout::new(self.direction));
-		let color = gui.style().theme.window_background;
-
-		gui.painter()
-			.push_shape(Shape::solid_rect(bounds, color, 0.0));
 		contents(&mut gui);
+		let color = gui.style().theme.window_background;
+		let used = gui.placer.used;
+		gui.painter()
+			.insert_shape(0, Shape::solid_rect(used, color, 0.0));
 		gui.finish();
 	}
 }

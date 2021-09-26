@@ -41,6 +41,10 @@ impl Vector2 {
 		Self { x, y }
 	}
 
+	pub const fn splat(xy: f32) -> Self {
+		Self { x: xy, y: xy }
+	}
+
 	pub fn from_rad(theta: f32) -> Self {
 		Self {
 			x: theta.sin(),
