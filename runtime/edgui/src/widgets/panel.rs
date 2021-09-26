@@ -11,7 +11,7 @@ use crate::{
 pub struct Panel {
 	id: Id,
 	direction: Direction,
-	size: f32,
+	size: Option<f32>,
 }
 
 impl Panel {
@@ -19,7 +19,7 @@ impl Panel {
 		Self {
 			id: id.to_id(),
 			direction: Direction::TopToBottom,
-			size,
+			size: Some(size),
 		}
 	}
 
@@ -27,17 +27,29 @@ impl Panel {
 		Self {
 			id: id.to_id(),
 			direction: Direction::BottomToTop,
-			size,
+			size: Some(size),
+		}
+	}
+
+	pub fn center(id: impl ToId) -> Self {
+		Self {
+			id: id.to_id(),
+			direction: Direction::TopToBottom,
+			size: None,
 		}
 	}
 }
 
 impl Panel {
 	pub fn build(self, ctx: &mut Context, contents: impl FnOnce(&mut Gui)) {
-		let bounds = match self.direction {
-			Direction::TopToBottom => ctx.split_canvas_top(self.size),
-			Direction::BottomToTop => ctx.split_canvas_bottom(self.size),
-			_ => unimplemented!(),
+		let bounds = if let Some(size) = self.size {
+			match self.direction {
+				Direction::TopToBottom => ctx.split_canvas_top(size),
+				Direction::BottomToTop => ctx.split_canvas_bottom(size),
+				_ => unimplemented!(),
+			}
+		} else {
+			ctx.take_canvas()
 		};
 
 		let mut gui = ctx.builder(self.id, bounds, Layout::new(self.direction));

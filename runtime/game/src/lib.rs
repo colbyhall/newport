@@ -4,6 +4,8 @@
 #![feature(const_type_name)]
 #![allow(arithmetic_overflow)]
 
+use asset::AssetRef;
+
 use engine::{
 	Builder,
 	Engine,
@@ -28,36 +30,57 @@ pub mod components;
 pub mod ecs;
 #[cfg(feature = "editor")]
 pub(crate) mod editor;
-pub mod game;
 mod input;
 pub mod render;
 pub mod systems;
 
+use systems::*;
+
 use components::register_components;
-use game::GameState;
 use input::*;
 use render::{
 	DrawList,
 	FrameContainer,
 };
 
+use crate::ecs::{
+	Schedule,
+	World,
+};
+
 use sync::join;
 
-pub struct Game3d {
-	game_state: GameState,
+pub struct Game {
+	world: World,
+	schedule: Schedule,
 	frames: FrameContainer,
 	input_state: InputState,
+
+	viewport: Vector2,
 
 	#[cfg(not(feature = "editor"))]
 	present_pipeline: AssetRef<GraphicsPipeline>,
 }
 
-impl Module for Game3d {
+impl Module for Game {
 	fn new() -> Self {
+		let schedule = Schedule::builder()
+			.single(Box::new(SpinDriver))
+			.single(Box::new(ScaleDriver))
+			.single(Box::new(CameraDriver))
+			.spawn();
+
+		let window_size = Engine::window().unwrap().inner_size();
+
+		let default_scene = AssetRef::new("{CB80A291-A3D8-4D1A-A702-33EFBCA02DDE}").unwrap();
 		Self {
-			game_state: GameState::new(),
+			world: World::new(&default_scene),
+			schedule,
+
 			frames: FrameContainer::new(),
 			input_state: InputState::default(),
+
+			viewport: Vector2::new(window_size.width as f32, window_size.height as f32),
 
 			#[cfg(not(feature = "editor"))]
 			present_pipeline: AssetRef::new("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}")
@@ -71,7 +94,7 @@ impl Module for Game3d {
 			.module::<AssetManager>()
 			.module::<ecs::Ecs>()
 			.process_input(|event| {
-				let game3d: &mut Game3d = unsafe { Engine::module_mut().unwrap() };
+				let game3d: &mut Game = unsafe { Engine::module_mut().unwrap() };
 
 				let window = Engine::window().unwrap();
 
@@ -106,20 +129,24 @@ impl Module for Game3d {
 						game3d.input_state.mouse_button_down
 							[mouse_button.as_mouse_button() as usize] = *pressed
 					}
+					Event::Resized(width, height) => {
+						game3d.viewport.x = *width as f32;
+						game3d.viewport.y = *height as f32;
+					}
 					_ => {}
 				}
 			})
 			.tick(|dt| {
-				let game3d: &Game3d = Engine::module().unwrap();
+				let game3d: &Game = Engine::module().unwrap();
 
-				let Game3d {
-					game_state, frames, ..
+				let Game {
+					world, schedule, frames, viewport, ..
 				} = game3d;
 
 				Engine::wait_on(async {
 					let simulation = async {
-						game_state.simulate(dt).await;
-						let scene = DrawList::build(game_state).await;
+						schedule.execute(world, dt).await;
+						let scene = DrawList::build(world, *viewport).await;
 						frames.push_scene(scene);
 					};
 					let render = frames.render_scene();
@@ -130,7 +157,7 @@ impl Module for Game3d {
 				frames.advance_frame();
 
 				// UNSAFE: Nothing should be touching input by this time
-				let game3d: &mut Game3d = unsafe { Engine::module_mut().unwrap() };
+				let game3d: &mut Game = unsafe { Engine::module_mut().unwrap() };
 				game3d.input_state.last_key_down = game3d.input_state.key_down;
 				game3d.input_state.last_mouse_button_down = game3d.input_state.mouse_button_down;
 				game3d.input_state.last_mouse_location = game3d.input_state.mouse_location.take();
@@ -142,7 +169,7 @@ impl Module for Game3d {
 
 		#[cfg(not(feature = "editor"))]
 		let builder = builder.display(|| {
-			let game3d: &Game3d = Engine::module().unwrap();
+			let game3d: &Game = Engine::module().unwrap();
 
 			let device = Gpu::device();
 			let backbuffer = device

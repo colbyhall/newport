@@ -2,6 +2,7 @@ mod button;
 // mod checkbox;
 mod label;
 mod panel;
+mod view;
 // mod scrollbox;
 // mod text_edit;
 
@@ -15,6 +16,7 @@ pub use {
 	// checkbox::*,
 	label::*,
 	panel::*,
+	view::*,
 	// scrollbox::*,
 	// text_edit::*,
 };

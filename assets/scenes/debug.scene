@@ -11,11 +11,6 @@
                 mesh: "{D9378DB1-B44A-45F7-834F-7062908EBD50}",
                 pipeline: "{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}",
             ),
-			"Scaler": (
-				speed: 0.5,
-				max: 25.0,
-				min: 5.0, 
-			),
 			"Spinner": (
 				speed: 10.0,
 			)

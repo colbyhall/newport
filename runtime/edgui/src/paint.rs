@@ -87,7 +87,7 @@ impl RectShape {
 		if max <= 0.0 {
 			canvas.rect(
 				self.bounds,
-				(0.0, 0.0, 1.0, 1.0).into(),
+				(0.0, 1.0, 1.0, 0.0).into(),
 				self.scissor,
 				self.color,
 				texture,

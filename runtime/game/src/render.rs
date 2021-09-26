@@ -1,5 +1,4 @@
-use crate::ecs::Query;
-use engine::Engine;
+use crate::ecs::{Query, World};
 use gpu::{
 	Buffer,
 	BufferUsage,
@@ -25,7 +24,6 @@ use crate::components::{
 	MeshRender,
 	Transform,
 };
-use crate::game::GameState;
 
 use std::mem;
 
@@ -75,14 +73,11 @@ impl FrameContainer {
 		.unwrap();
 		world_transforms_buffer.copy_to(&scene.world_transforms);
 
-		let window = Engine::window().unwrap();
-		let window_size = window.inner_size();
-
 		let diffuse_buffer = Texture::new(
 			TextureUsage::SAMPLED | TextureUsage::COLOR_ATTACHMENT,
 			Format::RGBA_U8,
-			window_size.width,
-			window_size.height,
+			scene.viewport.x as u32,
+			scene.viewport.y as u32,
 			1,
 		)
 		.unwrap();
@@ -90,13 +85,13 @@ impl FrameContainer {
 		let depth_buffer = Texture::new(
 			TextureUsage::DEPTH_ATTACHMENT,
 			Format::D24_S8,
-			window_size.width,
-			window_size.height,
+			scene.viewport.x as u32,
+			scene.viewport.y as u32,
 			1,
 		)
 		.unwrap();
 
-		let viewport = Vector2::new(window_size.width as f32, window_size.height as f32);
+		let viewport = scene.viewport;
 		let proj = Matrix4::perspective(scene.camera.fov, viewport.x / viewport.y, 1000.0, 0.1);
 		let view = Matrix4::rotate(scene.camera_transform.rotation.inverse())
 			* Matrix4::translate(-scene.camera_transform.position);
@@ -206,14 +201,16 @@ pub struct DrawList {
 
 	camera_transform: Transform,
 	camera: Camera,
+
+	viewport: Vector2,
 }
 
 impl DrawList {
-	pub async fn build(game_state: &GameState) -> Self {
+	pub async fn build(world: &World, viewport: Vector2) -> Self {
 		let mut query = Query::builder()
 			.read::<MeshRender>()
 			.read::<Transform>()
-			.execute(game_state.world());
+			.execute(world);
 
 		let mut world_transforms = Vec::with_capacity(query.len());
 		let mut meshes = Vec::with_capacity(query.len());
@@ -229,7 +226,7 @@ impl DrawList {
 		let mut query = Query::builder()
 			.read::<Camera>()
 			.read::<Transform>()
-			.execute(game_state.world());
+			.execute(world);
 
 		let mut camera_transform = None;
 		let mut camera = None;
@@ -254,6 +251,8 @@ impl DrawList {
 
 			camera_transform,
 			camera,
+
+			viewport,
 		}
 	}
 }

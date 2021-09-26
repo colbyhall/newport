@@ -4,6 +4,7 @@ use edgui::{
 	Layout,
 	Panel,
 	RawInput,
+	View,
 };
 
 use gpu::{
@@ -28,10 +29,14 @@ use asset::{
 
 use graphics::Graphics;
 
+// use crate::Game;
+
 pub struct Editor {
 	context: Context,
 	draw_state: DrawState,
 	input: Option<RawInput>,
+
+	view: View,
 
 	present_pipeline: AssetRef<GraphicsPipeline>,
 
@@ -40,10 +45,13 @@ pub struct Editor {
 
 impl Module for Editor {
 	fn new() -> Self {
+		let view = View::new("whole", 1.0);
 		Self {
 			context: Context::new(),
 			draw_state: DrawState::new(),
 			input: None,
+
+			view,
 
 			present_pipeline: AssetRef::new("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}").unwrap(),
 
@@ -79,11 +87,17 @@ impl Module for Editor {
 				let backbuffer = device.acquire_backbuffer().unwrap();
 
 				let editor: &mut Editor = unsafe { Engine::module_mut().unwrap() };
+				let Editor {
+					context,
+					draw_state,
+					view,
+					present_pipeline,
+					dt,
+					input,
+				} = editor;
 
 				let canvas = {
-					let context = &mut editor.context;
-
-					let mut input = editor.input.take().unwrap_or_default();
+					let mut input = input.take().unwrap_or_default();
 
 					input.viewport = (
 						0.0,
@@ -93,7 +107,7 @@ impl Module for Editor {
 					)
 						.into();
 
-					let dt = editor.dt.take().unwrap_or_default();
+					let dt = dt.take().unwrap_or_default();
 
 					input.dt = dt;
 					input.dpi = Engine::window().unwrap().scale_factor() as f32;
@@ -118,17 +132,34 @@ impl Module for Editor {
 							gui.label(format!("{:.2}ms/{}fps", dt * 1000.0, Engine::fps()));
 						});
 					});
+					Panel::center("center").build(context, |gui| {
+						// let game: &mut Game = unsafe { Engine::module_mut().unwrap() };
+
+						// let bounds = gui.available_rect();
+						// if let Some(scene) = game.frames.to_display() {
+						// 	gui.painter().push_texture(
+						// 		&scene.diffuse_buffer,
+						// 		bounds,
+						// 		Color::WHITE,
+						// 		0.0,
+						// 	);
+
+						// 	game.viewport = bounds.size();
+						// }
+
+						view.add(gui);
+					});
 					context.end_frame()
 				};
 
 				let gfx = GraphicsRecorder::new();
-				let (gfx, imgui) = editor.draw_state.record(canvas, gfx, &editor.context);
+				let (gfx, imgui) = draw_state.record(canvas, gfx, &editor.context);
 				let imgui = imgui.unwrap();
 
 				let receipt = gfx
 					.render_pass(&[&backbuffer], |ctx| {
 						ctx.clear_color(Color::BLACK)
-							.bind_pipeline(&editor.present_pipeline)
+							.bind_pipeline(present_pipeline)
 							.bind_texture("texture", &imgui)
 							.draw(3, 0)
 					})

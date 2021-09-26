@@ -18,7 +18,7 @@ pub struct CameraDriver;
 #[async_trait]
 impl System for CameraDriver {
 	async fn run(&self, world: &World, dt: f32) {
-		let game3d: &mut crate::Game3d = unsafe { Engine::module_mut().unwrap() };
+		let game3d: &mut crate::Game = unsafe { Engine::module_mut().unwrap() };
 
 		let mut query = Query::builder()
 			.read::<Camera>()

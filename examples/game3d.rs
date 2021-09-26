@@ -4,7 +4,7 @@ use newport::{
 		Engine,
 		Module,
 	},
-	game::Game3d,
+	game::Game,
 };
 
 // First thing first is to define our module struct
@@ -17,7 +17,7 @@ impl Module for Game3dExample {
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
-		builder.module::<Game3d>()
+		builder.module::<Game>()
 	}
 }
 
