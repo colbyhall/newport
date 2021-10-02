@@ -13,7 +13,8 @@ keywords = ["game", "engine", "gamedev", "newport"]
 platform = { path = "../platform", version = "0.2.0", package = "newport_platform" }
 math     = { path = "../math", version = "0.2.0", package = "newport_math" }
 sync     = { path = "../sync", version = "0.1.0", package = "newport_sync" }
-serde    = { path = "../serde", version = "0.2.0", package = "newport_serde" }
+
+serde    = { path = "../../third_party/serde", version = "0.2.0", package = "newport_serde" }
 
 toml = "0.5"
 getrandom = "0.2"

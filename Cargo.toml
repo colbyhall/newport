@@ -22,7 +22,7 @@ newport_engine    = { path = "src/runtime/engine", version = "0.2.0" }
 newport_gpu       = { path = "src/runtime/gpu", version = "0.2.0" }
 newport_graphics  = { path = "src/runtime/graphics", version = "0.2.0" }
 newport_math      = { path = "src/runtime/math", version = "0.2.0" }
-newport_serde     = { path = "src/runtime/serde", version = "0.2.0" }
+newport_serde     = { path = "src/third_party/serde", version = "0.2.0" }
 newport_game      = { path = "src/runtime/game", version = "0.1.0" }
 
 [[example]]

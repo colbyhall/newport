@@ -101,7 +101,7 @@ struct CompilerThreadInfo {
 impl CompilerThreadInfo {
 	fn new() -> Self {
 		let out_dir = env!("OUT_DIR");
-		let target_index = out_dir.find("target").unwrap();
+		let target_index = out_dir.find("bin").unwrap();
 		let (_, relative_out_dir) = out_dir.split_at(target_index);
 
 		let mut library_path = PathBuf::from(relative_out_dir);

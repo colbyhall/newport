@@ -10,4 +10,4 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-serde  = { path = "../serde", version = "0.2.0", package = "newport_serde" }
+serde  = { path = "../../third_party/serde", version = "0.2.0", package = "newport_serde" }
