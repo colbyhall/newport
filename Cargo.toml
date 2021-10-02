@@ -10,26 +10,29 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [workspace]
-members = ["runtime/*"]
+members = ["src/runtime/*"]
+
+[lib]
+path = "src/lib.rs"
 
 [dependencies]
-newport_platform  = { path = "runtime/platform", version = "0.2.0" }
-newport_asset     = { path = "runtime/asset", version = "0.2.0" }
-newport_engine    = { path = "runtime/engine", version = "0.2.0" }
-newport_gpu       = { path = "runtime/gpu", version = "0.2.0" }
-newport_graphics  = { path = "runtime/graphics", version = "0.2.0" }
-newport_math      = { path = "runtime/math", version = "0.2.0" }
-newport_serde     = { path = "runtime/serde", version = "0.2.0" }
-newport_game    = { path = "runtime/game", version = "0.1.0" }
+newport_platform  = { path = "src/runtime/platform", version = "0.2.0" }
+newport_asset     = { path = "src/runtime/asset", version = "0.2.0" }
+newport_engine    = { path = "src/runtime/engine", version = "0.2.0" }
+newport_gpu       = { path = "src/runtime/gpu", version = "0.2.0" }
+newport_graphics  = { path = "src/runtime/graphics", version = "0.2.0" }
+newport_math      = { path = "src/runtime/math", version = "0.2.0" }
+newport_serde     = { path = "src/runtime/serde", version = "0.2.0" }
+newport_game      = { path = "src/runtime/game", version = "0.1.0" }
 
 [[example]]
 name = "hello_world"
-path = "examples/hello_world.rs"
+path = "src/examples/hello_world.rs"
 
 [[example]]
 name = "gpu"
-path = "examples/gpu.rs"
+path = "src/examples/gpu.rs"
 
 [[example]]
 name = "game3d"
-path = "examples/game3d.rs"
+path = "src/examples/game3d.rs"

@@ -10,6 +10,6 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-ron = "0.6.4" # RON format for assets
+ron = "0.6.4"
 bincode = "1.3.3"
 serde = { version = "1.0.125", features = ["derive"] }
