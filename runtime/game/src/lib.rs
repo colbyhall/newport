@@ -12,7 +12,6 @@ use engine::{
 	Event,
 	Module,
 };
-#[cfg(not(feature = "editor"))]
 use gpu::{
 	Gpu,
 	GraphicsPipeline,
@@ -23,13 +22,13 @@ use math::{
 	Vector2,
 };
 
+use math::Color;
+
 use asset::AssetManager;
 use graphics::Graphics;
 
 pub mod components;
 pub mod ecs;
-#[cfg(feature = "editor")]
-pub(crate) mod editor;
 mod input;
 pub mod render;
 pub mod systems;
@@ -58,7 +57,6 @@ pub struct Game {
 
 	viewport: Vector2,
 
-	#[cfg(not(feature = "editor"))]
 	present_pipeline: AssetRef<GraphicsPipeline>,
 }
 
@@ -164,11 +162,7 @@ impl Module for Game {
 				game3d.input_state.mouse_delta = Vector2::ZERO;
 			});
 
-		#[cfg(feature = "editor")]
-		let builder = builder.module::<editor::Editor>();
-
-		#[cfg(not(feature = "editor"))]
-		let builder = builder.display(|| {
+		builder.display(|| {
 			let game3d: &Game = Engine::module().unwrap();
 
 			let device = Gpu::device();
@@ -193,9 +187,6 @@ impl Module for Game {
 			};
 
 			device.display(&[receipt]);
-		});
-
-		#[allow(clippy::let_and_return)]
-		builder
+		})
 	}
 }
