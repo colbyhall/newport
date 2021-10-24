@@ -26,7 +26,7 @@ use std::{
 	},
 };
 
-static CACHE_PATH: &str = "bin/cache/";
+static CACHE_PATH: &str = "target/cache/";
 
 pub struct CacheManager {
 	registers: HashMap<TypeId, CacheRegister>,
