@@ -9,9 +9,13 @@ use std::ffi;
 use std::sync::Arc;
 
 use engine::{
+	define_log_category,
 	error,
+	info,
 	warn,
 };
+
+define_log_category!(Vulkan, VULKAN_CATEGORY);
 
 pub struct Instance {
 	pub entry: ash::Entry,
@@ -54,19 +58,17 @@ impl Instance {
 			let name = ffi::CStr::from_ptr((*p_callback_data).p_message_id_name);
 			let message = ffi::CStr::from_ptr((*p_callback_data).p_message);
 
-			let output = format!(
-				"{} : {:?} : {:?}",
-				(*p_callback_data).message_id_number,
-				name,
-				message
-			);
+			let output = format!("{:?} -> {:?}", name, message);
 
 			match message_severity {
+				vk::DebugUtilsMessageSeverityFlagsEXT::INFO => {
+					info!(VULKAN_CATEGORY, "{}", output);
+				}
 				vk::DebugUtilsMessageSeverityFlagsEXT::ERROR => {
-					error!("{}", output);
+					error!(VULKAN_CATEGORY, "{}", output);
 				}
 				vk::DebugUtilsMessageSeverityFlagsEXT::WARNING => {
-					warn!("{}", output);
+					warn!(VULKAN_CATEGORY, "{}", output);
 				}
 				_ => unreachable!(),
 			}
@@ -75,7 +77,8 @@ impl Instance {
 
 		let mut debug_create_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
 			.message_severity(
-				vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
+				vk::DebugUtilsMessageSeverityFlagsEXT::INFO
+					| vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
 					| vk::DebugUtilsMessageSeverityFlagsEXT::ERROR,
 			)
 			.message_type(vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION)

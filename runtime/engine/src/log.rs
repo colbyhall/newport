@@ -110,8 +110,8 @@ pub fn log(verbosity: Verbosity, category: Category, message: String) {
 	let date = SystemDate::now();
 
 	let verb = match verbosity {
-		Verbosity::Debug => "Debug",
-		Verbosity::Info => "Info",
+		Verbosity::Debug => " Debug ",
+		Verbosity::Info => " Info  ",
 		Verbosity::Warning => "Warning",
 		Verbosity::Error => " Error ",
 	};
