@@ -61,7 +61,8 @@ impl Instance {
 			let output = format!("{:?} -> {:?}", name, message);
 
 			match message_severity {
-				vk::DebugUtilsMessageSeverityFlagsEXT::INFO => {
+				vk::DebugUtilsMessageSeverityFlagsEXT::INFO
+				| vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE => {
 					info!(VULKAN_CATEGORY, "{}", output);
 				}
 				vk::DebugUtilsMessageSeverityFlagsEXT::ERROR => {
@@ -78,6 +79,7 @@ impl Instance {
 		let mut debug_create_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
 			.message_severity(
 				vk::DebugUtilsMessageSeverityFlagsEXT::INFO
+					| vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE
 					| vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
 					| vk::DebugUtilsMessageSeverityFlagsEXT::ERROR,
 			)
