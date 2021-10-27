@@ -1,14 +1,23 @@
-use bindgen;
 use std::env;
-use std::path::PathBuf;
+use std::path::{
+	Path,
+	PathBuf,
+};
 
 fn main() {
-	// Tell cargo to tell rustc to link the system bzip2
+	let base = Path::new(file!()).parent().unwrap();
+	let mut path = PathBuf::from(base);
+	path.push("sdk/GFSDK_Aftermath_Lib.x64");
+
+	// Tell cargo to tell rustc to link to the aftermath lib
 	// shared library.
-	println!("cargo:rustc-link-lib=sdk/GFSDK_Aftermath_Lib.x64.lib");
+	println!("cargo:rustc-link-lib={}", path.display());
+
+	// Search for the dll in the out dir
+	println!("cargo:rustc-link-search={}", env::var("OUT_DIR").unwrap());
 
 	// Tell cargo to invalidate the built crate whenever the wrapper changes
-	println!("cargo:rerun-if-changed=sdk/GFSDK_Aftermath_Wrapper.h");
+	println!("cargo:rerun-if-changed=sdk/GFSDK_Aftermath_Wrapper.hpp");
 
 	// The bindgen::Builder is the main entry point
 	// to bindgen, and lets you build up options for
@@ -16,7 +25,7 @@ fn main() {
 	let bindings = bindgen::Builder::default()
 		// The input header we would like to generate
 		// bindings for.
-		.header("sdk/GFSDK_Aftermath_Wrapper.h")
+		.header("sdk/GFSDK_Aftermath_Wrapper.hpp")
 		// Tell cargo to invalidate the built crate whenever any of the
 		// included header files changed.
 		.parse_callbacks(Box::new(bindgen::CargoCallbacks))
@@ -30,4 +39,10 @@ fn main() {
 	bindings
 		.write_to_file(out_path.join("bindings.rs"))
 		.expect("Couldn't write bindings!");
+
+	// copy the dll to the out dir
+	let out_dir = env::var("OUT_DIR").unwrap();
+	let mut path = PathBuf::from(out_dir);
+	path.push("GFSDK_Aftermath_Lib.x64.dll");
+	std::fs::copy("sdk/GFSDK_Aftermath_Lib.x64.dll", &path).unwrap();
 }

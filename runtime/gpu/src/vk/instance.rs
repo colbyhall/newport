@@ -122,6 +122,8 @@ impl Instance {
 			debug_utils
 		};
 
+		aftermath::enable_gpu_crash_dumps().unwrap();
+
 		Ok(Arc::new(Self {
 			entry,
 			instance,
