@@ -8,7 +8,7 @@ use serde::{
 	Serializer,
 };
 
-#[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct Color {
 	pub r: f32,
 	pub g: f32,
@@ -86,6 +86,12 @@ impl From<(f32, f32, f32, f32)> for Color {
 	fn from(rgba: (f32, f32, f32, f32)) -> Self {
 		let (r, g, b, a) = rgba;
 		Self { r, g, b, a }
+	}
+}
+
+impl Default for Color {
+	fn default() -> Self {
+		Self::WHITE
 	}
 }
 

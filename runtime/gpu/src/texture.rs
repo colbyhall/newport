@@ -215,17 +215,38 @@ impl Importer for TextureImporter {
 		Ok(match image::load_from_memory(bytes) {
 			LoadResult::Error(err) => panic!("Failed to load texture from file due to {}", err),
 			LoadResult::ImageU8(image) => {
-				assert_eq!(
-					image.depth, 4,
-					"Currently vulkan only supports 4 byte formats"
-				);
+				let pixels = if image.depth == 3 {
+					let cap = (image.data.len() / 3) * 4;
+					let mut result = Vec::with_capacity(cap);
+
+					for index in 0..image.data.len() / 3 {
+						let base = index * 3;
+						let r = image.data[base];
+						let g = image.data[base + 1];
+						let b = image.data[base + 2];
+						let a = 255;
+
+						result.push(r);
+						result.push(g);
+						result.push(b);
+						result.push(a);
+					}
+
+					result
+				} else {
+					assert_eq!(
+						image.depth, 4,
+						"Currently vulkan only supports 4 byte formats"
+					);
+					image.data.clone()
+				};
 
 				let pixel_buffer = crate::Buffer::new(
 					BufferUsage::TRANSFER_SRC,
 					MemoryType::HostVisible,
-					image.data.len(),
+					pixels.len(),
 				)?;
-				pixel_buffer.copy_to(&image.data[..]);
+				pixel_buffer.copy_to(&pixels[..]);
 
 				let format = if self.srgb {
 					Format::RGBA_U8_SRGB
