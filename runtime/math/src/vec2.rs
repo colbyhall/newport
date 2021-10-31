@@ -22,6 +22,8 @@ use serde::{
 	Serializer,
 };
 
+use crate::lerp;
+
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Vector2 {
 	pub x: f32,
@@ -118,6 +120,10 @@ impl Vector2 {
 		} else {
 			self.y
 		}
+	}
+
+	pub fn lerp(a: Vector2, b: Vector2, t: f32) -> Vector2 {
+		Vector2::new(lerp(a.x, b.x, t), lerp(a.y, b.y, t))
 	}
 }
 
