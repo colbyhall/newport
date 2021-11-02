@@ -24,6 +24,19 @@ use serde::{
 
 use crate::lerp;
 
+#[macro_export]
+macro_rules! vec2 {
+	() => {
+		$crate::Vector2::ZERO
+	};
+	($xy:expr) => {
+		$crate::Vector2::splat($xy)
+	};
+	($x:expr, $y:expr) => {
+		$crate::Vector2::new($x, $y)
+	};
+}
+
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Vector2 {
 	pub x: f32,
