@@ -18,9 +18,7 @@ use gpu::{
 	GraphicsRecorder,
 	Layout,
 };
-use math::{
-	Vector2,
-};
+use math::Vector2;
 
 use math::Color;
 
@@ -138,7 +136,11 @@ impl Module for Game {
 				let game3d: &Game = Engine::module().unwrap();
 
 				let Game {
-					world, schedule, frames, viewport, ..
+					world,
+					schedule,
+					frames,
+					viewport,
+					..
 				} = game3d;
 
 				Engine::wait_on(async {

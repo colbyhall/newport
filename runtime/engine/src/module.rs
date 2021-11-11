@@ -15,12 +15,11 @@ pub trait Module: Sized + 'static {
 	}
 }
 
-
 #[macro_export]
 macro_rules! define_run_module {
-	($module:ident, $name:literal) => (
+	($module:ident, $name:literal) => {
 		fn main() -> std::io::Result<()> {
 			$crate::Builder::new().module::<$module>().name($name).run()
 		}
-	);
+	};
 }

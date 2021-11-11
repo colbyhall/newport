@@ -1,0 +1,13 @@
+[package]
+name = "resources"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+engine = { path = "../engine" }
+cache = { path = "../cache" }
+serde = { path = "../../third_party/serde"}
+
+resources_derive = { path = "../resources_derive" }

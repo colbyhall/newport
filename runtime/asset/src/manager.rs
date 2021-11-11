@@ -5,6 +5,7 @@ use crate::{
 	Variant,
 };
 
+use cache::Cache;
 use cache::CacheRef;
 use engine::{
 	Builder,
@@ -12,10 +13,7 @@ use engine::{
 	Module,
 };
 
-use cache::{
-	CacheManager,
-	CacheRegister,
-};
+use cache::CacheManager;
 
 use std::sync::Mutex;
 use std::sync::Weak;
@@ -102,7 +100,7 @@ impl Module for AssetManager {
 
 		builder
 			.module::<CacheManager>()
-			.register(CacheRegister::new::<PathCache>("assets"))
+			.register(PathCache::variant())
 			.register(Collection::new(engine_assets))
 	}
 }

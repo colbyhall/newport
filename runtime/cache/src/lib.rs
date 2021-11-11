@@ -29,7 +29,7 @@ use std::{
 static CACHE_PATH: &str = "target/cache/";
 
 pub struct CacheManager {
-	registers: HashMap<TypeId, CacheRegister>,
+	registers: HashMap<TypeId, CacheVariant>,
 	caches: HashMap<TypeId, Box<dyn Any>>,
 }
 
@@ -65,7 +65,7 @@ impl Module for CacheManager {
 			fs::create_dir(path).unwrap();
 		}
 
-		let registers: HashMap<TypeId, CacheRegister> = Engine::register::<CacheRegister>()
+		let registers: HashMap<TypeId, CacheVariant> = Engine::register::<CacheVariant>()
 			.unwrap()
 			.iter()
 			.map(|f| (f.id, f.clone()))
@@ -116,7 +116,7 @@ impl Drop for CacheManager {
 }
 
 #[derive(Clone)]
-pub struct CacheRegister {
+pub struct CacheVariant {
 	name: &'static str,
 	id: TypeId,
 
@@ -126,7 +126,7 @@ pub struct CacheRegister {
 	needs_reload: fn(&Box<dyn Any>) -> bool,
 }
 
-impl CacheRegister {
+impl CacheVariant {
 	fn path(&self) -> PathBuf {
 		let mut path = PathBuf::from(CACHE_PATH);
 		let file_name = format!("{}.cache", self.name);
@@ -138,10 +138,8 @@ impl CacheRegister {
 pub trait Cache: Serialize + DeserializeOwned + 'static {
 	fn new() -> Self;
 	fn needs_reload(&self) -> bool;
-}
 
-impl CacheRegister {
-	pub fn new<T: Cache>(name: &'static str) -> Self {
+	fn variant() -> CacheVariant {
 		fn serialize<T: Cache>(cache: &Box<dyn Any>) -> Vec<u8> {
 			let t = cache.downcast_ref::<T>().unwrap();
 			bincode::serialize(t).unwrap()
@@ -162,14 +160,14 @@ impl CacheRegister {
 			t.needs_reload()
 		}
 
-		Self {
-			name,
-			id: TypeId::of::<T>(),
+		CacheVariant {
+			name: std::any::type_name::<Self>(),
+			id: TypeId::of::<Self>(),
 
-			serialize: serialize::<T>,
-			deserialize: deserialize::<T>,
-			new: new::<T>,
-			needs_reload: needs_reload::<T>,
+			serialize: serialize::<Self>,
+			deserialize: deserialize::<Self>,
+			new: new::<Self>,
+			needs_reload: needs_reload::<Self>,
 		}
 	}
 }

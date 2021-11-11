@@ -1,4 +1,7 @@
-use crate::ecs::{Query, World};
+use crate::ecs::{
+	Query,
+	World,
+};
 use gpu::{
 	Buffer,
 	BufferUsage,

@@ -46,7 +46,6 @@ use platform::winit::{
 
 use platform::input::Input;
 
-use sync::executor::ThreadPool;
 use sync::Future;
 
 static mut ENGINE: Option<Engine> = None;
