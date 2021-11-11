@@ -1,5 +1,5 @@
 [package]
-name = "newport_serde"
+name = "serde"
 version = "0.2.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"

@@ -1,5 +1,5 @@
 [package]
-name = "newport_gpu"
+name = "gpu"
 version = "0.2.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
@@ -10,19 +10,18 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-engine 		= { path = "../engine", version = "0.2.0", package = "newport_engine" }
-platform 	= { path = "../platform", version = "0.2.0", package = "newport_platform" }
-math   		= { path = "../math", version = "0.2.0", package = "newport_math" }
-asset   	= { path = "../asset", version = "0.2.0", package = "newport_asset" }
+engine 		= { path = "../engine" }
+platform 	= { path = "../platform" }
+math   		= { path = "../math" }
+asset   	= { path = "../asset" }
 
-serde   	= { path = "../../third_party/serde", version = "0.2.0", package = "newport_serde" }
-aftermath   = { path = "../../third_party/aftermath", version = "0.1.0", package = "newport_aftermath" }
+serde   	= { path = "../../third_party/serde" }
+aftermath   = { path = "../../third_party/aftermath" }
 
 ash  = "0.32.0"
 bitflags = "1.2"
 
 hassle-rs = "0.5.2"
-
 stb_image = "0.2.3"
 
 [features]

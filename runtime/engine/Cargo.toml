@@ -1,5 +1,5 @@
 [package]
-name = "newport_engine"
+name = "engine"
 version = "0.2.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
@@ -10,11 +10,11 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-platform = { path = "../platform", version = "0.2.0", package = "newport_platform" }
-math     = { path = "../math", version = "0.2.0", package = "newport_math" }
-sync     = { path = "../sync", version = "0.1.0", package = "newport_sync" }
+platform = { path = "../platform" }
+math     = { path = "../math" }
+sync     = { path = "../sync" }
 
-serde    = { path = "../../third_party/serde", version = "0.2.0", package = "newport_serde" }
+serde    = { path = "../../third_party/serde" }
 
 toml = "0.5"
 getrandom = "0.2"

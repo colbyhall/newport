@@ -1,5 +1,5 @@
 [package]
-name = "newport_cache"
+name = "cache"
 version = "0.2.0"
 authors = ["Colby <me@cobeh.com>"]
 edition = "2018"
@@ -10,5 +10,5 @@ categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
 [dependencies]
-engine = { path = "../engine", version = "0.2.0", package = "newport_engine" }
-serde  = { path = "../../third_party/serde", version = "0.2.0", package = "newport_serde" }
+engine = { path = "../engine" }
+serde  = { path = "../../third_party/serde" }

@@ -25,9 +25,9 @@ use std::{
 	time::Instant,
 };
 
-use platform::winit::event::DeviceEvent;
 use platform::winit::{
 	event::{
+		DeviceEvent,
 		ElementState,
 		Event as WinitEvent,
 		MouseButton,
@@ -62,26 +62,11 @@ pub struct Engine {
 	is_running: AtomicBool,
 	fps: AtomicI32,
 
-	executor: Option<ThreadPool>, // Not available during module initialization process
-
 	window: Option<Window>,
 
 	logger: Logger,
 	config: ConfigMap,
 }
-
-use serde::{
-	Deserialize,
-	Serialize,
-};
-
-#[derive(Default, Serialize, Deserialize)]
-pub struct Test {
-	foo: i32,
-	poopoo: Option<String>,
-}
-
-impl crate::Config for Test {}
 
 impl Engine {
 	pub(crate) fn run(mut builder: Builder) -> Result<(), std::io::Error> {
@@ -94,15 +79,6 @@ impl Engine {
 
 		// UNSAFE: Set the global state
 		let engine = unsafe {
-			// let id = TypeId::of::<WindowStyle>();
-			// let styles: Vec<WindowStyle> = match builder.registers.get(&id) {
-			// Some(any_vec) => any_vec.downcast_ref::<Vec<WindowStyle>>().unwrap().clone(),
-			// None => Vec::default(),
-			// };
-			// let style = match styles.last() {
-			// Some(style) => *style,
-			// None => WindowStyle::Windowed,
-			// };
 			let name = builder.name.take().unwrap_or_else(|| "newport".to_string());
 
 			let window = match &builder.display {
@@ -133,8 +109,6 @@ impl Engine {
 				is_running: AtomicBool::new(true),
 				fps: AtomicI32::new(0),
 
-				executor: None,
-
 				window,
 
 				logger: Logger::new(),
@@ -161,9 +135,6 @@ impl Engine {
 
 			let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
 			info!(ENGINE_CATEGORY, "Module initialization took {:.2}ms.", dur);
-
-			// Initializer after module initialization because engine is being modified on main thread during module initialization
-			engine.executor = Some(ThreadPool::new()?);
 
 			ENGINE.as_ref().unwrap()
 		};
@@ -446,11 +417,6 @@ impl Engine {
 	}
 
 	pub fn wait_on<F: Future + Send>(future: F) -> F::Output {
-		Engine::as_ref()
-			.executor
-			.as_ref()
-			.expect("ThreadPool executor is only avaible after module initialization.");
-
 		sync::block_on(future)
 	}
 

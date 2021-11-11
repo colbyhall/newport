@@ -1,17 +1,17 @@
 [package]
-name = "newport_game"
+name = "game"
 version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-math 		= { path = "../math", version = "0.2.0", package = "newport_math" }
-graphics 	= { path = "../graphics", version = "0.2.0", package = "newport_graphics" }
-gpu 		= { path = "../gpu", version = "0.2.0", package = "newport_gpu" }
-asset 		= { path = "../asset", version = "0.2.0", package = "newport_asset" }
-engine 		= { path = "../engine", version = "0.2.0", package = "newport_engine" }
-serde 		= { path = "../../third_party/serde", version = "0.2.0", package = "newport_serde" }
-sync 		= { path = "../sync", version = "0.1.0", package = "newport_sync" }
-platform 	= { path = "../platform", version = "0.2.0", package = "newport_platform" }
+math 		= { path = "../math" }
+graphics 	= { path = "../graphics" }
+gpu 		= { path = "../gpu" }
+asset 		= { path = "../asset" }
+engine 		= { path = "../engine" }
+serde 		= { path = "../../third_party/serde" }
+sync 		= { path = "../sync" }
+platform 	= { path = "../platform" }
 
 [features]
 default = []
