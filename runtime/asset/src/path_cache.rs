@@ -103,7 +103,7 @@ impl Cache for PathCache {
 		Self { uuid_to_path }
 	}
 
-	fn needs_reload(&self) -> bool {
+	fn reload(&mut self) -> bool {
 		false
 	}
 }

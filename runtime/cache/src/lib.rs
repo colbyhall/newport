@@ -73,16 +73,16 @@ impl Module for CacheManager {
 
 		let mut caches = HashMap::with_capacity(registers.len());
 		for (id, register) in registers.iter() {
-			let path = register.path();
-
-			let cache = if path.exists() {
-				let file = fs::read(path).unwrap();
-				(register.deserialize)(file)
+			let cache = if register.path.exists() {
+				let file = fs::read(&register.path).unwrap();
+				let mut cache = (register.deserialize)(file);
+				(register.reload)(&mut cache);
+				cache
 			} else {
 				let cache = (register.new)();
 
 				let contents = (register.serialize)(&cache);
-				fs::write(path, contents).unwrap();
+				fs::write(&register.path, contents).unwrap();
 
 				cache
 			};
@@ -106,38 +106,27 @@ impl Drop for CacheManager {
 
 		caches.drain().for_each(|(id, cache)| {
 			let register = registers.get(&id).unwrap();
-			let path = register.path();
-
 			let contents = (register.serialize)(&cache);
 
-			fs::write(path, contents).unwrap();
+			fs::write(&register.path, contents).unwrap();
 		});
 	}
 }
 
 #[derive(Clone)]
 pub struct CacheVariant {
-	name: &'static str,
+	path: PathBuf,
 	id: TypeId,
 
 	serialize: fn(&Box<dyn Any>) -> Vec<u8>,
 	deserialize: fn(Vec<u8>) -> Box<dyn Any>,
 	new: fn() -> Box<dyn Any>,
-	needs_reload: fn(&Box<dyn Any>) -> bool,
-}
-
-impl CacheVariant {
-	fn path(&self) -> PathBuf {
-		let mut path = PathBuf::from(CACHE_PATH);
-		let file_name = format!("{}.cache", self.name);
-		path.push(file_name);
-		path
-	}
+	reload: fn(&mut Box<dyn Any>) -> bool,
 }
 
 pub trait Cache: Serialize + DeserializeOwned + 'static {
 	fn new() -> Self;
-	fn needs_reload(&self) -> bool;
+	fn reload(&mut self) -> bool;
 
 	fn variant() -> CacheVariant {
 		fn serialize<T: Cache>(cache: &Box<dyn Any>) -> Vec<u8> {
@@ -155,19 +144,31 @@ pub trait Cache: Serialize + DeserializeOwned + 'static {
 			Box::new(t)
 		}
 
-		fn needs_reload<T: Cache>(cache: &Box<dyn Any>) -> bool {
-			let t = cache.downcast_ref::<T>().unwrap();
-			t.needs_reload()
+		fn reload<T: Cache>(cache: &mut Box<dyn Any>) -> bool {
+			let t = cache.downcast_mut::<T>().unwrap();
+			t.reload()
 		}
 
+		let type_name = std::any::type_name::<Self>();
+		let name = type_name
+			.rsplit_once("::")
+			.unwrap_or(("", type_name))
+			.1
+			.to_lowercase();
+		let name = name.rsplit_once("cache").unwrap_or((&name, "")).0;
+
+		let mut path = PathBuf::from(CACHE_PATH);
+		let file_name = format!("{}.cache", name);
+		path.push(file_name);
+
 		CacheVariant {
-			name: std::any::type_name::<Self>(),
+			path,
 			id: TypeId::of::<Self>(),
 
 			serialize: serialize::<Self>,
 			deserialize: deserialize::<Self>,
 			new: new::<Self>,
-			needs_reload: needs_reload::<Self>,
+			reload: reload::<Self>,
 		}
 	}
 }
