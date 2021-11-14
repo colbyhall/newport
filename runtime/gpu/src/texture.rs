@@ -12,8 +12,11 @@ use crate::{
 
 use bitflags::bitflags;
 
-use asset::Asset;
-use asset::Importer;
+use resources::{
+	Importer,
+	Resource,
+};
+
 use serde::{
 	self,
 	Deserialize,
@@ -133,7 +136,7 @@ impl<'a> TextureBuilder<'a> {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, Resource)]
 pub struct Texture(pub(crate) Arc<api::Texture>);
 
 impl Texture {
@@ -200,8 +203,6 @@ impl Texture {
 	}
 }
 
-impl Asset for Texture {}
-
 #[derive(Serialize, Deserialize)]
 pub(crate) struct TextureImporter {
 	#[serde(default)]
@@ -211,7 +212,7 @@ pub(crate) struct TextureImporter {
 impl Importer for TextureImporter {
 	type Target = Texture;
 
-	fn import(&self, bytes: &[u8]) -> asset::Result<Self::Target> {
+	fn import(&self, bytes: &[u8]) -> resources::Result<Self::Target> {
 		Ok(match image::load_from_memory(bytes) {
 			LoadResult::Error(err) => panic!("Failed to load texture from file due to {}", err),
 			LoadResult::ImageU8(image) => {
@@ -278,5 +279,9 @@ impl Importer for TextureImporter {
 			}
 			_ => unimplemented!(),
 		})
+	}
+
+	fn export(&self, _resource: &Self::Target, _file: &mut std::fs::File) -> resources::Result<()> {
+		todo!()
 	}
 }

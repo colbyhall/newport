@@ -9,7 +9,7 @@ use crate::{
 	CullMode,
 	DrawMode,
 	GraphicsPipelineDescription,
-	Resource,
+	PipelineResource,
 	Result,
 	ShaderVariant,
 };
@@ -268,9 +268,9 @@ impl GraphicsPipeline {
 			.resources
 			.iter()
 			.enumerate()
-			.filter(|(_, (_, resource))| matches!(resource, Resource::Sampler(_)))
+			.filter(|(_, (_, resource))| matches!(resource, PipelineResource::Sampler(_)))
 			.map(|(index, (_, resource))| match resource {
-				Resource::Sampler(description) => {
+				PipelineResource::Sampler(description) => {
 					let sampler = Sampler::new(owner.clone(), *description).unwrap();
 					(sampler, index)
 				}

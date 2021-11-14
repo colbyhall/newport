@@ -5,10 +5,11 @@ use std::{
 	sync::Arc,
 };
 
-use asset::{
-	Asset,
+use resources::{
 	Importer,
+	Resource,
 };
+
 use serde::{
 	self as serde,
 	ron,
@@ -104,7 +105,7 @@ pub struct GraphicsPipelineDescription {
 	pub depth_compare: CompareOp,
 
 	pub constants: HashMap<String, Vec<ConstantMember>>,
-	pub resources: HashMap<String, Resource>,
+	pub resources: HashMap<String, PipelineResource>,
 }
 
 impl GraphicsPipelineDescription {
@@ -214,14 +215,14 @@ impl<'a> GraphicsPipelineBuilder<'a> {
 		self
 	}
 
-	pub fn resource(mut self, name: impl ToString, resource: Resource) -> Self {
+	pub fn resource(mut self, name: impl ToString, resource: PipelineResource) -> Self {
 		self.description
 			.resources
 			.insert(name.to_string(), resource);
 		self
 	}
 
-	pub fn resources(mut self, resources: HashMap<String, Resource>) -> Self {
+	pub fn resources(mut self, resources: HashMap<String, PipelineResource>) -> Self {
 		self.description.resources = resources;
 		self
 	}
@@ -239,6 +240,7 @@ impl<'a> GraphicsPipelineBuilder<'a> {
 	}
 }
 
+#[derive(Resource)]
 pub struct GraphicsPipeline(pub(crate) Arc<api::GraphicsPipeline>);
 
 impl GraphicsPipeline {
@@ -275,8 +277,6 @@ impl GraphicsPipeline {
 		}
 	}
 }
-
-impl Asset for GraphicsPipeline {}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct DepthStencilStates {
@@ -438,7 +438,7 @@ impl Constant {
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum Resource {
+pub enum PipelineResource {
 	Texture,
 	Sampler(SamplerDescription),
 }
@@ -485,7 +485,7 @@ pub struct GraphicsPipelineFile {
 	pub constants: HashMap<String, Vec<ConstantMember>>,
 
 	#[serde(default)]
-	pub resources: HashMap<String, Resource>,
+	pub resources: HashMap<String, PipelineResource>,
 
 	#[serde(default)]
 	pub common: String,
@@ -519,7 +519,7 @@ static SHADER_HEADER: &str = "
 impl Importer for GraphicsPipelineImporter {
 	type Target = GraphicsPipeline;
 
-	fn import(&self, bytes: &[u8]) -> asset::Result<Self::Target> {
+	fn import(&self, bytes: &[u8]) -> resources::Result<Self::Target> {
 		let contents = std::str::from_utf8(bytes)?;
 		let file = ron::from_str(contents)?;
 
@@ -631,8 +631,8 @@ impl Importer for GraphicsPipelineImporter {
 				for (name, resource) in resources.iter() {
 					// Generate custom load method declaration
 					let resource_type = match resource {
-						Resource::Texture => "Texture2D",
-						Resource::Sampler { .. } => "SamplerState",
+						PipelineResource::Texture => "Texture2D",
+						PipelineResource::Sampler { .. } => "SamplerState",
 					};
 
 					result.push_str(resource_type);
@@ -641,12 +641,12 @@ impl Importer for GraphicsPipelineImporter {
 					result.push_str("() {\n");
 
 					match resource {
-						Resource::Texture => {
+						PipelineResource::Texture => {
 							result.push_str("return index_textures(push_constants.");
 							result.push_str(name);
 							result.push_str(");")
 						}
-						Resource::Sampler { .. } => {
+						PipelineResource::Sampler { .. } => {
 							result.push_str("return index_samplers(push_constants.");
 							result.push_str(name);
 							result.push_str(");\n")
@@ -872,5 +872,9 @@ impl Importer for GraphicsPipelineImporter {
 			.resources(resources)
 			.spawn()
 			.map_err(|err| -> Box<dyn std::error::Error + 'static> { Box::new(err) })
+	}
+
+	fn export(&self, _resource: &Self::Target, _file: &mut std::fs::File) -> resources::Result<()> {
+		Ok(())
 	}
 }

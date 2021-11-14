@@ -1,8 +1,10 @@
 use std::fmt::Debug;
 
-use asset::Asset;
+use resources::{
+	Importer,
+	Resource,
+};
 
-use asset::Importer;
 use gpu::{
 	Buffer,
 	BufferUsage,
@@ -58,7 +60,8 @@ impl Debug for Mesh {
 	}
 }
 
-impl Asset for Mesh {
+// TODO: Proc Macro for this
+impl Resource for Mesh {
 	fn default_uuid() -> Option<engine::Uuid> {
 		Some("{03383b92-566f-4036-aeb4-850b61685ea6}".into())
 	}
@@ -70,7 +73,7 @@ pub(crate) struct MeshGltfImporter {}
 impl Importer for MeshGltfImporter {
 	type Target = Mesh;
 
-	fn import(&self, bytes: &[u8]) -> asset::Result<Self::Target> {
+	fn import(&self, bytes: &[u8]) -> resources::Result<Self::Target> {
 		let (gltf, buffers, _images) = gltf::import_slice(bytes)?;
 
 		let mut vertex_count = 0;
@@ -170,5 +173,9 @@ impl Importer for MeshGltfImporter {
 			vertex_buffer,
 			index_buffer,
 		})
+	}
+
+	fn export(&self, _resource: &Self::Target, _file: &mut std::fs::File) -> resources::Result<()> {
+		todo!()
 	}
 }

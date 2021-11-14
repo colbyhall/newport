@@ -28,22 +28,22 @@ fn expand_derive_resource(input: &DeriveInput) -> TokenStream2 {
 fn implement_struct_resource(ident: &Ident, generics: &Generics, fields: &Fields) -> TokenStream2 {
 	let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-	let mut tokens = Vec::new();
-	match fields {
-		Fields::Named(fields) => {
-			for field in fields.named.iter() {
-				match &field.ident {
-					Some(ident) => {
-						tokens.push(quote! {
-							// newport_editor::Editable::edit(&mut self.#ident, stringify!(#ident), ui);
-						});
-					}
-					None => {}
-				}
-			}
-		}
-		_ => panic!("Named are only supported"),
-	}
+	// let mut tokens = Vec::new();
+	// match fields {
+	// 	Fields::Named(fields) => {
+	// 		for field in fields.named.iter() {
+	// 			match &field.ident {
+	// 				Some(ident) => {
+	// 					tokens.push(quote! {
+	// 						// newport_editor::Editable::edit(&mut self.#ident, stringify!(#ident), ui);
+	// 					});
+	// 				}
+	// 				None => {}
+	// 			}
+	// 		}
+	// 	}
+	// 	_ => panic!("Named are only supported"),
+	// }
 
 	quote! {
 		impl #impl_generics resources::Resource for #ident #ty_generics #where_clause {

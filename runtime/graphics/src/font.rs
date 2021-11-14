@@ -1,5 +1,10 @@
-use asset::Importer;
 use freetype::FtResult;
+
+use resources::{
+	Importer,
+	Resource,
+};
+
 use math::{
 	Rect,
 	Vector2,
@@ -13,8 +18,6 @@ use gpu::{
 	Texture,
 	TextureUsage,
 };
-
-use asset::Asset;
 
 use serde::{
 	self,
@@ -44,12 +47,11 @@ thread_local! {
 	static FREETYPE_LIB: Library = Library::init().unwrap();
 }
 
+#[derive(Resource)]
 pub struct FontCollection {
 	face: Face,
 	fonts: Mutex<HashMap<(u32, u32), Arc<Font>>>,
 }
-
-impl Asset for FontCollection {}
 
 impl FontCollection {
 	pub const NUM_GLYPHS: usize = 512;
@@ -208,8 +210,12 @@ pub(crate) struct FontImporter {}
 impl Importer for FontImporter {
 	type Target = FontCollection;
 
-	fn import(&self, bytes: &[u8]) -> asset::Result<Self::Target> {
+	fn import(&self, bytes: &[u8]) -> resources::Result<Self::Target> {
 		Ok(FontCollection::new(bytes.to_vec())?)
+	}
+
+	fn export(&self, _resource: &Self::Target, _file: &mut std::fs::File) -> resources::Result<()> {
+		Ok(())
 	}
 }
 

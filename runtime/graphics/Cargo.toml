@@ -13,7 +13,7 @@ keywords = ["game", "engine", "gamedev", "newport"]
 engine = { path = "../engine" }
 gpu    = { path = "../gpu" }
 math   = { path = "../math" }
-asset  = { path = "../asset" }
+resources  = { path = "../resources" }
 serde  = { path = "../../third_party/serde" }
 
 freetype-rs = "0.27.0"

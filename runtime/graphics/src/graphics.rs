@@ -7,6 +7,8 @@ use engine::{
 	Module,
 };
 
+use resources::Importer;
+
 pub struct Graphics;
 
 impl Module for Graphics {
@@ -17,7 +19,7 @@ impl Module for Graphics {
 	fn depends_on(builder: Builder) -> Builder {
 		builder
 			.module::<Gpu>()
-			.register(asset::Variant::new::<FontImporter>(&["ttf"]))
-			.register(asset::Variant::new::<MeshGltfImporter>(&["gltf", "glb"]))
+			.register(FontImporter::variant(&["ttf"]))
+			.register(MeshGltfImporter::variant(&["gltf", "glb"]))
 	}
 }

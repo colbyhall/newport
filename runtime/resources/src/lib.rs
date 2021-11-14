@@ -13,6 +13,7 @@ use std::{
 	fs,
 	fs::File,
 	marker::PhantomData,
+	ops::Deref,
 	path::{
 		Path,
 		PathBuf,
@@ -98,7 +99,7 @@ pub struct Handle<T: Resource> {
 }
 
 impl<T: Resource> Handle<T> {
-	pub fn find(uuid: impl Into<Uuid>) -> Result<Handle<T>> {
+	pub fn find_or_load(uuid: impl Into<Uuid>) -> Result<Handle<T>> {
 		let manager: &ResourceManager = Engine::module().ok_or(RefError::NoManager)?;
 
 		let uuid = uuid.into();
@@ -174,6 +175,26 @@ impl<T: Resource> Handle<T> {
 		}
 	}
 
+	pub fn find(uuid: impl Into<Uuid>) -> Option<Handle<T>> {
+		let manager: &ResourceManager = Engine::module()?;
+
+		let uuid = uuid.into();
+		let resources = manager.resources.read().unwrap();
+		let mut entry = resources.get(&uuid)?.lock().unwrap();
+
+		if entry.variant == TypeId::of::<T>() {
+			if let Some(resource) = entry.resource.upgrade() {
+				return Some(Handle {
+					arc: resource,
+					phantom: PhantomData,
+					uuid,
+					path: entry.path.clone(),
+				});
+			}
+		}
+		None
+	}
+
 	/// Returns the number of references to the `Resource`
 	pub fn strong_count(&self) -> usize {
 		Arc::strong_count(&self.arc)
@@ -195,6 +216,22 @@ impl<T: Resource> Handle<T> {
 			Some(path) => Some(path),
 			None => None,
 		}
+	}
+
+	pub fn read(&self) -> HandleReadGuard<T> {
+		HandleReadGuard { handle: self }
+	}
+}
+
+pub struct HandleReadGuard<'a, T: Resource> {
+	handle: &'a Handle<T>,
+}
+
+impl<'a, T: Resource> Deref for HandleReadGuard<'a, T> {
+	type Target = T;
+
+	fn deref(&self) -> &Self::Target {
+		self.handle.arc.as_ref().downcast_ref().unwrap()
 	}
 }
 
@@ -236,7 +273,7 @@ impl<'de, T: Resource> Deserialize<'de> for Handle<T> {
 
 		// Load default asset if the find result error is just a ref error
 		// ResourceManager is gauranteed to be loaded by this code path
-		match Handle::find(uuid) {
+		match Handle::find_or_load(uuid) {
 			Ok(handle) => Ok(handle),
 			Err(err) => {
 				if err.type_id() == TypeId::of::<RefError>() {
@@ -258,7 +295,7 @@ impl<T: Resource> Default for Handle<T> {
 			)
 		});
 
-		Handle::find(uuid).unwrap_or_else(|err| {
+		Handle::find_or_load(uuid).unwrap_or_else(|err| {
 			panic!(
 				"Asset of type {} has default_uuid but can not load asset due to {:?}",
 				std::any::type_name::<T>(),

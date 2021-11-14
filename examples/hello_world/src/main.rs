@@ -16,7 +16,8 @@ struct HelloWorld;
 
 impl Module for HelloWorld {
 	fn new() -> Self {
-		let _foo: Handle<Foo> = Handle::find("{A6D46364-14C8-4322-BAC9-859002D5687F}").unwrap();
+		let foo: Handle<Foo> =
+			Handle::find_or_load("{A6D46364-14C8-4322-BAC9-859002D5687F}").unwrap();
 
 		Self
 	}

@@ -13,7 +13,7 @@ keywords = ["game", "engine", "gamedev", "newport"]
 engine 		= { path = "../engine" }
 platform 	= { path = "../platform" }
 math   		= { path = "../math" }
-asset   	= { path = "../asset" }
+resources 	= { path = "../resources" }
 
 serde   	= { path = "../../third_party/serde" }
 aftermath   = { path = "../../third_party/aftermath" }
