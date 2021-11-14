@@ -52,7 +52,7 @@ use engine::{
 	Uuid,
 };
 
-pub use resources_derive::*;
+pub use derive::Resource;
 
 define_log_category!(ResourceSystem, RESOURCE_SYSTEM_CATEGORY);
 

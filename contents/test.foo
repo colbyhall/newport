@@ -2,5 +2,5 @@ Foo(
 	bar: "{AA05D429-21A7-494D-ACFB-FB4CF5078B77}",
 	a: 23525213,
 	c: 45.0,
-	d: "Hello World"
+	d: "Hello World",
 )

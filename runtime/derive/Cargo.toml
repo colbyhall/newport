@@ -1,5 +1,5 @@
 [package]
-name = "resources_derive"
+name = "derive"
 version = "0.1.0"
 edition = "2021"
 

@@ -10,4 +10,4 @@ engine = { path = "../engine" }
 cache = { path = "../cache" }
 serde = { path = "../../third_party/serde"}
 
-resources_derive = { path = "../resources_derive" }
+derive = { path = "../derive" }
