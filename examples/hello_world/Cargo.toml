@@ -9,3 +9,6 @@ edition = "2021"
 engine    = { path = "../../runtime/engine" }
 resources = { path = "../../runtime/resources" }
 serde = { path = "../../third_party/serde" }
+gpu = { path = "../../runtime/gpu" }
+graphics = { path = "../../runtime/graphics" }
+math = { path = "../../runtime/math" }

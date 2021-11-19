@@ -47,7 +47,6 @@ thread_local! {
 	static FREETYPE_LIB: Library = Library::init().unwrap();
 }
 
-#[derive(Resource)]
 pub struct FontCollection {
 	face: Face,
 	fonts: Mutex<HashMap<(u32, u32), Arc<Font>>>,
@@ -201,6 +200,12 @@ impl FontCollection {
 		}
 
 		Some(fonts.get(&(size, (dpi * 96.0) as u32))?.clone())
+	}
+}
+
+impl Resource for FontCollection {
+	fn default_uuid() -> Option<engine::Uuid> {
+		Some("{cdb5cd33-004d-4518-ab20-93475b735cfa}".into())
 	}
 }
 

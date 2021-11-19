@@ -14,12 +14,24 @@ use crate::FontCollection;
 
 #[derive(Clone)]
 pub struct PainterStyle {
-	color: Color,
+	pub color: Color,
 
-	line_width: f32,
+	pub line_width: f32,
 
-	font_collection: Handle<FontCollection>,
-	font_size: u32,
+	pub font_collection: Handle<FontCollection>,
+	pub font_size: u32,
+}
+
+impl Default for PainterStyle {
+	fn default() -> Self {
+		Self {
+			color: Color::WHITE,
+			line_width: 1.0,
+
+			font_collection: Handle::default(),
+			font_size: 12,
+		}
+	}
 }
 
 pub struct PainterVertex {
