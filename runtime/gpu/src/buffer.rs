@@ -78,7 +78,7 @@ impl<T: Sized> Buffer<T> {
 		Buffer::builder(usage, memory, len).device(device).spawn()
 	}
 
-	pub fn copy_to(&self, data: &[T]) {
+	pub fn copy_to(&self, data: &[T]) -> Result<()> {
 		self.api.copy_to::<T>(data)
 	}
 

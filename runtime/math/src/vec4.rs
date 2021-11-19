@@ -16,6 +16,7 @@ use std::ops::{
 	SubAssign,
 };
 
+use crate::Rect;
 use crate::Vector3;
 
 use serde::{
@@ -274,6 +275,17 @@ impl From<(Vector3, f32)> for Vector4 {
 	fn from(xyzw: (Vector3, f32)) -> Self {
 		let (xyz, w) = xyzw;
 		Vector4::new(xyz.x, xyz.y, xyz.z, w)
+	}
+}
+
+impl From<Rect> for Vector4 {
+	fn from(rect: Rect) -> Self {
+		Self {
+			x: rect.min.x,
+			y: rect.min.y,
+			z: rect.max.x,
+			w: rect.max.y,
+		}
 	}
 }
 

@@ -115,20 +115,16 @@ impl Buffer {
 		}
 	}
 
-	pub fn copy_to<T>(&self, data: &[T]) {
+	pub fn copy_to<T>(&self, data: &[T]) -> Result<()> {
 		let memory = self.memory.write().unwrap();
 
 		unsafe {
-			let ptr = self
-				.owner
-				.logical
-				.map_memory(
-					memory.memory,
-					memory.offset,
-					memory.size,
-					vk::MemoryMapFlags::empty(),
-				)
-				.unwrap();
+			let ptr = self.owner.logical.map_memory(
+				memory.memory,
+				memory.offset,
+				memory.size,
+				vk::MemoryMapFlags::empty(),
+			)?;
 
 			copy_nonoverlapping(
 				data.as_ptr() as *const u8,
@@ -138,6 +134,7 @@ impl Buffer {
 
 			self.owner.logical.unmap_memory(memory.memory);
 		}
+		Ok(())
 	}
 
 	pub fn bindless(&self) -> Option<u32> {
