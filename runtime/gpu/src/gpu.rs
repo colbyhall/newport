@@ -2,7 +2,9 @@ use crate::GraphicsPipelineImporter;
 use crate::TextureImporter;
 use crate::{
 	Device,
+	GraphicsPipeline,
 	Instance,
+	Texture,
 };
 
 use engine::{
@@ -10,7 +12,10 @@ use engine::{
 	Engine,
 	Module,
 };
-use resources::Importer;
+use resources::{
+	Importer,
+	Resource,
+};
 
 pub struct Gpu {
 	device: Device,
@@ -34,7 +39,9 @@ impl Module for Gpu {
 
 	fn depends_on(builder: Builder) -> Builder {
 		builder
+			.register(GraphicsPipeline::variant())
 			.register(GraphicsPipelineImporter::variant(&["graphics_pipeline"]))
+			.register(Texture::variant())
 			.register(TextureImporter::variant(&["png", "psd", "jpg"]))
 	}
 }

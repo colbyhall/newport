@@ -247,7 +247,7 @@ impl Importer for TextureImporter {
 					MemoryType::HostVisible,
 					pixels.len(),
 				)?;
-				pixel_buffer.copy_to(&pixels[..]);
+				pixel_buffer.copy_to(&pixels[..]).unwrap();
 
 				let format = if self.srgb {
 					Format::RGBA_U8_SRGB

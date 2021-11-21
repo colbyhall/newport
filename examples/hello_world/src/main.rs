@@ -8,7 +8,7 @@ use {
 	gpu::*,
 	graphics::*,
 
-	math::Color,
+	math::*,
 
 	resources::*,
 };
@@ -44,8 +44,37 @@ impl Module for HelloWorld {
 				painter.fill_rect(&hello_world.style, (100.0, 100.0, 400.0, 400.0));
 				let (vertex_buffer, index_buffer) = painter.finish().unwrap();
 
+				#[allow(dead_code)]
+				struct Imports {
+					view: Matrix4,
+				}
+
+				let viewport = Vector2::new(backbuffer.width() as f32, backbuffer.height() as f32);
+
+				let proj = Matrix4::ortho(viewport.x, viewport.y, 1000.0, 0.1);
+				let view =
+					Matrix4::translate(Vector3::new(-viewport.x / 2.0, -viewport.y / 2.0, 0.0));
+
+				let imports =
+					Buffer::new(BufferUsage::CONSTANTS, gpu::MemoryType::HostVisible, 1).unwrap();
+				imports.copy_to(&[Imports { view: proj * view }]).unwrap();
+
+				let pipeline = hello_world.draw_pipeline.read();
+
 				let receipt = GraphicsRecorder::new()
-					.render_pass(&[&backbuffer], |ctx| ctx.clear_color(Color::BLACK))
+					.resource_barrier_texture(
+						&backbuffer,
+						Layout::Undefined,
+						Layout::ColorAttachment,
+					)
+					.render_pass(&[&backbuffer], |ctx| {
+						ctx.clear_color(Color::BLACK)
+							.bind_pipeline(&pipeline)
+							.bind_vertex_buffer(&vertex_buffer)
+							.bind_index_buffer(&index_buffer)
+							.bind_constants("imports", &imports, 0)
+							.draw_indexed(index_buffer.len(), 0)
+					})
 					.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present)
 					.submit();
 

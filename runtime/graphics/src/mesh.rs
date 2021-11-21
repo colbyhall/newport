@@ -140,14 +140,14 @@ impl Importer for MeshGltfImporter {
 			MemoryType::HostVisible,
 			vertices.len(),
 		)?;
-		transfer_vertex.copy_to(&vertices[..]);
+		transfer_vertex.copy_to(&vertices[..]).unwrap();
 
 		let transfer_index = gpu::Buffer::new(
 			BufferUsage::TRANSFER_SRC,
 			MemoryType::HostVisible,
 			indices.len(),
 		)?;
-		transfer_index.copy_to(&indices[..]);
+		transfer_index.copy_to(&indices[..]).unwrap();
 
 		let vertex_buffer = gpu::Buffer::new(
 			BufferUsage::TRANSFER_DST | BufferUsage::VERTEX,

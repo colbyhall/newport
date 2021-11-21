@@ -180,7 +180,7 @@ impl<T: Resource> Handle<T> {
 
 		let uuid = uuid.into();
 		let resources = manager.resources.read().unwrap();
-		let mut entry = resources.get(&uuid)?.lock().unwrap();
+		let entry = resources.get(&uuid)?.lock().unwrap();
 
 		if entry.variant == TypeId::of::<T>() {
 			if let Some(resource) = entry.resource.upgrade() {
@@ -193,16 +193,6 @@ impl<T: Resource> Handle<T> {
 			}
 		}
 		None
-	}
-
-	/// Returns the number of references to the `Resource`
-	pub fn strong_count(&self) -> usize {
-		Arc::strong_count(&self.arc)
-	}
-
-	/// Returns the number of weak references to the `Resource`
-	pub fn weak_count(&self) -> usize {
-		Arc::weak_count(&self.arc)
 	}
 
 	/// Returns the Uuid of the 'Resource'
@@ -561,11 +551,11 @@ struct ResourceEntry {
 
 /// TODO: Document
 pub struct ResourceManager {
-	resource_variants: HashMap<TypeId, ResourceVariant>,
-	collections: Vec<Collection>,
+	pub resource_variants: HashMap<TypeId, ResourceVariant>,
+	pub collections: Vec<Collection>,
 
-	importer_variants_by_extension: HashMap<&'static str, ImporterVariant>,
-	importer_variants_by_type: HashMap<TypeId, ImporterVariant>,
+	pub importer_variants_by_extension: HashMap<&'static str, ImporterVariant>,
+	pub importer_variants_by_type: HashMap<TypeId, ImporterVariant>,
 
 	// TODO: Make adding and destroying resources lockless
 	resources: RwLock<HashMap<Uuid, Mutex<ResourceEntry>>>,

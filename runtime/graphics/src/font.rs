@@ -164,7 +164,7 @@ impl FontCollection {
 			)
 			.spawn()
 			.ok()?;
-			pixel_buffer.copy_to(&pixels[..]);
+			pixel_buffer.copy_to(&pixels[..]).unwrap();
 
 			let atlas = gpu::Texture::builder(
 				TextureUsage::TRANSFER_DST | TextureUsage::SAMPLED,

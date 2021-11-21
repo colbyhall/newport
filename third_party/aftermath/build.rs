@@ -9,6 +9,12 @@ fn main() {
 	let mut path = PathBuf::from(base);
 	path.push("sdk/GFSDK_Aftermath_Lib.x64");
 
+	// copy the dll to the out dir
+	// let out_dir = env::var("OUT_DIR").unwrap();
+	// let mut path = PathBuf::from(out_dir);
+	// path.push("GFSDK_Aftermath_Lib.x64.dll");
+	// std::fs::copy("sdk/GFSDK_Aftermath_Lib.x64.dll", &path).unwrap();
+
 	// Tell cargo to tell rustc to link to the aftermath lib
 	// shared library.
 	println!("cargo:rustc-link-lib={}", path.display());
@@ -39,10 +45,4 @@ fn main() {
 	bindings
 		.write_to_file(out_path.join("bindings.rs"))
 		.expect("Couldn't write bindings!");
-
-	// copy the dll to the out dir
-	let out_dir = env::var("OUT_DIR").unwrap();
-	let mut path = PathBuf::from(out_dir);
-	path.push("GFSDK_Aftermath_Lib.x64.dll");
-	std::fs::copy("sdk/GFSDK_Aftermath_Lib.x64.dll", &path).unwrap();
 }
