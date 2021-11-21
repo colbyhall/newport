@@ -2,6 +2,7 @@ use gpu::{
 	Buffer,
 	BufferUsage,
 };
+use math::vec2;
 use math::{
 	Color,
 	Rect,
@@ -124,6 +125,87 @@ impl Painter {
 		self.indices.push(bottom_right);
 
 		self
+	}
+
+	pub fn stroke(
+		&mut self,
+		style: &PainterStyle,
+		a: impl Into<Vector2>,
+		b: impl Into<Vector2>,
+	) -> &mut Self {
+		let a = a.into();
+		let b = b.into();
+
+		let width = style.line_width / 2.0;
+		let perp = (b - a).norm().perp() * width;
+
+		let bottom_left = {
+			self.vertices.push(PainterVertex {
+				position: a - perp,
+				uv: Vector2::ZERO,
+				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				color: style.color,
+				texture: 0,
+			});
+			self.vertices.len() - 1
+		} as u32;
+		let top_left = {
+			self.vertices.push(PainterVertex {
+				position: b - perp,
+				uv: Vector2::ZERO,
+				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				color: style.color,
+				texture: 0,
+			});
+			self.vertices.len() - 1
+		} as u32;
+		let bottom_right = {
+			self.vertices.push(PainterVertex {
+				position: a + perp,
+				uv: Vector2::ZERO,
+				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				color: style.color,
+				texture: 0,
+			});
+			self.vertices.len() - 1
+		} as u32;
+		let top_right = {
+			self.vertices.push(PainterVertex {
+				position: b + perp,
+				uv: Vector2::ZERO,
+				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				color: style.color,
+				texture: 0,
+			});
+			self.vertices.len() - 1
+		} as u32;
+
+		self.indices.push(bottom_left);
+		self.indices.push(top_left);
+		self.indices.push(top_right);
+
+		self.indices.push(bottom_left);
+		self.indices.push(top_right);
+		self.indices.push(bottom_right);
+
+		self
+	}
+
+	pub fn stroke_rect(&mut self, style: &PainterStyle, rect: impl Into<Rect>) -> &mut Self {
+		let half = style.line_width / 2.0;
+		let x = vec2!(half, 0.0);
+		let y = vec2!(0.0, half);
+		let rect = rect.into();
+
+		let bl = rect.bottom_left();
+		let tl = rect.top_left();
+		let br = rect.bottom_right();
+		let tr = rect.top_right();
+
+		self.stroke(style, bl + x, tl + x)
+			.stroke(style, br - x, tr - x)
+			.stroke(style, bl + y, br + y)
+			.stroke(style, tl - y, tr - y)
 	}
 
 	pub fn finish(self) -> gpu::Result<(Buffer<PainterVertex>, Buffer<u32>)> {

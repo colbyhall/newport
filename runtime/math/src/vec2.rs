@@ -91,6 +91,14 @@ impl Vector2 {
 		self.len() < crate::SMALL_NUMBER
 	}
 
+	pub fn norm(self) -> Self {
+		if self.is_empty() {
+			Self::ZERO
+		} else {
+			self / self.len()
+		}
+	}
+
 	pub fn abs(self) -> Self {
 		Vector2::new(self.x.abs(), self.y.abs())
 	}
@@ -135,8 +143,8 @@ impl Vector2 {
 		}
 	}
 
-	pub fn lerp(a: Vector2, b: Vector2, t: f32) -> Vector2 {
-		Vector2::new(lerp(a.x, b.x, t), lerp(a.y, b.y, t))
+	pub fn lerp(a: Self, b: Self, t: f32) -> Self {
+		Self::new(lerp(a.x, b.x, t), lerp(a.y, b.y, t))
 	}
 }
 

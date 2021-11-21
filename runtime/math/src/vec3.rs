@@ -15,6 +15,7 @@ use std::ops::{
 
 use std::convert::From;
 
+use crate::lerp;
 use crate::Vector2;
 
 use serde::{
@@ -65,6 +66,14 @@ impl Vector3 {
 
 	pub fn is_empty(self) -> bool {
 		self.len() < crate::SMALL_NUMBER
+	}
+
+	pub fn norm(self) -> Self {
+		if self.is_empty() {
+			Self::ZERO
+		} else {
+			self / self.len()
+		}
 	}
 
 	pub fn abs(self) -> Self {
@@ -125,6 +134,10 @@ impl Vector3 {
 		} else {
 			self.z
 		}
+	}
+
+	pub fn lerp(a: Self, b: Self, t: f32) -> Self {
+		Self::new(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t))
 	}
 }
 
