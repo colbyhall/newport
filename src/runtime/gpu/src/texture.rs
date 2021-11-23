@@ -216,7 +216,7 @@ impl Importer for TextureImporter {
 		Ok(match image::load_from_memory(bytes) {
 			LoadResult::Error(err) => panic!("Failed to load texture from file due to {}", err),
 			LoadResult::ImageU8(image) => {
-				let pixels = if image.depth == 3 {
+				let mut pixels = if image.depth == 3 {
 					let cap = (image.data.len() / 3) * 4;
 					let mut result = Vec::with_capacity(cap);
 
@@ -241,6 +241,15 @@ impl Importer for TextureImporter {
 					);
 					image.data.clone()
 				};
+
+				// UNSAFE: Casting slice of bytes to &[u32] to reverse properly
+				unsafe {
+					std::slice::from_raw_parts_mut(
+						pixels.as_mut_ptr() as *mut u32,
+						pixels.len() / 4,
+					)
+				}
+				.reverse();
 
 				let pixel_buffer = crate::Buffer::new(
 					BufferUsage::TRANSFER_SRC,

@@ -1,6 +1,7 @@
 use gpu::{
 	Buffer,
 	BufferUsage,
+	Texture,
 };
 use math::vec2;
 use math::{
@@ -125,7 +126,7 @@ impl Painter {
 			self.vertices.push(PainterVertex {
 				position: rect.bottom_left(),
 				uv: Vector2::ZERO,
-				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color: style.color,
 				texture: 0,
 			});
@@ -135,7 +136,7 @@ impl Painter {
 			self.vertices.push(PainterVertex {
 				position: rect.top_left(),
 				uv: Vector2::ZERO,
-				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color: style.color,
 				texture: 0,
 			});
@@ -145,7 +146,7 @@ impl Painter {
 			self.vertices.push(PainterVertex {
 				position: rect.bottom_right(),
 				uv: Vector2::ZERO,
-				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color: style.color,
 				texture: 0,
 			});
@@ -155,7 +156,7 @@ impl Painter {
 			self.vertices.push(PainterVertex {
 				position: rect.top_right(),
 				uv: Vector2::ZERO,
-				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color: style.color,
 				texture: 0,
 			});
@@ -170,6 +171,69 @@ impl Painter {
 		self.indices.push(top_right);
 		self.indices.push(bottom_right);
 
+		self
+	}
+
+	pub fn textured_rect(
+		&mut self,
+		style: &PainterStyle,
+		rect: impl Into<Rect>,
+		texture: &Handle<Texture>,
+		uv: impl Into<Rect>,
+	) -> &mut Self {
+		let rect = rect.into();
+		let uv = uv.into();
+
+		let texture = texture.read().bindless().unwrap_or_default();
+
+		let bottom_left = {
+			self.vertices.push(PainterVertex {
+				position: rect.bottom_left(),
+				uv: uv.bottom_left(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
+				color: style.color,
+				texture,
+			});
+			self.vertices.len() - 1
+		} as u32;
+		let top_left = {
+			self.vertices.push(PainterVertex {
+				position: rect.top_left(),
+				uv: uv.top_left(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
+				color: style.color,
+				texture,
+			});
+			self.vertices.len() - 1
+		} as u32;
+		let bottom_right = {
+			self.vertices.push(PainterVertex {
+				position: rect.bottom_right(),
+				uv: uv.bottom_right(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
+				color: style.color,
+				texture,
+			});
+			self.vertices.len() - 1
+		} as u32;
+		let top_right = {
+			self.vertices.push(PainterVertex {
+				position: rect.top_right(),
+				uv: uv.top_right(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
+				color: style.color,
+				texture,
+			});
+			self.vertices.len() - 1
+		} as u32;
+
+		self.indices.push(bottom_left);
+		self.indices.push(top_left);
+		self.indices.push(top_right);
+
+		self.indices.push(bottom_left);
+		self.indices.push(top_right);
+		self.indices.push(bottom_right);
 		self
 	}
 
@@ -189,7 +253,7 @@ impl Painter {
 			self.vertices.push(PainterVertex {
 				position: a - perp,
 				uv: Vector2::ZERO,
-				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color: style.color,
 				texture: 0,
 			});
@@ -199,7 +263,7 @@ impl Painter {
 			self.vertices.push(PainterVertex {
 				position: b - perp,
 				uv: Vector2::ZERO,
-				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color: style.color,
 				texture: 0,
 			});
@@ -209,7 +273,7 @@ impl Painter {
 			self.vertices.push(PainterVertex {
 				position: a + perp,
 				uv: Vector2::ZERO,
-				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color: style.color,
 				texture: 0,
 			});
@@ -219,7 +283,7 @@ impl Painter {
 			self.vertices.push(PainterVertex {
 				position: b + perp,
 				uv: Vector2::ZERO,
-				scissor: self.scissor.unwrap_or(Rect::INFINITY).into(),
+				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color: style.color,
 				texture: 0,
 			});

@@ -158,7 +158,7 @@ pub trait Cache: Serialize + DeserializeOwned + 'static {
 		let name = name.rsplit_once("cache").unwrap_or((&name, "")).0;
 
 		let mut path = PathBuf::from(CACHE_PATH);
-		let file_name = format!("{}.cache", name);
+		let file_name = format!("{}.bin", name);
 		path.push(file_name);
 
 		CacheVariant {

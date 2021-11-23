@@ -28,6 +28,17 @@ impl Rect {
 		},
 	};
 
+	pub const MINMAX: Rect = Rect {
+		min: Vector2 {
+			x: f32::MIN,
+			y: f32::MIN,
+		},
+		max: Vector2 {
+			x: f32::MAX,
+			y: f32::MAX,
+		},
+	};
+
 	pub const ZERO: Rect = Rect {
 		min: Vector2::ZERO,
 		max: Vector2::ZERO,

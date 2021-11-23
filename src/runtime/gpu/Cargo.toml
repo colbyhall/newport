@@ -16,7 +16,7 @@ math   		= { path = "../math" }
 resources 	= { path = "../resources" }
 
 serde   	= { path = "../../third_party/serde" }
-# aftermath   = { path = "../../third_party/aftermath" }
+aftermath   = { path = "../../third_party/aftermath" }
 
 ash  = "0.32.0"
 bitflags = "1.2"

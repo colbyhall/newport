@@ -1,26 +1,12 @@
 use std::env;
-use std::path::{
-	Path,
-	PathBuf,
-};
+use std::path::PathBuf;
 
 fn main() {
-	let base = Path::new(file!()).parent().unwrap();
-	let mut path = PathBuf::from(base);
-	path.push("sdk/GFSDK_Aftermath_Lib.x64");
-
 	// copy the dll to the out dir
-	// let out_dir = env::var("OUT_DIR").unwrap();
-	// let mut path = PathBuf::from(out_dir);
-	// path.push("GFSDK_Aftermath_Lib.x64.dll");
-	// std::fs::copy("sdk/GFSDK_Aftermath_Lib.x64.dll", &path).unwrap();
-
-	// Tell cargo to tell rustc to link to the aftermath lib
-	// shared library.
-	println!("cargo:rustc-link-lib={}", path.display());
-
-	// Search for the dll in the out dir
-	println!("cargo:rustc-link-search={}", env::var("OUT_DIR").unwrap());
+	let out_dir = env::var("OUT_DIR").unwrap();
+	let mut path = PathBuf::from(out_dir);
+	path.push("GFSDK_Aftermath_Lib.x64.dll");
+	std::fs::copy("sdk/GFSDK_Aftermath_Lib.x64.dll", &path).unwrap();
 
 	// Tell cargo to invalidate the built crate whenever the wrapper changes
 	println!("cargo:rerun-if-changed=sdk/GFSDK_Aftermath_Wrapper.hpp");

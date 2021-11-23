@@ -19,6 +19,7 @@ struct HelloWorld {
 	time: f32,
 
 	draw_pipeline: Handle<GraphicsPipeline>,
+	texture: Handle<Texture>,
 }
 
 impl Module for HelloWorld {
@@ -29,6 +30,8 @@ impl Module for HelloWorld {
 			style,
 			time: 0.0,
 			draw_pipeline: Handle::find_or_load("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}")
+				.unwrap_or_default(),
+			texture: Handle::find_or_load("{44f1bd76-ea26-424b-8871-59de27a1413a}")
 				.unwrap_or_default(),
 		}
 	}
@@ -53,6 +56,12 @@ impl Module for HelloWorld {
 				let mut painter = Painter::new();
 				painter.stroke_rect(style, (100.0, 100.0, 500.0, 500.0));
 				painter.fill_rect(style, (520.0, 100.0, 920.0, 500.0));
+				painter.textured_rect(
+					style,
+					(940.0, 100.0, 1340.0, 500.0),
+					&hello_world.texture,
+					(0.0, 0.0, 1.0, 1.0),
+				);
 
 				painter.stroke_rect(style, (100.0, 520.0, 920.0, 920.0));
 

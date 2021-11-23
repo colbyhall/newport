@@ -1,4 +1,5 @@
 pub mod sys;
+use libloading::Library;
 use sys::*;
 
 use std::fs::File;
@@ -10,7 +11,7 @@ use std::time::SystemTime;
 
 pub type Result<T> = std::result::Result<T, GFSDK_Aftermath_Result>;
 
-static DMPS_PATH: &str = "target/logs/";
+static DMPS_PATH: &str = "target/gpu_dmps/";
 
 unsafe extern "C" fn gpu_crash_dump_callback(
 	dump: *const c_void,
@@ -33,29 +34,66 @@ unsafe extern "C" fn gpu_crash_dump_callback(
 		.unwrap();
 }
 
-pub fn enable_gpu_crash_dumps() -> Result<()> {
-	let result = unsafe {
-		GFSDK_Aftermath_EnableGpuCrashDumps(
-			GFSDK_Aftermath_Version_GFSDK_Aftermath_Version_API,
-			0,
-			Some(gpu_crash_dump_callback),
-			None,
-			None,
-			std::ptr::null_mut(),
-		)
-	};
-	if result == GFSDK_Aftermath_Result_GFSDK_Aftermath_Result_Success {
-		Ok(())
-	} else {
-		Err(result)
-	}
+pub struct Aftermath {
+	library: Library,
 }
 
-pub fn disable_gpu_crash_dumps() -> Result<()> {
-	let result = unsafe { GFSDK_Aftermath_DisableGpuCrashDumps() };
-	if result == GFSDK_Aftermath_Result_GFSDK_Aftermath_Result_Success {
-		Ok(())
-	} else {
-		Err(result)
+impl Aftermath {
+	pub fn new() -> std::result::Result<Aftermath, libloading::Error> {
+		let out_dir = env!("OUT_DIR");
+		let target_index = out_dir.find("target").unwrap();
+		let (_, relative_out_dir) = out_dir.split_at(target_index);
+
+		let mut library_path = PathBuf::from(relative_out_dir);
+		library_path.push("GFSDK_Aftermath_Lib.x64.dll");
+
+		let library = unsafe { Library::new(library_path)? };
+
+		Ok(Aftermath { library })
+	}
+
+	pub fn enable_gpu_crash_dumps(&self) -> Result<()> {
+		let enable = unsafe {
+			self.library
+				.get::<PFN_GFSDK_Aftermath_EnableGpuCrashDumps>(
+					b"GFSDK_Aftermath_EnableGpuCrashDumps",
+				)
+				.unwrap()
+				.lift_option()
+				.unwrap()
+		};
+		let result = unsafe {
+			enable(
+				GFSDK_Aftermath_Version_GFSDK_Aftermath_Version_API,
+				0,
+				Some(gpu_crash_dump_callback),
+				None,
+				None,
+				std::ptr::null_mut(),
+			)
+		};
+		if result == GFSDK_Aftermath_Result_GFSDK_Aftermath_Result_Success {
+			Ok(())
+		} else {
+			Err(result)
+		}
+	}
+
+	pub fn disable_gpu_crash_dumps(&self) -> Result<()> {
+		let disable = unsafe {
+			self.library
+				.get::<PFN_GFSDK_Aftermath_DisableGpuCrashDumps>(
+					b"GFSDK_Aftermath_DisableGpuCrashDumps",
+				)
+				.unwrap()
+				.lift_option()
+				.unwrap()
+		};
+		let result = unsafe { disable() };
+		if result == GFSDK_Aftermath_Result_GFSDK_Aftermath_Result_Success {
+			Ok(())
+		} else {
+			Err(result)
+		}
 	}
 }

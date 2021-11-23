@@ -57,7 +57,7 @@ GraphicsPipeline(
 				input.screen_pos.x <= input.scissor.z && 
 				input.screen_pos.y <= input.scissor.w;
 
-			if (true) {
+			if (in_scissor) {
 				if (input.texture == NULL) {
 					output.color = input.color;
 				} else {

@@ -21,6 +21,7 @@ pub struct Instance {
 	pub entry: ash::Entry,
 	pub instance: ash::Instance,
 
+	_aftermath: Option<aftermath::Aftermath>,
 	_debug_utils: DebugUtils,
 }
 
@@ -122,11 +123,25 @@ impl Instance {
 			debug_utils
 		};
 
-		// aftermath::enable_gpu_crash_dumps().unwrap();
+		let aftermath = match aftermath::Aftermath::new() {
+			Ok(aftermath) => {
+				aftermath.enable_gpu_crash_dumps().unwrap();
+				info!(VULKAN_CATEGORY, "Loaded AftermathSDK");
+				Some(aftermath)
+			}
+			Err(err) => {
+				error!(
+					VULKAN_CATEGORY,
+					"Failed to load AftermathSDK due to {:?}", err
+				);
+				None
+			}
+		};
 
 		Ok(Arc::new(Self {
 			entry,
 			instance,
+			_aftermath: aftermath,
 			_debug_utils: debug_utils,
 		}))
 	}

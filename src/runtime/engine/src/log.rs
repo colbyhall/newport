@@ -102,7 +102,7 @@ impl Logger {
 	}
 }
 
-static LOGS_PATH: &str = "logs/";
+static LOGS_PATH: &str = "target/logs/";
 
 pub fn log(verbosity: Verbosity, category: Category, message: String) {
 	let logger: &Logger = Engine::logger();
