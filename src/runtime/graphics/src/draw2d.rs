@@ -13,6 +13,52 @@ use resources::Handle;
 
 use crate::FontCollection;
 
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
+pub struct Roundness {
+	pub bottom_left: f32,
+	pub bottom_right: f32,
+	pub top_left: f32,
+	pub top_right: f32,
+}
+
+impl Roundness {
+	pub fn max(self) -> f32 {
+		let mut max = self.bottom_left;
+		if max < self.bottom_right {
+			max = self.bottom_right;
+		}
+		if max < self.top_left {
+			max = self.top_left;
+		}
+		if max < self.top_right {
+			max = self.top_right;
+		}
+		max
+	}
+}
+
+impl From<f32> for Roundness {
+	fn from(rad: f32) -> Self {
+		Self {
+			bottom_left: rad,
+			bottom_right: rad,
+			top_left: rad,
+			top_right: rad,
+		}
+	}
+}
+
+impl From<(f32, f32, f32, f32)> for Roundness {
+	fn from(xyzw: (f32, f32, f32, f32)) -> Self {
+		Self {
+			bottom_left: xyzw.0,
+			bottom_right: xyzw.1,
+			top_left: xyzw.2,
+			top_right: xyzw.3,
+		}
+	}
+}
+
 #[derive(Clone)]
 pub struct PainterStyle {
 	pub color: Color,

@@ -39,7 +39,7 @@ impl Module for HelloWorld {
 			.module::<ResourceManager>()
 			.tick(|dt| {
 				let hello_world: &mut HelloWorld = unsafe { Engine::module_mut().unwrap() };
-				hello_world.time += dt * 5.0;
+				hello_world.time += dt * 1.0;
 			})
 			.display(|| {
 				let device = Gpu::device();
@@ -51,28 +51,36 @@ impl Module for HelloWorld {
 				let style = &hello_world.style;
 
 				let mut painter = Painter::new();
-				painter.stroke_rect(style, (100.0, 100.0, 400.0, 400.0));
-				painter.fill_rect(style, (420.0, 100.0, 720.0, 400.0));
+				painter.stroke_rect(style, (100.0, 100.0, 500.0, 500.0));
+				painter.fill_rect(style, (520.0, 100.0, 920.0, 500.0));
 
-				painter.stroke_rect(style, (100.0, 420.0, 720.0, 620.0));
+				painter.stroke_rect(style, (100.0, 520.0, 920.0, 920.0));
 
-				let xy = vec2!(110.0, 520.0);
-				let amplitude = 100.0 - style.line_width * 2.0;
-				for index in 0..(600) {
-					let t = index as f32;
+				let mut wave = |offset: f32| {
+					let xy = vec2!(110.0, 720.0);
+					let amplitude = 150.0 - style.line_width * 2.0;
+					for index in 0..800 {
+						let t = index as f32;
 
-					let ax = t - 0.1;
-					let bx = t + 1.1;
+						let ax = t - 0.1;
+						let bx = t + 1.1;
 
-					let ay = ax / 100.0 + hello_world.time;
-					let by = bx / 100.0 + hello_world.time;
+						let ay = ax / 100.0 + hello_world.time;
+						let by = bx / 100.0 + hello_world.time;
 
-					let func = |x: f32| x % 1.0;
+						let func = |x: f32| x.sin();
 
-					let a = xy + vec2!(ax, func(ay) * amplitude);
-					let b = xy + vec2!(bx, func(by) * amplitude);
-					painter.stroke(style, a, b);
-				}
+						let a = xy + vec2!(ax, func(ay + offset) * amplitude);
+						let b = xy + vec2!(bx, func(by + offset) * amplitude);
+						painter.stroke(style, a, b);
+					}
+				};
+
+				wave(0.0);
+				wave(PI / 4.0);
+				wave(PI / 2.0);
+				wave((PI / 4.0) * 3.0);
+				wave(PI);
 
 				let (vertex_buffer, index_buffer) = painter.finish().unwrap();
 

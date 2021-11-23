@@ -631,6 +631,8 @@ impl Module for ResourceManager {
 			.parent()
 			.unwrap()
 			.parent()
+			.unwrap()
+			.parent()
 			.unwrap();
 		let mut engine_assets = PathBuf::from(base);
 		engine_assets.push("contents/");
