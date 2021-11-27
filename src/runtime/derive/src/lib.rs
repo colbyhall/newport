@@ -25,7 +25,7 @@ fn expand_derive_resource(input: &DeriveInput) -> TokenStream2 {
 	}
 }
 
-fn implement_struct_resource(ident: &Ident, generics: &Generics, fields: &Fields) -> TokenStream2 {
+fn implement_struct_resource(ident: &Ident, generics: &Generics, _fields: &Fields) -> TokenStream2 {
 	let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
 	// let mut tokens = Vec::new();
