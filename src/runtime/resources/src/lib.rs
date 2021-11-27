@@ -635,7 +635,7 @@ impl Module for ResourceManager {
 			.parent()
 			.unwrap();
 		let mut engine_assets = PathBuf::from(base);
-		engine_assets.push("contents/");
+		engine_assets.push("assets/");
 		builder
 			.module::<CacheManager>()
 			.register(Collection::new(engine_assets))
