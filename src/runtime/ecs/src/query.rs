@@ -1,8 +1,8 @@
-use super::ComponentVariantId;
-use super::Entity;
-use super::ReadStorage;
-use super::WriteStorage;
-use super::{
+use crate::ComponentVariantId;
+use crate::Entity;
+use crate::ReadStorage;
+use crate::WriteStorage;
+use crate::{
 	Component,
 	World,
 };
@@ -33,9 +33,8 @@ impl Query {
 
 	pub async fn execute(self, world: &World) -> Vec<Entity> {
 		let found = {
-			let scene = world.persistent_scene.lock().await;
-			scene
-				.entities
+			let entities = world.entities.lock().await;
+			entities
 				.iter()
 				.filter(|(_, info)| {
 					!self

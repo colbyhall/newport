@@ -19,3 +19,5 @@ pub struct Entity {
 	pub id: EntityId,
 	pub info: EntityInfo,
 }
+
+pub type EntityContainer = HashMap<EntityId, EntityInfo>;

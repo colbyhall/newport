@@ -21,28 +21,9 @@ use sync::lock::{
 	MutexGuard,
 };
 
-use super::{Entity, EntityId, World, entity};
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
-pub struct ComponentVariantId(u32);
-
-impl ComponentVariantId {
-	pub const fn new(name: &'static str) -> Self {
-		const FNV_OFFSET_BASIC: u64 = 2166136261;
-		// const FNV_PRIME: u64 = 16777619;
-
-		const fn hash_rec(name: &'static str, index: usize, hash: u64) -> u64 {
-			let hash = hash ^ name.as_bytes()[index] as u64;
-			if index != name.len() - 1 {
-				hash_rec(name, index + 1, hash)
-			} else {
-				hash
-			}
-		}
-
-		Self(hash_rec(name, 0, FNV_OFFSET_BASIC) as u32)
-	}
-}
+use crate::{
+	Entity,
+};
 
 pub trait Component:
 	Sync + Send + Sized + Clone + Serialize + DeserializeOwned + Default + 'static
@@ -72,13 +53,32 @@ pub trait Component:
 	}
 }
 
-pub trait Singleton {}
-
 impl<T> Component for T
 where
 	T: Sync + Send + Sized + Clone + Serialize + DeserializeOwned + Default + 'static,
 {
 	default const VARIANT_ID: ComponentVariantId = ComponentVariantId::new(type_name::<Self>());
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
+pub struct ComponentVariantId(u32);
+
+impl ComponentVariantId {
+	pub const fn new(name: &'static str) -> Self {
+		const FNV_OFFSET_BASIC: u64 = 2166136261;
+		// const FNV_PRIME: u64 = 16777619;
+
+		const fn hash_rec(name: &'static str, index: usize, hash: u64) -> u64 {
+			let hash = hash ^ name.as_bytes()[index] as u64;
+			if index != name.len() - 1 {
+				hash_rec(name, index + 1, hash)
+			} else {
+				hash
+			}
+		}
+
+		Self(hash_rec(name, 0, FNV_OFFSET_BASIC) as u32)
+	}
 }
 
 #[derive(Clone)]
@@ -88,7 +88,7 @@ pub struct ComponentVariant {
 	pub id: ComponentVariantId,
 
 	create_storage: fn() -> Box<dyn DynamicStorage>,
-	pub parse_value: fn(value: ron::Value) -> ron::Result<Box<dyn Any>>,	
+	pub parse_value: fn(value: ron::Value) -> ron::Result<Box<dyn Any>>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -238,11 +238,7 @@ pub struct ComponentsContainer {
 
 impl ComponentsContainer {
 	pub fn new(mut variants: Vec<ComponentVariant>) -> Self {
-		let mut map = HashMap::with_capacity(variants.len());
-		for v in variants.iter() {
-			map.insert(v.id, Mutex::new((v.create_storage)()));
-		}
-
+		let map = variants.iter().map(|v| (v.id, Mutex::new((v.create_storage)()))).collect();
 		let variants = variants.drain(..).map(|v| (v.id, v)).collect();
 		Self { map, variants }
 	}

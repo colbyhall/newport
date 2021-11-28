@@ -6,11 +6,6 @@ use resources::{
 	Resource,
 };
 
-use super::{
-	EntityId,
-	EntityInfo,
-};
-
 use engine::Engine;
 use engine::Uuid;
 
@@ -23,8 +18,8 @@ use serde::{
 	Serialize,
 };
 
-use super::ComponentVariant;
-use super::ComponentVariantId;
+use crate::ComponentVariant;
+use crate::ComponentVariantId;
 
 #[derive(Debug)]
 pub struct SceneEntry {
@@ -98,12 +93,7 @@ impl Importer for SceneImporter {
 		}
 	}
 
-	fn export(&self, resource: &Self::Target, file: &mut std::fs::File) -> resources::Result<()> {
+	fn export(&self, _resource: &Self::Target, _file: &mut std::fs::File) -> resources::Result<()> {
 		todo!()
 	}
-}
-
-#[derive(Default, Clone)]
-pub struct SceneRuntime {
-	pub entities: HashMap<EntityId, EntityInfo>,
 }
