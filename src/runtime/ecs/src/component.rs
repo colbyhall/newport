@@ -21,9 +21,7 @@ use sync::lock::{
 	MutexGuard,
 };
 
-use crate::{
-	Entity,
-};
+use crate::Entity;
 
 pub trait Component:
 	Sync + Send + Sized + Clone + Serialize + DeserializeOwned + Default + 'static
@@ -238,7 +236,10 @@ pub struct ComponentsContainer {
 
 impl ComponentsContainer {
 	pub fn new(mut variants: Vec<ComponentVariant>) -> Self {
-		let map = variants.iter().map(|v| (v.id, Mutex::new((v.create_storage)()))).collect();
+		let map = variants
+			.iter()
+			.map(|v| (v.id, Mutex::new((v.create_storage)())))
+			.collect();
 		let variants = variants.drain(..).map(|v| (v.id, v)).collect();
 		Self { map, variants }
 	}

@@ -9,5 +9,4 @@ edition = "2021"
 engine    = { path = "../engine" }
 resources = { path = "../resources" }
 serde = { path = "../../third_party/serde" }
-math = { path = "../math" }
 sync = { path = "../sync" }

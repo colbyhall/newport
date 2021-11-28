@@ -9,7 +9,6 @@ mod scene;
 mod schedule;
 mod system;
 mod world;
-// mod physics;
 
 pub use {
 	component::*,
@@ -21,11 +20,16 @@ pub use {
 	world::*,
 };
 
-use engine::{
-	Builder,
-	Module,
+use {
+	engine::{
+		Builder,
+		Module,
+	},
+	resources::{
+		Importer,
+		ResourceManager,
+	},
 };
-use resources::Importer;
 
 pub struct Ecs;
 
@@ -35,6 +39,8 @@ impl Module for Ecs {
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
-		builder.register(SceneImporter::variant(&["scene"]))
+		builder
+			.module::<ResourceManager>()
+			.register(SceneImporter::variant(&["scene"]))
 	}
 }
