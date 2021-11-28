@@ -427,6 +427,12 @@ impl Device {
 				.enabled_extension_names(&extensions)
 				.enabled_features(&device_features);
 
+			#[cfg(feature = "aftermath")]
+			let mut aftermath_features = vk::DeviceDiagnosticsConfigCreateInfoNV::builder();
+
+			#[cfg(feature = "aftermath")]
+			let create_info = create_info.push_next(&mut aftermath_features);
+
 			logical_device =
 				instance
 					.instance

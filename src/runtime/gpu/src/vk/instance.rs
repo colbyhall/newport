@@ -21,7 +21,8 @@ pub struct Instance {
 	pub entry: ash::Entry,
 	pub instance: ash::Instance,
 
-	_aftermath: Option<aftermath::Aftermath>,
+	#[cfg(feature = "aftermath")]
+	pub aftermath: Option<aftermath::Aftermath>,
 	_debug_utils: DebugUtils,
 }
 
@@ -123,6 +124,7 @@ impl Instance {
 			debug_utils
 		};
 
+		#[cfg(feature = "aftermath")]
 		let aftermath = match aftermath::Aftermath::new() {
 			Ok(aftermath) => {
 				aftermath.enable_gpu_crash_dumps().unwrap();
@@ -141,7 +143,8 @@ impl Instance {
 		Ok(Arc::new(Self {
 			entry,
 			instance,
-			_aftermath: aftermath,
+			#[cfg(feature = "aftermath")]
+			aftermath,
 			_debug_utils: debug_utils,
 		}))
 	}

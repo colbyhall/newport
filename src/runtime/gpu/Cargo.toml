@@ -16,7 +16,7 @@ math   		= { path = "../math" }
 resources 	= { path = "../resources" }
 
 serde   	= { path = "../../third_party/serde" }
-aftermath   = { path = "../../third_party/aftermath" }
+aftermath   = { path = "../../third_party/aftermath", optional = true }
 
 ash  = "0.32.0"
 bitflags = "1.2"
@@ -25,5 +25,5 @@ hassle-rs = "0.5.2"
 stb_image = "0.2.3"
 
 [features]
-default = ["vulkan"]
+default = ["vulkan", "aftermath"]
 vulkan  = []
