@@ -8,6 +8,9 @@ mod log;
 mod module;
 mod uuid;
 
+#[cfg(test)]
+mod test;
+
 pub use {
 	builder::*,
 	config::*,
@@ -58,7 +61,7 @@ static mut ENGINE: Option<Engine> = None;
 
 /// Global runnable structure used for instantiating engine modules and handling app code
 ///
-/// Created using an [`Builder`] which defines the functionality of the app using [`Module`]s
+/// Created using a [`Builder`] which defines the functionality of the app using [`Module`]s
 pub struct Engine {
 	name: String,
 	modules: HashMap<TypeId, Box<dyn Any>>,
@@ -74,28 +77,43 @@ pub struct Engine {
 }
 
 impl Engine {
-	pub(crate) fn run(mut builder: Builder) -> Result<(), std::io::Error> {
-		let event_loop = EventLoop::new();
+	pub(crate) fn spawn(
+		mut builder: Builder,
+		window: Option<Window>,
+	) -> Result<(), std::io::Error> {
+		unsafe {
+			// Use this to mark when registration finished. This must happen before anything else.
+			let registration_finish_time = Instant::now()
+				.duration_since(builder.creation)
+				.as_secs_f64() * 1000.0;
 
-		let dur = Instant::now()
-			.duration_since(builder.creation)
-			.as_secs_f64()
-			* 1000.0;
+			// Ensure that we're working in the projects workspace.
+			let exe_path = std::env::current_exe()?;
+			#[cfg(not(test))]
+			let new_working_directory = exe_path
+				.parent()
+				.unwrap()
+				.parent()
+				.unwrap()
+				.parent()
+				.unwrap();
+			#[cfg(test)]
+			let new_working_directory = exe_path
+				.parent()
+				.unwrap()
+				.parent()
+				.unwrap()
+				.parent()
+				.unwrap()
+				.parent()
+				.unwrap();
+			println!("{:?}", new_working_directory);
+			std::env::set_current_dir(new_working_directory)?;
 
-		// UNSAFE: Set the global state
-		let engine = unsafe {
+			// Ensure we have a valid name for the project. This is used for a variety of things
 			let name = builder.name.take().unwrap_or_else(|| "newport".to_string());
 
-			let window = match &builder.display {
-				Some(_) => WindowBuilder::new()
-					.with_title(name.clone())
-					.with_maximized(true)
-					.with_visible(false)
-					.build(&event_loop)
-					.ok(),
-				None => None,
-			};
-
+			// Manually clone the config register as the config map needs it. Config must happen before module initialization so they can rely on it
 			let id = TypeId::of::<ConfigRegister>();
 			let config_registers: Vec<ConfigRegister> =
 				match builder.registers.as_ref().unwrap().get(&id) {
@@ -120,7 +138,10 @@ impl Engine {
 				config: ConfigMap::new(config_registers),
 			});
 
-			info!(ENGINE_CATEGORY, "Registration process took {:.2}ms", dur);
+			info!(
+				ENGINE_CATEGORY,
+				"Registration process took {:.2}ms", registration_finish_time
+			);
 
 			let engine = ENGINE.as_mut().unwrap();
 
@@ -129,20 +150,46 @@ impl Engine {
 
 			// NOTE: All modules a module depends on will be available at initialization
 			builder.modules.drain(..).for_each(|it| {
+				info!(ENGINE_CATEGORY, "Started initializing module {}", it.name);
 				let now = Instant::now();
 				engine.modules.insert(it.id, (it.spawn)());
 				let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
 				info!(
 					ENGINE_CATEGORY,
-					"Initializing module {} took {:.2}ms.", it.name, dur
+					"Finished initializing module {}. ({:.2}ms)", it.name, dur
 				);
 			});
 
 			let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
 			info!(ENGINE_CATEGORY, "Module initialization took {:.2}ms.", dur);
 
-			ENGINE.as_ref().unwrap()
+			Ok(())
+		}
+	}
+
+	pub(crate) fn run(mut builder: Builder) -> Result<(), std::io::Error> {
+		let display = builder.display.take();
+		let process_input = std::mem::take(&mut builder.process_input);
+		let tick = std::mem::take(&mut builder.tick);
+
+		let name = match &builder.name {
+			Some(name) => name.clone(),
+			None => "newport".to_string(),
 		};
+
+		let event_loop = EventLoop::new();
+		let window = match &display {
+			Some(_) => WindowBuilder::new()
+				.with_title(name)
+				.with_maximized(true)
+				.with_visible(false)
+				.build(&event_loop)
+				.ok(),
+			None => None,
+		};
+
+		Engine::spawn(builder, window)?;
+		let engine = Engine::as_ref();
 
 		let mut frame_count = 0;
 		let mut time = 0.0;
@@ -184,10 +231,7 @@ impl Engine {
 							pressed: input.state == ElementState::Pressed,
 						};
 
-						builder
-							.process_input
-							.iter()
-							.for_each(|process| process(&event));
+						process_input.iter().for_each(|process| process(&event));
 					}
 				}
 				WinitEvent::DeviceEvent {
@@ -196,10 +240,7 @@ impl Engine {
 				} => {
 					let event = Event::MouseMotion(delta.0 as f32, delta.1 as f32);
 
-					builder
-						.process_input
-						.iter()
-						.for_each(|process| process(&event));
+					process_input.iter().for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::MouseInput { button, state, .. },
@@ -216,30 +257,21 @@ impl Engine {
 						pressed: state == ElementState::Pressed,
 					};
 
-					builder
-						.process_input
-						.iter()
-						.for_each(|process| process(&event));
+					process_input.iter().for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::CursorMoved { position, .. },
 					..
 				} => {
 					let event = Event::MouseMove(position.x as f32, height - position.y as f32);
-					builder
-						.process_input
-						.iter()
-						.for_each(|process| process(&event));
+					process_input.iter().for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::Resized(size),
 					..
 				} => {
 					let event = Event::Resized(size.width, size.height);
-					builder
-						.process_input
-						.iter()
-						.for_each(|process| process(&event));
+					process_input.iter().for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::MouseWheel { delta, .. },
@@ -251,20 +283,14 @@ impl Engine {
 							Event::MouseWheel(dif.x as f32, dif.y as f32)
 						}
 					};
-					builder
-						.process_input
-						.iter()
-						.for_each(|process| process(&event));
+					process_input.iter().for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::ReceivedCharacter(c),
 					..
 				} => {
 					let event = Event::Char(c);
-					builder
-						.process_input
-						.iter()
-						.for_each(|process| process(&event));
+					process_input.iter().for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::Focused(focused),
@@ -275,30 +301,21 @@ impl Engine {
 					} else {
 						Event::FocusLost
 					};
-					builder
-						.process_input
-						.iter()
-						.for_each(|process| process(&event));
+					process_input.iter().for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::CursorEntered { .. },
 					..
 				} => {
 					let event = Event::MouseEnter;
-					builder
-						.process_input
-						.iter()
-						.for_each(|process| process(&event));
+					process_input.iter().for_each(|process| process(&event));
 				}
 				WinitEvent::WindowEvent {
 					event: WindowEvent::CursorLeft { .. },
 					..
 				} => {
 					let event = Event::MouseLeave;
-					builder
-						.process_input
-						.iter()
-						.for_each(|process| process(&event));
+					process_input.iter().for_each(|process| process(&event));
 				}
 				WinitEvent::MainEventsCleared => {
 					let now = Instant::now();
@@ -313,7 +330,7 @@ impl Engine {
 					}
 					frame_count += 1;
 
-					builder.tick.iter().for_each(|tick| tick(dt));
+					tick.iter().for_each(|tick| tick(dt));
 
 					if !displayed {
 						if let Some(window) = engine.window.as_ref() {
@@ -330,7 +347,7 @@ impl Engine {
 						do_first_show = false;
 					}
 				}
-				WinitEvent::RedrawRequested(_) => match &builder.display {
+				WinitEvent::RedrawRequested(_) => match &display {
 					Some(display) => {
 						(display)();
 						displayed = true;

@@ -89,7 +89,6 @@ impl Builder {
 		self
 	}
 
-	/// Adds a tick closure to the list
 	pub fn tick(mut self, f: impl Fn(f32) + 'static) -> Self {
 		self.tick.push(Box::new(f));
 		self
@@ -100,7 +99,6 @@ impl Builder {
 		self
 	}
 
-	/// Sets the name of the engine runnable
 	pub fn name(mut self, name: impl Into<String>) -> Self {
 		self.name = Some(name.into());
 		self
@@ -124,9 +122,12 @@ impl Builder {
 		self
 	}
 
-	// TODO: Document
 	pub fn run(self) -> Result<(), std::io::Error> {
 		Engine::run(self)
+	}
+
+	pub fn spawn(self) -> Result<(), std::io::Error> {
+		Engine::spawn(self, None)
 	}
 }
 

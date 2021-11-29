@@ -1,16 +1,20 @@
 use crate::*;
 use platform::time::SystemDate;
 
+#[cfg(not(test))]
 use std::fs::{
 	create_dir,
 	File,
 };
 use std::panic;
+
+#[cfg(not(test))]
 use std::path::{
 	Path,
 	PathBuf,
 };
 
+#[cfg(not(test))]
 use std::io::Write;
 use std::sync::Mutex;
 
@@ -49,6 +53,7 @@ define_log_category!(Temp, TEMP_CATEGORY);
 define_log_category!(Engine, ENGINE_CATEGORY);
 
 struct Inner {
+	#[cfg(not(test))]
 	file: File,
 	entries: Vec<Entry>,
 }
@@ -58,18 +63,24 @@ pub struct Logger(Mutex<Inner>);
 
 impl Logger {
 	pub(crate) fn new() -> Self {
+		#[cfg(not(test))]
 		if !Path::new(LOGS_PATH).exists() {
 			create_dir(LOGS_PATH).unwrap();
 		}
 
+		#[cfg(not(test))]
 		let date = SystemDate::now();
+		#[cfg(not(test))]
 		let mut path = PathBuf::new();
+		#[cfg(not(test))]
 		path.push(LOGS_PATH);
+		#[cfg(not(test))]
 		path.push(format!(
 			"game_{:02}_{:02}_{}_{:02}_{:02}_{:02}.log",
 			date.month, date.day_of_month, date.year, date.hour, date.minute, date.second
 		));
 
+		#[cfg(not(test))]
 		let file = File::create(&path).unwrap();
 
 		let og_hook = panic::take_hook();
@@ -93,15 +104,22 @@ impl Logger {
 				ENGINE_CATEGORY,
 				"thread '{}' panicked at '{}', {}", name, msg, location
 			);
+
+			// Sadly this must be here due to aftermath in the GPU module
+			// Aftermath runs on another thread and needs time to catch gpu hangs
+			// TODO: One day maybe remove this somehow?
+			std::thread::sleep(std::time::Duration::from_millis(3000));
 		}));
 
 		Logger(Mutex::new(Inner {
+			#[cfg(not(test))]
 			file,
 			entries: Vec::with_capacity(4096),
 		}))
 	}
 }
 
+#[cfg(not(test))]
 static LOGS_PATH: &str = "target/logs/";
 
 pub fn log(verbosity: Verbosity, category: Category, message: String) {
@@ -117,6 +135,7 @@ pub fn log(verbosity: Verbosity, category: Category, message: String) {
 	};
 
 	// Get verbosity as a &'static str
+	#[cfg(not(test))]
 	let file_output = format!(
 		"[{:02}/{:02}/{:03} | {:02}:{:02}:{:02}:{:02}] {} [{}] {}",
 		date.month,
@@ -134,6 +153,7 @@ pub fn log(verbosity: Verbosity, category: Category, message: String) {
 	let std_output = format!("{} [{}] {}", verb, category.0, &message,);
 
 	let mut inner = logger.0.lock().unwrap();
+	#[cfg(not(test))]
 	writeln!(inner.file, "{}", file_output).unwrap();
 
 	match verbosity {

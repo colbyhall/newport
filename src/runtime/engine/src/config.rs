@@ -34,25 +34,33 @@ const CONFIG_PATH: &str = "config/";
 
 impl ConfigMap {
 	pub(crate) fn new(mut registers: Vec<ConfigRegister>) -> Self {
+		if registers.is_empty() {
+			return Self {
+				entries: HashMap::default(),
+			};
+		}
+
 		if !Path::new(CONFIG_PATH).exists() {
 			create_dir(CONFIG_PATH).unwrap();
 		}
 
-		let mut entries = HashMap::with_capacity(registers.len());
-		registers.drain(..).for_each(|r| {
-			entries.insert(
-				r.id,
-				Entry {
-					file: r.file,
-					name: r.name,
+		let mut entries: HashMap<TypeId, Entry> = registers
+			.drain(..)
+			.map(|r| {
+				(
+					r.id,
+					Entry {
+						file: r.file,
+						name: r.name,
 
-					value: (r.default)(),
+						value: (r.default)(),
 
-					deserialize: r.deserialize,
-					// default: r.default,
-				},
-			);
-		});
+						deserialize: r.deserialize,
+						// default: r.default,
+					},
+				)
+			})
+			.collect();
 
 		for entry in fs::read_dir(CONFIG_PATH).unwrap() {
 			let entry = entry.unwrap();
