@@ -107,7 +107,6 @@ impl Engine {
 				.unwrap()
 				.parent()
 				.unwrap();
-			println!("{:?}", new_working_directory);
 			std::env::set_current_dir(new_working_directory)?;
 
 			// Ensure we have a valid name for the project. This is used for a variety of things
