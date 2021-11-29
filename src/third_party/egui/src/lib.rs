@@ -45,8 +45,18 @@ pub struct Egui {
 
 impl Module for Egui {
 	fn new() -> Self {
+		let context = CtxRef::default();
+		let mut style = (*context.style()).clone();
+		style.visuals.collapsing_header_frame = true;
+		style.visuals.window_corner_radius = 0.0;
+		style.visuals.widgets.noninteractive.corner_radius = 0.0;
+		style.visuals.widgets.inactive.corner_radius = 0.0;
+		style.visuals.widgets.hovered.corner_radius = 0.0;
+		style.visuals.widgets.active.corner_radius = 0.0;
+		style.visuals.widgets.open.corner_radius = 0.0;
+		context.set_style(style);
 		Self {
-			context: CtxRef::default(),
+			context,
 			input: None,
 			mouse_position: None,
 			tick: None,

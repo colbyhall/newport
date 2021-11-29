@@ -6,12 +6,13 @@ use {
 		Engine,
 		Module,
 	},
-	resources::*,
 };
 
 struct HelloWorld {
 	name: String,
 	age: i32,
+
+	color: [f32; 3],
 }
 
 impl Module for HelloWorld {
@@ -19,13 +20,14 @@ impl Module for HelloWorld {
 		Self {
 			name: String::default(),
 			age: 0,
+			color: [0.0; 3],
 		}
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
 		builder.module::<Egui>().register(EguiScope::new(|ctx| {
 			let hello_world: &mut HelloWorld = unsafe { Engine::module_mut().unwrap() };
-			let HelloWorld { name, age } = hello_world;
+			let HelloWorld { name, age, color } = hello_world;
 
 			Window::new("Hello World").show(ctx, |ui| {
 				ui.heading("My egui Application");
@@ -38,6 +40,7 @@ impl Module for HelloWorld {
 					*age += 1;
 				}
 				ui.label(format!("Hello '{}', age {}", name, age));
+				ui.color_edit_button_rgb(color);
 			});
 		}))
 	}
