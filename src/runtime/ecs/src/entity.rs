@@ -1,9 +1,6 @@
 use engine::Uuid;
 
-use super::{
-	ComponentId,
-	ComponentVariantId,
-};
+use super::{ComponentId, ComponentVariantId};
 
 use std::collections::HashMap;
 

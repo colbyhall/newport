@@ -1,7 +1,4 @@
-use crate::{
-	CompareOp,
-	Format,
-};
+use crate::{CompareOp, Format};
 use ash::vk;
 
 pub const ENABLED_LAYER_NAMES: [*const i8; 1] =

@@ -6,13 +6,7 @@ use crate::EntityContainer;
 use crate::ReadStorage;
 use crate::WriteStorage;
 // use super::physics::PhysicsWorld;
-use crate::{
-	Component,
-	ComponentsContainer,
-
-	EntityId,
-	EntityInfo,
-};
+use crate::{Component, ComponentsContainer, EntityId, EntityInfo};
 use engine::Engine;
 use std::any::Any;
 use sync::lock::Mutex;

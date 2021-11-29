@@ -26,16 +26,9 @@
 
 #![feature(in_band_lifetimes)]
 
-use math::{
-	Color,
-	Rect,
-};
+use math::{Color, Rect};
 
-use serde::{
-	self,
-	Deserialize,
-	Serialize,
-};
+use serde::{self, Deserialize, Serialize};
 
 use std::convert::Into;
 
@@ -56,15 +49,8 @@ mod shader;
 mod texture;
 
 pub use {
-	buffer::*,
-	command_buffer::*,
-	device::*,
-	gpu::*,
-	graphics_pipeline::*,
-	instance::*,
-	receipt::*,
-	shader::*,
-	texture::*,
+	buffer::*, command_buffer::*, device::*, gpu::*, graphics_pipeline::*, instance::*, receipt::*,
+	shader::*, texture::*,
 };
 
 /// Type of memory allocations that buffers or textures can be allocated from

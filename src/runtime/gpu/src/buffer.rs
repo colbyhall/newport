@@ -1,15 +1,6 @@
-use crate::{
-	api,
-	Device,
-	Gpu,
-	MemoryType,
-	Result,
-};
+use crate::{api, Device, Gpu, MemoryType, Result};
 
-use std::{
-	marker::PhantomData,
-	sync::Arc,
-};
+use std::{marker::PhantomData, sync::Arc};
 
 use bitflags::bitflags;
 

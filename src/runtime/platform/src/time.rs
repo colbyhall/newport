@@ -1,8 +1,5 @@
 #[cfg(target_os = "windows")]
-use winapi::um::{
-	minwinbase::SYSTEMTIME,
-	sysinfoapi::GetLocalTime,
-};
+use winapi::um::{minwinbase::SYSTEMTIME, sysinfoapi::GetLocalTime};
 
 /// Date gathered from the OS
 #[derive(Copy, Clone, PartialEq)]

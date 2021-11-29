@@ -1,14 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{
-	parse_macro_input,
-	Data,
-	DeriveInput,
-	Fields,
-	Generics,
-	Ident,
-};
+use syn::{parse_macro_input, Data, DeriveInput, Fields, Generics, Ident};
 
 #[proc_macro_derive(Resource)]
 pub fn derive_editable(input: TokenStream) -> TokenStream {

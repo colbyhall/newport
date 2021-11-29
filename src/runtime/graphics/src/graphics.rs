@@ -1,20 +1,11 @@
 use crate::FontImporter;
 use crate::MeshGltfImporter;
-use crate::{
-	FontCollection,
-	Mesh,
-};
+use crate::{FontCollection, Mesh};
 use gpu::Gpu;
 
-use engine::{
-	Builder,
-	Module,
-};
+use engine::{Builder, Module};
 
-use resources::{
-	Importer,
-	Resource,
-};
+use resources::{Importer, Resource};
 
 pub struct Graphics;
 

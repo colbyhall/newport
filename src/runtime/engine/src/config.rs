@@ -1,15 +1,9 @@
 use std::{
-	any::{
-		Any,
-		TypeId,
-	},
+	any::{Any, TypeId},
 	collections::HashMap,
 };
 
-use serde::{
-	de::DeserializeOwned,
-	Serialize,
-};
+use serde::{de::DeserializeOwned, Serialize};
 
 use std::fs;
 use std::fs::create_dir;

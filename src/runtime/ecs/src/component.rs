@@ -1,25 +1,14 @@
 use serde::de::DeserializeOwned;
-use serde::{
-	self,
-	ron,
-	Deserialize,
-	Serialize,
-};
+use serde::{self, ron, Deserialize, Serialize};
 
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::{
-	any::{
-		type_name,
-		Any,
-	},
+	any::{type_name, Any},
 	collections::VecDeque,
 };
 
-use sync::lock::{
-	Mutex,
-	MutexGuard,
-};
+use sync::lock::{Mutex, MutexGuard};
 
 use crate::Entity;
 

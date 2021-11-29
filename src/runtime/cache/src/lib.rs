@@ -1,29 +1,14 @@
-use engine::{
-	Builder,
-	Engine,
-	Module,
-};
+use engine::{Builder, Engine, Module};
 
-use serde::{
-	bincode,
-	de::DeserializeOwned,
-
-	Serialize,
-};
+use serde::{bincode, de::DeserializeOwned, Serialize};
 
 use std::{
-	any::{
-		Any,
-		TypeId,
-	},
+	any::{Any, TypeId},
 	collections::HashMap,
 	fs,
 	marker::PhantomData,
 	ops::Deref,
-	path::{
-		Path,
-		PathBuf,
-	},
+	path::{Path, PathBuf},
 };
 
 static CACHE_PATH: &str = "target/cache/";

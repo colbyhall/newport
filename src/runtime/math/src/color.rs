@@ -1,12 +1,7 @@
 use crate::Vector4;
 use std::convert::From;
 
-use serde::{
-	Deserialize,
-	Deserializer,
-	Serialize,
-	Serializer,
-};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct Color {

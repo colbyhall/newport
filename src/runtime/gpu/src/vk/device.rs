@@ -1,44 +1,17 @@
-use super::{
-	Buffer,
-	GraphicsCommandBuffer,
-	Instance,
-	Receipt,
-	Texture,
-	ENABLED_LAYER_NAMES,
-};
-use super::{
-	RenderPass,
-	Sampler,
-};
-use crate::{
-	BufferUsage,
-	Format,
-	MemoryType,
-	Result,
-	TextureUsage,
-};
+use super::{Buffer, GraphicsCommandBuffer, Instance, Receipt, Texture, ENABLED_LAYER_NAMES};
+use super::{RenderPass, Sampler};
+use crate::{BufferUsage, Format, MemoryType, Result, TextureUsage};
 
 use ash::extensions::khr;
-use ash::version::{
-	DeviceV1_0,
-	InstanceV1_0,
-	InstanceV1_1,
-};
+use ash::version::{DeviceV1_0, InstanceV1_0, InstanceV1_1};
 use ash::vk;
 
 use std::collections::HashMap;
 use std::slice::from_ref;
-use std::sync::{
-	Arc,
-	Mutex,
-	Weak,
-};
+use std::sync::{Arc, Mutex, Weak};
 use std::thread::ThreadId;
 
-use platform::raw_window_handle::{
-	HasRawWindowHandle,
-	RawWindowHandle,
-};
+use platform::raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use platform::winit::window::Window;
 
 struct Swapchain {

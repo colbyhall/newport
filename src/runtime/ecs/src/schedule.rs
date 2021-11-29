@@ -1,7 +1,4 @@
-use crate::{
-	System,
-	World,
-};
+use crate::{System, World};
 
 enum ScheduleEntry {
 	Single(Box<dyn System>),

@@ -1,24 +1,11 @@
-use hassle_rs::{
-	Dxc,
-	DxcCompiler,
-	DxcIncludeHandler,
-	DxcLibrary,
-};
+use hassle_rs::{Dxc, DxcCompiler, DxcIncludeHandler, DxcLibrary};
 
 use std::sync::Arc;
-use std::{
-	env,
-	path,
-};
+use std::{env, path};
 
 use path::PathBuf;
 
-use crate::{
-	api,
-	Device,
-	Gpu,
-	Result,
-};
+use crate::{api, Device, Gpu, Result};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ShaderVariant {

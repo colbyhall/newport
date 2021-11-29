@@ -1,30 +1,12 @@
 use std::convert::From;
 use std::ops::Index;
 use std::ops::IndexMut;
-use std::ops::{
-	Add,
-	AddAssign,
-
-	Div,
-	DivAssign,
-
-	Mul,
-	MulAssign,
-
-	Neg,
-	Sub,
-	SubAssign,
-};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use crate::Rect;
 use crate::Vector3;
 
-use serde::{
-	Deserialize,
-	Deserializer,
-	Serialize,
-	Serializer,
-};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Vector4 {

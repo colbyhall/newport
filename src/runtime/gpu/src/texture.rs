@@ -1,27 +1,11 @@
 use crate::Device;
-use crate::{
-	api,
-
-	BufferUsage,
-	Gpu,
-
-	GraphicsRecorder,
-	MemoryType,
-	Result,
-};
+use crate::{api, BufferUsage, Gpu, GraphicsRecorder, MemoryType, Result};
 
 use bitflags::bitflags;
 
-use resources::{
-	Importer,
-	Resource,
-};
+use resources::{Importer, Resource};
 
-use serde::{
-	self,
-	Deserialize,
-	Serialize,
-};
+use serde::{self, Deserialize, Serialize};
 
 use std::sync::Arc;
 

@@ -1,47 +1,21 @@
 use crate::Config;
 use crate::ConfigMap;
 use crate::ConfigRegister;
-use crate::{
-	info,
-	Builder,
-	Event,
-	Logger,
-	Module,
-	Register,
-	ENGINE_CATEGORY,
-};
+use crate::{info, Builder, Event, Logger, Module, Register, ENGINE_CATEGORY};
 
 use std::{
-	any::{
-		Any,
-		TypeId,
-	},
+	any::{Any, TypeId},
 	collections::HashMap,
-	sync::atomic::{
-		AtomicBool,
-		AtomicI32,
-		Ordering,
-	},
+	sync::atomic::{AtomicBool, AtomicI32, Ordering},
 	time::Instant,
 };
 
 use platform::winit::{
 	event::{
-		DeviceEvent,
-		ElementState,
-		Event as WinitEvent,
-		MouseButton,
-		MouseScrollDelta,
-		WindowEvent,
+		DeviceEvent, ElementState, Event as WinitEvent, MouseButton, MouseScrollDelta, WindowEvent,
 	},
-	event_loop::{
-		ControlFlow,
-		EventLoop,
-	},
-	window::{
-		Window,
-		WindowBuilder,
-	},
+	event_loop::{ControlFlow, EventLoop},
+	window::{Window, WindowBuilder},
 };
 
 use platform::input::Input;

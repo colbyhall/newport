@@ -8,12 +8,7 @@ use ash::vk;
 use std::ffi;
 use std::sync::Arc;
 
-use engine::{
-	define_log_category,
-	error,
-	info,
-	warn,
-};
+use engine::{define_log_category, error, info, warn};
 
 define_log_category!(Vulkan, VULKAN_CATEGORY);
 

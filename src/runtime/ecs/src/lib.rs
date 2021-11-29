@@ -10,25 +10,11 @@ mod schedule;
 mod system;
 mod world;
 
-pub use {
-	component::*,
-	entity::*,
-	query::*,
-	scene::*,
-	schedule::*,
-	system::*,
-	world::*,
-};
+pub use {component::*, entity::*, query::*, scene::*, schedule::*, system::*, world::*};
 
 use {
-	engine::{
-		Builder,
-		Module,
-	},
-	resources::{
-		Importer,
-		ResourceManager,
-	},
+	engine::{Builder, Module},
+	resources::{Importer, ResourceManager},
 };
 
 pub struct Ecs;
