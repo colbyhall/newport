@@ -5,10 +5,10 @@ Modular 2D and 3D game engine built in Rust for Rust. It is designed to be easil
 [![ci](https://github.com/colbyhall/newport/actions/workflows/ci.yml/badge.svg)](https://github.com/colbyhall/newport/actions/workflows/ci.yml)
 
 ## Table Of Contents
-[Goals](#goals)<br>
-[Features](#features)<br>
-[Inspiration](#inspiration)<br>
-[Research](https://github.com/colbyhall/newport/RESEARCH.md)<br>
+* [Goals](#goals)
+* [Features](#features)
+* [Inspiration](#inspiration)
+* [Research](https://github.com/colbyhall/newport/RESEARCH.md)
 
 ## Goals
 * **Modular** - Use modules to build building blocks that are combined for engine features. 

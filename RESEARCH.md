@@ -2,14 +2,14 @@
 As I've been working on this project I've realized that I need a space to throw a bunch of information regarding design patterns, API's, and system architecture. I can't retain all of this in my head and I've found some deep hidden blogs/research that have been extremely helpful. There will be "basic" information in this doc. I want a place where someone can start picking up on Game Engine Programming.
 
 ## Table Of Contents
-[API Selection](#api-selection)<br>
-[Fiber Based Job System](#fiber-based-job-system)<br>
-[Asset Manager](#asset-manager)<br>
-[Vulkan](#vulkan)<br>
-[DirectXCompiler](#directxcompiler)<br>
-[GPU Abstraction Layer](#gpu-abstraction-layer)<br>
-[Frame Graph](#frame-graph)<br>
-[Forward+ Rendering](#forward+-rendering)<br>
+* [API Selection](#api-selection)
+* [Fiber Based Job System](#fiber-based-job-system)
+* [Asset Manager](#asset-manager)
+* [Vulkan](#vulkan)
+* [DirectXCompiler](#directxcompiler)
+* [GPU Abstraction Layer](#gpu-abstraction-layer)
+* [Frame Graph](#frame-graph)
+* [Forward+ Rendering](#forward+-rendering)
 
 ## API Selection
 | Name          | Platform               | Reason                   |
