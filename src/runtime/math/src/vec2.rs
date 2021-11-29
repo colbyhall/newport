@@ -1,8 +1,23 @@
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{
+	Add,
+	AddAssign,
+	Div,
+	DivAssign,
+	Mul,
+	MulAssign,
+	Neg,
+	Sub,
+	SubAssign,
+};
 
 use std::convert::From;
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+	Deserialize,
+	Deserializer,
+	Serialize,
+	Serializer,
+};
 
 use crate::lerp;
 

@@ -2,8 +2,14 @@
 
 use serde::{
 	self,
-	de::{self, Visitor},
-	Deserialize, Deserializer, Serialize, Serializer,
+	de::{
+		self,
+		Visitor,
+	},
+	Deserialize,
+	Deserializer,
+	Serialize,
+	Serializer,
 };
 
 use std::fmt;

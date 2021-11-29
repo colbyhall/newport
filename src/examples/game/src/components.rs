@@ -1,7 +1,10 @@
 use ecs::*;
 use engine::Builder;
 use math::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+	Deserialize,
+	Serialize,
+};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Transform {

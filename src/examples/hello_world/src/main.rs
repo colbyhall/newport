@@ -1,5 +1,10 @@
 use {
-	engine::{define_run_module, Builder, Engine, Module},
+	engine::{
+		define_run_module,
+		Builder,
+		Engine,
+		Module,
+	},
 	gpu::*,
 	graphics::*,
 	math::*,

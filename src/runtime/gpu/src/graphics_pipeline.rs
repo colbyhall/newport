@@ -1,10 +1,21 @@
 use crate::*;
 
-use std::{collections::HashMap, sync::Arc};
+use std::{
+	collections::HashMap,
+	sync::Arc,
+};
 
-use resources::{Importer, Resource};
+use resources::{
+	Importer,
+	Resource,
+};
 
-use serde::{self as serde, ron, Deserialize, Serialize};
+use serde::{
+	self as serde,
+	ron,
+	Deserialize,
+	Serialize,
+};
 
 use bitflags::bitflags;
 

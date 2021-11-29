@@ -9,4 +9,12 @@ mod log;
 mod module;
 mod uuid;
 
-pub use {builder::*, config::*, engine::*, event::*, log::*, module::*, uuid::*};
+pub use {
+	builder::*,
+	config::*,
+	engine::*,
+	event::*,
+	log::*,
+	module::*,
+	uuid::*,
+};

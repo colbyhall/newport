@@ -1,21 +1,45 @@
 use freetype::FtResult;
 
-use resources::{Importer, Resource};
+use resources::{
+	Importer,
+	Resource,
+};
 
-use math::{Rect, Vector2};
+use math::{
+	Rect,
+	Vector2,
+};
 
-use gpu::{BufferUsage, Format, Layout, MemoryType, Texture, TextureUsage};
+use gpu::{
+	BufferUsage,
+	Format,
+	Layout,
+	MemoryType,
+	Texture,
+	TextureUsage,
+};
 
-use serde::{self, Deserialize, Serialize};
+use serde::{
+	self,
+	Deserialize,
+	Serialize,
+};
 
 use std::{
 	collections::HashMap,
 	iter::Iterator,
-	sync::{Arc, Mutex},
+	sync::{
+		Arc,
+		Mutex,
+	},
 	thread_local,
 };
 
-use freetype::{face::LoadFlag, Face, Library};
+use freetype::{
+	face::LoadFlag,
+	Face,
+	Library,
+};
 
 thread_local! {
 	static FREETYPE_LIB: Library = Library::init().unwrap();

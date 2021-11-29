@@ -3,7 +3,11 @@ use std::sync::Arc;
 use ash::version::DeviceV1_0;
 use ash::vk;
 
-use crate::{Filter, SamplerDescription, Wrap};
+use crate::{
+	Filter,
+	SamplerDescription,
+	Wrap,
+};
 
 use super::Device;
 

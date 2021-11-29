@@ -3,8 +3,15 @@ use super::Device;
 use super::Sampler;
 use crate::Constant;
 use crate::{
-	BlendFactor, BlendOp, ColorMask, CullMode, DrawMode, GraphicsPipelineDescription,
-	PipelineResource, Result, ShaderVariant,
+	BlendFactor,
+	BlendOp,
+	ColorMask,
+	CullMode,
+	DrawMode,
+	GraphicsPipelineDescription,
+	PipelineResource,
+	Result,
+	ShaderVariant,
 };
 
 use ash::version::DeviceV1_0;

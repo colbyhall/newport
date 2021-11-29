@@ -1,9 +1,21 @@
 use crate::GraphicsPipelineImporter;
 use crate::TextureImporter;
-use crate::{Device, GraphicsPipeline, Instance, Texture};
+use crate::{
+	Device,
+	GraphicsPipeline,
+	Instance,
+	Texture,
+};
 
-use engine::{Builder, Engine, Module};
-use resources::{Importer, Resource};
+use engine::{
+	Builder,
+	Engine,
+	Module,
+};
+use resources::{
+	Importer,
+	Resource,
+};
 
 pub struct Gpu {
 	device: Device,

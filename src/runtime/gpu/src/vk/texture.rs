@@ -1,5 +1,15 @@
-use super::{vk_format, vk_format_aspect_mask, Device, DeviceAllocation};
-use crate::{Format, MemoryType, Result, TextureUsage};
+use super::{
+	vk_format,
+	vk_format_aspect_mask,
+	Device,
+	DeviceAllocation,
+};
+use crate::{
+	Format,
+	MemoryType,
+	Result,
+	TextureUsage,
+};
 
 use ash::version::DeviceV1_0;
 use ash::vk;

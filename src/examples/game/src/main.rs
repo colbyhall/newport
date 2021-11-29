@@ -3,7 +3,12 @@ mod components;
 use {
 	components::*,
 	ecs::*,
-	engine::{define_run_module, Builder, Engine, Module},
+	engine::{
+		define_run_module,
+		Builder,
+		Engine,
+		Module,
+	},
 	gpu::*,
 	graphics::*,
 	math::*,

@@ -1,11 +1,26 @@
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{
+	Add,
+	AddAssign,
+	Div,
+	DivAssign,
+	Mul,
+	MulAssign,
+	Neg,
+	Sub,
+	SubAssign,
+};
 
 use std::convert::From;
 
 use crate::lerp;
 use crate::Vector2;
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+	Deserialize,
+	Deserializer,
+	Serialize,
+	Serializer,
+};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Vector3 {
