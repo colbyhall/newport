@@ -31,26 +31,6 @@ pub use rect::*;
 pub mod quat;
 pub use quat::*;
 
-pub trait InterpTo {
-	fn interp_to(self, target: Self, dt: f32, speed: f32) -> Self;
-}
-
-impl InterpTo for f32 {
-	fn interp_to(self, target: Self, dt: f32, speed: f32) -> Self {
-		if speed <= 0.0 {
-			return target;
-		}
-
-		let distance = target - self;
-		if distance * distance < SMALL_NUMBER {
-			return target;
-		}
-
-		let delta = distance * (dt * speed).max(0.0).min(1.0);
-		self + delta
-	}
-}
-
 pub fn lerp(a: f32, b: f32, t: f32) -> f32 {
 	(1.0 - t) * a + t * b
 }
