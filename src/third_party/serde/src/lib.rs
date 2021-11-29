@@ -1,1 +1,5 @@
-pub use {bincode, ron, serde::*};
+pub use {
+	bincode,
+	ron,
+	serde::*,
+};

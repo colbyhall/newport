@@ -1,6 +1,15 @@
-use gpu::{Buffer, BufferUsage, Texture};
+use gpu::{
+	Buffer,
+	BufferUsage,
+	Texture,
+};
 use math::vec2;
-use math::{Color, Rect, Vector2, Vector4};
+use math::{
+	Color,
+	Rect,
+	Vector2,
+	Vector4,
+};
 use resources::Handle;
 
 use crate::FontCollection;

@@ -1,14 +1,21 @@
 use std::any::Any;
 use std::collections::HashMap;
 
-use resources::{Importer, Resource};
+use resources::{
+	Importer,
+	Resource,
+};
 
 use engine::Engine;
 use engine::Uuid;
 
 use serde::{
-	ron::{self, Value},
-	Deserialize, Serialize,
+	ron::{
+		self,
+		Value,
+	},
+	Deserialize,
+	Serialize,
 };
 
 use crate::ComponentVariant;

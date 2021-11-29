@@ -2,7 +2,10 @@ use crate::ComponentVariantId;
 use crate::Entity;
 use crate::ReadStorage;
 use crate::WriteStorage;
-use crate::{Component, World};
+use crate::{
+	Component,
+	World,
+};
 
 use std::collections::HashSet;
 

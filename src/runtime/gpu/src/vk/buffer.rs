@@ -1,11 +1,21 @@
-use super::{Device, DeviceAllocation};
-use crate::{BufferUsage, MemoryType, Result};
+use super::{
+	Device,
+	DeviceAllocation,
+};
+use crate::{
+	BufferUsage,
+	MemoryType,
+	Result,
+};
 
 use ash::version::DeviceV1_0;
 use ash::vk;
 
 use std::ptr::copy_nonoverlapping;
-use std::sync::{Arc, RwLock};
+use std::sync::{
+	Arc,
+	RwLock,
+};
 
 pub struct Buffer {
 	pub owner: Arc<Device>,

@@ -1,14 +1,29 @@
 use super::{
-	vk_format_aspect_mask, Buffer, Device, DeviceThreadInfo, Format, GraphicsPipeline, Texture,
+	vk_format_aspect_mask,
+	Buffer,
+	Device,
+	DeviceThreadInfo,
+	Format,
+	GraphicsPipeline,
+	Texture,
 };
-use crate::{Layout, Result};
+use crate::{
+	Layout,
+	Result,
+};
 
-use math::{Color, Rect};
+use math::{
+	Color,
+	Rect,
+};
 
 use ash::version::DeviceV1_0;
 use ash::vk;
 
-use std::slice::{from_raw_parts, from_ref};
+use std::slice::{
+	from_raw_parts,
+	from_ref,
+};
 use std::sync::Arc;
 
 pub struct GraphicsCommandBuffer {

@@ -1,9 +1,15 @@
 use crate::*;
 use platform::time::SystemDate;
 
-use std::fs::{create_dir, File};
+use std::fs::{
+	create_dir,
+	File,
+};
 use std::panic;
-use std::path::{Path, PathBuf};
+use std::path::{
+	Path,
+	PathBuf,
+};
 
 use std::io::Write;
 use std::sync::Mutex;

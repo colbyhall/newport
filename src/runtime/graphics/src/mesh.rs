@@ -1,12 +1,27 @@
 use std::fmt::Debug;
 
-use resources::{Importer, Resource};
+use resources::{
+	Importer,
+	Resource,
+};
 
-use gpu::{Buffer, BufferUsage, GraphicsRecorder, MemoryType};
+use gpu::{
+	Buffer,
+	BufferUsage,
+	GraphicsRecorder,
+	MemoryType,
+};
 
-use math::{Vector2, Vector3};
+use math::{
+	Vector2,
+	Vector3,
+};
 
-use serde::{self, Deserialize, Serialize};
+use serde::{
+	self,
+	Deserialize,
+	Serialize,
+};
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
 pub struct Vertex {

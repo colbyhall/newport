@@ -1,8 +1,14 @@
 use crate::Vector2;
 
-use std::{convert::From, ops::RangeInclusive};
+use std::{
+	convert::From,
+	ops::RangeInclusive,
+};
 
-use serde::{Deserialize, Serialize};
+use serde::{
+	Deserialize,
+	Serialize,
+};
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Rect {

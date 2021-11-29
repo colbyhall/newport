@@ -1,4 +1,10 @@
-use crate::{api, GraphicsCommandBuffer, Receipt, Result, Texture};
+use crate::{
+	api,
+	GraphicsCommandBuffer,
+	Receipt,
+	Result,
+	Texture,
+};
 
 use std::sync::Arc;
 

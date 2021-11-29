@@ -1,13 +1,19 @@
 use std::ops::Index;
 use std::ops::IndexMut;
-use std::ops::{Mul, MulAssign};
+use std::ops::{
+	Mul,
+	MulAssign,
+};
 
 use crate::Quaternion;
 use crate::Vector3;
 use crate::Vector4;
 use crate::PI;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+	Deserialize,
+	Serialize,
+};
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Matrix4 {

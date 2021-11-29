@@ -1,7 +1,14 @@
-use crate::{Engine, Event, Module};
+use crate::{
+	Engine,
+	Event,
+	Module,
+};
 
 use std::{
-	any::{Any, TypeId},
+	any::{
+		Any,
+		TypeId,
+	},
 	collections::HashMap,
 	time::Instant,
 };

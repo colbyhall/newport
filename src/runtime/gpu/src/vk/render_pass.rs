@@ -1,5 +1,11 @@
-use super::{vk_format, Device};
-use crate::{Format, Result};
+use super::{
+	vk_format,
+	Device,
+};
+use crate::{
+	Format,
+	Result,
+};
 
 use ash::version::DeviceV1_0;
 use ash::vk;

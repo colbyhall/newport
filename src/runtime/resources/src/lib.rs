@@ -3,25 +3,55 @@
 //! ref counting, serialization, and garbage collection of resources.
 
 use std::{
-	any::{Any, TypeId},
+	any::{
+		Any,
+		TypeId,
+	},
 	collections::HashMap,
 	error::Error,
-	fmt, fs,
+	fmt,
+	fs,
 	fs::File,
 	marker::PhantomData,
 	ops::Deref,
-	path::{Path, PathBuf},
-	sync::{Arc, Mutex, RwLock, Weak},
+	path::{
+		Path,
+		PathBuf,
+	},
+	sync::{
+		Arc,
+		Mutex,
+		RwLock,
+		Weak,
+	},
 	time::Instant,
 };
 
 use serde::{
-	self, bincode, de::DeserializeOwned, ron, Deserialize, Deserializer, Serialize, Serializer,
+	self,
+	bincode,
+	de::DeserializeOwned,
+	ron,
+	Deserialize,
+	Deserializer,
+	Serialize,
+	Serializer,
 };
 
-use cache::{Cache, CacheManager, CacheRef};
+use cache::{
+	Cache,
+	CacheManager,
+	CacheRef,
+};
 
-use engine::{define_log_category, info, Builder, Engine, Module, Uuid};
+use engine::{
+	define_log_category,
+	info,
+	Builder,
+	Engine,
+	Module,
+	Uuid,
+};
 
 pub use derive::Resource;
 

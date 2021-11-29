@@ -1,4 +1,7 @@
-use crate::{api, Device};
+use crate::{
+	api,
+	Device,
+};
 
 use platform::winit::window::Window;
 
