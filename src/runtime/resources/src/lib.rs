@@ -611,7 +611,7 @@ impl Module for ResourceManager {
 
 		Self {
 			resource_variants,
-			collections: Engine::register().unwrap().clone(),
+			collections: Engine::register().unwrap().to_vec(),
 
 			importer_variants_by_extension,
 			importer_variants_by_type: importer_variants

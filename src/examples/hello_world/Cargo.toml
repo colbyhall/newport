@@ -7,8 +7,5 @@ edition = "2021"
 
 [dependencies]
 engine    = { path = "../../runtime/engine" }
+egui    = { path = "../../third_party/egui" }
 resources = { path = "../../runtime/resources" }
-serde = { path = "../../third_party/serde" }
-gpu = { path = "../../runtime/gpu" }
-graphics = { path = "../../runtime/graphics" }
-math = { path = "../../runtime/math" }

@@ -369,6 +369,10 @@ const sRGB_TO_LINEAR_TABLE: [f32; 256] = [
 	1.0,
 ];
 
+pub const fn srgb_to_linear(c: u8) -> f32 {
+	sRGB_TO_LINEAR_TABLE[c as usize]
+}
+
 impl Serialize for Color {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where

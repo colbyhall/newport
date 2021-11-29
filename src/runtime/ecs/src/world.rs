@@ -25,7 +25,7 @@ impl World {
 	pub fn new() -> Self {
 		Self {
 			entities: Mutex::new(EntityContainer::new()),
-			components: ComponentsContainer::new(Engine::register().unwrap().clone()),
+			components: ComponentsContainer::new(Engine::register().unwrap().to_vec()),
 		}
 	}
 
@@ -55,7 +55,7 @@ impl Default for World {
 	fn default() -> Self {
 		Self {
 			entities: Default::default(),
-			components: ComponentsContainer::new(Engine::register().unwrap().clone()),
+			components: ComponentsContainer::new(Engine::register().unwrap().to_vec()),
 		}
 	}
 }

@@ -392,7 +392,7 @@ impl Engine {
 		module.downcast_mut::<T>()
 	}
 
-	pub fn register<T: Register>() -> Option<&'static Vec<T>> {
+	pub fn register<T: Register>() -> Option<&'static [T]> {
 		let engine = Engine::as_ref();
 		let id = TypeId::of::<T>();
 
