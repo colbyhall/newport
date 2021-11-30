@@ -9,11 +9,11 @@ use {
 };
 
 #[derive(Debug, Clone)]
-pub struct WidgetRef(Rc<RefCell<Box<dyn Widget>>>);
+pub struct WidgetRef(Rc<RefCell<dyn Widget>>);
 
 impl WidgetRef {
 	pub fn new(widget: impl Widget) -> Self {
-		let result = Self(Rc::new(RefCell::new(Box::new(widget))));
+		let result = Self(Rc::new(RefCell::new(widget)));
 		{
 			let borrowed = result.borrow();
 			if let Some(slot) = borrowed.slot() {
@@ -27,7 +27,7 @@ impl WidgetRef {
 }
 
 impl std::ops::Deref for WidgetRef {
-	type Target = Rc<RefCell<Box<dyn Widget>>>;
+	type Target = Rc<RefCell<dyn Widget>>;
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
