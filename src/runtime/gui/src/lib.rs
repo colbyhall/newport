@@ -125,13 +125,3 @@ impl Slot for CompoundSlot {
 		self.child = Some(widget.clone())
 	}
 }
-
-#[test]
-fn test() {
-	let button = Border::new(|slot| {
-		slot.child(Button::new(|slot| {
-			slot.child(TextBlock::new("Hello World"))
-		}))
-	});
-	println!("{:?}", button);
-}
