@@ -29,7 +29,7 @@ impl LayoutTree {
 		&self.layouts[widget.index as usize]
 	}
 
-	pub fn find_mut(&self, widget: WidgetRef) -> &mut Layout {
+	pub fn find_mut(&mut self, widget: WidgetRef) -> &mut Layout {
 		&mut self.layouts[widget.index as usize]
 	}
 
