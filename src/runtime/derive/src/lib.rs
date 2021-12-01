@@ -76,6 +76,7 @@ fn implement_struct_widget(ident: &Ident, generics: &Generics, fields: &Fields) 
 
 	let mut parent = false;
 	let mut slot = false;
+	let mut tokens = Vec::new();
 	match fields {
 		Fields::Named(fields) => {
 			for field in fields.named.iter() {
@@ -83,8 +84,18 @@ fn implement_struct_widget(ident: &Ident, generics: &Generics, fields: &Fields) 
 					Some(ident) => {
 						if *ident == "parent" {
 							parent = true;
-						} else if *ident == "slot" {
-							slot = true
+
+							tokens.push(quote! {
+								.field(stringify!(#ident), &self.#ident.is_some())
+							})
+						} else {
+							if *ident == "slot" {
+								slot = true
+							}
+
+							tokens.push(quote! {
+								.field(stringify!(#ident), &self.#ident)
+							})
 						}
 					}
 					None => {}
@@ -118,15 +129,23 @@ fn implement_struct_widget(ident: &Ident, generics: &Generics, fields: &Fields) 
 
 	quote! {
 		impl #impl_generics Widget for #ident #ty_generics #where_clause {
-			fn parent(&self) -> Option<&WidgetRef> {
-				self.parent.as_ref()
+			fn parent(&self) -> Option<WidgetRef> {
+				self.parent
 			}
 
-			fn set_parent(&mut self, parent: Option<&WidgetRef>) {
-				self.parent = parent.cloned()
+			fn set_parent(&mut self, parent: Option<WidgetRef>) {
+				self.parent = parent
 			}
 
 			#slot
+		}
+
+		impl #impl_generics std::fmt::Debug for #ident #ty_generics #where_clause {
+			fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+				f.debug_struct(stringify!(#ident))
+					#(#tokens)*
+					.finish()
+			}
 		}
 	}
 }

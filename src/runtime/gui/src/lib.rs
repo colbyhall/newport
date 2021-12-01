@@ -1,53 +1,134 @@
 use {
 	derive::Widget,
+	engine::{
+		Engine,
+		Module,
+	},
 	std::{
-		cell::RefCell,
 		convert::Into,
+		fmt,
 		fmt::Debug,
-		rc::Rc,
 	},
 };
 
-#[derive(Debug, Clone)]
-pub struct WidgetRef(Rc<RefCell<dyn Widget>>);
+#[derive(Clone, Copy, PartialEq)]
+pub struct WidgetRef {
+	index: u32,
+	generation: u32,
+}
 
-impl WidgetRef {
-	pub fn new(widget: impl Widget) -> Self {
-		let result = Self(Rc::new(RefCell::new(widget)));
-		{
-			let borrowed = result.borrow();
-			if let Some(slot) = borrowed.slot() {
-				slot.children()
-					.iter()
-					.for_each(|c| c.borrow_mut().set_parent(Some(&result)))
+impl fmt::Debug for WidgetRef {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match Gui::find(*self) {
+			Some(me) => me.fmt(f),
+			None => Ok(()),
+		}
+	}
+}
+
+struct Entry {
+	generation: u32,
+	widget: Box<dyn Widget>,
+}
+
+pub struct Gui {
+	widgets: Vec<Entry>,
+	free: Vec<usize>,
+	base: Option<WidgetRef>,
+}
+
+impl Gui {
+	pub fn create(widget: impl Widget) -> WidgetRef {
+		// TODO: Check if is on the main thread or not
+
+		let gui: &mut Gui = unsafe { Engine::module_mut().unwrap() };
+		match gui.free.pop() {
+			Some(index) => {
+				let entry = &mut gui.widgets[index];
+				entry.widget = Box::new(widget);
+				WidgetRef {
+					index: index as u32,
+					generation: entry.generation,
+				}
+			}
+			None => {
+				let index = gui.widgets.len();
+				gui.widgets.push(Entry {
+					generation: 0,
+					widget: Box::new(widget),
+				});
+				WidgetRef {
+					index: index as u32,
+					generation: 0,
+				}
 			}
 		}
-		result
+	}
+
+	pub fn destroy(widget: WidgetRef) -> bool {
+		let gui: &mut Gui = unsafe { Engine::module_mut().unwrap() };
+		let entry = gui.widgets.get_mut(widget.index as usize);
+		if let Some(entry) = entry {
+			if entry.generation == widget.generation {
+				entry.generation += 1;
+				return true;
+			}
+		}
+		false
+	}
+
+	pub fn find<'a>(widget: WidgetRef) -> Option<&'a dyn Widget> {
+		// TODO: Check if is on the main thread or not
+
+		let gui: &Gui = Engine::module().unwrap();
+		gui.widgets
+			.get(widget.index as usize)
+			.map(|e| e.widget.as_ref())
+	}
+
+	pub fn find_mut<'a>(widget: WidgetRef) -> Option<&'a mut dyn Widget> {
+		// TODO: Check if is on the main thread or not
+
+		let gui: &mut Gui = unsafe { Engine::module_mut().unwrap() };
+		gui.widgets
+			.get_mut(widget.index as usize)
+			.map(|e| e.widget.as_mut())
+	}
+
+	pub fn base() -> Option<WidgetRef> {
+		// TODO: Check if is on the main thread or not
+
+		let gui: &Gui = Engine::module().unwrap();
+		gui.base
+	}
+
+	pub fn set_base(base: Option<WidgetRef>) {
+		// TODO: Check if is on the main thread or not
+
+		let gui: &mut Gui = unsafe { Engine::module_mut().unwrap() };
+		gui.base = base
 	}
 }
 
-impl std::ops::Deref for WidgetRef {
-	type Target = Rc<RefCell<dyn Widget>>;
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
-}
-
-impl std::ops::DerefMut for WidgetRef {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		&mut self.0
+impl Module for Gui {
+	fn new() -> Self {
+		Self {
+			widgets: Vec::with_capacity(1024),
+			free: Vec::with_capacity(256),
+			base: None,
+		}
 	}
 }
 
 pub trait Widget: Debug + 'static {
-	fn parent(&self) -> Option<&WidgetRef>;
-	fn set_parent(&mut self, parent: Option<&WidgetRef>);
+	fn parent(&self) -> Option<WidgetRef>;
+	fn set_parent(&mut self, parent: Option<WidgetRef>);
 
 	fn slot(&self) -> Option<&dyn Slot>;
 	fn slot_mut(&mut self) -> Option<&mut dyn Slot>;
 }
 
-#[derive(Debug, Widget)]
+#[derive(Widget)]
 pub struct TextBlock {
 	parent: Option<WidgetRef>,
 	text: String,
@@ -62,7 +143,7 @@ impl TextBlock {
 	}
 }
 
-#[derive(Default, Debug, Widget)]
+#[derive(Default, Widget)]
 pub struct Button {
 	parent: Option<WidgetRef>,
 	slot: CompoundSlot,
@@ -77,7 +158,7 @@ impl Button {
 	}
 }
 
-#[derive(Default, Debug, Widget)]
+#[derive(Default, Widget)]
 pub struct Border {
 	parent: Option<WidgetRef>,
 	slot: CompoundSlot,
@@ -94,7 +175,7 @@ impl Border {
 
 pub trait Slot: Debug + 'static {
 	fn children(&self) -> &[WidgetRef];
-	fn set_child(&mut self, index: usize, widget: &WidgetRef);
+	fn set_child(&mut self, index: usize, widget: Option<WidgetRef>);
 }
 
 #[derive(Default, Debug)]
@@ -108,7 +189,7 @@ impl CompoundSlot {
 	}
 
 	pub fn child(mut self, widget: impl Widget) -> Self {
-		self.child = Some(WidgetRef::new(widget));
+		self.child = Some(Gui::create(widget));
 		self
 	}
 }
@@ -120,8 +201,21 @@ impl Slot for CompoundSlot {
 			None => &[],
 		}
 	}
-	fn set_child(&mut self, index: usize, widget: &WidgetRef) {
+	fn set_child(&mut self, index: usize, widget: Option<WidgetRef>) {
 		assert_eq!(index, 0, "This slot only supports a single child.");
-		self.child = Some(widget.clone())
+		self.child = widget
 	}
+}
+
+#[test]
+fn test() {
+	Engine::builder().module::<Gui>().spawn().unwrap();
+
+	let button = Border::new(|slot| {
+		slot.child(Button::new(|slot| {
+			slot.child(TextBlock::new("Hello World"))
+		}))
+	});
+	Gui::set_base(Some(Gui::create(button)));
+	println!("{:#?}", Gui::base());
 }
