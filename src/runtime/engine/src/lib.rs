@@ -376,7 +376,7 @@ impl Engine {
 		ENGINE.as_mut().unwrap()
 	}
 
-	pub fn module<T: Module>() -> Option<&'static T> {
+	pub fn module<'a, T: Module>() -> Option<&'a T> {
 		let engine = Engine::as_ref();
 
 		let id = TypeId::of::<T>();
@@ -385,7 +385,7 @@ impl Engine {
 		module.downcast_ref::<T>()
 	}
 
-	pub unsafe fn module_mut<T: Module>() -> Option<&'static mut T> {
+	pub unsafe fn module_mut<'a, T: Module>() -> Option<&'a mut T> {
 		let engine = Engine::as_mut();
 
 		let id = TypeId::of::<T>();
@@ -393,7 +393,7 @@ impl Engine {
 		module.downcast_mut::<T>()
 	}
 
-	pub fn register<T: Register>() -> Option<&'static [T]> {
+	pub fn register<'a, T: Register>() -> Option<&'a [T]> {
 		let engine = Engine::as_ref();
 		let id = TypeId::of::<T>();
 
@@ -403,7 +403,7 @@ impl Engine {
 		}
 	}
 
-	pub fn config<T: Config>() -> &'static T {
+	pub fn config<'a, T: Config>() -> &'a T {
 		let engine = Engine::as_ref();
 		let id = TypeId::of::<T>();
 
@@ -418,12 +418,12 @@ impl Engine {
 	}
 
 	/// Returns the name of the engine runnable
-	pub fn name() -> &'static str {
+	pub fn name<'a>() -> &'a str {
 		&Engine::as_ref().name
 	}
 
 	/// Returns the window that the engine draws into
-	pub fn window() -> Option<&'static Window> {
+	pub fn window<'a>() -> Option<&'a Window> {
 		Engine::as_ref().window.as_ref()
 	}
 
@@ -443,7 +443,7 @@ impl Engine {
 		sync::block_on(future)
 	}
 
-	pub fn logger() -> &'static Logger {
+	pub fn logger<'a>() -> &'a Logger {
 		&Engine::as_ref().logger
 	}
 }

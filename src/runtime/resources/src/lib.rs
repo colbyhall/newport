@@ -295,6 +295,14 @@ impl<T: Resource> Default for Handle<T> {
 	}
 }
 
+impl<T: Resource> std::fmt::Debug for Handle<T> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct(&format!("Handle<{}>", std::any::type_name::<T>()))
+			.field("id", &self.uuid)
+			.finish()
+	}
+}
+
 pub(crate) const META_EXTENSION: &str = ".meta";
 
 /// TODO: Document

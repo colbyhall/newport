@@ -86,7 +86,7 @@ fn implement_struct_widget(ident: &Ident, generics: &Generics, fields: &Fields) 
 							parent = true;
 
 							tokens.push(quote! {
-								.field(stringify!(#ident), &self.#ident.is_some())
+								.field(stringify!(#ident), &self.#ident.map(|p| p.merged()))
 							})
 						} else {
 							if *ident == "slot" {
@@ -138,6 +138,18 @@ fn implement_struct_widget(ident: &Ident, generics: &Generics, fields: &Fields) 
 			}
 
 			#slot
+
+			fn as_any(&self) -> &dyn Any {
+				self
+			}
+
+			fn as_any_mut(&mut self) -> &mut dyn Any {
+				self
+			}
+
+			fn paint(&self, painter: &mut graphics::Painter, bounds: math::Rect) {
+				#ident::paint(self, painter, bounds)
+			}
 		}
 
 		impl #impl_generics std::fmt::Debug for #ident #ty_generics #where_clause {

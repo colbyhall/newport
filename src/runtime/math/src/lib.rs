@@ -1,5 +1,6 @@
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_float_classify)]
+#![feature(const_trait_impl)]
 #![feature(trait_alias)]
 #![allow(clippy::float_cmp)]
 
@@ -30,6 +31,11 @@ pub use {
 	vec4::*,
 };
 
+use serde::{
+	de::DeserializeOwned,
+	Serialize,
+};
+
 use std::ops::*;
 
 pub trait Number:
@@ -45,6 +51,8 @@ pub trait Number:
 	+ Copy
 	+ Clone
 	+ PartialEq
+	+ DeserializeOwned
+	+ Serialize
 {
 	fn one() -> Self;
 	fn zero() -> Self {

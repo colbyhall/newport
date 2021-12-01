@@ -1,230 +1,74 @@
+use graphics::Graphics;
+use resources::ResourceManager;
+
+mod layout;
+mod widget;
+
+pub use {
+	layout::*,
+	widget::*,
+};
+
 use {
-	derive::Widget,
 	engine::{
 		Engine,
 		Module,
 	},
-	std::{
-		convert::Into,
-		fmt,
-		fmt::Debug,
-	},
+	std::thread,
 };
 
-#[derive(Clone, Copy, PartialEq)]
-pub struct WidgetRef {
-	generation: u32,
-	index: u32,
-}
-
-impl WidgetRef {
-	pub fn merged(self) -> u64 {
-		((self.generation as u64) << 32) | (self.index as u64)
-	}
-}
-
-impl fmt::Debug for WidgetRef {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		match Gui::find(*self) {
-			Some(me) => {
-				f.write_fmt(format_args!("(0x{:X}) ", self.merged()))?;
-				me.fmt(f)
-			}
-			None => Ok(()),
-		}
-	}
-}
-
-struct Entry {
-	generation: u32,
-	widget: Box<dyn Widget>,
-}
-
 pub struct Gui {
-	widgets: Vec<Entry>,
-	free: Vec<usize>,
-	base: Option<WidgetRef>,
+	thread_id: thread::ThreadId,
+
+	widgets: WidgetTree,
+	layouts: LayoutTree,
 }
 
 impl Gui {
-	pub fn create(widget: impl Widget) -> WidgetRef {
-		// TODO: Check if is on the main thread or not
-		let gui: &mut Gui = unsafe { Engine::module_mut().unwrap() };
-
-		let result = match gui.free.pop() {
-			Some(index) => {
-				let entry = &mut gui.widgets[index];
-				entry.widget = Box::new(widget);
-				WidgetRef {
-					index: index as u32,
-					generation: entry.generation,
-				}
-			}
-			None => {
-				let index = gui.widgets.len();
-				gui.widgets.push(Entry {
-					generation: 0,
-					widget: Box::new(widget),
-				});
-				WidgetRef {
-					index: index as u32,
-					generation: 0,
-				}
-			}
-		};
-
-		let widget = Gui::find(result).unwrap();
-		if let Some(slot) = widget.slot() {
-			slot.children().iter().for_each(|c| {
-				if let Some(child) = Gui::find_mut(*c) {
-					child.set_parent(Some(result))
-				}
-			})
-		}
-
-		result
+	fn as_ref<'a>() -> &'a Gui {
+		let gui: &'a Gui = Engine::module().unwrap();
+		assert_eq!(thread::current().id(), gui.thread_id);
+		gui
 	}
 
-	pub fn destroy(widget: WidgetRef) -> bool {
-		let gui: &mut Gui = unsafe { Engine::module_mut().unwrap() };
-		let entry = gui.widgets.get_mut(widget.index as usize);
-		if let Some(entry) = entry {
-			if entry.generation == widget.generation {
-				entry.generation += 1;
-				gui.free.push(widget.index as usize);
-				return true;
-			}
-		}
-		false
+	fn as_mut<'a>() -> &'a mut Gui {
+		let gui: &'a mut Gui = unsafe { Engine::module_mut().unwrap() };
+		assert_eq!(thread::current().id(), gui.thread_id);
+		gui
 	}
 
-	pub fn find<'a>(widget: WidgetRef) -> Option<&'a dyn Widget> {
-		// TODO: Check if is on the main thread or not
-
-		let gui: &Gui = Engine::module().unwrap();
-		gui.widgets
-			.get(widget.index as usize)
-			.map(|e| e.widget.as_ref())
+	pub fn widgets<'a>() -> &'a WidgetTree {
+		&Self::as_ref().widgets
 	}
 
-	pub fn find_mut<'a>(widget: WidgetRef) -> Option<&'a mut dyn Widget> {
-		// TODO: Check if is on the main thread or not
-
-		let gui: &mut Gui = unsafe { Engine::module_mut().unwrap() };
-		gui.widgets
-			.get_mut(widget.index as usize)
-			.map(|e| e.widget.as_mut())
+	pub fn widgets_mut<'a>() -> &'a mut WidgetTree {
+		&mut Self::as_mut().widgets
 	}
 
-	pub fn base() -> Option<WidgetRef> {
-		// TODO: Check if is on the main thread or not
-
-		let gui: &Gui = Engine::module().unwrap();
-		gui.base
+	pub fn layouts<'a>() -> &'a LayoutTree {
+		&Self::as_ref().layouts
 	}
 
-	pub fn set_base(base: Option<WidgetRef>) {
-		// TODO: Check if is on the main thread or not
-
-		let gui: &mut Gui = unsafe { Engine::module_mut().unwrap() };
-		gui.base = base
+	pub fn layouts_mut<'a>() -> &'a mut LayoutTree {
+		&mut Self::as_mut().layouts
 	}
 }
 
 impl Module for Gui {
 	fn new() -> Self {
 		Self {
-			widgets: Vec::with_capacity(1024),
-			free: Vec::with_capacity(256),
-			base: None,
+			thread_id: thread::current().id(),
+
+			widgets: WidgetTree::new(),
+			layouts: LayoutTree::new(),
 		}
 	}
-}
 
-pub trait Widget: Debug + 'static {
-	fn parent(&self) -> Option<WidgetRef>;
-	fn set_parent(&mut self, parent: Option<WidgetRef>);
-
-	fn slot(&self) -> Option<&dyn Slot>;
-	fn slot_mut(&mut self) -> Option<&mut dyn Slot>;
-}
-
-#[derive(Widget)]
-pub struct TextBlock {
-	parent: Option<WidgetRef>,
-	text: String,
-}
-
-impl TextBlock {
-	pub fn new(text: impl Into<String>) -> Self {
-		Self {
-			parent: None,
-			text: text.into(),
-		}
-	}
-}
-
-#[derive(Default, Widget)]
-pub struct Button {
-	parent: Option<WidgetRef>,
-	slot: CompoundSlot,
-}
-
-impl Button {
-	pub fn new(slot: impl FnOnce(CompoundSlot) -> CompoundSlot) -> Self {
-		Self {
-			parent: None,
-			slot: (slot)(CompoundSlot::new()),
-		}
-	}
-}
-
-#[derive(Default, Widget)]
-pub struct Border {
-	parent: Option<WidgetRef>,
-	slot: CompoundSlot,
-}
-
-impl Border {
-	pub fn new(slot: impl FnOnce(CompoundSlot) -> CompoundSlot) -> Self {
-		Self {
-			parent: None,
-			slot: (slot)(CompoundSlot::new()),
-		}
-	}
-}
-
-pub trait Slot: Debug + 'static {
-	fn children(&self) -> &[WidgetRef];
-	fn set_child(&mut self, index: usize, widget: Option<WidgetRef>);
-}
-
-#[derive(Default, Debug)]
-pub struct CompoundSlot {
-	child: Option<WidgetRef>,
-}
-
-impl CompoundSlot {
-	pub fn new() -> Self {
-		Self { child: None }
-	}
-
-	pub fn child(mut self, widget: impl Widget) -> Self {
-		self.child = Some(Gui::create(widget));
-		self
-	}
-}
-
-impl Slot for CompoundSlot {
-	fn children(&self) -> &[WidgetRef] {
-		match &self.child {
-			Some(child) => std::slice::from_ref(child),
-			None => &[],
-		}
-	}
-	fn set_child(&mut self, index: usize, widget: Option<WidgetRef>) {
-		assert_eq!(index, 0, "This slot only supports a single child.");
-		self.child = widget
+	fn depends_on(builder: engine::Builder) -> engine::Builder {
+		builder
+			.module::<Graphics>()
+			.module::<ResourceManager>()
+			.display(|| {})
 	}
 }
 
@@ -237,6 +81,8 @@ fn test() {
 			slot.child(TextBlock::new("Hello World"))
 		}))
 	});
-	Gui::set_base(Some(Gui::create(button)));
-	println!("{:#?}", Gui::base());
+	let widgets = Gui::widgets_mut();
+	let button = widgets.create(button);
+	Gui::widgets_mut().set_base(Some(button));
+	println!("{:#?}", widgets);
 }
