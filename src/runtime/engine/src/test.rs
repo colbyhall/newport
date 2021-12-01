@@ -2,7 +2,7 @@ use crate::*;
 
 #[test]
 fn hello_world() {
-	Engine::builder().spawn().unwrap();
+	Engine::builder().test().unwrap();
 }
 
 #[test]
@@ -13,7 +13,7 @@ fn module() {
 			Self
 		}
 	}
-	Engine::builder().module::<TestModule>().spawn().unwrap();
+	Engine::builder().module::<TestModule>().test().unwrap();
 }
 
 #[test]
@@ -35,5 +35,5 @@ fn module_dependency() {
 			builder.module::<ModuleA>()
 		}
 	}
-	Engine::builder().module::<ModuleB>().spawn().unwrap();
+	Engine::builder().module::<ModuleB>().test().unwrap();
 }

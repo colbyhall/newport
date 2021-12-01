@@ -127,7 +127,11 @@ impl Builder {
 	}
 
 	pub fn spawn(self) -> Result<(), std::io::Error> {
-		Engine::spawn(self, None)
+		Engine::spawn(self, None, false)
+	}
+
+	pub fn test(self) -> Result<(), std::io::Error> {
+		Engine::spawn(self, None, true)
 	}
 }
 

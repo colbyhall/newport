@@ -13,14 +13,23 @@ use {
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct WidgetRef {
-	index: u32,
 	generation: u32,
+	index: u32,
+}
+
+impl WidgetRef {
+	pub fn merged(self) -> u64 {
+		((self.generation as u64) << 32) | (self.index as u64)
+	}
 }
 
 impl fmt::Debug for WidgetRef {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match Gui::find(*self) {
-			Some(me) => me.fmt(f),
+			Some(me) => {
+				f.write_fmt(format_args!("(0x{:X}) ", self.merged()))?;
+				me.fmt(f)
+			}
 			None => Ok(()),
 		}
 	}
@@ -40,9 +49,9 @@ pub struct Gui {
 impl Gui {
 	pub fn create(widget: impl Widget) -> WidgetRef {
 		// TODO: Check if is on the main thread or not
-
 		let gui: &mut Gui = unsafe { Engine::module_mut().unwrap() };
-		match gui.free.pop() {
+
+		let result = match gui.free.pop() {
 			Some(index) => {
 				let entry = &mut gui.widgets[index];
 				entry.widget = Box::new(widget);
@@ -62,7 +71,18 @@ impl Gui {
 					generation: 0,
 				}
 			}
+		};
+
+		let widget = Gui::find(result).unwrap();
+		if let Some(slot) = widget.slot() {
+			slot.children().iter().for_each(|c| {
+				if let Some(child) = Gui::find_mut(*c) {
+					child.set_parent(Some(result))
+				}
+			})
 		}
+
+		result
 	}
 
 	pub fn destroy(widget: WidgetRef) -> bool {
@@ -71,6 +91,7 @@ impl Gui {
 		if let Some(entry) = entry {
 			if entry.generation == widget.generation {
 				entry.generation += 1;
+				gui.free.push(widget.index as usize);
 				return true;
 			}
 		}
@@ -209,7 +230,7 @@ impl Slot for CompoundSlot {
 
 #[test]
 fn test() {
-	Engine::builder().module::<Gui>().spawn().unwrap();
+	Engine::builder().module::<Gui>().test().unwrap();
 
 	let button = Border::new(|slot| {
 		slot.child(Button::new(|slot| {

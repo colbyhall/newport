@@ -80,6 +80,7 @@ impl Engine {
 	pub(crate) fn spawn(
 		mut builder: Builder,
 		window: Option<Window>,
+		test: bool,
 	) -> Result<(), std::io::Error> {
 		unsafe {
 			// Use this to mark when registration finished. This must happen before anything else.
@@ -89,24 +90,25 @@ impl Engine {
 
 			// Ensure that we're working in the projects workspace.
 			let exe_path = std::env::current_exe()?;
-			#[cfg(not(test))]
-			let new_working_directory = exe_path
-				.parent()
-				.unwrap()
-				.parent()
-				.unwrap()
-				.parent()
-				.unwrap();
-			#[cfg(test)]
-			let new_working_directory = exe_path
-				.parent()
-				.unwrap()
-				.parent()
-				.unwrap()
-				.parent()
-				.unwrap()
-				.parent()
-				.unwrap();
+			let new_working_directory = if test {
+				exe_path
+					.parent()
+					.unwrap()
+					.parent()
+					.unwrap()
+					.parent()
+					.unwrap()
+					.parent()
+					.unwrap()
+			} else {
+				exe_path
+					.parent()
+					.unwrap()
+					.parent()
+					.unwrap()
+					.parent()
+					.unwrap()
+			};
 			std::env::set_current_dir(new_working_directory)?;
 
 			// Ensure we have a valid name for the project. This is used for a variety of things
@@ -187,7 +189,7 @@ impl Engine {
 			None => None,
 		};
 
-		Engine::spawn(builder, window)?;
+		Engine::spawn(builder, window, false)?;
 		let engine = Engine::as_ref();
 
 		let mut frame_count = 0;
