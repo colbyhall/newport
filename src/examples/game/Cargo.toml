@@ -13,3 +13,5 @@ gpu = { path = "../../runtime/gpu" }
 graphics = { path = "../../runtime/graphics" }
 math = { path = "../../runtime/math" }
 ecs = { path = "../../runtime/ecs" }
+editor = { path = "../../runtime/editor" }
+egui = { path = "../../third_party/egui" }

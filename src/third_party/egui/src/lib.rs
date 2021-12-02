@@ -41,6 +41,8 @@ pub struct Egui {
 
 	pipeline: Handle<GraphicsPipeline>,
 	texture: Option<EguiTexture>,
+
+	tick_accum: f32,
 }
 
 impl Module for Egui {
@@ -63,12 +65,13 @@ impl Module for Egui {
 
 			pipeline: Handle::find_or_load("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}").unwrap(),
 			texture: None,
+
+			tick_accum: 0.0,
 		}
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
 		builder
-			.module::<gpu::Gpu>()
 			.module::<gpu::Gpu>()
 			.module::<resources::ResourceManager>()
 			.process_input(|event| {
@@ -201,7 +204,12 @@ impl Module for Egui {
 			})
 			.tick(|dt| {
 				let egui: &mut Egui = unsafe { Engine::module_mut().unwrap() };
-				egui.tick = Some(dt);
+				let targeted = 1.0 / 60.0;
+				egui.tick_accum += dt;
+				if egui.tick_accum > targeted {
+					egui.tick_accum -= targeted;
+					egui.tick = Some(targeted);
+				}
 			})
 			.display(|| {
 				let egui: &mut Egui = unsafe { Engine::module_mut().unwrap() };
@@ -220,7 +228,7 @@ impl Module for Egui {
 					pos2(viewport.x, viewport.y),
 				));
 				input.predicted_dt = dt;
-				input.pixels_per_point = Some(dpi);
+				input.pixels_per_point = Some(2.0); // Without this it looks weird on 96 dpi for  some reason.
 
 				// Do egui frame using scope registers
 				egui.context.begin_frame(input);

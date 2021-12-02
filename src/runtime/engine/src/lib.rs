@@ -59,6 +59,9 @@ use sync::Future;
 
 static mut ENGINE: Option<Engine> = None;
 
+pub const ENGINE_NAME: &str = "Newport";
+pub const ENGINE_VERSION: &str = "0.1                                                                                                                                       ";
+
 /// Global runnable structure used for instantiating engine modules and handling app code
 ///
 /// Created using a [`Builder`] which defines the functionality of the app using [`Module`]s
@@ -112,7 +115,7 @@ impl Engine {
 			std::env::set_current_dir(new_working_directory)?;
 
 			// Ensure we have a valid name for the project. This is used for a variety of things
-			let name = builder.name.take().unwrap_or_else(|| "newport".to_string());
+			let name = builder.name.take().unwrap_or_else(|| "project".to_string());
 
 			// Manually clone the config register as the config map needs it. Config must happen before module initialization so they can rely on it
 			let id = TypeId::of::<ConfigRegister>();
@@ -175,7 +178,7 @@ impl Engine {
 
 		let name = match &builder.name {
 			Some(name) => name.clone(),
-			None => "newport".to_string(),
+			None => "project".to_string(),
 		};
 
 		let event_loop = EventLoop::new();

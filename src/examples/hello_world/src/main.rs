@@ -29,6 +29,13 @@ impl Module for HelloWorld {
 			let hello_world: &mut HelloWorld = unsafe { Engine::module_mut().unwrap() };
 			let HelloWorld { name, age, color } = hello_world;
 
+			TopBottomPanel::bottom("context_bar").show(ctx, |ui| {
+				ui.horizontal(|ui| {
+					ui.label("My egui Application");
+					ui.label("My egui Application");
+				})
+			});
+
 			Window::new("Hello World").show(ctx, |ui| {
 				ui.heading("My egui Application");
 				ui.horizontal(|ui| {
@@ -41,6 +48,10 @@ impl Module for HelloWorld {
 				}
 				ui.label(format!("Hello '{}', age {}", name, age));
 				ui.color_edit_button_rgb(color);
+			});
+
+			Window::new("Settings").show(ctx, |ui| {
+				ctx.settings_ui(ui);
 			});
 		}))
 	}
