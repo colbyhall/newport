@@ -8,17 +8,17 @@ use serde::{
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Transform {
-	pub location: Vector2,
+	pub location: Vec2,
 	pub rotation: f32,
-	pub scale: Vector2,
+	pub scale: Vec2,
 }
 
 impl Default for Transform {
 	fn default() -> Self {
 		Self {
-			location: Vector2::ZERO,
+			location: Vec2::ZERO,
 			rotation: 0.0,
-			scale: Vector2::ONE,
+			scale: Vec2::ONE,
 		}
 	}
 }

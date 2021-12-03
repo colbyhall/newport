@@ -18,9 +18,9 @@ use {
 		srgb_to_linear,
 		Color,
 		Matrix4,
-		Vector2,
-		Vector3,
-		Vector4,
+		Vec2,
+		Vec3,
+		Vec4,
 	},
 	platform::input::*,
 
@@ -36,7 +36,7 @@ struct EguiTexture {
 pub struct Egui {
 	context: CtxRef,
 	input: Option<RawInput>,
-	mouse_position: Option<Vector2>,
+	mouse_position: Option<Vec2>,
 	tick: Option<f32>,
 
 	pipeline: Handle<GraphicsPipeline>,
@@ -84,8 +84,7 @@ impl Module for Egui {
 				let window = Engine::window().unwrap();
 				let viewport = window.inner_size();
 				let dpi = window.scale_factor() as f32;
-				let viewport =
-					Vector2::new(viewport.width as f32 / dpi, viewport.height as f32 / dpi);
+				let viewport = Vec2::new(viewport.width as f32 / dpi, viewport.height as f32 / dpi);
 
 				match event {
 					EngineEvent::Char(c) => {
@@ -188,8 +187,8 @@ impl Module for Egui {
 						});
 					}
 					EngineEvent::MouseMove(x, y) => {
-						let position = Vector2::new(*x as f32 / dpi, *y as f32 / dpi);
-						let position = Vector2::new(position.x, viewport.y - position.y);
+						let position = Vec2::new(*x as f32 / dpi, *y as f32 / dpi);
+						let position = Vec2::new(position.x, viewport.y - position.y);
 						egui.mouse_position = Some(position);
 						input
 							.events
@@ -219,8 +218,7 @@ impl Module for Egui {
 				let window = Engine::window().unwrap();
 				let dpi = window.scale_factor() as f32;
 				let viewport = window.inner_size();
-				let viewport =
-					Vector2::new(viewport.width as f32 / dpi, viewport.height as f32 / dpi);
+				let viewport = Vec2::new(viewport.width as f32 / dpi, viewport.height as f32 / dpi);
 
 				let mut input = egui.input.take().unwrap_or_default();
 				input.screen_rect = Some(Rect::from_min_max(
@@ -315,9 +313,9 @@ impl Module for Egui {
 
 				#[allow(dead_code)]
 				struct Vertex {
-					position: Vector2,
-					uv: Vector2,
-					scissor: Vector4,
+					position: Vec2,
+					uv: Vec2,
+					scissor: Vec4,
 					color: Color,
 					tex: u32,
 				}
@@ -338,9 +336,9 @@ impl Module for Egui {
 						let color = Color::new(r, g, b, a);
 
 						vertices.push(Vertex {
-							position: Vector2::new(vertex.pos.x, vertex.pos.y),
-							uv: Vector2::new(vertex.uv.x, vertex.uv.y),
-							scissor: Vector4::new(it.0.min.x, it.0.min.y, it.0.max.x, it.0.max.y),
+							position: Vec2::new(vertex.pos.x, vertex.pos.y),
+							uv: Vec2::new(vertex.uv.x, vertex.uv.y),
+							scissor: Vec4::new(it.0.min.x, it.0.min.y, it.0.max.x, it.0.max.y),
 							color,
 							tex,
 						});
@@ -370,8 +368,7 @@ impl Module for Egui {
 				index_buffer.copy_to(&indices[..]).unwrap();
 
 				let proj = Matrix4::ortho(viewport.x, -viewport.y, 1000.0, 0.1);
-				let view =
-					Matrix4::translate(Vector3::new(-viewport.x / 2.0, -viewport.y / 2.0, 0.0));
+				let view = Matrix4::translate(Vec3::new(-viewport.x / 2.0, -viewport.y / 2.0, 0.0));
 
 				#[allow(dead_code)]
 				struct Imports {

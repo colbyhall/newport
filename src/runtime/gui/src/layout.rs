@@ -8,9 +8,9 @@ use {
 
 #[derive(Clone, Copy, Default)]
 pub struct Layout {
-	pub local_position: Vector2,
-	pub absolute_position: Vector2,
-	pub size: Vector2,
+	pub local_position: Vec2,
+	pub absolute_position: Vec2,
+	pub size: Vec2,
 }
 
 #[derive(Default)]
@@ -38,7 +38,7 @@ impl LayoutTree {
 
 		// Idomatic way of garbbing the viewport size
 		let viewport = engine::Engine::window().unwrap().inner_size();
-		let viewport = Vector2::new(viewport.width as f32, viewport.height as f32);
+		let viewport = Vec2::new(viewport.width as f32, viewport.height as f32);
 
 		let base = widgets.base();
 		if base.is_none() {
@@ -47,8 +47,8 @@ impl LayoutTree {
 		let base = base.unwrap();
 		{
 			let layout = self.find_mut(base);
-			layout.local_position = Vector2::ZERO;
-			layout.absolute_position = Vector2::ZERO;
+			layout.local_position = Vec2::ZERO;
+			layout.absolute_position = Vec2::ZERO;
 			layout.size = viewport;
 		}
 

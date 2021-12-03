@@ -6,8 +6,8 @@ use std::ops::{
 };
 
 use crate::Quaternion;
-use crate::Vector3;
-use crate::Vector4;
+use crate::Vec3;
+use crate::Vec4;
 use crate::PI;
 
 use serde::{
@@ -17,10 +17,10 @@ use serde::{
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Matrix4 {
-	pub x_column: Vector4,
-	pub y_column: Vector4,
-	pub z_column: Vector4,
-	pub w_column: Vector4,
+	pub x_column: Vec4,
+	pub y_column: Vec4,
+	pub z_column: Vec4,
+	pub w_column: Vec4,
 }
 
 impl Default for Matrix4 {
@@ -31,25 +31,20 @@ impl Default for Matrix4 {
 
 impl Matrix4 {
 	pub const ZERO: Self = Self {
-		x_column: Vector4::new(0.0, 0.0, 0.0, 0.0),
-		y_column: Vector4::new(0.0, 0.0, 0.0, 0.0),
-		z_column: Vector4::new(0.0, 0.0, 0.0, 0.0),
-		w_column: Vector4::new(0.0, 0.0, 0.0, 0.0),
+		x_column: Vec4::new(0.0, 0.0, 0.0, 0.0),
+		y_column: Vec4::new(0.0, 0.0, 0.0, 0.0),
+		z_column: Vec4::new(0.0, 0.0, 0.0, 0.0),
+		w_column: Vec4::new(0.0, 0.0, 0.0, 0.0),
 	};
 
 	pub const IDENTITY: Self = Self {
-		x_column: Vector4::new(1.0, 0.0, 0.0, 0.0),
-		y_column: Vector4::new(0.0, 1.0, 0.0, 0.0),
-		z_column: Vector4::new(0.0, 0.0, 1.0, 0.0),
-		w_column: Vector4::new(0.0, 0.0, 0.0, 1.0),
+		x_column: Vec4::new(1.0, 0.0, 0.0, 0.0),
+		y_column: Vec4::new(0.0, 1.0, 0.0, 0.0),
+		z_column: Vec4::new(0.0, 0.0, 1.0, 0.0),
+		w_column: Vec4::new(0.0, 0.0, 0.0, 1.0),
 	};
 
-	pub const fn from_cols(
-		x_axis: Vector4,
-		y_axis: Vector4,
-		z_axis: Vector4,
-		w_axis: Vector4,
-	) -> Self {
+	pub const fn from_cols(x_axis: Vec4, y_axis: Vec4, z_axis: Vec4, w_axis: Vec4) -> Self {
 		Self {
 			x_column: x_axis,
 			y_column: y_axis,
@@ -58,56 +53,51 @@ impl Matrix4 {
 		}
 	}
 
-	pub const fn from_rows(
-		x_axis: Vector4,
-		y_axis: Vector4,
-		z_axis: Vector4,
-		w_axis: Vector4,
-	) -> Self {
-		let x = Vector4::new(x_axis.x, y_axis.x, z_axis.x, w_axis.x);
-		let y = Vector4::new(x_axis.y, y_axis.y, z_axis.y, w_axis.y);
-		let z = Vector4::new(x_axis.z, y_axis.z, z_axis.z, w_axis.z);
-		let w = Vector4::new(x_axis.w, y_axis.w, z_axis.w, w_axis.w);
+	pub const fn from_rows(x_axis: Vec4, y_axis: Vec4, z_axis: Vec4, w_axis: Vec4) -> Self {
+		let x = Vec4::new(x_axis.x, y_axis.x, z_axis.x, w_axis.x);
+		let y = Vec4::new(x_axis.y, y_axis.y, z_axis.y, w_axis.y);
+		let z = Vec4::new(x_axis.z, y_axis.z, z_axis.z, w_axis.z);
+		let w = Vec4::new(x_axis.w, y_axis.w, z_axis.w, w_axis.w);
 		Self::from_cols(x, y, z, w)
 	}
 
-	pub fn col(&self, index: usize) -> Vector4 {
+	pub fn col(&self, index: usize) -> Vec4 {
 		match index {
 			0 => self.x_column,
 			1 => self.y_column,
 			2 => self.z_column,
 			3 => self.w_column,
-			_ => Vector4::ZERO,
+			_ => Vec4::ZERO,
 		}
 	}
 
-	pub fn row(&self, index: usize) -> Vector4 {
+	pub fn row(&self, index: usize) -> Vec4 {
 		match index {
-			0 => Vector4::new(
+			0 => Vec4::new(
 				self.x_column.x,
 				self.y_column.x,
 				self.z_column.x,
 				self.w_column.x,
 			),
-			1 => Vector4::new(
+			1 => Vec4::new(
 				self.x_column.y,
 				self.y_column.y,
 				self.z_column.y,
 				self.w_column.z,
 			),
-			2 => Vector4::new(
+			2 => Vec4::new(
 				self.x_column.z,
 				self.y_column.z,
 				self.z_column.z,
 				self.w_column.z,
 			),
-			3 => Vector4::new(
+			3 => Vec4::new(
 				self.x_column.w,
 				self.y_column.w,
 				self.z_column.w,
 				self.w_column.w,
 			),
-			_ => Vector4::ZERO,
+			_ => Vec4::ZERO,
 		}
 	}
 
@@ -140,7 +130,7 @@ impl Matrix4 {
 		result
 	}
 
-	pub fn translate(xyz: impl Into<Vector3>) -> Matrix4 {
+	pub fn translate(xyz: impl Into<Vec3>) -> Matrix4 {
 		let mut result = Matrix4::IDENTITY;
 		result.w_column = (xyz.into(), 1.0).into();
 		result
@@ -178,13 +168,13 @@ impl Matrix4 {
 		result
 	}
 
-	pub fn scale(xyz: impl Into<Vector3>) -> Self {
+	pub fn scale(xyz: impl Into<Vec3>) -> Self {
 		let xyz = xyz.into();
 		Self {
-			x_column: Vector4::new(xyz.x, 0.0, 0.0, 0.0),
-			y_column: Vector4::new(0.0, xyz.y, 0.0, 0.0),
-			z_column: Vector4::new(0.0, 0.0, xyz.z, 0.0),
-			w_column: Vector4::new(0.0, 0.0, 0.0, 1.0),
+			x_column: Vec4::new(xyz.x, 0.0, 0.0, 0.0),
+			y_column: Vec4::new(0.0, xyz.y, 0.0, 0.0),
+			z_column: Vec4::new(0.0, 0.0, xyz.z, 0.0),
+			w_column: Vec4::new(0.0, 0.0, 0.0, 1.0),
 		}
 	}
 
@@ -356,25 +346,25 @@ impl Mul for Matrix4 {
 	type Output = Self;
 
 	fn mul(self, rhs: Self) -> Self::Output {
-		let mut row_x = Vector4::ZERO;
+		let mut row_x = Vec4::ZERO;
 		row_x.x = self.row(0).dot(rhs.x_column);
 		row_x.y = self.row(0).dot(rhs.y_column);
 		row_x.z = self.row(0).dot(rhs.z_column);
 		row_x.w = self.row(0).dot(rhs.w_column);
 
-		let mut row_y = Vector4::ZERO;
+		let mut row_y = Vec4::ZERO;
 		row_y.x = self.row(1).dot(rhs.x_column);
 		row_y.y = self.row(1).dot(rhs.y_column);
 		row_y.z = self.row(1).dot(rhs.z_column);
 		row_y.w = self.row(1).dot(rhs.w_column);
 
-		let mut row_z = Vector4::ZERO;
+		let mut row_z = Vec4::ZERO;
 		row_z.x = self.row(2).dot(rhs.x_column);
 		row_z.y = self.row(2).dot(rhs.y_column);
 		row_z.z = self.row(2).dot(rhs.z_column);
 		row_z.w = self.row(2).dot(rhs.w_column);
 
-		let mut row_w = Vector4::ZERO;
+		let mut row_w = Vec4::ZERO;
 		row_w.x = self.row(3).dot(rhs.x_column);
 		row_w.y = self.row(3).dot(rhs.y_column);
 		row_w.z = self.row(3).dot(rhs.z_column);
@@ -384,16 +374,16 @@ impl Mul for Matrix4 {
 	}
 }
 
-impl Mul<Vector4> for Matrix4 {
-	type Output = Vector4;
+impl Mul<Vec4> for Matrix4 {
+	type Output = Vec4;
 
-	fn mul(self, rhs: Vector4) -> Self::Output {
+	fn mul(self, rhs: Vec4) -> Self::Output {
 		let x = self.row(0).dot(rhs);
 		let y = self.row(1).dot(rhs);
 		let z = self.row(2).dot(rhs);
 		let w = self.row(3).dot(rhs);
 
-		Vector4::new(x, y, z, w)
+		Vec4::new(x, y, z, w)
 	}
 }
 

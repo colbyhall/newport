@@ -7,7 +7,7 @@ use serde::{
 
 use std::ops::Mul;
 
-use crate::Vector3;
+use crate::Vec3;
 use crate::TO_RAD;
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
@@ -32,7 +32,7 @@ impl Quaternion {
 		w: 1.0,
 	};
 
-	pub fn from_axis_angle(axis: impl Into<Vector3>, theta: f32) -> Self {
+	pub fn from_axis_angle(axis: impl Into<Vec3>, theta: f32) -> Self {
 		let axis = axis.into();
 
 		let theta = theta / 2.0;
@@ -47,7 +47,7 @@ impl Quaternion {
 		}
 	}
 
-	pub fn from_euler(euler: impl Into<Vector3>) -> Self {
+	pub fn from_euler(euler: impl Into<Vec3>) -> Self {
 		const RADS_DIV_BY_2: f32 = TO_RAD / 2.0;
 
 		let euler = euler.into();
@@ -111,25 +111,25 @@ impl Quaternion {
 		}
 	}
 
-	pub fn rotate(self, xyz: Vector3) -> Vector3 {
+	pub fn rotate(self, xyz: Vec3) -> Vec3 {
 		let t = self.xyz().cross(xyz) * 2.0;
 		xyz + (t * self.w) + self.xyz().cross(t)
 	}
 
-	pub fn forward(self) -> Vector3 {
-		self.rotate(Vector3::FORWARD)
+	pub fn forward(self) -> Vec3 {
+		self.rotate(Vec3::FORWARD)
 	}
 
-	pub fn right(self) -> Vector3 {
-		self.rotate(Vector3::RIGHT)
+	pub fn right(self) -> Vec3 {
+		self.rotate(Vec3::RIGHT)
 	}
 
-	pub fn up(self) -> Vector3 {
-		self.rotate(Vector3::UP)
+	pub fn up(self) -> Vec3 {
+		self.rotate(Vec3::UP)
 	}
 
-	pub fn xyz(self) -> Vector3 {
-		Vector3 {
+	pub fn xyz(self) -> Vec3 {
+		Vec3 {
 			x: self.x,
 			y: self.y,
 			z: self.z,

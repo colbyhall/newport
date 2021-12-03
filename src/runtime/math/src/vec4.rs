@@ -14,7 +14,7 @@ use std::ops::{
 };
 
 use crate::Rect;
-use crate::Vector3;
+use crate::Vec3;
 
 use serde::{
 	Deserialize,
@@ -24,14 +24,14 @@ use serde::{
 };
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
-pub struct Vector4 {
+pub struct Vec4 {
 	pub x: f32,
 	pub y: f32,
 	pub z: f32,
 	pub w: f32,
 }
 
-impl Vector4 {
+impl Vec4 {
 	pub const ZERO: Self = Self::new(0.0, 0.0, 0.0, 0.0);
 
 	pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
@@ -47,7 +47,7 @@ impl Vector4 {
 	}
 }
 
-impl Index<usize> for Vector4 {
+impl Index<usize> for Vec4 {
 	type Output = f32;
 
 	fn index(&self, index: usize) -> &Self::Output {
@@ -61,7 +61,7 @@ impl Index<usize> for Vector4 {
 	}
 }
 
-impl IndexMut<usize> for Vector4 {
+impl IndexMut<usize> for Vec4 {
 	fn index_mut(&mut self, index: usize) -> &mut Self::Output {
 		match index {
 			0 => &mut self.x,
@@ -73,7 +73,7 @@ impl IndexMut<usize> for Vector4 {
 	}
 }
 
-impl Add for Vector4 {
+impl Add for Vec4 {
 	type Output = Self;
 
 	fn add(self, rhs: Self) -> Self::Output {
@@ -86,7 +86,7 @@ impl Add for Vector4 {
 	}
 }
 
-impl Add<f32> for Vector4 {
+impl Add<f32> for Vec4 {
 	type Output = Self;
 
 	fn add(self, rhs: f32) -> Self::Output {
@@ -99,7 +99,7 @@ impl Add<f32> for Vector4 {
 	}
 }
 
-impl AddAssign for Vector4 {
+impl AddAssign for Vec4 {
 	fn add_assign(&mut self, rhs: Self) {
 		self.x += rhs.x;
 		self.y += rhs.y;
@@ -108,7 +108,7 @@ impl AddAssign for Vector4 {
 	}
 }
 
-impl AddAssign<f32> for Vector4 {
+impl AddAssign<f32> for Vec4 {
 	fn add_assign(&mut self, rhs: f32) {
 		self.x += rhs;
 		self.y += rhs;
@@ -117,7 +117,7 @@ impl AddAssign<f32> for Vector4 {
 	}
 }
 
-impl Sub for Vector4 {
+impl Sub for Vec4 {
 	type Output = Self;
 
 	fn sub(self, rhs: Self) -> Self::Output {
@@ -130,7 +130,7 @@ impl Sub for Vector4 {
 	}
 }
 
-impl Sub<f32> for Vector4 {
+impl Sub<f32> for Vec4 {
 	type Output = Self;
 
 	fn sub(self, rhs: f32) -> Self::Output {
@@ -143,7 +143,7 @@ impl Sub<f32> for Vector4 {
 	}
 }
 
-impl SubAssign for Vector4 {
+impl SubAssign for Vec4 {
 	fn sub_assign(&mut self, rhs: Self) {
 		self.x -= rhs.x;
 		self.y -= rhs.y;
@@ -152,7 +152,7 @@ impl SubAssign for Vector4 {
 	}
 }
 
-impl SubAssign<f32> for Vector4 {
+impl SubAssign<f32> for Vec4 {
 	fn sub_assign(&mut self, rhs: f32) {
 		self.x -= rhs;
 		self.y -= rhs;
@@ -161,7 +161,7 @@ impl SubAssign<f32> for Vector4 {
 	}
 }
 
-impl Mul for Vector4 {
+impl Mul for Vec4 {
 	type Output = Self;
 
 	fn mul(self, rhs: Self) -> Self::Output {
@@ -174,7 +174,7 @@ impl Mul for Vector4 {
 	}
 }
 
-impl Mul<f32> for Vector4 {
+impl Mul<f32> for Vec4 {
 	type Output = Self;
 
 	fn mul(self, rhs: f32) -> Self::Output {
@@ -187,7 +187,7 @@ impl Mul<f32> for Vector4 {
 	}
 }
 
-impl MulAssign for Vector4 {
+impl MulAssign for Vec4 {
 	fn mul_assign(&mut self, rhs: Self) {
 		self.x *= rhs.x;
 		self.y *= rhs.y;
@@ -196,7 +196,7 @@ impl MulAssign for Vector4 {
 	}
 }
 
-impl MulAssign<f32> for Vector4 {
+impl MulAssign<f32> for Vec4 {
 	fn mul_assign(&mut self, rhs: f32) {
 		self.x *= rhs;
 		self.y *= rhs;
@@ -205,7 +205,7 @@ impl MulAssign<f32> for Vector4 {
 	}
 }
 
-impl Div for Vector4 {
+impl Div for Vec4 {
 	type Output = Self;
 
 	fn div(self, rhs: Self) -> Self::Output {
@@ -218,7 +218,7 @@ impl Div for Vector4 {
 	}
 }
 
-impl Div<f32> for Vector4 {
+impl Div<f32> for Vec4 {
 	type Output = Self;
 
 	fn div(self, rhs: f32) -> Self::Output {
@@ -231,7 +231,7 @@ impl Div<f32> for Vector4 {
 	}
 }
 
-impl DivAssign for Vector4 {
+impl DivAssign for Vec4 {
 	fn div_assign(&mut self, rhs: Self) {
 		self.x /= rhs.x;
 		self.y /= rhs.y;
@@ -240,7 +240,7 @@ impl DivAssign for Vector4 {
 	}
 }
 
-impl DivAssign<f32> for Vector4 {
+impl DivAssign<f32> for Vec4 {
 	fn div_assign(&mut self, rhs: f32) {
 		self.x /= rhs;
 		self.y /= rhs;
@@ -249,7 +249,7 @@ impl DivAssign<f32> for Vector4 {
 	}
 }
 
-impl Neg for Vector4 {
+impl Neg for Vec4 {
 	type Output = Self;
 
 	fn neg(self) -> Self::Output {
@@ -262,20 +262,20 @@ impl Neg for Vector4 {
 	}
 }
 
-impl From<f32> for Vector4 {
+impl From<f32> for Vec4 {
 	fn from(s: f32) -> Self {
-		Vector4::new(s, s, s, s)
+		Vec4::new(s, s, s, s)
 	}
 }
 
-impl From<(Vector3, f32)> for Vector4 {
-	fn from(xyzw: (Vector3, f32)) -> Self {
+impl From<(Vec3, f32)> for Vec4 {
+	fn from(xyzw: (Vec3, f32)) -> Self {
 		let (xyz, w) = xyzw;
-		Vector4::new(xyz.x, xyz.y, xyz.z, w)
+		Vec4::new(xyz.x, xyz.y, xyz.z, w)
 	}
 }
 
-impl From<Rect> for Vector4 {
+impl From<Rect> for Vec4 {
 	fn from(rect: Rect) -> Self {
 		Self {
 			x: rect.min.x,
@@ -286,7 +286,7 @@ impl From<Rect> for Vector4 {
 	}
 }
 
-impl Serialize for Vector4 {
+impl Serialize for Vec4 {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: Serializer,
@@ -296,13 +296,13 @@ impl Serialize for Vector4 {
 	}
 }
 
-impl<'de> Deserialize<'de> for Vector4 {
+impl<'de> Deserialize<'de> for Vec4 {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where
 		D: Deserializer<'de>,
 	{
 		let xyzw = <[f32; 4]>::deserialize(deserializer)?;
-		Ok(Vector4 {
+		Ok(Vec4 {
 			x: xyzw[0],
 			y: xyzw[1],
 			z: xyzw[2],

@@ -107,7 +107,7 @@ impl Module for Gui {
 
 					// Idomatic way of garbbing the viewport size
 					let viewport = engine::Engine::window().unwrap().inner_size();
-					let viewport = Vector2::new(viewport.width as f32, viewport.height as f32);
+					let viewport = Vec2::new(viewport.width as f32, viewport.height as f32);
 
 					let projection = Matrix4::ortho(viewport.x, viewport.y, 1000.0, 0.1);
 					let view = Matrix4::translate([-viewport.x / 2.0, -viewport.y / 2.0, 0.0]);

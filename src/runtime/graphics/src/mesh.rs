@@ -13,8 +13,8 @@ use gpu::{
 };
 
 use math::{
-	Vector2,
-	Vector3,
+	Vec2,
+	Vec3,
 };
 
 use serde::{
@@ -25,22 +25,22 @@ use serde::{
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
 pub struct Vertex {
-	pub position: Vector3,
+	pub position: Vec3,
 
 	#[serde(default)]
-	pub normal: Vector3,
+	pub normal: Vec3,
 
 	#[serde(default)]
-	pub tangent: Vector3,
+	pub tangent: Vec3,
 
 	#[serde(default)]
-	pub bitangent: Vector3,
+	pub bitangent: Vec3,
 
 	#[serde(default)]
-	pub uv0: Vector2,
+	pub uv0: Vec2,
 
 	#[serde(default)]
-	pub uv1: Vector2,
+	pub uv1: Vec2,
 }
 
 pub struct Mesh {

@@ -54,18 +54,15 @@ pub trait Number:
 	+ DeserializeOwned
 	+ Serialize
 {
-	fn one() -> Self;
-	fn zero() -> Self {
-		Self::default()
-	}
+	const ZERO: Self;
+	const ONE: Self;
 }
 
 macro_rules! add_impl_int {
     ($($t:ty)*) => ($(
         impl Number for $t {
-			fn one() -> Self {
-				1
-			}
+			const ZERO: Self = 0;
+			const ONE: Self = 1;
         }
     )*)
 }
@@ -75,9 +72,8 @@ add_impl_int! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 macro_rules! add_impl_float {
     ($($t:ty)*) => ($(
         impl Number for $t {
-			fn one() -> Self {
-				1.0
-			}
+			const ZERO: Self = 0.0;
+			const ONE: Self = 1.0;
         }
     )*)
 }
@@ -85,7 +81,7 @@ macro_rules! add_impl_float {
 add_impl_float! { f32 f64 }
 
 pub fn lerp<T: Number>(a: T, b: T, t: T) -> T {
-	(T::one() - t) * a + t * b
+	(T::ONE - t) * a + t * b
 }
 
 #[cfg(test)]

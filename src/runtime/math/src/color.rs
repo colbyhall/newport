@@ -1,4 +1,4 @@
-use crate::Vector4;
+use crate::Vec4;
 use std::convert::From;
 
 use serde::{
@@ -71,8 +71,8 @@ impl From<u32> for Color {
 	}
 }
 
-impl From<Vector4> for Color {
-	fn from(color: Vector4) -> Self {
+impl From<Vec4> for Color {
+	fn from(color: Vec4) -> Self {
 		Self {
 			r: color.x,
 			g: color.y,

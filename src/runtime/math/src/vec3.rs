@@ -13,7 +13,7 @@ use std::ops::{
 use std::convert::From;
 
 use crate::lerp;
-use crate::Vector2;
+use crate::Vec2;
 
 use serde::{
 	Deserialize,
@@ -23,13 +23,13 @@ use serde::{
 };
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
-pub struct Vector3 {
+pub struct Vec3 {
 	pub x: f32,
 	pub y: f32,
 	pub z: f32,
 }
 
-impl Vector3 {
+impl Vec3 {
 	pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
 	pub const ONE: Self = Self::new(1.0, 1.0, 1.0);
 
@@ -138,7 +138,7 @@ impl Vector3 {
 	}
 }
 
-impl Add for Vector3 {
+impl Add for Vec3 {
 	type Output = Self;
 
 	fn add(self, rhs: Self) -> Self::Output {
@@ -150,7 +150,7 @@ impl Add for Vector3 {
 	}
 }
 
-impl Add<f32> for Vector3 {
+impl Add<f32> for Vec3 {
 	type Output = Self;
 
 	fn add(self, rhs: f32) -> Self::Output {
@@ -162,7 +162,7 @@ impl Add<f32> for Vector3 {
 	}
 }
 
-impl AddAssign for Vector3 {
+impl AddAssign for Vec3 {
 	fn add_assign(&mut self, rhs: Self) {
 		self.x += rhs.x;
 		self.y += rhs.y;
@@ -170,7 +170,7 @@ impl AddAssign for Vector3 {
 	}
 }
 
-impl AddAssign<f32> for Vector3 {
+impl AddAssign<f32> for Vec3 {
 	fn add_assign(&mut self, rhs: f32) {
 		self.x += rhs;
 		self.y += rhs;
@@ -178,7 +178,7 @@ impl AddAssign<f32> for Vector3 {
 	}
 }
 
-impl Sub for Vector3 {
+impl Sub for Vec3 {
 	type Output = Self;
 
 	fn sub(self, rhs: Self) -> Self::Output {
@@ -190,7 +190,7 @@ impl Sub for Vector3 {
 	}
 }
 
-impl Sub<f32> for Vector3 {
+impl Sub<f32> for Vec3 {
 	type Output = Self;
 
 	fn sub(self, rhs: f32) -> Self::Output {
@@ -202,7 +202,7 @@ impl Sub<f32> for Vector3 {
 	}
 }
 
-impl SubAssign for Vector3 {
+impl SubAssign for Vec3 {
 	fn sub_assign(&mut self, rhs: Self) {
 		self.x -= rhs.x;
 		self.y -= rhs.y;
@@ -210,7 +210,7 @@ impl SubAssign for Vector3 {
 	}
 }
 
-impl SubAssign<f32> for Vector3 {
+impl SubAssign<f32> for Vec3 {
 	fn sub_assign(&mut self, rhs: f32) {
 		self.x -= rhs;
 		self.y -= rhs;
@@ -218,7 +218,7 @@ impl SubAssign<f32> for Vector3 {
 	}
 }
 
-impl Mul for Vector3 {
+impl Mul for Vec3 {
 	type Output = Self;
 
 	fn mul(self, rhs: Self) -> Self::Output {
@@ -230,7 +230,7 @@ impl Mul for Vector3 {
 	}
 }
 
-impl Mul<f32> for Vector3 {
+impl Mul<f32> for Vec3 {
 	type Output = Self;
 
 	fn mul(self, rhs: f32) -> Self::Output {
@@ -242,7 +242,7 @@ impl Mul<f32> for Vector3 {
 	}
 }
 
-impl MulAssign for Vector3 {
+impl MulAssign for Vec3 {
 	fn mul_assign(&mut self, rhs: Self) {
 		self.x *= rhs.x;
 		self.y *= rhs.y;
@@ -250,7 +250,7 @@ impl MulAssign for Vector3 {
 	}
 }
 
-impl MulAssign<f32> for Vector3 {
+impl MulAssign<f32> for Vec3 {
 	fn mul_assign(&mut self, rhs: f32) {
 		self.x *= rhs;
 		self.y *= rhs;
@@ -258,7 +258,7 @@ impl MulAssign<f32> for Vector3 {
 	}
 }
 
-impl Div for Vector3 {
+impl Div for Vec3 {
 	type Output = Self;
 
 	fn div(self, rhs: Self) -> Self::Output {
@@ -270,7 +270,7 @@ impl Div for Vector3 {
 	}
 }
 
-impl Div<f32> for Vector3 {
+impl Div<f32> for Vec3 {
 	type Output = Self;
 
 	fn div(self, rhs: f32) -> Self::Output {
@@ -282,7 +282,7 @@ impl Div<f32> for Vector3 {
 	}
 }
 
-impl DivAssign for Vector3 {
+impl DivAssign for Vec3 {
 	fn div_assign(&mut self, rhs: Self) {
 		self.x /= rhs.x;
 		self.y /= rhs.y;
@@ -290,7 +290,7 @@ impl DivAssign for Vector3 {
 	}
 }
 
-impl DivAssign<f32> for Vector3 {
+impl DivAssign<f32> for Vec3 {
 	fn div_assign(&mut self, rhs: f32) {
 		self.x /= rhs;
 		self.y /= rhs;
@@ -298,7 +298,7 @@ impl DivAssign<f32> for Vector3 {
 	}
 }
 
-impl Neg for Vector3 {
+impl Neg for Vec3 {
 	type Output = Self;
 
 	fn neg(self) -> Self::Output {
@@ -310,20 +310,20 @@ impl Neg for Vector3 {
 	}
 }
 
-impl From<(Vector2, f32)> for Vector3 {
-	fn from(v: (Vector2, f32)) -> Self {
+impl From<(Vec2, f32)> for Vec3 {
+	fn from(v: (Vec2, f32)) -> Self {
 		let (xy, z) = v;
 		Self::new(xy.x, xy.y, z)
 	}
 }
 
-impl From<[f32; 3]> for Vector3 {
+impl From<[f32; 3]> for Vec3 {
 	fn from(xyz: [f32; 3]) -> Self {
 		Self::new(xyz[0], xyz[1], xyz[2])
 	}
 }
 
-impl Serialize for Vector3 {
+impl Serialize for Vec3 {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where
 		S: Serializer,
@@ -333,13 +333,13 @@ impl Serialize for Vector3 {
 	}
 }
 
-impl<'de> Deserialize<'de> for Vector3 {
+impl<'de> Deserialize<'de> for Vec3 {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where
 		D: Deserializer<'de>,
 	{
 		let xyz = <[f32; 3]>::deserialize(deserializer)?;
-		Ok(Vector3 {
+		Ok(Vec3 {
 			x: xyz[0],
 			y: xyz[1],
 			z: xyz[2],

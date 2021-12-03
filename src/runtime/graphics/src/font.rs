@@ -7,7 +7,7 @@ use resources::{
 
 use math::{
 	Rect,
-	Vector2,
+	Vec2,
 };
 
 use gpu::{
@@ -130,8 +130,8 @@ impl FontCollection {
 				let width = (x1 - x0) as f32 / dpi;
 				let height = (y1 - y0) as f32 / dpi;
 
-				let uv0 = Vector2::new(x0 as f32 / tex_width as f32, y0 as f32 / tex_height as f32);
-				let uv1 = Vector2::new(x1 as f32 / tex_width as f32, y1 as f32 / tex_height as f32);
+				let uv0 = Vec2::new(x0 as f32 / tex_width as f32, y0 as f32 / tex_height as f32);
+				let uv1 = Vec2::new(x1 as f32 / tex_width as f32, y1 as f32 / tex_height as f32);
 
 				*my_glyph = Glyph {
 					width,
@@ -276,12 +276,12 @@ impl Font {
 			}
 		}
 
-		let min = Vector2::new(0.0, -height);
-		let max = Vector2::new(width, 0.0);
+		let min = Vec2::new(0.0, -height);
+		let max = Vec2::new(width, 0.0);
 		Rect::from_min_max(min, max)
 	}
 
-	pub fn bounds_iter<'a>(&'a self, text: &'a str, at: Vector2) -> BoundsIter<'a> {
+	pub fn bounds_iter<'a>(&'a self, text: &'a str, at: Vec2) -> BoundsIter<'a> {
 		BoundsIter {
 			font: self,
 			text,
@@ -305,7 +305,7 @@ pub struct Glyph {
 pub struct BoundsIter<'a> {
 	font: &'a Font,
 	text: &'a str,
-	at: Vector2,
+	at: Vec2,
 }
 
 impl<'a> Iterator for BoundsIter<'a> {
@@ -315,7 +315,7 @@ impl<'a> Iterator for BoundsIter<'a> {
 		let c = self.text.chars().next()?;
 		let g = self.font.glyph_from_char(c)?;
 
-		let xy = Vector2::new(self.at.x, self.at.y - self.font.height);
+		let xy = Vec2::new(self.at.x, self.at.y - self.font.height);
 
 		let x0 = xy.x;
 		let y0 = xy.y;

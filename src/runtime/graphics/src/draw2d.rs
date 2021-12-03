@@ -7,8 +7,8 @@ use math::vec2;
 use math::{
 	Color,
 	Rect,
-	Vector2,
-	Vector4,
+	Vec2,
+	Vec4,
 };
 use resources::Handle;
 
@@ -64,9 +64,9 @@ impl From<(f32, f32, f32, f32)> for Roundness {
 }
 
 pub struct PainterVertex {
-	pub position: Vector2,
-	pub uv: Vector2,
-	pub scissor: Vector4,
+	pub position: Vec2,
+	pub uv: Vec2,
+	pub scissor: Vec4,
 	pub color: Color,
 	pub texture: u32,
 }
@@ -108,7 +108,7 @@ impl Painter {
 		let bottom_left = {
 			self.vertices.push(PainterVertex {
 				position: rect.bottom_left(),
-				uv: Vector2::ZERO,
+				uv: Vec2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color,
 				texture: 0,
@@ -118,7 +118,7 @@ impl Painter {
 		let top_left = {
 			self.vertices.push(PainterVertex {
 				position: rect.top_left(),
-				uv: Vector2::ZERO,
+				uv: Vec2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color,
 				texture: 0,
@@ -128,7 +128,7 @@ impl Painter {
 		let bottom_right = {
 			self.vertices.push(PainterVertex {
 				position: rect.bottom_right(),
-				uv: Vector2::ZERO,
+				uv: Vec2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color,
 				texture: 0,
@@ -138,7 +138,7 @@ impl Painter {
 		let top_right = {
 			self.vertices.push(PainterVertex {
 				position: rect.top_right(),
-				uv: Vector2::ZERO,
+				uv: Vec2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color,
 				texture: 0,
@@ -223,8 +223,8 @@ impl Painter {
 
 	pub fn stroke(
 		&mut self,
-		a: impl Into<Vector2>,
-		b: impl Into<Vector2>,
+		a: impl Into<Vec2>,
+		b: impl Into<Vec2>,
 		line_width: f32,
 		color: impl Into<Color>,
 	) -> &mut Self {
@@ -239,7 +239,7 @@ impl Painter {
 		let bottom_left = {
 			self.vertices.push(PainterVertex {
 				position: a - perp,
-				uv: Vector2::ZERO,
+				uv: Vec2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color,
 				texture: 0,
@@ -249,7 +249,7 @@ impl Painter {
 		let top_left = {
 			self.vertices.push(PainterVertex {
 				position: b - perp,
-				uv: Vector2::ZERO,
+				uv: Vec2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color,
 				texture: 0,
@@ -259,7 +259,7 @@ impl Painter {
 		let bottom_right = {
 			self.vertices.push(PainterVertex {
 				position: a + perp,
-				uv: Vector2::ZERO,
+				uv: Vec2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color,
 				texture: 0,
@@ -269,7 +269,7 @@ impl Painter {
 		let top_right = {
 			self.vertices.push(PainterVertex {
 				position: b + perp,
-				uv: Vector2::ZERO,
+				uv: Vec2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
 				color,
 				texture: 0,
@@ -316,7 +316,7 @@ impl Painter {
 		&mut self,
 		text: &str,
 		color: impl Into<Color>,
-		at: impl Into<Vector2>,
+		at: impl Into<Vec2>,
 		font: &Font,
 	) -> &mut Self {
 		let at = at.into();
@@ -337,7 +337,7 @@ impl Painter {
 				_ => {
 					let g = font.glyph_from_char(c).unwrap();
 
-					let xy = Vector2::new(pos.x, pos.y - (font.height + font.descent));
+					let xy = Vec2::new(pos.x, pos.y - (font.height + font.descent));
 
 					let x0 = xy.x + g.bearing_x;
 					let y1 = xy.y + g.bearing_y;
