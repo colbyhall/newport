@@ -149,8 +149,8 @@ impl WidgetTree {
 	}
 
 	pub fn set_base(&mut self, base: Option<WidgetRef>) {
+		self.base = base;
 		crate::Gui::layouts_mut().rebuild();
-		self.base = base
 	}
 }
 

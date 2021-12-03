@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 engine    = { path = "../../runtime/engine" }
-egui    = { path = "../../third_party/egui" }
+gui    = { path = "../../runtime/gui" }
