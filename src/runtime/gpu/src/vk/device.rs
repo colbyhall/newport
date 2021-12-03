@@ -54,6 +54,8 @@ impl Swapchain {
 	fn new(device: Arc<Device>) -> Result<Self> {
 		assert!(device.surface.is_some());
 
+		println!("asdfsadf");
+
 		let swapchain_khr = khr::Swapchain::new(&device.owner.instance, &device.logical);
 		let surface_khr = khr::Surface::new(&device.owner.entry, &device.owner.instance);
 

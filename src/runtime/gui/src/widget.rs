@@ -1,9 +1,6 @@
 use std::fmt::Debug;
 
-use graphics::{
-	FontCollection,
-	PainterStyle,
-};
+use graphics::FontCollection;
 use resources::Handle;
 
 use {
@@ -210,11 +207,7 @@ impl Button {
 	}
 
 	fn paint(&self, painter: &mut Painter, bounds: Rect) {
-		let style = PainterStyle {
-			color: self.hovered,
-			..Default::default()
-		};
-		painter.fill_rect(&style, bounds);
+		painter.fill_rect(bounds, self.normal);
 	}
 }
 
@@ -237,11 +230,7 @@ impl Border {
 	}
 
 	fn paint(&self, painter: &mut Painter, bounds: Rect) {
-		let style = PainterStyle {
-			color: self.color,
-			..Default::default()
-		};
-		painter.fill_rect(&style, bounds);
+		painter.fill_rect(bounds, self.color);
 	}
 }
 

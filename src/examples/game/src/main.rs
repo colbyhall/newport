@@ -21,15 +21,11 @@ struct Game {
 
 	to_show: Option<Texture>,
 
-	style: PainterStyle,
 	draw_pipeline: Handle<GraphicsPipeline>,
 }
 
 impl Module for Game {
 	fn new() -> Self {
-		let mut style = PainterStyle::default();
-		style.line_width = 20.0;
-
 		let schedule = Schedule::builder().spawn();
 		let world = World::default();
 
@@ -39,7 +35,6 @@ impl Module for Game {
 
 			to_show: None,
 
-			style,
 			draw_pipeline: Handle::find_or_load("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}")
 				.unwrap_or_default(),
 		}

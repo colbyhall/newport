@@ -151,18 +151,3 @@ impl Module for Gui {
 			})
 	}
 }
-
-#[test]
-fn test() {
-	Engine::builder().module::<Gui>().test().unwrap();
-
-	let button = Border::new(|slot| {
-		slot.child(Button::new(|slot| {
-			slot.child(TextBlock::new("Hello World"))
-		}))
-	});
-	let widgets = Gui::widgets_mut();
-	let button = widgets.create(button);
-	Gui::widgets_mut().set_base(Some(button));
-	println!("{:#?}", widgets);
-}

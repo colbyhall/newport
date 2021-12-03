@@ -12,7 +12,10 @@ use math::{
 };
 use resources::Handle;
 
-use crate::FontCollection;
+use crate::{
+	Font,
+	FontCollection,
+};
 
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Roundness {
@@ -60,28 +63,6 @@ impl From<(f32, f32, f32, f32)> for Roundness {
 	}
 }
 
-#[derive(Clone)]
-pub struct PainterStyle {
-	pub color: Color,
-
-	pub line_width: f32,
-
-	pub font_collection: Handle<FontCollection>,
-	pub font_size: u32,
-}
-
-impl Default for PainterStyle {
-	fn default() -> Self {
-		Self {
-			color: Color::WHITE,
-			line_width: 1.0,
-
-			font_collection: Handle::default(),
-			font_size: 12,
-		}
-	}
-}
-
 pub struct PainterVertex {
 	pub position: Vector2,
 	pub uv: Vector2,
@@ -120,14 +101,16 @@ impl Painter {
 		self
 	}
 
-	pub fn fill_rect(&mut self, style: &PainterStyle, rect: impl Into<Rect>) -> &mut Self {
+	pub fn fill_rect(&mut self, rect: impl Into<Rect>, color: impl Into<Color>) -> &mut Self {
+		let color = color.into();
+
 		let rect = rect.into();
 		let bottom_left = {
 			self.vertices.push(PainterVertex {
 				position: rect.bottom_left(),
 				uv: Vector2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture: 0,
 			});
 			self.vertices.len() - 1
@@ -137,7 +120,7 @@ impl Painter {
 				position: rect.top_left(),
 				uv: Vector2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture: 0,
 			});
 			self.vertices.len() - 1
@@ -147,7 +130,7 @@ impl Painter {
 				position: rect.bottom_right(),
 				uv: Vector2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture: 0,
 			});
 			self.vertices.len() - 1
@@ -157,7 +140,7 @@ impl Painter {
 				position: rect.top_right(),
 				uv: Vector2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture: 0,
 			});
 			self.vertices.len() - 1
@@ -176,22 +159,23 @@ impl Painter {
 
 	pub fn textured_rect(
 		&mut self,
-		style: &PainterStyle,
 		rect: impl Into<Rect>,
-		texture: &Handle<Texture>,
+		texture: &Texture,
 		uv: impl Into<Rect>,
+		color: impl Into<Color>,
 	) -> &mut Self {
 		let rect = rect.into();
 		let uv = uv.into();
 
-		let texture = texture.read().bindless().unwrap_or_default();
+		let texture = texture.bindless().unwrap_or_default();
+		let color = color.into();
 
 		let bottom_left = {
 			self.vertices.push(PainterVertex {
 				position: rect.bottom_left(),
 				uv: uv.bottom_left(),
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture,
 			});
 			self.vertices.len() - 1
@@ -201,7 +185,7 @@ impl Painter {
 				position: rect.top_left(),
 				uv: uv.top_left(),
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture,
 			});
 			self.vertices.len() - 1
@@ -211,7 +195,7 @@ impl Painter {
 				position: rect.bottom_right(),
 				uv: uv.bottom_right(),
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture,
 			});
 			self.vertices.len() - 1
@@ -221,7 +205,7 @@ impl Painter {
 				position: rect.top_right(),
 				uv: uv.top_right(),
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture,
 			});
 			self.vertices.len() - 1
@@ -239,22 +223,25 @@ impl Painter {
 
 	pub fn stroke(
 		&mut self,
-		style: &PainterStyle,
 		a: impl Into<Vector2>,
 		b: impl Into<Vector2>,
+		line_width: f32,
+		color: impl Into<Color>,
 	) -> &mut Self {
 		let a = a.into();
 		let b = b.into();
 
-		let width = style.line_width / 2.0;
+		let width = line_width / 2.0;
 		let perp = (b - a).norm().perp() * width;
+
+		let color = color.into();
 
 		let bottom_left = {
 			self.vertices.push(PainterVertex {
 				position: a - perp,
 				uv: Vector2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture: 0,
 			});
 			self.vertices.len() - 1
@@ -264,7 +251,7 @@ impl Painter {
 				position: b - perp,
 				uv: Vector2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture: 0,
 			});
 			self.vertices.len() - 1
@@ -274,7 +261,7 @@ impl Painter {
 				position: a + perp,
 				uv: Vector2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture: 0,
 			});
 			self.vertices.len() - 1
@@ -284,7 +271,7 @@ impl Painter {
 				position: b + perp,
 				uv: Vector2::ZERO,
 				scissor: self.scissor.unwrap_or(Rect::MINMAX).into(),
-				color: style.color,
+				color,
 				texture: 0,
 			});
 			self.vertices.len() - 1
@@ -301,8 +288,13 @@ impl Painter {
 		self
 	}
 
-	pub fn stroke_rect(&mut self, style: &PainterStyle, rect: impl Into<Rect>) -> &mut Self {
-		let half = style.line_width / 2.0;
+	pub fn stroke_rect(
+		&mut self,
+		rect: impl Into<Rect>,
+		line_width: f32,
+		color: impl Into<Color>,
+	) -> &mut Self {
+		let half = line_width / 2.0;
 		let x = vec2!(half, 0.0);
 		let y = vec2!(0.0, half);
 		let rect = rect.into();
@@ -312,10 +304,52 @@ impl Painter {
 		let br = rect.bottom_right();
 		let tr = rect.top_right();
 
-		self.stroke(style, bl + x, tl + x)
-			.stroke(style, br - x, tr - x)
-			.stroke(style, bl + y, br + y)
-			.stroke(style, tl - y, tr - y)
+		let color = color.into();
+
+		self.stroke(bl + x, tl + x, line_width, color)
+			.stroke(br - x, tr - x, line_width, color)
+			.stroke(bl + y, br + y, line_width, color)
+			.stroke(tl - y, tr - y, line_width, color)
+	}
+
+	pub fn text(
+		&mut self,
+		text: &str,
+		color: impl Into<Color>,
+		at: impl Into<Vector2>,
+		font: &Font,
+	) -> &mut Self {
+		let at = at.into();
+		let color = color.into();
+
+		let mut pos = at;
+		for c in text.chars() {
+			match c {
+				'\n' => {
+					pos.x = at.x;
+					pos.y -= font.size as f32;
+				}
+				'\r' => pos.x = at.x,
+				'\t' => {
+					let g = font.glyph_from_char(' ').unwrap();
+					pos.x += g.advance;
+				}
+				_ => {
+					let g = font.glyph_from_char(c).unwrap();
+
+					let xy = Vector2::new(pos.x, pos.y - (font.height + font.descent));
+
+					let x0 = xy.x + g.bearing_x;
+					let y1 = xy.y + g.bearing_y;
+					let x1 = x0 + g.width;
+					let y0 = y1 - g.height;
+
+					self.textured_rect((x0, y0, x1, y1), &font.atlas, g.uv, color);
+					pos.x += g.advance;
+				}
+			}
+		}
+		self
 	}
 
 	pub fn finish(self) -> gpu::Result<(Buffer<PainterVertex>, Buffer<u32>)> {
