@@ -167,7 +167,7 @@ impl Module for Editor {
 							ui.add_space(3.0);
 						});
 
-						menu::menu(ui, "Help", |ui| {
+						menu::menu(ui, "yolo", |ui| {
 							ui.add_space(3.0);
 
 							if ui.button("New").clicked() {
@@ -195,6 +195,38 @@ impl Module for Editor {
 							if ui.button("Exit").clicked() {
 								// …
 							}
+
+							menu::menu(ui, "Help", |ui| {
+								ui.add_space(3.0);
+
+								if ui.button("New").clicked() {
+									// …
+								}
+
+								ui.separator();
+
+								if ui.button("Open").clicked() {
+									// …
+								}
+
+								ui.separator();
+
+								if ui.button("Save").clicked() {
+									// …
+								}
+
+								if ui.button("Save As").clicked() {
+									// …
+								}
+
+								ui.separator();
+
+								if ui.button("Exit").clicked() {
+									// …
+								}
+
+								ui.add_space(3.0);
+							});
 
 							ui.add_space(3.0);
 						});
