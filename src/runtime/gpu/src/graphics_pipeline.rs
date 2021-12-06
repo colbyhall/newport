@@ -743,8 +743,6 @@ impl Importer for GraphicsPipelineImporter {
 			source.push_str(&code);
 			source.push_str("\n}\n");
 
-			println!("{:?}", source);
-
 			// Compile to binary and then pass to device
 			let binary =
 				shader::compile("pixel.hlsl", &source, "main", ShaderVariant::Pixel).unwrap();
@@ -812,8 +810,6 @@ impl Importer for GraphicsPipelineImporter {
 			}
 			source.push_str(&code);
 			source.push_str("\n}\n");
-
-			println!("{:?}", source);
 
 			// Compile to binary and then pass to device
 			let binary =

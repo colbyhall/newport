@@ -352,7 +352,7 @@ impl Painter {
 		self
 	}
 
-	pub fn finish(self) -> gpu::Result<(Buffer<PainterVertex>, Buffer<u32>)> {
+	pub fn finish(&self) -> gpu::Result<(Buffer<PainterVertex>, Buffer<u32>)> {
 		let vertex_buffer = Buffer::new(
 			BufferUsage::VERTEX,
 			gpu::MemoryType::HostVisible,
