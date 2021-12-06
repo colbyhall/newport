@@ -7,16 +7,10 @@ use {
 	},
 	gpu::{
 		Buffer,
-		BufferUsage,
-		Constant,
-		Format,
 		Gpu,
 		GraphicsPipeline,
 		GraphicsRecorder,
 		Layout,
-		MemoryType,
-		Shader,
-		ShaderVariant,
 	},
 	graphics::{
 		FontCollection,

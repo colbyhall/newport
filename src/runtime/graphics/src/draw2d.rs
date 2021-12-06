@@ -10,12 +10,8 @@ use math::{
 	Vec2,
 	Vec4,
 };
-use resources::Handle;
 
-use crate::{
-	Font,
-	FontCollection,
-};
+use crate::Font;
 
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Roundness {
