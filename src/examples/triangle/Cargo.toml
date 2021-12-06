@@ -1,0 +1,9 @@
+[package]
+name = "triangle"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+engine    	= { path = "../../runtime/engine" }
+gpu    		= { path = "../../runtime/gpu" }
+math        = { path = "../../runtime/math" }
