@@ -42,7 +42,7 @@ impl Vec3 {
 	}
 
 	pub const fn dot(self, other: Self) -> f32 {
-		self.x * other.x + self.y * other.y * self.z * other.z
+		self.x * other.x + self.y * other.y + self.z * other.z
 	}
 
 	pub const fn cross(self, other: Self) -> Self {
