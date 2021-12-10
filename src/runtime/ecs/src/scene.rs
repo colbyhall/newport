@@ -45,7 +45,6 @@ impl Importer for SceneImporter {
 		let components_key = Value::String("components".to_string());
 
 		let variants: HashMap<String, ComponentVariant> = Engine::register::<ComponentVariant>()
-			.unwrap()
 			.iter()
 			.map(|it| (it.name.to_string(), it.clone()))
 			.collect();

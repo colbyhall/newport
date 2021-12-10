@@ -396,13 +396,13 @@ impl Engine {
 		module.downcast_mut::<T>()
 	}
 
-	pub fn register<'a, T: Register>() -> Option<&'a [T]> {
+	pub fn register<'a, T: Register>() -> &'a [T] {
 		let engine = Engine::as_ref();
 		let id = TypeId::of::<T>();
 
 		match engine.registers.get(&id) {
-			Some(reg) => Some(reg.downcast_ref::<Vec<T>>().unwrap()),
-			None => None,
+			Some(reg) => reg.downcast_ref::<Vec<T>>().unwrap(),
+			None => &[],
 		}
 	}
 

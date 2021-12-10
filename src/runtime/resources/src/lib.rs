@@ -454,10 +454,9 @@ struct ResourcesCache {
 
 impl Cache for ResourcesCache {
 	fn new() -> Self {
-		let collections = Engine::register::<Collection>().unwrap();
+		let collections = Engine::register::<Collection>();
 
-		let importer_variants = Engine::register::<ImporterVariant>()
-			.expect("Resource Manager is required as a dependency but no ImporterVariants have been registered.");
+		let importer_variants = Engine::register::<ImporterVariant>();
 
 		// TODO: Look into a functional way of doing this
 		let mut variants = HashMap::new();
@@ -572,13 +571,11 @@ pub struct ResourceManager {
 impl Module for ResourceManager {
 	fn new() -> Self {
 		let resource_variants = Engine::register::<ResourceVariant>()
-			.expect("Resource Manager is required as a dependency but no ResourceVariants have been registered.")
 			.iter()
 			.map(|x| (x.type_id, x.clone()))
 			.collect();
 
-		let importer_variants = Engine::register::<ImporterVariant>()
-			.expect("Resource Manager is required as a dependency but no ImporterVariants have been registered.");
+		let importer_variants = Engine::register::<ImporterVariant>();
 
 		// TODO: Look into a functional way of doing this
 		let mut importer_variants_by_extension = HashMap::new();
@@ -619,7 +616,7 @@ impl Module for ResourceManager {
 
 		Self {
 			resource_variants,
-			collections: Engine::register().unwrap().to_vec(),
+			collections: Engine::register().to_vec(),
 
 			importer_variants_by_extension,
 			importer_variants_by_type: importer_variants

@@ -65,7 +65,6 @@ impl Module for CacheManager {
 		}
 
 		let registers: HashMap<TypeId, CacheVariant> = Engine::register::<CacheVariant>()
-			.unwrap()
 			.iter()
 			.map(|f| (f.id, f.clone()))
 			.collect();

@@ -1,33 +1,31 @@
-use crate::ComponentVariantId;
-use crate::Entity;
-use crate::ReadStorage;
-use crate::WriteStorage;
 use crate::{
 	Component,
+	Entity,
+	EntityInfo,
+	ReadStorage,
 	World,
+	WriteStorage,
 };
-
-use std::collections::HashSet;
 
 #[derive(Default, Clone)]
 pub struct Query {
-	components: HashSet<ComponentVariantId>,
+	info: EntityInfo,
 }
 
 impl Query {
 	pub fn new() -> Self {
 		Self {
-			components: HashSet::new(),
+			info: EntityInfo::default(),
 		}
 	}
 
 	pub fn read<T: Component>(mut self, _: &ReadStorage<'_, T>) -> Self {
-		self.components.insert(T::VARIANT_ID);
+		self.info.components |= T::VARIANT_ID.to_mask();
 		self
 	}
 
 	pub fn write<T: Component>(mut self, _: &WriteStorage<'_, T>) -> Self {
-		self.components.insert(T::VARIANT_ID);
+		self.info.components |= T::VARIANT_ID.to_mask();
 		self
 	}
 
@@ -37,15 +35,9 @@ impl Query {
 			entities
 				.iter()
 				.filter(|(_, info)| {
-					!self
-						.components
-						.iter()
-						.any(|c| info.components.get(c).is_none())
+					(info.components & self.info.components) == self.info.components
 				})
-				.map(|(id, info)| Entity {
-					id: *id,
-					info: info.clone(),
-				})
+				.map(|(id, _)| *id)
 				.collect()
 		};
 

@@ -230,7 +230,7 @@ impl Module for Egui {
 
 				// Do egui frame using scope registers
 				egui.context.begin_frame(input);
-				let scopes: &[EguiScope] = Engine::register().unwrap_or_default();
+				let scopes: &[EguiScope] = Engine::register();
 				scopes.iter().for_each(|f| (f.0)(&egui.context));
 				let (_output, shapes) = egui.context.end_frame();
 

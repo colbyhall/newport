@@ -21,7 +21,10 @@ use sync::lock::{
 	MutexGuard,
 };
 
-use crate::Entity;
+use crate::{
+	Entity,
+	EntityInfo,
+};
 
 pub trait Component:
 	Sync + Send + Sized + Clone + Serialize + DeserializeOwned + Default + 'static
@@ -77,6 +80,10 @@ impl ComponentVariantId {
 
 		Self(hash_rec(name, 0, FNV_OFFSET_BASIC) as u32)
 	}
+
+	pub fn to_mask(self) -> u128 {
+		1 << (self.0 as usize & (EntityInfo::MAX_COMPONENT_TYPES - 1)) as u128
+	}
 }
 
 #[derive(Clone)]
@@ -89,26 +96,9 @@ pub struct ComponentVariant {
 	pub parse_value: fn(value: ron::Value) -> ron::Result<Box<dyn Any>>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ComponentId {
-	variant_id: ComponentVariantId,
-
-	index: u32,
-	generation: u32,
-}
-
-#[derive(Clone)]
-struct Storage<T: Component> {
-	// SPEED: We're also going to need to keep these somehow organized for best iteration order
-	components: Vec<Option<T>>,
-	generations: Vec<u32>,
-
-	available: VecDeque<usize>,
-}
-
 pub(crate) trait DynamicStorage: Send + Sync + DynamicStorageClone + 'static {
-	fn insert_box(&mut self, value: &Box<dyn Any>) -> ComponentId;
-	fn remove(&mut self, id: ComponentId) -> bool;
+	fn insert_box(&mut self, entity: Entity, value: &Box<dyn Any>);
+	fn remove(&mut self, entity: Entity) -> bool;
 
 	fn as_any_mut(&mut self) -> &mut dyn Any;
 	fn as_any(&self) -> &dyn Any;
@@ -124,70 +114,60 @@ impl<T: DynamicStorage + Clone> DynamicStorageClone for T {
 	}
 }
 
+#[derive(Clone)]
+struct Storage<T: Component> {
+	// SPEED: We're also going to need to keep these somehow organized for best iteration order
+	components: Vec<Option<T>>,
+	available: VecDeque<usize>,
+
+	entity_to_index: HashMap<Entity, usize>,
+}
+
 impl<T: Component> Storage<T> {
 	fn new() -> Self {
 		let capacity = 512;
 		Self {
 			components: Vec::with_capacity(capacity),
-			generations: Vec::with_capacity(capacity),
-
 			available: VecDeque::with_capacity(64),
+			entity_to_index: HashMap::with_capacity(capacity),
 		}
 	}
 
-	fn insert(&mut self, t: T) -> ComponentId {
-		if self.available.is_empty() {
+	fn insert(&mut self, entity: Entity, t: T) {
+		let index = if self.available.is_empty() {
+			let index = self.components.len();
 			self.components.push(Some(t));
-			self.generations.push(0);
-
-			ComponentId {
-				variant_id: T::VARIANT_ID,
-
-				index: (self.components.len() - 1) as u32,
-				generation: 0,
-			}
+			index
 		} else {
 			let index = self.available.pop_front().unwrap();
-
 			self.components[index] = Some(t);
-			self.generations[index] += 1;
-			let generation = self.generations[index];
-
-			ComponentId {
-				variant_id: T::VARIANT_ID,
-
-				index: index as u32,
-				generation,
-			}
-		}
+			index
+		};
+		self.entity_to_index.insert(entity, index);
 	}
 
-	fn get(&self, id: ComponentId) -> Option<&T> {
-		assert_eq!(T::VARIANT_ID, id.variant_id);
-
-		let index = id.index as usize;
+	fn get(&self, entity: Entity) -> Option<&T> {
+		let index = self
+			.entity_to_index
+			.get(&entity)
+			.cloned()
+			.unwrap_or(self.components.len());
 
 		if self.components.len() <= index {
-			return None;
-		}
-
-		if self.generations[index] != id.generation {
 			return None;
 		}
 
 		self.components[index].as_ref()
 	}
 
-	fn get_mut(&mut self, id: ComponentId) -> Option<&mut T> {
-		assert_eq!(T::VARIANT_ID, id.variant_id);
+	fn get_mut(&mut self, entity: Entity) -> Option<&mut T> {
+		let index = self
+			.entity_to_index
+			.get(&entity)
+			.cloned()
+			.unwrap_or(self.components.len());
 
-		let index = id.index as usize;
-
-		if self.components.len() - 1 < index {
-			return None;
-		}
-
-		if self.generations[index] != id.generation {
+		if self.components.len() <= index {
 			return None;
 		}
 
@@ -196,16 +176,14 @@ impl<T: Component> Storage<T> {
 }
 
 impl<T: Component> DynamicStorage for Storage<T> {
-	fn remove(&mut self, id: ComponentId) -> bool {
-		assert_eq!(T::VARIANT_ID, id.variant_id);
+	fn remove(&mut self, entity: Entity) -> bool {
+		let index = self
+			.entity_to_index
+			.get(&entity)
+			.cloned()
+			.unwrap_or(self.components.len());
 
-		let index = id.index as usize;
-
-		if self.components.len() - 1 < index {
-			return false;
-		}
-
-		if self.generations[index] != id.generation {
+		if self.components.len() <= index {
 			return false;
 		}
 
@@ -213,9 +191,9 @@ impl<T: Component> DynamicStorage for Storage<T> {
 		self.components[index].take().is_some()
 	}
 
-	fn insert_box(&mut self, value: &Box<dyn Any>) -> ComponentId {
+	fn insert_box(&mut self, entity: Entity, value: &Box<dyn Any>) {
 		let t: &T = value.downcast_ref().unwrap();
-		self.insert(t.clone())
+		self.insert(entity, t.clone())
 	}
 
 	fn as_any_mut(&mut self) -> &mut dyn Any {
@@ -286,12 +264,12 @@ pub struct AnyReadStorage<'a> {
 }
 
 impl<'a> AnyReadStorage<'a> {
-	pub fn get<T: Component>(&self, id: ComponentId) -> Option<&T> {
+	pub fn get<T: Component>(&self, entity: Entity) -> Option<&T> {
 		self.read
 			.as_any()
 			.downcast_ref::<Storage<T>>()
 			.expect("Incorrect usage of ReadStorage")
-			.get(id)
+			.get(entity)
 	}
 }
 
@@ -302,12 +280,7 @@ pub struct ReadStorage<'a, T: Component> {
 
 impl<'a, T: Component> ReadStorage<'a, T> {
 	pub fn get(&self, entity: &Entity) -> Option<&T> {
-		let id = entity.info.components.get(&T::VARIANT_ID)?;
-		Some(
-			self.storage.get(*id).expect(
-				"If entity info says we have a component of this type then we should have it.",
-			),
-		)
+		self.storage.get(*entity)
 	}
 }
 
@@ -316,36 +289,36 @@ pub struct AnyWriteStorage<'a> {
 }
 
 impl<'a> AnyWriteStorage<'a> {
-	pub fn insert<T: Component>(&mut self, t: T) -> ComponentId {
+	pub fn insert<T: Component>(&mut self, entity: Entity, t: T) {
 		self.write
 			.as_any_mut()
 			.downcast_mut::<Storage<T>>()
 			.expect("Incorrect usage of WriteStorage")
-			.insert(t)
+			.insert(entity, t)
 	}
 
-	pub fn insert_box(&mut self, value: &Box<dyn Any>) -> ComponentId {
-		self.write.insert_box(value)
+	pub fn insert_box(&mut self, entity: Entity, value: &Box<dyn Any>) {
+		self.write.insert_box(entity, value)
 	}
 
-	pub fn get<T: Component>(&self, id: ComponentId) -> Option<&T> {
+	pub fn get<T: Component>(&self, entity: Entity) -> Option<&T> {
 		self.write
 			.as_any()
 			.downcast_ref::<Storage<T>>()
 			.expect("Incorrect usage of WriteStorage")
-			.get(id)
+			.get(entity)
 	}
 
-	pub fn get_mut<T: Component>(&mut self, id: ComponentId) -> Option<&mut T> {
+	pub fn get_mut<T: Component>(&mut self, entity: Entity) -> Option<&mut T> {
 		self.write
 			.as_any_mut()
 			.downcast_mut::<Storage<T>>()
 			.expect("Incorrect usage of WriteStorage")
-			.get_mut(id)
+			.get_mut(entity)
 	}
 
-	pub fn remove(&mut self, id: ComponentId) -> bool {
-		self.write.remove(id)
+	pub fn remove(&mut self, entity: Entity) -> bool {
+		self.write.remove(entity)
 	}
 }
 
@@ -356,20 +329,10 @@ pub struct WriteStorage<'a, T: Component> {
 
 impl<'a, T: Component> WriteStorage<'a, T> {
 	pub fn get(&self, entity: &Entity) -> Option<&T> {
-		let id = entity.info.components.get(&T::VARIANT_ID)?;
-		Some(
-			self.storage.get(*id).expect(
-				"If entity info says we have a component of this type then we should have it.",
-			),
-		)
+		self.storage.get(*entity)
 	}
 
 	pub fn get_mut(&mut self, entity: &Entity) -> Option<&mut T> {
-		let id = entity.info.components.get(&T::VARIANT_ID)?;
-		Some(
-			self.storage.get_mut(*id).expect(
-				"If entity info says we have a component of this type then we should have it.",
-			),
-		)
+		self.storage.get_mut(*entity)
 	}
 }

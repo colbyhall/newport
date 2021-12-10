@@ -1,23 +1,16 @@
 use engine::Uuid;
 
-use super::{
-	ComponentId,
-	ComponentVariantId,
-};
-
 use std::collections::HashMap;
 
-pub type EntityId = Uuid;
+pub type Entity = Uuid;
 
 #[derive(Default, Clone)]
 pub struct EntityInfo {
-	pub components: HashMap<ComponentVariantId, ComponentId>,
+	pub components: u128,
 }
 
-#[derive(Clone)]
-pub struct Entity {
-	pub id: EntityId,
-	pub info: EntityInfo,
+impl EntityInfo {
+	pub const MAX_COMPONENT_TYPES: usize = 128;
 }
 
-pub type EntityContainer = HashMap<EntityId, EntityInfo>;
+pub type EntityContainer = HashMap<Entity, EntityInfo>;
