@@ -106,6 +106,7 @@ use engine::{
 use resources::{
 	Importer,
 	Resource,
+	ResourceManager,
 };
 
 pub struct Gpu {
@@ -130,6 +131,7 @@ impl Module for Gpu {
 
 	fn depends_on(builder: Builder) -> Builder {
 		builder
+			.module::<ResourceManager>()
 			.register(GraphicsPipeline::variant())
 			.register(GraphicsPipelineImporter::variant(&["graphics_pipeline"]))
 			.register(Texture::variant())

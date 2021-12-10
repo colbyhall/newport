@@ -34,6 +34,8 @@ macro_rules! vec2 {
 	};
 }
 
+pub type Point2 = Vec2;
+
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Vec2 {
 	pub x: f32,

@@ -38,7 +38,7 @@ use serde::{
 
 use std::ops::*;
 
-pub trait Number:
+pub trait Float:
 	Default
 	+ Add<Output = Self>
 	+ AddAssign
@@ -58,20 +58,9 @@ pub trait Number:
 	const ONE: Self;
 }
 
-macro_rules! add_impl_int {
-    ($($t:ty)*) => ($(
-        impl Number for $t {
-			const ZERO: Self = 0;
-			const ONE: Self = 1;
-        }
-    )*)
-}
-
-add_impl_int! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
-
 macro_rules! add_impl_float {
     ($($t:ty)*) => ($(
-        impl Number for $t {
+        impl Float for $t {
 			const ZERO: Self = 0.0;
 			const ONE: Self = 1.0;
         }
@@ -80,7 +69,7 @@ macro_rules! add_impl_float {
 
 add_impl_float! { f32 f64 }
 
-pub fn lerp<T: Number>(a: T, b: T, t: T) -> T {
+pub fn lerp<T: Float>(a: T, b: T, t: T) -> T {
 	(T::ONE - t) * a + t * b
 }
 
