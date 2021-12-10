@@ -1,12 +1,12 @@
 #![allow(incomplete_features)]
 #![feature(specialization)]
 #![feature(const_type_name)]
+#![feature(trait_alias)]
 
 mod component;
 mod entity;
 mod query;
 mod scene;
-mod schedule;
 mod system;
 mod world;
 
@@ -15,7 +15,6 @@ pub use {
 	entity::*,
 	query::*,
 	scene::*,
-	schedule::*,
 	system::*,
 	world::*,
 };

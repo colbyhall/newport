@@ -81,7 +81,7 @@ impl ComponentVariantId {
 		Self(hash_rec(name, 0, FNV_OFFSET_BASIC) as u32)
 	}
 
-	pub fn to_mask(self) -> u128 {
+	pub const fn to_mask(self) -> u128 {
 		1 << (self.0 as usize & (EntityInfo::MAX_COMPONENT_TYPES - 1)) as u128
 	}
 }
@@ -323,7 +323,7 @@ impl<'a> AnyWriteStorage<'a> {
 }
 
 pub struct WriteStorage<'a, T: Component> {
-	storage: AnyWriteStorage<'a>,
+	pub(crate) storage: AnyWriteStorage<'a>,
 	phantom: PhantomData<T>,
 }
 

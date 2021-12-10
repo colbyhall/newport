@@ -1,29 +1,42 @@
-use std::collections::HashMap;
-
-use crate::{
-	Component,
-	ComponentVariantId,
-	ComponentsContainer,
-	Entity,
-	EntityContainer,
-	EntityInfo,
-	ReadStorage,
-	WriteStorage,
+use {
+	crate::{
+		Component,
+		ComponentVariantId,
+		ComponentsContainer,
+		Entity,
+		EntityContainer,
+		EntityInfo,
+		ReadStorage,
+		ScheduleBlock,
+		WriteStorage,
+	},
+	engine::Engine,
+	std::{
+		any::Any,
+		collections::HashMap,
+	},
+	sync::lock::Mutex,
 };
-use engine::Engine;
-use std::any::Any;
-use sync::lock::Mutex;
 
 pub struct World {
 	pub(crate) entities: Mutex<EntityContainer>,
 	pub(crate) components: ComponentsContainer,
+	pub singleton: Entity,
+	schedule: ScheduleBlock,
 }
 
 impl World {
-	pub fn new() -> Self {
+	pub fn new(schedule: ScheduleBlock) -> Self {
+		let mut entities = EntityContainer::new();
+
+		let singleton = Entity::new();
+		entities.insert(singleton, EntityInfo::default());
+
 		Self {
-			entities: Mutex::new(EntityContainer::new()),
+			entities: Mutex::new(entities),
 			components: ComponentsContainer::new(Engine::register().to_vec()),
+			singleton,
+			schedule,
 		}
 	}
 
@@ -41,14 +54,49 @@ impl World {
 	pub async fn write<T: Component>(&self) -> WriteStorage<'_, T> {
 		self.components.write().await
 	}
+
+	pub async fn insert<T: Component>(
+		&self,
+		storage: &mut WriteStorage<'_, T>,
+		entity: Entity,
+		t: T,
+	) {
+		let mut entities = self.entities.lock().await;
+		let info = entities.get_mut(&entity).unwrap();
+
+		let mask = T::VARIANT_ID.to_mask();
+		if info.components & mask == mask {
+			storage.storage.remove(entity);
+		}
+		info.components |= mask;
+		storage.storage.insert(entity, t);
+	}
+
+	pub async fn remove<T: Component>(
+		&self,
+		storage: &mut WriteStorage<'_, T>,
+		entity: Entity,
+	) -> bool {
+		let mut entities = self.entities.lock().await;
+		let info = entities.get_mut(&entity).unwrap();
+
+		let mask = T::VARIANT_ID.to_mask();
+		if info.components & mask == mask {
+			info.components &= !mask;
+			storage.storage.remove(entity)
+		} else {
+			false
+		}
+	}
+
+	pub async fn step(&'static self, dt: f32) {
+		self.schedule.execute(self, dt).await;
+	}
 }
 
 impl Default for World {
 	fn default() -> Self {
-		Self {
-			entities: Default::default(),
-			components: ComponentsContainer::new(Engine::register().to_vec()),
-		}
+		Self::new(ScheduleBlock::default())
 	}
 }
 
