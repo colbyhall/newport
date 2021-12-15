@@ -33,12 +33,6 @@ pub struct Game {
 impl Module for Game {
 	fn new() -> Self {
 		let world = World::new(ScheduleBlock::new());
-
-		println!(
-			"{:#?}",
-			Mat4::rotate(Quaternion::IDENTITY) * Mat4::translate([5.0, 100.0, 2.0])
-		);
-
 		sync::block_on(async {
 			let mut transforms = world.write::<Transform>().await;
 			let mut filters = world.write::<MeshFilter>().await;
@@ -58,7 +52,7 @@ impl Module for Game {
 				.await
 				.with(
 					Transform {
-						location: Point3::new(5.0, 0.0, -5.0),
+						location: Point3::new(5.0, 0.0, -1.0),
 						..Default::default()
 					},
 					&mut transforms,
