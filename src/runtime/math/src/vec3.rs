@@ -22,6 +22,8 @@ use serde::{
 	Serializer,
 };
 
+pub type Point3 = Vec3;
+
 #[derive(Copy, Clone, Default, Debug, PartialEq, PartialOrd)]
 pub struct Vec3 {
 	pub x: f32,

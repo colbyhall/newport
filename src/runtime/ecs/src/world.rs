@@ -1,7 +1,6 @@
 use {
 	crate::{
 		Component,
-		ComponentVariantId,
 		ComponentsContainer,
 		Entity,
 		EntityContainer,
@@ -11,11 +10,10 @@ use {
 		WriteStorage,
 	},
 	engine::Engine,
-	std::{
-		any::Any,
-		collections::HashMap,
+	sync::lock::{
+		Mutex,
+		MutexGuard,
 	},
-	sync::lock::Mutex,
 };
 
 pub struct World {
@@ -40,11 +38,11 @@ impl World {
 		}
 	}
 
-	pub fn spawn(&self) -> EntityBuilder<'_> {
-		EntityBuilder {
-			world: self,
-			components: HashMap::with_capacity(32),
-		}
+	pub async fn spawn(&self) -> EntityBuilder<'_> {
+		let mut entities = self.entities.lock().await;
+		let entity = Entity::new();
+		entities.insert(entity, EntityInfo::default());
+		EntityBuilder { entities, entity }
 	}
 
 	pub async fn read<T: Component>(&self) -> ReadStorage<'_, T> {
@@ -101,30 +99,26 @@ impl Default for World {
 }
 
 pub struct EntityBuilder<'a> {
-	world: &'a World,
-	components: HashMap<ComponentVariantId, Box<dyn Any>>, // TODO: Use temp allocator here
+	entities: MutexGuard<'a, EntityContainer>,
+	entity: Entity,
 }
 
 impl<'a> EntityBuilder<'a> {
-	pub fn with<T: Component>(mut self, t: T) -> Self {
-		self.components.insert(T::VARIANT_ID, Box::new(t));
+	pub fn with<T: Component>(mut self, t: T, storage: &mut WriteStorage<T>) -> Self {
+		let info = self.entities.get_mut(&self.entity).unwrap();
+
+		let mask = T::VARIANT_ID.to_mask();
+		if info.components & mask == mask {
+			info.components &= !mask;
+			storage.storage.remove(self.entity);
+		}
+
+		info.components |= mask;
+		storage.storage.insert(self.entity, t);
 		self
 	}
 
-	pub async fn finish(self) -> Entity {
-		let EntityBuilder { world, components } = self;
-
-		let mut entities = world.entities.lock().await;
-		let id = Entity::new();
-
-		let mut entity_info = EntityInfo::default();
-		for (variant, component) in components.iter() {
-			let mut write = self.world.components.write_id(*variant).await;
-			write.insert_box(id, component);
-			entity_info.components |= variant.to_mask();
-		}
-		entities.insert(id, entity_info);
-
-		id
+	pub fn finish(self) -> Entity {
+		self.entity
 	}
 }

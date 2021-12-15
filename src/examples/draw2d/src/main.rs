@@ -19,7 +19,7 @@ use {
 	},
 	math::{
 		Color,
-		Matrix4,
+		Mat4,
 		Vec2,
 	},
 	resources::{
@@ -71,12 +71,12 @@ impl Module for Draw2d {
 				let viewport = window.inner_size();
 				let viewport = Vec2::new(viewport.width as f32 / dpi, viewport.height as f32 / dpi);
 
-				let proj = Matrix4::ortho(viewport.x, viewport.y, 1000.0, 0.1);
-				let view = Matrix4::translate([-viewport.x / 2.0, -viewport.y / 2.0, 0.0]);
+				let proj = Mat4::ortho(viewport.x, viewport.y, 1000.0, 0.1);
+				let view = Mat4::translate([-viewport.x / 2.0, -viewport.y / 2.0, 0.0]);
 
 				#[allow(dead_code)]
 				struct Imports {
-					view: Matrix4,
+					view: Mat4,
 				}
 
 				let imports =

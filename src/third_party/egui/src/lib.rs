@@ -17,7 +17,7 @@ use {
 	newport_math::{
 		srgb_to_linear,
 		Color,
-		Matrix4,
+		Mat4,
 		Vec2,
 		Vec3,
 		Vec4,
@@ -367,12 +367,12 @@ impl Module for Egui {
 				.unwrap();
 				index_buffer.copy_to(&indices[..]).unwrap();
 
-				let proj = Matrix4::ortho(viewport.x, -viewport.y, 1000.0, 0.1);
-				let view = Matrix4::translate(Vec3::new(-viewport.x / 2.0, -viewport.y / 2.0, 0.0));
+				let proj = Mat4::ortho(viewport.x, -viewport.y, 1000.0, 0.1);
+				let view = Mat4::translate(Vec3::new(-viewport.x / 2.0, -viewport.y / 2.0, 0.0));
 
 				#[allow(dead_code)]
 				struct Imports {
-					view: Matrix4,
+					view: Mat4,
 				}
 
 				let imports =

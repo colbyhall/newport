@@ -67,18 +67,17 @@ pub struct ComponentVariantId(u32);
 impl ComponentVariantId {
 	pub const fn new(name: &'static str) -> Self {
 		const FNV_OFFSET_BASIC: u64 = 2166136261;
-		// const FNV_PRIME: u64 = 16777619;
+		const FNV_PRIME: u64 = 16777619;
 
-		const fn hash_rec(name: &'static str, index: usize, hash: u64) -> u64 {
-			let hash = hash ^ name.as_bytes()[index] as u64;
-			if index != name.len() - 1 {
-				hash_rec(name, index + 1, hash)
-			} else {
-				hash
-			}
+		let mut hash = FNV_OFFSET_BASIC;
+		let mut index = 0;
+		while index < name.len() {
+			hash = hash.wrapping_mul(FNV_PRIME);
+			hash ^= name.as_bytes()[index] as u64;
+			index += 1;
 		}
 
-		Self(hash_rec(name, 0, FNV_OFFSET_BASIC) as u32)
+		Self(hash as u32)
 	}
 
 	pub const fn to_mask(self) -> u128 {

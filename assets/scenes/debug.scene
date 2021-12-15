@@ -3,7 +3,7 @@
         id: "{DA2ECADD-F65E-4A62-8BA7-00D6FE5C30F6}",
         components: {
             "Transform": (
-                position: [10.0, 0.0, 10.0],
+                location: [10.0, 0.0, 10.0],
                 rotation: [0.0, 0.0, 0.0, 1.0],
                 scale: [1.0, 1.0, 1.0],
             ),
@@ -20,7 +20,7 @@
         id: "{49EF94F7-952A-4927-A927-FCCB6E8E6EF7}",
         components: {
             "Transform": (
-                position: [1.0, 0.0, 0.0],
+                location: [1.0, 0.0, 0.0],
                 rotation: [0.0, 0.0, 0.0, 1.0],
                 scale: [100000.0, 100000.0, 1.0],
             ),
@@ -34,7 +34,7 @@
         id: "{D124EEA5-7845-4D84-84B1-02D7EA1E812D}",
         components: {
             "Transform": (
-                position: [0.0, 0.0, 0.0],
+                location: [0.0, 0.0, 0.0],
                 rotation: [0.0, 0.0, 0.0, 1.0],
                 scale: [1.0, 1.0, 1.0],
             ),

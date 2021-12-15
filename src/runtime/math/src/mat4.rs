@@ -16,20 +16,20 @@ use serde::{
 };
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
-pub struct Matrix4 {
+pub struct Mat4 {
 	pub x_column: Vec4,
 	pub y_column: Vec4,
 	pub z_column: Vec4,
 	pub w_column: Vec4,
 }
 
-impl Default for Matrix4 {
+impl Default for Mat4 {
 	fn default() -> Self {
-		Matrix4::IDENTITY
+		Mat4::IDENTITY
 	}
 }
 
-impl Matrix4 {
+impl Mat4 {
 	pub const ZERO: Self = Self {
 		x_column: Vec4::new(0.0, 0.0, 0.0, 0.0),
 		y_column: Vec4::new(0.0, 0.0, 0.0, 0.0),
@@ -103,7 +103,7 @@ impl Matrix4 {
 
 	pub const fn ortho(width: f32, height: f32, far: f32, near: f32) -> Self {
 		// NOTE: 0 - 1 z clipping
-		let mut result = Matrix4::IDENTITY;
+		let mut result = Mat4::IDENTITY;
 		result.x_column.x = 2.0 / width;
 		result.y_column.y = 2.0 / height;
 		result.z_column.z = 1.0 / (far - near);
@@ -117,7 +117,7 @@ impl Matrix4 {
 	pub fn perspective(fov: f32, aspect_ratio: f32, far: f32, near: f32) -> Self {
 		let cotangent = 1.0 / f32::tan(fov * (PI / 360.0));
 
-		let mut result = Matrix4::IDENTITY;
+		let mut result = Mat4::IDENTITY;
 		result.x_column.x = cotangent / aspect_ratio;
 		result.y_column.y = cotangent;
 		result.z_column.w = -1.0;
@@ -130,16 +130,16 @@ impl Matrix4 {
 		result
 	}
 
-	pub fn translate(xyz: impl Into<Vec3>) -> Matrix4 {
-		let mut result = Matrix4::IDENTITY;
+	pub fn translate(xyz: impl Into<Vec3>) -> Mat4 {
+		let mut result = Mat4::IDENTITY;
 		result.w_column = (xyz.into(), 1.0).into();
 		result
 	}
 
-	pub fn rotate(quat: impl Into<Quaternion>) -> Matrix4 {
+	pub fn rotate(quat: impl Into<Quaternion>) -> Mat4 {
 		let normalized = quat.into().norm();
 
-		let mut result = Matrix4::IDENTITY;
+		let mut result = Mat4::IDENTITY;
 
 		let xx = normalized.x * normalized.x;
 		let xy = normalized.x * normalized.y;
@@ -298,7 +298,7 @@ impl Matrix4 {
 		}
 		let det = 1.0 / det;
 
-		let mut result = Matrix4::ZERO;
+		let mut result = Mat4::ZERO;
 		for i in 0..16 {
 			result[i] = inv[i] * det;
 		}
@@ -306,7 +306,7 @@ impl Matrix4 {
 	}
 }
 
-impl Index<usize> for Matrix4 {
+impl Index<usize> for Mat4 {
 	type Output = f32;
 
 	fn index(&self, index: usize) -> &Self::Output {
@@ -325,7 +325,7 @@ impl Index<usize> for Matrix4 {
 	}
 }
 
-impl IndexMut<usize> for Matrix4 {
+impl IndexMut<usize> for Mat4 {
 	fn index_mut(&mut self, index: usize) -> &mut Self::Output {
 		let col = index / 4;
 		let row = index % 4;
@@ -342,7 +342,7 @@ impl IndexMut<usize> for Matrix4 {
 	}
 }
 
-impl Mul for Matrix4 {
+impl Mul for Mat4 {
 	type Output = Self;
 
 	fn mul(self, rhs: Self) -> Self::Output {
@@ -374,7 +374,7 @@ impl Mul for Matrix4 {
 	}
 }
 
-impl Mul<Vec4> for Matrix4 {
+impl Mul<Vec4> for Mat4 {
 	type Output = Vec4;
 
 	fn mul(self, rhs: Vec4) -> Self::Output {
@@ -387,7 +387,7 @@ impl Mul<Vec4> for Matrix4 {
 	}
 }
 
-impl MulAssign for Matrix4 {
+impl MulAssign for Mat4 {
 	fn mul_assign(&mut self, rhs: Self) {
 		*self = *self * rhs;
 	}
