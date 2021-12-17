@@ -3,6 +3,9 @@ name = "game3d"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+path = "game3d.rs"
+
 [dependencies]
 engine = { path = "../engine" }
 ecs = { path = "../ecs" }

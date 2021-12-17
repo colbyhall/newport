@@ -3,6 +3,10 @@ name = "draw2d"
 version = "0.0.0"
 edition = "2021"
 
+[[bin]]
+path = "draw2d.rs"
+name = "draw2d"
+
 [dependencies]
 engine    	= { path = "../../runtime/engine" }
 gpu    		= { path = "../../runtime/gpu" }

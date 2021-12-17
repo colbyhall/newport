@@ -9,5 +9,8 @@ description = "Math library that also works with spirv shaders for Newport engin
 categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
+[lib]
+path = "math.rs"
+
 [dependencies]
 serde  = { path = "../../third_party/serde" }

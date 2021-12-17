@@ -9,6 +9,9 @@ description = "Core runnable library for the Newport engine"
 categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
+[lib]
+path = "engine.rs"
+
 [dependencies]
 platform = { path = "../platform" }
 math     = { path = "../math" }

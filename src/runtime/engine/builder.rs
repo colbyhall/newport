@@ -39,16 +39,16 @@ impl Builder {
 	/// Creates a new [`Builder`]
 	pub fn new() -> Self {
 		Self {
-			creation: Instant::now(),
-
 			modules: Vec::with_capacity(32),
 			name: None,
 
-			process_input: Vec::new(),
-			tick: Vec::new(),
+			process_input: Vec::with_capacity(8),
+			tick: Vec::with_capacity(8),
 			display: None,
 
-			registers: Some(HashMap::new()),
+			registers: Some(HashMap::with_capacity(64)),
+
+			creation: Instant::now(),
 		}
 	}
 
@@ -110,7 +110,7 @@ impl Builder {
 		let it = match registers.get_mut(&type_id) {
 			Some(it) => it,
 			None => {
-				let register: Vec<T> = Vec::new();
+				let register: Vec<T> = Vec::with_capacity(128);
 				registers.insert(type_id, Box::new(register));
 				registers.get_mut(&type_id).unwrap()
 			}

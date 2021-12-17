@@ -3,6 +3,10 @@ name = "triangle"
 version = "0.0.0"
 edition = "2021"
 
+[[bin]]
+path = "triangle.rs"
+name = "triangle"
+
 [dependencies]
 engine    	= { path = "../../runtime/engine" }
 gpu    		= { path = "../../runtime/gpu" }

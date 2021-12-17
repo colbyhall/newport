@@ -9,6 +9,9 @@ description = "Os abstractions for engine use"
 categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
+[lib]
+path = "platform.rs"
+
 [dependencies]
 lazy_static = "1.4.0"
 math = { path = "../math" }

@@ -9,6 +9,9 @@ description = "Thread safe render abstraction layer for Newport engine"
 categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
+[lib]
+path = "gpu.rs"
+
 [dependencies]
 engine 		= { path = "../engine" }
 platform 	= { path = "../platform" }

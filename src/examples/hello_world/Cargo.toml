@@ -3,7 +3,9 @@ name = "hello_world"
 version = "0.0.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+path = "hello_world.rs"
+name = "hello_world"
 
 [dependencies]
 engine    = { path = "../../runtime/engine" }

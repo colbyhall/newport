@@ -3,6 +3,9 @@ name = "sync"
 version = "0.1.0"
 edition = "2018"
 
+[lib]
+path = "sync.rs"
+
 [dependencies]
 futures = { version = "0.3" }
 async-trait = "0.1"

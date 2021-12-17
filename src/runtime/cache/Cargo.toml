@@ -9,6 +9,9 @@ description = "Cache Builder for Newport"
 categories = ["game-engines", "game-development"]
 keywords = ["game", "engine", "gamedev", "newport"]
 
+[lib]
+path = "cache.rs"
+
 [dependencies]
 engine = { path = "../engine" }
 serde  = { path = "../../third_party/serde" }
