@@ -12,3 +12,9 @@ sync = { path = "../sync" }
 gpu = { path = "../gpu" }
 graphics = { path = "../graphics" }
 resources = { path = "../resources" }
+
+egui = { path = "../../third_party/egui", optional = true }
+
+[features]
+default = ["editor"]
+editor = ["egui"]

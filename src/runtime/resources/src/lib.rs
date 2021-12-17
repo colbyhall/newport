@@ -311,7 +311,7 @@ pub struct ImporterVariant {
 	importer: TypeId,
 	resource: TypeId,
 
-	extensions: Vec<&'static str>,
+	extensions: &'static [&'static str],
 
 	#[allow(clippy::type_complexity)]
 	load_resource: fn(&Box<dyn Any>, &[u8]) -> Result<Box<dyn Any>>,
@@ -331,7 +331,7 @@ pub trait Importer: Sized + Serialize + DeserializeOwned + 'static {
 	fn import(&self, bytes: &[u8]) -> Result<Self::Target>;
 	fn export(&self, resource: &Self::Target, file: &mut File) -> Result<()>;
 
-	fn variant(extensions: &[&'static str]) -> ImporterVariant {
+	fn variant(extensions: &'static [&'static str]) -> ImporterVariant {
 		fn load_resource<T: Importer>(meta: &Box<dyn Any>, bytes: &[u8]) -> Result<Box<dyn Any>> {
 			let meta = meta.downcast_ref::<T>().unwrap();
 			Ok(Box::new(meta.import(bytes)?))
@@ -382,7 +382,7 @@ pub trait Importer: Sized + Serialize + DeserializeOwned + 'static {
 			importer: TypeId::of::<Self>(),
 			resource: TypeId::of::<Self::Target>(),
 
-			extensions: extensions.to_vec(),
+			extensions,
 
 			load_resource: load_resource::<Self>,
 			load_meta: load_meta::<Self>,

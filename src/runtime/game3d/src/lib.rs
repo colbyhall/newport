@@ -1,5 +1,9 @@
+mod editor;
 mod render;
-pub(crate) use render::*;
+pub(crate) use {
+	editor::*,
+	render::*,
+};
 
 use {
 	ecs::{
@@ -14,21 +18,18 @@ use {
 		Engine,
 		Module,
 	},
-	gpu::{
-		Gpu,
-		GraphicsPipeline,
-		GraphicsRecorder,
-	},
 	graphics::Graphics,
 	math::*,
 	resources::Handle,
+	std::cell::UnsafeCell,
 	sync::join,
 };
 
 pub struct Game {
 	world: World,
 	renderer: Renderer,
-	present_pipeline: Handle<GraphicsPipeline>,
+
+	viewport: UnsafeCell<Vec2>,
 }
 impl Module for Game {
 	fn new() -> Self {
@@ -67,11 +68,16 @@ impl Module for Game {
 				)
 				.finish();
 		});
+
+		let window = Engine::window().unwrap();
+		let viewport = window.inner_size();
+		let viewport = Vec2::new(viewport.width as f32, viewport.height as f32);
+
 		Self {
 			world,
 			renderer: Renderer::new(),
-			present_pipeline: Handle::find_or_load("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}")
-				.unwrap_or_default(),
+
+			viewport: UnsafeCell::new(viewport),
 		}
 	}
 
@@ -79,19 +85,25 @@ impl Module for Game {
 		builder
 			.module::<Graphics>()
 			.module::<Ecs>()
+			.module::<Editor>()
 			.register(Camera::variant())
 			.register(MeshFilter::variant())
-			.tick(|dt| {
+			.tick(|delta_time| {
 				let Game {
-					world, renderer, ..
+					world,
+					renderer,
+					viewport,
+					..
 				} = Engine::module().unwrap();
+
+				let viewport = {
+					let viewport = viewport.get();
+					unsafe { *viewport }
+				};
+
 				Engine::wait_on(async {
 					let simulation = async {
-						world.step(dt).await;
-
-						let window = Engine::window().unwrap();
-						let viewport = window.inner_size();
-						let viewport = Vec2::new(viewport.width as f32, viewport.height as f32);
+						world.step(delta_time).await;
 
 						let scene = DrawList::build(world, viewport).await;
 						renderer.push_scene(scene);
@@ -101,41 +113,6 @@ impl Module for Game {
 					join!(simulation, render)
 				});
 				renderer.advance_frame();
-			})
-			.display(|| {
-				let game: &Game = Engine::module().unwrap();
-
-				let device = Gpu::device();
-				let backbuffer = device
-					.acquire_backbuffer()
-					.expect("Swapchain failed to find a back buffer");
-
-				let pipeline = game.present_pipeline.read();
-				let receipt = match game.renderer.to_display() {
-					Some(scene) => GraphicsRecorder::new()
-						.render_pass(&[&backbuffer], |ctx| {
-							ctx.clear_color(Color::BLACK)
-								.bind_pipeline(&pipeline)
-								.bind_texture("texture", &scene.diffuse_buffer)
-								.draw(3, 0)
-						})
-						.resource_barrier_texture(
-							&backbuffer,
-							gpu::Layout::ColorAttachment,
-							gpu::Layout::Present,
-						)
-						.submit(),
-					None => GraphicsRecorder::new()
-						.render_pass(&[&backbuffer], |ctx| ctx.clear_color(Color::BLACK))
-						.resource_barrier_texture(
-							&backbuffer,
-							gpu::Layout::ColorAttachment,
-							gpu::Layout::Present,
-						)
-						.submit(),
-				};
-
-				device.display(&[receipt]);
 			})
 	}
 }
