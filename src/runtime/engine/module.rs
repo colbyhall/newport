@@ -2,6 +2,9 @@ use crate::Builder;
 
 /// Modules are an easy way to have global immutable state
 pub trait Module: Sized + 'static {
+	// Determines if this module is thread safe or not
+	const LOCAL: bool = false;
+
 	/// Creates a module and returns as result. This is the initialization point for Modules
 	fn new() -> Self;
 

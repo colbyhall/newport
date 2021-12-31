@@ -1,0 +1,12 @@
+[package]
+name = "widgets"
+version = "0.0.0"
+edition = "2021"
+
+[[bin]]
+path = "widgets.rs"
+name = "widgets"
+
+[dependencies]
+engine  = { path = "../../runtime/engine" }
+gui    	= { path = "../../runtime/gui" }

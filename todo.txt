@@ -1,2 +1,14 @@
+[Priority Key]
+A - Highest
+B - Moderate
+C - Low
+
+[A]
+* Retained Gui library
+
+[B]
+* Cleanup the gpu library
+
+[C]
 * Create a system macro for ECS to auto gen all the Box async stuff. async trait has 
    issues with parsing a proc macro and rust analyzer

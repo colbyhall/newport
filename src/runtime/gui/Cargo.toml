@@ -1,0 +1,14 @@
+[package]
+name = "gui"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+path = "gui.rs"
+
+[dependencies]
+engine = { path = "../engine" }
+math = { path = "../math" }
+gpu = { path = "../gpu" }
+graphics = { path = "../graphics" }
+resources = { path = "../resources" }

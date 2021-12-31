@@ -31,6 +31,7 @@ use std::{
 		AtomicI32,
 		Ordering,
 	},
+	thread::ThreadId,
 	time::Instant,
 };
 
@@ -77,6 +78,8 @@ pub struct Engine {
 
 	logger: Logger,
 	config: ConfigMap,
+
+	main: ThreadId,
 }
 
 impl Engine {
@@ -140,6 +143,8 @@ impl Engine {
 
 				logger: Logger::new(),
 				config: ConfigMap::new(config_registers),
+
+				main: std::thread::current().id(),
 			});
 
 			info!(
@@ -379,6 +384,7 @@ impl Engine {
 		ENGINE.as_mut().unwrap()
 	}
 
+	/// Returns an immutable reference
 	pub fn module<'a, T: Module>() -> Option<&'a T> {
 		let engine = Engine::as_ref();
 
@@ -388,8 +394,28 @@ impl Engine {
 		module.downcast_ref::<T>()
 	}
 
+	/// Returns a mutable reference to a `Module`
+	///
+	/// # Safety
+	///
+	/// Modules can be accessed on any thread. This does not provide a locking mechanism.
 	pub unsafe fn module_mut<'a, T: Module>() -> Option<&'a mut T> {
 		let engine = Engine::as_mut();
+
+		let id = TypeId::of::<T>();
+		let module = engine.modules.get_mut(&id)?;
+		module.downcast_mut::<T>()
+	}
+
+	/// Returns a mutable reference to a `Module` if it is marked as LOCAL and is on main thread
+	pub fn module_mut_checked<'a, T: Module>() -> Option<&'a mut T> {
+		let current = std::thread::current().id();
+		let engine = unsafe { Engine::as_mut() };
+		assert_eq!(
+			current, engine.main,
+			"Engine::module_mut_checked must be called with a LOCAL module on the main thread"
+		);
+		assert!(T::LOCAL);
 
 		let id = TypeId::of::<T>();
 		let module = engine.modules.get_mut(&id)?;
