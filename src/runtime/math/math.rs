@@ -14,6 +14,7 @@ pub const TO_DEG: f32 = 180.0 / PI;
 pub const SMALL_NUMBER: f32 = 1.0e-8;
 
 mod color;
+mod mat3;
 mod mat4;
 mod quat;
 mod rect;
@@ -23,6 +24,7 @@ mod vec4;
 
 pub use {
 	color::*,
+	mat3::*,
 	mat4::*,
 	quat::*,
 	rect::*,

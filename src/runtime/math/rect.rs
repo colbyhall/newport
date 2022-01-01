@@ -1,4 +1,4 @@
-use crate::Vec2;
+use crate::Point2;
 
 use std::{
 	convert::From,
@@ -12,46 +12,46 @@ use serde::{
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Rect {
-	pub min: Vec2,
-	pub max: Vec2,
+	pub min: Point2,
+	pub max: Point2,
 }
 
 impl Rect {
 	pub const INFINITY: Rect = Rect {
-		min: Vec2 {
+		min: Point2 {
 			x: -f32::INFINITY,
 			y: -f32::INFINITY,
 		},
-		max: Vec2 {
+		max: Point2 {
 			x: f32::INFINITY,
 			y: f32::INFINITY,
 		},
 	};
 
 	pub const MINMAX: Rect = Rect {
-		min: Vec2 {
+		min: Point2 {
 			x: f32::MIN,
 			y: f32::MIN,
 		},
-		max: Vec2 {
+		max: Point2 {
 			x: f32::MAX,
 			y: f32::MAX,
 		},
 	};
 
 	pub const ZERO: Rect = Rect {
-		min: Vec2::ZERO,
-		max: Vec2::ZERO,
+		min: Point2::ZERO,
+		max: Point2::ZERO,
 	};
 
-	pub fn from_min_max(min: impl Into<Vec2>, max: impl Into<Vec2>) -> Self {
+	pub fn from_min_max(min: impl Into<Point2>, max: impl Into<Point2>) -> Self {
 		Self {
 			min: min.into(),
 			max: max.into(),
 		}
 	}
 
-	pub fn from_center(pos: Vec2, size: Vec2) -> Self {
+	pub fn from_center(pos: Point2, size: Point2) -> Self {
 		let min = pos - size / 2.0;
 		let max = pos + size / 2.0;
 		Self { min, max }
@@ -59,8 +59,8 @@ impl Rect {
 
 	pub fn from_ranges(x: RangeInclusive<f32>, y: RangeInclusive<f32>) -> Rect {
 		(
-			Vec2::new(*x.start(), *y.start()),
-			Vec2::new(*x.end(), *y.end()),
+			Point2::new(*x.start(), *y.start()),
+			Point2::new(*x.end(), *y.end()),
 		)
 			.into()
 	}
@@ -81,33 +81,33 @@ impl Rect {
 		self.min.y..=self.max.y
 	}
 
-	pub fn size(self) -> Vec2 {
-		Vec2::new(self.width(), self.height())
+	pub fn size(self) -> Point2 {
+		Point2::new(self.width(), self.height())
 	}
 
-	pub fn center(self) -> Vec2 {
+	pub fn center(self) -> Point2 {
 		let x = self.min.x + self.width() / 2.0;
 		let y = self.min.y + self.height() / 2.0;
-		Vec2::new(x, y)
+		Point2::new(x, y)
 	}
 
-	pub fn bottom_left(self) -> Vec2 {
+	pub fn bottom_left(self) -> Point2 {
 		self.min
 	}
 
-	pub fn top_right(self) -> Vec2 {
+	pub fn top_right(self) -> Point2 {
 		self.max
 	}
 
-	pub fn bottom_right(self) -> Vec2 {
+	pub fn bottom_right(self) -> Point2 {
 		(self.max.x, self.min.y).into()
 	}
 
-	pub fn top_left(self) -> Vec2 {
+	pub fn top_left(self) -> Point2 {
 		(self.min.x, self.max.y).into()
 	}
 
-	pub fn point_overlap(self, point: Vec2) -> bool {
+	pub fn point_overlap(self, point: Point2) -> bool {
 		self.min.x <= point.x
 			&& self.max.x >= point.x
 			&& self.min.y <= point.y
@@ -119,7 +119,7 @@ impl Rect {
 
 		self.max.y -= size;
 
-		let min = Vec2::new(self.min.x, self.max.y);
+		let min = Point2::new(self.min.x, self.max.y);
 
 		(min, max).into()
 	}
@@ -129,7 +129,7 @@ impl Rect {
 
 		self.min.y += size;
 
-		let max = Vec2::new(self.max.x, self.min.y);
+		let max = Point2::new(self.max.x, self.min.y);
 
 		(min, max).into()
 	}
@@ -139,7 +139,7 @@ impl Rect {
 
 		self.min.x += size;
 
-		let max = Vec2::new(self.min.x, self.max.y);
+		let max = Point2::new(self.min.x, self.max.y);
 
 		(min, max).into()
 	}
@@ -149,7 +149,7 @@ impl Rect {
 
 		self.max.x -= size;
 
-		let min = Vec2::new(self.max.x, self.min.y);
+		let min = Point2::new(self.max.x, self.min.y);
 
 		(min, max).into()
 	}
@@ -167,7 +167,7 @@ impl Rect {
 			&& other.min.y <= self.max.y
 	}
 
-	pub fn translate(self, amount: Vec2) -> Self {
+	pub fn translate(self, amount: Point2) -> Self {
 		Self {
 			min: self.min + amount,
 			max: self.max + amount,
@@ -211,8 +211,8 @@ impl Rect {
 	}
 }
 
-impl From<(Vec2, Vec2)> for Rect {
-	fn from(min_max: (Vec2, Vec2)) -> Self {
+impl From<(Point2, Point2)> for Rect {
+	fn from(min_max: (Point2, Point2)) -> Self {
 		let (min, max) = min_max;
 		Self { min, max }
 	}
@@ -222,8 +222,8 @@ impl From<(f32, f32, f32, f32)> for Rect {
 	fn from(rect: (f32, f32, f32, f32)) -> Self {
 		let (x0, y0, x1, y1) = rect;
 		Self {
-			min: Vec2::new(x0, y0),
-			max: Vec2::new(x1, y1),
+			min: Point2::new(x0, y0),
+			max: Point2::new(x1, y1),
 		}
 	}
 }

@@ -1,8 +1,3 @@
-use std::{
-	fmt::Debug,
-	ops::Deref,
-};
-
 use {
 	engine::{
 		Builder,
@@ -15,13 +10,14 @@ use {
 		Gpu,
 		GraphicsPipeline,
 		GraphicsRecorder,
-		Layout,
 		MemoryType,
 	},
 	graphics::Graphics,
 	math::{
 		Color,
+		Mat3,
 		Mat4,
+		Rect,
 		Vec2,
 	},
 	resources::{
@@ -30,6 +26,8 @@ use {
 	},
 	std::{
 		cell::RefCell,
+		fmt::Debug,
+		ops::Deref,
 		rc::Rc,
 	},
 };
@@ -43,7 +41,7 @@ impl Module for Gui {
 	const LOCAL: bool = true;
 
 	fn new() -> Self {
-		let base = WidgetRef::new(Panel::new().slot(PanelSlot::new(Panel::new())));
+		let base = WidgetRef::new(Panel::new().slot(PanelSlot::new(Text::new("Hello World"))));
 
 		println!("{:#?}", base);
 
@@ -60,6 +58,13 @@ impl Module for Gui {
 			.module::<ResourceManager>()
 			.display(|| {
 				let gui: &mut Gui = Engine::module_mut_checked().unwrap();
+
+				if let Some(base) = &mut gui.base {
+					let mut base = base.borrow_mut();
+					
+					let layout = base.
+				}
+
 				let window = Engine::window().unwrap();
 				let dpi = window.scale_factor() as f32;
 
@@ -91,7 +96,11 @@ impl Module for Gui {
 						// .bind_constants("imports", &imports, 0)
 						// .draw_indexed(indices.len(), 0)
 					})
-					.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present)
+					.resource_barrier_texture(
+						&backbuffer,
+						gpu::Layout::ColorAttachment,
+						gpu::Layout::Present,
+					)
 					.submit();
 
 				device.display(&[receipt]);
@@ -120,11 +129,19 @@ pub trait WidgetContainer: Debug {
 
 	fn widget(&self) -> &dyn Widget;
 	fn widget_mut(&mut self) -> &mut dyn Widget;
+
+	fn layout_mut(&mut self) -> &mut Option<Layout>;
+}
+
+pub struct Layout {
+	pub local_bounds: Rect,
+	pub local_to_absolute: Mat3,
 }
 
 struct Container<T: Widget> {
 	parent: Option<WidgetRef>,
 	widget: T,
+	layout: Option<Layout>,
 }
 
 impl<T: Widget> Debug for Container<T> {
@@ -152,6 +169,10 @@ impl<T: Widget> WidgetContainer for Container<T> {
 	fn widget_mut(&mut self) -> &mut dyn Widget {
 		&mut self.widget
 	}
+
+	fn layout_mut(&mut self) -> &mut Option<Layout> {
+		&mut self.layout
+	}
 }
 
 #[derive(Clone)]
@@ -162,6 +183,7 @@ impl WidgetRef {
 		let result = Self(Rc::new(RefCell::new(Container {
 			parent: None,
 			widget,
+			layout: None,
 		})));
 		{
 			let mut container = result.borrow_mut();
@@ -200,10 +222,11 @@ pub trait Slot: Debug {
 	fn child_mut(&mut self) -> &mut WidgetRef;
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Text {
 	text: String, // TODO: This should be some localized string structure probably
 	color: Color,
+	alignment: Alignment2,
 }
 
 impl Text {
@@ -211,6 +234,7 @@ impl Text {
 		Self {
 			text: text.to_string(),
 			color: Color::WHITE,
+			alignment: Default::default(),
 		}
 	}
 
@@ -218,7 +242,14 @@ impl Text {
 		self.color = color.into();
 		self
 	}
+
+	pub fn alignment(mut self, alignment: Alignment2) -> Self {
+		self.alignment = alignment;
+		self
+	}
 }
+
+impl Widget for Text {}
 
 #[derive(Default, Debug)]
 pub struct Panel {
@@ -300,6 +331,88 @@ impl Slot for PanelSlot {
 pub struct Margin {
 	pub bottom: f32,
 	pub left: f32,
-	pub right: f32,
 	pub top: f32,
+	pub right: f32,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub enum Alignment {
+	Min,
+	Center,
+	Max,
+	Fill,
+}
+
+impl Alignment {
+	pub const BOTTOM: Self = Self::Min;
+	pub const TOP: Self = Self::Max;
+
+	pub const LEFT: Self = Self::Min;
+	pub const RIGHT: Self = Self::Max;
+}
+
+impl Default for Alignment {
+	fn default() -> Self {
+		Self::Center
+	}
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Default)]
+pub struct Alignment2 {
+	pub vertical: Alignment,
+	pub horizontal: Alignment,
+}
+
+impl Alignment2 {
+	pub const BOTTOM_LEFT: Self = Self {
+		vertical: Alignment::BOTTOM,
+		horizontal: Alignment::LEFT,
+	};
+
+	pub const CENTER_LEFT: Self = Self {
+		vertical: Alignment::Center,
+		horizontal: Alignment::LEFT,
+	};
+
+	pub const TOP_LEFT: Self = Self {
+		vertical: Alignment::TOP,
+		horizontal: Alignment::LEFT,
+	};
+
+	pub const BOTTOM_CENTER: Self = Self {
+		vertical: Alignment::BOTTOM,
+		horizontal: Alignment::Center,
+	};
+
+	pub const CENTER_CENTER: Self = Self {
+		vertical: Alignment::Center,
+		horizontal: Alignment::Center,
+	};
+
+	pub const TOP_CENTER: Self = Self {
+		vertical: Alignment::TOP,
+		horizontal: Alignment::Center,
+	};
+
+	pub const BOTTOM_RIGHT: Self = Self {
+		vertical: Alignment::BOTTOM,
+		horizontal: Alignment::RIGHT,
+	};
+
+	pub const CENTER_RIGHT: Self = Self {
+		vertical: Alignment::Center,
+		horizontal: Alignment::RIGHT,
+	};
+
+	pub const TOP_RIGHT: Self = Self {
+		vertical: Alignment::TOP,
+		horizontal: Alignment::RIGHT,
+	};
+
+	pub const fn new(vertical: Alignment, horizontal: Alignment) -> Self {
+		Self {
+			vertical,
+			horizontal,
+		}
+	}
 }

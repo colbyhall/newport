@@ -3,6 +3,8 @@ use std::ops::{
 	AddAssign,
 	Div,
 	DivAssign,
+	Index,
+	IndexMut,
 	Mul,
 	MulAssign,
 	Neg,
@@ -346,5 +348,29 @@ impl<'de> Deserialize<'de> for Vec3 {
 			y: xyz[1],
 			z: xyz[2],
 		})
+	}
+}
+
+impl Index<usize> for Vec3 {
+	type Output = f32;
+
+	fn index(&self, index: usize) -> &Self::Output {
+		match index {
+			0 => &self.x,
+			1 => &self.y,
+			2 => &self.z,
+			_ => unreachable!(),
+		}
+	}
+}
+
+impl IndexMut<usize> for Vec3 {
+	fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+		match index {
+			0 => &mut self.x,
+			1 => &mut self.y,
+			2 => &mut self.z,
+			_ => unreachable!(),
+		}
 	}
 }
