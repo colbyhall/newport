@@ -17,6 +17,7 @@ use {
 		Color,
 		Mat3,
 		Mat4,
+		Point2,
 		Rect,
 		Vec2,
 	},
@@ -35,6 +36,7 @@ use {
 pub struct Gui {
 	base: Option<WidgetRef>,
 	pipeline: Handle<GraphicsPipeline>,
+	viewport: Vec2,
 }
 
 impl Module for Gui {
@@ -43,12 +45,11 @@ impl Module for Gui {
 	fn new() -> Self {
 		let base = WidgetRef::new(Panel::new().slot(PanelSlot::new(Text::new("Hello World"))));
 
-		println!("{:#?}", base);
-
 		Self {
 			base: Some(base),
 			pipeline: Handle::find_or_load("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}")
 				.unwrap_or_default(),
+			viewport: Vec2::ZERO,
 		}
 	}
 
@@ -59,21 +60,40 @@ impl Module for Gui {
 			.display(|| {
 				let gui: &mut Gui = Engine::module_mut_checked().unwrap();
 
-				if let Some(base) = &mut gui.base {
-					let mut base = base.borrow_mut();
-					
-					let layout = base.
-				}
-
 				let window = Engine::window().unwrap();
 				let dpi = window.scale_factor() as f32;
+				let viewport = window.inner_size();
+				let viewport = Vec2::new(viewport.width as f32 / dpi, viewport.height as f32 / dpi);
+
+				if let Some(base) = &mut gui.base {
+					let mut base = base.borrow_mut();
+
+					let changed = {
+						let layout = base.layout_mut();
+						if layout.is_none() || gui.viewport != viewport {
+							gui.viewport = viewport;
+							*layout = Some(Layout {
+								local_bounds: Rect::from_min_max(Point2::ZERO, viewport),
+								local_to_absolute: Mat3::IDENTITY,
+							});
+							true
+						} else {
+							false
+						}
+					};
+
+					if changed {
+						if let Some(layout) = base.layout() {
+							base.widget().layout(layout);
+						}
+					}
+
+					println!("{:#?}", base);
+				}
 
 				let device = Gpu::device();
 				let backbuffer = device.acquire_backbuffer().unwrap();
 				let pipeline = gui.pipeline.read();
-
-				let viewport = window.inner_size();
-				let viewport = Vec2::new(viewport.width as f32 / dpi, viewport.height as f32 / dpi);
 
 				let proj = Mat4::ortho(viewport.x, viewport.y, 1000.0, 0.1);
 				let view = Mat4::translate([-viewport.x / 2.0, -viewport.y / 2.0, 0.0]);
@@ -110,6 +130,10 @@ impl Module for Gui {
 }
 
 pub trait Widget: Debug + 'static {
+	fn layout(&self, _layout: &Layout) {}
+
+	fn desired_size(&self) -> Vec2;
+
 	fn slot(&self, _index: usize) -> Option<&dyn Slot> {
 		None
 	}
@@ -130,9 +154,11 @@ pub trait WidgetContainer: Debug {
 	fn widget(&self) -> &dyn Widget;
 	fn widget_mut(&mut self) -> &mut dyn Widget;
 
+	fn layout(&self) -> Option<&Layout>;
 	fn layout_mut(&mut self) -> &mut Option<Layout>;
 }
 
+#[derive(Debug)]
 pub struct Layout {
 	pub local_bounds: Rect,
 	pub local_to_absolute: Mat3,
@@ -149,6 +175,7 @@ impl<T: Widget> Debug for Container<T> {
 		f.debug_struct("WidgetContainer")
 			.field("parent", &self.parent.as_ref().map(|f| f.as_ptr()))
 			.field("widget", &self.widget)
+			.field("layout", &self.layout)
 			.finish()
 	}
 }
@@ -168,6 +195,10 @@ impl<T: Widget> WidgetContainer for Container<T> {
 
 	fn widget_mut(&mut self) -> &mut dyn Widget {
 		&mut self.widget
+	}
+
+	fn layout(&self) -> Option<&Layout> {
+		self.layout.as_ref()
 	}
 
 	fn layout_mut(&mut self) -> &mut Option<Layout> {
@@ -249,7 +280,11 @@ impl Text {
 	}
 }
 
-impl Widget for Text {}
+impl Widget for Text {
+	fn desired_size(&self) -> Vec2 {
+		todo!()
+	}
+}
 
 #[derive(Default, Debug)]
 pub struct Panel {
@@ -269,6 +304,19 @@ impl Panel {
 }
 
 impl Widget for Panel {
+	fn layout(&self, layout: &Layout) {
+		// if let Some(slot) = &self.slot {}
+	}
+
+	fn desired_size(&self) -> Vec2 {
+		if let Some(slot) = &self.slot {
+			let child = slot.child.borrow();
+			child.widget().desired_size() + slot.padding.size()
+		} else {
+			Vec2::ZERO
+		}
+	}
+
 	fn slot(&self, index: usize) -> Option<&dyn Slot> {
 		if index == 0 {
 			if let Some(slot) = &self.slot {
@@ -302,6 +350,7 @@ impl Widget for Panel {
 pub struct PanelSlot {
 	pub child: WidgetRef,
 
+	pub alignment: Alignment2,
 	pub margin: Margin,
 	pub padding: Margin,
 }
@@ -311,6 +360,7 @@ impl PanelSlot {
 		Self {
 			child: WidgetRef::new(child),
 
+			alignment: Alignment2::default(),
 			margin: Margin::default(),
 			padding: Margin::default(),
 		}
@@ -327,12 +377,18 @@ impl Slot for PanelSlot {
 	}
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Margin {
 	pub bottom: f32,
 	pub left: f32,
 	pub top: f32,
 	pub right: f32,
+}
+
+impl Margin {
+	pub fn size(self) -> Vec2 {
+		Vec2::new(self.left + self.right, self.bottom + self.top)
+	}
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
