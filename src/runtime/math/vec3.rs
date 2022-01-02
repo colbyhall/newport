@@ -45,6 +45,14 @@ impl Vec3 {
 		Self { x, y, z }
 	}
 
+	pub const fn append(xy: Vec2, z: f32) -> Self {
+		Self {
+			x: xy.x,
+			y: xy.y,
+			z,
+		}
+	}
+
 	pub const fn dot(self, other: Self) -> f32 {
 		self.x * other.x + self.y * other.y + self.z * other.z
 	}
@@ -139,6 +147,10 @@ impl Vec3 {
 
 	pub fn lerp(a: Self, b: Self, t: f32) -> Self {
 		Self::new(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t))
+	}
+
+	pub fn xy(self) -> Vec2 {
+		Vec2::new(self.x, self.y)
 	}
 }
 

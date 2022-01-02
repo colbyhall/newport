@@ -12,7 +12,11 @@ use {
 		GraphicsRecorder,
 		MemoryType,
 	},
-	graphics::Graphics,
+	graphics::{
+		FontCollection,
+		Graphics,
+		Painter,
+	},
 	math::{
 		Color,
 		Mat3,
@@ -20,6 +24,7 @@ use {
 		Point2,
 		Rect,
 		Vec2,
+		Vec3,
 	},
 	resources::{
 		Handle,
@@ -43,7 +48,27 @@ impl Module for Gui {
 	const LOCAL: bool = true;
 
 	fn new() -> Self {
-		let base = WidgetRef::new(Panel::new().slot(PanelSlot::new(Text::new("Hello World"))));
+		let base = WidgetRef::new(
+			Panel::new()
+				.slot(
+					PanelSlot::new(Panel::new().color(Color::GREEN).slot(
+						PanelSlot::new(Text::new("Hello World").color(Color::RED)).margin(Margin {
+							bottom: 5.0,
+							top: 5.0,
+							left: 5.0,
+							right: 5.0,
+						}),
+					))
+					.margin(Margin {
+						bottom: 5.0,
+						top: 5.0,
+						left: 5.0,
+						right: 5.0,
+					})
+					.alignment(Alignment2::FILL_FILL),
+				)
+				.color(Color::BLACK),
+		);
 
 		Self {
 			base: Some(base),
@@ -86,59 +111,67 @@ impl Module for Gui {
 						if let Some(layout) = base.layout() {
 							base.widget().layout(layout);
 						}
+						println!("{:#?}", base);
 					}
 
-					println!("{:#?}", base);
+					let mut painter = Painter::new();
+					base.widget().paint(
+						base.layout().expect("Layout should be completed by draw"),
+						&mut painter,
+					);
+					let (vertices, indices) = painter.finish().unwrap();
+					let device = Gpu::device();
+					let backbuffer = device.acquire_backbuffer().unwrap();
+					let pipeline = gui.pipeline.read();
+
+					let proj = Mat4::ortho(viewport.x, viewport.y, 1000.0, 0.1);
+					let view = Mat4::translate([-viewport.x / 2.0, -viewport.y / 2.0, 0.0]);
+
+					#[allow(dead_code)]
+					struct Imports {
+						view: Mat4,
+					}
+
+					let imports =
+						Buffer::new(BufferUsage::CONSTANTS, MemoryType::HostVisible, 1).unwrap();
+					imports.copy_to(&[Imports { view: proj * view }]).unwrap();
+
+					let receipt = GraphicsRecorder::new()
+						.render_pass(&[&backbuffer], |ctx| {
+							ctx.clear_color(Color::BLACK)
+								.bind_pipeline(&pipeline)
+								.bind_vertex_buffer(&vertices)
+								.bind_index_buffer(&indices)
+								.bind_constants("imports", &imports, 0)
+								.draw_indexed(indices.len(), 0)
+						})
+						.resource_barrier_texture(
+							&backbuffer,
+							gpu::Layout::ColorAttachment,
+							gpu::Layout::Present,
+						)
+						.submit();
+
+					device.display(&[receipt]);
+					device.wait_for_idle();
 				}
-
-				let device = Gpu::device();
-				let backbuffer = device.acquire_backbuffer().unwrap();
-				let pipeline = gui.pipeline.read();
-
-				let proj = Mat4::ortho(viewport.x, viewport.y, 1000.0, 0.1);
-				let view = Mat4::translate([-viewport.x / 2.0, -viewport.y / 2.0, 0.0]);
-
-				#[allow(dead_code)]
-				struct Imports {
-					view: Mat4,
-				}
-
-				let imports =
-					Buffer::new(BufferUsage::CONSTANTS, MemoryType::HostVisible, 1).unwrap();
-				imports.copy_to(&[Imports { view: proj * view }]).unwrap();
-
-				let receipt = GraphicsRecorder::new()
-					.render_pass(&[&backbuffer], |ctx| {
-						ctx.clear_color(Color::BLACK)
-						// .bind_pipeline(&pipeline)
-						// .bind_vertex_buffer(&vertices)
-						// .bind_index_buffer(&indices)
-						// .bind_constants("imports", &imports, 0)
-						// .draw_indexed(indices.len(), 0)
-					})
-					.resource_barrier_texture(
-						&backbuffer,
-						gpu::Layout::ColorAttachment,
-						gpu::Layout::Present,
-					)
-					.submit();
-
-				device.display(&[receipt]);
-				device.wait_for_idle();
 			})
 	}
 }
 
+#[allow(unused_variables)]
 pub trait Widget: Debug + 'static {
-	fn layout(&self, _layout: &Layout) {}
+	fn layout(&self, layout: &Layout) {}
 
 	fn desired_size(&self) -> Vec2;
 
-	fn slot(&self, _index: usize) -> Option<&dyn Slot> {
+	fn paint(&self, layout: &Layout, painter: &mut Painter) {}
+
+	fn slot(&self, index: usize) -> Option<&dyn Slot> {
 		None
 	}
 
-	fn slot_mut(&mut self, _index: usize) -> Option<&mut dyn Slot> {
+	fn slot_mut(&mut self, index: usize) -> Option<&mut dyn Slot> {
 		None
 	}
 
@@ -147,21 +180,18 @@ pub trait Widget: Debug + 'static {
 	}
 }
 
-pub trait WidgetContainer: Debug {
-	fn parent(&self) -> Option<&WidgetRef>;
-	fn parent_mut(&mut self) -> &mut Option<WidgetRef>;
-
-	fn widget(&self) -> &dyn Widget;
-	fn widget_mut(&mut self) -> &mut dyn Widget;
-
-	fn layout(&self) -> Option<&Layout>;
-	fn layout_mut(&mut self) -> &mut Option<Layout>;
-}
-
 #[derive(Debug)]
 pub struct Layout {
 	pub local_bounds: Rect,
 	pub local_to_absolute: Mat3,
+}
+
+impl Layout {
+	pub fn absolute_bounds(&self) -> Rect {
+		let min = self.local_to_absolute * Vec3::append(self.local_bounds.min, 1.0);
+		let max = self.local_to_absolute * Vec3::append(self.local_bounds.max, 1.0);
+		Rect::from_min_max(min.xy(), max.xy())
+	}
 }
 
 struct Container<T: Widget> {
@@ -178,6 +208,17 @@ impl<T: Widget> Debug for Container<T> {
 			.field("layout", &self.layout)
 			.finish()
 	}
+}
+
+pub trait WidgetContainer: Debug {
+	fn parent(&self) -> Option<&WidgetRef>;
+	fn parent_mut(&mut self) -> &mut Option<WidgetRef>;
+
+	fn widget(&self) -> &dyn Widget;
+	fn widget_mut(&mut self) -> &mut dyn Widget;
+
+	fn layout(&self) -> Option<&Layout>;
+	fn layout_mut(&mut self) -> &mut Option<Layout>;
 }
 
 impl<T: Widget> WidgetContainer for Container<T> {
@@ -255,15 +296,19 @@ pub trait Slot: Debug {
 
 #[derive(Default, Debug)]
 pub struct Text {
-	text: String, // TODO: This should be some localized string structure probably
-	color: Color,
-	alignment: Alignment2,
+	pub text: String, // TODO: This should be some localized string structure probably
+	pub font: Handle<FontCollection>,
+	pub size: u32,
+	pub color: Color,
+	pub alignment: Alignment2,
 }
 
 impl Text {
 	pub fn new(text: impl ToString) -> Self {
 		Self {
 			text: text.to_string(),
+			font: Handle::default(),
+			size: 16,
 			color: Color::WHITE,
 			alignment: Default::default(),
 		}
@@ -282,7 +327,22 @@ impl Text {
 
 impl Widget for Text {
 	fn desired_size(&self) -> Vec2 {
-		todo!()
+		let font = self.font.read();
+		let font = font
+			.font_at_size(self.size, 2.0)
+			.expect("Invalid font size");
+		font.string_rect(&self.text, 1000000.0).size()
+	}
+
+	fn paint(&self, layout: &Layout, painter: &mut Painter) {
+		let absolute = layout.absolute_bounds();
+
+		let font = self.font.read();
+		let font = font
+			.font_at_size(self.size, 2.0)
+			.expect("Invalid font size");
+
+		painter.text(&self.text, self.color, absolute.top_left(), &font);
 	}
 }
 
@@ -297,6 +357,11 @@ impl Panel {
 		Self::default()
 	}
 
+	pub fn color(mut self, color: impl Into<Color>) -> Self {
+		self.color = color.into();
+		self
+	}
+
 	pub fn slot(mut self, slot: PanelSlot) -> Self {
 		self.slot = Some(slot);
 		self
@@ -305,15 +370,77 @@ impl Panel {
 
 impl Widget for Panel {
 	fn layout(&self, layout: &Layout) {
-		// if let Some(slot) = &self.slot {}
+		if let Some(slot) = &self.slot {
+			let mut child = slot.child().borrow_mut();
+			let child_desired = child.widget().desired_size();
+			let parent_size = layout.local_bounds.size();
+
+			let (x0, x1) = match slot.alignment.horizontal {
+				Alignment::LEFT => {
+					let x0 = slot.margin.left;
+					let x1 = x0 + child_desired.x;
+					(x0, x1)
+				}
+				Alignment::RIGHT => {
+					let x1 = parent_size.x - slot.margin.right;
+					let x0 = x1 - child_desired.x;
+					(x0, x1)
+				}
+				Alignment::Center => {
+					let center = parent_size.x / 2.0;
+					let half_desired = child_desired.x / 2.0;
+					(center - half_desired, center + half_desired)
+				}
+				Alignment::Fill => (slot.margin.left, parent_size.x - slot.margin.right),
+			};
+
+			let (y0, y1) = match slot.alignment.vertical {
+				Alignment::BOTTOM => {
+					let y0 = slot.margin.bottom;
+					let y1 = x0 + child_desired.y;
+					(y0, y1)
+				}
+				Alignment::TOP => {
+					let y1 = parent_size.y - slot.margin.top;
+					let y0 = y1 - child_desired.y;
+					(y0, y1)
+				}
+				Alignment::Center => {
+					let center = parent_size.y / 2.0;
+					let half_desired = child_desired.y / 2.0;
+					(center - half_desired, center + half_desired)
+				}
+				Alignment::Fill => (slot.margin.bottom, parent_size.y - slot.margin.top),
+			};
+
+			*child.layout_mut() = Some(Layout {
+				local_bounds: Rect::from_min_max((x0, y0), (x1, y1)),
+				local_to_absolute: layout.local_to_absolute
+					* Mat3::translate(layout.local_bounds.min),
+			});
+
+			child.widget().layout(child.layout().unwrap());
+		}
 	}
 
 	fn desired_size(&self) -> Vec2 {
 		if let Some(slot) = &self.slot {
 			let child = slot.child.borrow();
-			child.widget().desired_size() + slot.padding.size()
+			child.widget().desired_size() + slot.padding.size() + slot.margin.size()
 		} else {
 			Vec2::ZERO
+		}
+	}
+
+	fn paint(&self, layout: &Layout, painter: &mut Painter) {
+		painter.fill_rect(layout.absolute_bounds(), self.color);
+
+		if let Some(slot) = &self.slot {
+			let child = slot.child().borrow();
+			child.widget().paint(
+				child.layout().expect("Layout should be built by this time"),
+				painter,
+			);
 		}
 	}
 
@@ -364,6 +491,21 @@ impl PanelSlot {
 			margin: Margin::default(),
 			padding: Margin::default(),
 		}
+	}
+
+	pub fn alignment(mut self, alignment: Alignment2) -> Self {
+		self.alignment = alignment;
+		self
+	}
+
+	pub fn margin(mut self, margin: Margin) -> Self {
+		self.margin = margin;
+		self
+	}
+
+	pub fn padding(mut self, padding: Margin) -> Self {
+		self.padding = padding;
+		self
 	}
 }
 
@@ -435,6 +577,11 @@ impl Alignment2 {
 		horizontal: Alignment::LEFT,
 	};
 
+	pub const FILL_LEFT: Self = Self {
+		vertical: Alignment::Fill,
+		horizontal: Alignment::LEFT,
+	};
+
 	pub const BOTTOM_CENTER: Self = Self {
 		vertical: Alignment::BOTTOM,
 		horizontal: Alignment::Center,
@@ -447,6 +594,11 @@ impl Alignment2 {
 
 	pub const TOP_CENTER: Self = Self {
 		vertical: Alignment::TOP,
+		horizontal: Alignment::Center,
+	};
+
+	pub const FILL_CENTER: Self = Self {
+		vertical: Alignment::Fill,
 		horizontal: Alignment::Center,
 	};
 
@@ -463,6 +615,31 @@ impl Alignment2 {
 	pub const TOP_RIGHT: Self = Self {
 		vertical: Alignment::TOP,
 		horizontal: Alignment::RIGHT,
+	};
+
+	pub const FILL_RIGHT: Self = Self {
+		vertical: Alignment::Fill,
+		horizontal: Alignment::RIGHT,
+	};
+
+	pub const BOTTOM_FILL: Self = Self {
+		vertical: Alignment::BOTTOM,
+		horizontal: Alignment::Fill,
+	};
+
+	pub const CENTER_FILL: Self = Self {
+		vertical: Alignment::Center,
+		horizontal: Alignment::Fill,
+	};
+
+	pub const TOP_FILL: Self = Self {
+		vertical: Alignment::TOP,
+		horizontal: Alignment::Fill,
+	};
+
+	pub const FILL_FILL: Self = Self {
+		vertical: Alignment::Fill,
+		horizontal: Alignment::Fill,
 	};
 
 	pub const fn new(vertical: Alignment, horizontal: Alignment) -> Self {
