@@ -1,7 +1,6 @@
 use {
 	ecs::{
 		Query,
-		Transform,
 		World,
 	},
 	gpu::{
@@ -32,6 +31,7 @@ use {
 		mem,
 		sync::Mutex,
 	},
+	crate::Transform
 };
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

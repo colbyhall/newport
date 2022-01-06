@@ -10,7 +10,6 @@ use {
 		Component,
 		Ecs,
 		ScheduleBlock,
-		Transform,
 		World,
 	},
 	engine::{
@@ -23,7 +22,33 @@ use {
 	resources::Handle,
 	std::cell::UnsafeCell,
 	sync::join,
+	serde::{ Serialize, Deserialize }
 };
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+pub struct Transform {
+	pub location: Point3,
+	pub rotation: Quaternion,
+	pub scale: Vec3,
+}
+
+impl Transform {
+	pub fn to_mat4(&self) -> Mat4 {
+		// TODO: Do this without mat4 multiplication
+		Mat4::rotate(self.rotation) * Mat4::translate(self.location)
+	}
+}
+
+impl Default for Transform {
+	fn default() -> Self {
+		Self {
+			location: Point3::ZERO,
+			rotation: Quaternion::IDENTITY,
+			scale: Vec3::ONE,
+		}
+	}
+}
+
 
 pub struct Game {
 	world: World,
@@ -88,6 +113,7 @@ impl Module for Game {
 			.module::<Editor>()
 			.register(Camera::variant())
 			.register(MeshFilter::variant())
+			.register(Transform::variant())
 			.tick(|delta_time| {
 				let Game {
 					world,
