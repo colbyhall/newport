@@ -1,9 +1,9 @@
 use {
 	ecs::{
+		Component,
 		Entity,
 		System,
 		World,
-		Component
 	},
 	engine::{
 		Builder,
@@ -24,7 +24,9 @@ impl Module for Physics {
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
-		builder.module::<game3d::Game>().register(PhysicsState::variant())
+		builder
+			.module::<game3d::Game>()
+			.register(PhysicsState::variant())
 	}
 }
 
@@ -89,7 +91,6 @@ pub struct Collider {
 pub struct RigidBody {
 	handle: RigidBodyHandle,
 }
-
 
 #[derive(Clone)]
 pub struct PhysicsStep;

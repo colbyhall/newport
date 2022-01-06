@@ -20,9 +20,12 @@ use {
 	graphics::Graphics,
 	math::*,
 	resources::Handle,
+	serde::{
+		Deserialize,
+		Serialize,
+	},
 	std::cell::UnsafeCell,
 	sync::join,
-	serde::{ Serialize, Deserialize }
 };
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
@@ -48,7 +51,6 @@ impl Default for Transform {
 		}
 	}
 }
-
 
 pub struct Game {
 	world: World,

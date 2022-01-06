@@ -1,4 +1,5 @@
 use {
+	crate::Transform,
 	ecs::{
 		Query,
 		World,
@@ -31,7 +32,6 @@ use {
 		mem,
 		sync::Mutex,
 	},
-	crate::Transform
 };
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
