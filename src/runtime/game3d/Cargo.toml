@@ -11,7 +11,6 @@ engine = { path = "../engine" }
 ecs = { path = "../ecs" }
 math = { path = "../math" }
 serde = { path = "../../third_party/serde" }
-sync = { path = "../sync" }
 gpu = { path = "../gpu" }
 graphics = { path = "../graphics" }
 resources = { path = "../resources" }

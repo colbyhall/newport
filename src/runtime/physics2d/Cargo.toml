@@ -8,6 +8,5 @@ engine = { path = "../engine" }
 ecs = { path = "../ecs" }
 math = { path = "../math" }
 serde = { path = "../../third_party/serde" }
-sync = { path = "../sync" }
 
 rapier2d = { version = "0.11", features = ["simd-stable", "serde-serialize"] }

@@ -35,28 +35,7 @@ use std::{
 	time::Instant,
 };
 
-use platform::winit::{
-	event::{
-		DeviceEvent,
-		ElementState,
-		Event as WinitEvent,
-		MouseButton,
-		MouseScrollDelta,
-		WindowEvent,
-	},
-	event_loop::{
-		ControlFlow,
-		EventLoop,
-	},
-	window::{
-		Window,
-		WindowBuilder,
-	},
-};
-
-use platform::input::Input;
-
-use sync::Future;
+use os::Input;
 
 static mut ENGINE: Option<Engine> = None;
 
@@ -466,10 +445,6 @@ impl Engine {
 
 	pub fn builder() -> Builder {
 		Builder::new()
-	}
-
-	pub fn wait_on<F: Future + Send>(future: F) -> F::Output {
-		sync::block_on(future)
 	}
 
 	pub fn logger<'a>() -> &'a Logger {

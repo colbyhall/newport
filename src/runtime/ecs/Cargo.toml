@@ -10,5 +10,4 @@ path = "ecs.rs"
 engine    = { path = "../engine" }
 resources = { path = "../resources" }
 serde = { path = "../../third_party/serde" }
-sync = { path = "../sync" }
 math = { path = "../math" }

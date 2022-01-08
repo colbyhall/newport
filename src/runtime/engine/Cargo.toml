@@ -13,11 +13,10 @@ keywords = ["game", "engine", "gamedev", "newport"]
 path = "engine.rs"
 
 [dependencies]
-platform = { path = "../platform" }
-math     = { path = "../math" }
-sync     = { path = "../sync" }
+os    = { path = "../os" }
+math  = { path = "../math" }
 
-serde    = { path = "../../third_party/serde" }
+serde = { path = "../../third_party/serde" }
 
-toml = "0.5"
+toml      = "0.5"
 getrandom = "0.2"

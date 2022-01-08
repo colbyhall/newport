@@ -12,6 +12,5 @@ ecs = { path = "../ecs" }
 math = { path = "../math" }
 game3d = { path = "../game3d" }
 serde = { path = "../../third_party/serde" }
-sync = { path = "../sync" }
 
 rapier3d = { version = "0.11", features = ["simd-stable", "serde-serialize"] }

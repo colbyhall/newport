@@ -11,6 +11,6 @@ gpu = { path = "../../runtime/gpu" }
 resources = { path = "../../runtime/resources" }
 engine = { path = "../../runtime/engine" }
 newport_math = { path = "../../runtime/math", package = "math" }
-platform = { path = "../../runtime/platform" }
+os = { path = "../../runtime/os" }
 
 base = { version = "0.15", package = "egui" }
