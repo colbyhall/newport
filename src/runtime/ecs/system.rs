@@ -1,20 +1,12 @@
-use std::any::type_name;
-use std::pin::Pin;
-use sync::{
-	async_trait,
-	future::join_all,
-	Future,
-};
-
 use crate::World;
+use std::any::type_name;
 
-#[async_trait]
 pub trait System: BoxSystemClone + 'static + Send + Sync {
 	fn name(&self) -> &'static str {
 		type_name::<Self>()
 	}
 
-	async fn run(&self, world: &World, dt: f32);
+	fn run(&self, world: &World, dt: f32);
 }
 
 pub trait BoxSystemClone {
@@ -54,27 +46,15 @@ impl ScheduleBlock {
 		self
 	}
 
-	pub(crate) fn execute(
-		&'static self,
-		world: &'static World,
-		dt: f32,
-	) -> Pin<Box<dyn Future<Output = ()> + 'static + Send>> {
-		Box::pin(async move {
-			let mut futures = Vec::with_capacity(32);
-			for entry in self.entries.iter() {
-				match entry {
-					Entry::System(single) => futures.push(single.run(world, dt)),
-					Entry::Block(block) => {
-						if !futures.is_empty() {
-							join_all(futures.drain(..)).await;
-						}
-						block.execute(world, dt).await;
-					}
+	// TODO: Do a fiber job system
+	pub(crate) fn execute(&'static self, world: &'static World, dt: f32) {
+		for entry in self.entries.iter() {
+			match entry {
+				Entry::System(single) => single.run(world, dt),
+				Entry::Block(block) => {
+					block.execute(world, dt);
 				}
 			}
-			if !futures.is_empty() {
-				join_all(futures.drain(..)).await;
-			}
-		})
+		}
 	}
 }

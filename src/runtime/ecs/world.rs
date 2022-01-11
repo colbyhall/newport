@@ -10,7 +10,7 @@ use {
 		WriteStorage,
 	},
 	engine::Engine,
-	sync::lock::{
+	std::sync::{
 		Mutex,
 		MutexGuard,
 	},
@@ -38,28 +38,23 @@ impl World {
 		}
 	}
 
-	pub async fn spawn(&self) -> EntityBuilder<'_> {
-		let mut entities = self.entities.lock().await;
+	pub fn spawn(&self) -> EntityBuilder<'_> {
+		let mut entities = self.entities.lock().unwrap();
 		let entity = Entity::new();
 		entities.insert(entity, EntityInfo::default());
 		EntityBuilder { entities, entity }
 	}
 
-	pub async fn read<T: Component>(&self) -> ReadStorage<'_, T> {
-		self.components.read().await
+	pub fn read<T: Component>(&self) -> ReadStorage<'_, T> {
+		self.components.read()
 	}
 
-	pub async fn write<T: Component>(&self) -> WriteStorage<'_, T> {
-		self.components.write().await
+	pub fn write<T: Component>(&self) -> WriteStorage<'_, T> {
+		self.components.write()
 	}
 
-	pub async fn insert<T: Component>(
-		&self,
-		storage: &mut WriteStorage<'_, T>,
-		entity: Entity,
-		t: T,
-	) {
-		let mut entities = self.entities.lock().await;
+	pub fn insert<T: Component>(&self, storage: &mut WriteStorage<'_, T>, entity: Entity, t: T) {
+		let mut entities = self.entities.lock().unwrap();
 		let info = entities.get_mut(&entity).unwrap();
 
 		let mask = T::VARIANT_ID.to_mask();
@@ -70,12 +65,8 @@ impl World {
 		storage.storage.insert(entity, t);
 	}
 
-	pub async fn remove<T: Component>(
-		&self,
-		storage: &mut WriteStorage<'_, T>,
-		entity: Entity,
-	) -> bool {
-		let mut entities = self.entities.lock().await;
+	pub fn remove<T: Component>(&self, storage: &mut WriteStorage<'_, T>, entity: Entity) -> bool {
+		let mut entities = self.entities.lock().unwrap();
 		let info = entities.get_mut(&entity).unwrap();
 
 		let mask = T::VARIANT_ID.to_mask();
@@ -87,8 +78,8 @@ impl World {
 		}
 	}
 
-	pub async fn step(&'static self, dt: f32) {
-		self.schedule.execute(self, dt).await;
+	pub fn step(&'static self, dt: f32) {
+		self.schedule.execute(self, dt);
 	}
 }
 

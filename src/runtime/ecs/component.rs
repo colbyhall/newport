@@ -14,11 +14,11 @@ use std::{
 		Any,
 	},
 	collections::VecDeque,
-};
-
-use sync::lock::{
-	Mutex,
-	MutexGuard,
+	sync::{
+		RwLock,
+		RwLockReadGuard,
+		RwLockWriteGuard,
+	},
 };
 
 use crate::{
@@ -206,8 +206,7 @@ impl<T: Component> DynamicStorage for Storage<T> {
 
 #[derive(Default)]
 pub struct ComponentsContainer {
-	// TODO: This one day needs to use an async rwlock
-	map: HashMap<ComponentVariantId, Mutex<Box<dyn DynamicStorage>>>,
+	map: HashMap<ComponentVariantId, RwLock<Box<dyn DynamicStorage>>>,
 	pub variants: HashMap<ComponentVariantId, ComponentVariant>,
 }
 
@@ -215,51 +214,51 @@ impl ComponentsContainer {
 	pub fn new(mut variants: Vec<ComponentVariant>) -> Self {
 		let map = variants
 			.iter()
-			.map(|v| (v.id, Mutex::new((v.create_storage)())))
+			.map(|v| (v.id, RwLock::new((v.create_storage)())))
 			.collect();
 		let variants = variants.drain(..).map(|v| (v.id, v)).collect();
 		Self { map, variants }
 	}
 
-	pub async fn read_id(&self, variant_id: ComponentVariantId) -> AnyReadStorage<'_> {
+	pub fn read_id(&self, variant_id: ComponentVariantId) -> AnyReadStorage<'_> {
 		AnyReadStorage {
 			read: self
 				.map
 				.get(&variant_id)
 				.expect("Unregistered component type")
-				.lock()
-				.await,
+				.read()
+				.unwrap(),
 		}
 	}
 
-	pub async fn read<T: Component>(&self) -> ReadStorage<'_, T> {
+	pub fn read<T: Component>(&self) -> ReadStorage<'_, T> {
 		ReadStorage {
-			storage: self.read_id(T::VARIANT_ID).await,
+			storage: self.read_id(T::VARIANT_ID),
 			phantom: PhantomData,
 		}
 	}
 
-	pub async fn write_id(&self, variant_id: ComponentVariantId) -> AnyWriteStorage<'_> {
+	pub fn write_id(&self, variant_id: ComponentVariantId) -> AnyWriteStorage<'_> {
 		AnyWriteStorage {
 			write: self
 				.map
 				.get(&variant_id)
 				.expect("Unregistered component type")
-				.lock()
-				.await,
+				.write()
+				.unwrap(),
 		}
 	}
 
-	pub async fn write<T: Component>(&self) -> WriteStorage<'_, T> {
+	pub fn write<T: Component>(&self) -> WriteStorage<'_, T> {
 		WriteStorage {
-			storage: self.write_id(T::VARIANT_ID).await,
+			storage: self.write_id(T::VARIANT_ID),
 			phantom: PhantomData,
 		}
 	}
 }
 
 pub struct AnyReadStorage<'a> {
-	read: MutexGuard<'a, Box<dyn DynamicStorage>>,
+	read: RwLockReadGuard<'a, Box<dyn DynamicStorage>>,
 }
 
 impl<'a> AnyReadStorage<'a> {
@@ -284,7 +283,7 @@ impl<'a, T: Component> ReadStorage<'a, T> {
 }
 
 pub struct AnyWriteStorage<'a> {
-	write: MutexGuard<'a, Box<dyn DynamicStorage>>,
+	write: RwLockWriteGuard<'a, Box<dyn DynamicStorage>>,
 }
 
 impl<'a> AnyWriteStorage<'a> {

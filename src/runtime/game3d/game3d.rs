@@ -25,7 +25,6 @@ use {
 		Serialize,
 	},
 	std::cell::UnsafeCell,
-	sync::join,
 };
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
@@ -61,23 +60,21 @@ pub struct Game {
 impl Module for Game {
 	fn new() -> Self {
 		let world = World::new(ScheduleBlock::new());
-		sync::block_on(async {
-			let mut transforms = world.write::<Transform>().await;
-			let mut filters = world.write::<MeshFilter>().await;
-			let mut cameras = world.write::<Camera>().await;
+		{
+			let mut transforms = world.write::<Transform>();
+			let mut filters = world.write::<MeshFilter>();
+			let mut cameras = world.write::<Camera>();
 
 			let pipeline =
 				Handle::find_or_load("{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}").unwrap_or_default();
 			world
 				.spawn()
-				.await
 				.with(Transform::default(), &mut transforms)
 				.with(Camera::default(), &mut cameras)
 				.finish();
 
 			world
 				.spawn()
-				.await
 				.with(
 					Transform {
 						location: Point3::new(5.0, 0.0, -1.0),
@@ -89,12 +86,12 @@ impl Module for Game {
 					MeshFilter {
 						mesh: Handle::find_or_load("{03383b92-566f-4036-aeb4-850b61685ea6}")
 							.unwrap_or_default(),
-						pipeline: pipeline.clone(),
+						pipeline,
 					},
 					&mut filters,
 				)
 				.finish();
-		});
+		}
 
 		let window = Engine::window().unwrap();
 		let viewport = window.inner_size();
@@ -129,17 +126,14 @@ impl Module for Game {
 					unsafe { *viewport }
 				};
 
-				Engine::wait_on(async {
-					let simulation = async {
-						world.step(delta_time).await;
-
-						let scene = DrawList::build(world, viewport).await;
+				{
+					{
+						world.step(delta_time);
+						let scene = DrawList::build(world, viewport);
 						renderer.push_scene(scene);
-					};
-					let render = renderer.render_scene();
-
-					join!(simulation, render)
-				});
+					}
+					renderer.render_scene();
+				};
 				renderer.advance_frame();
 			})
 	}

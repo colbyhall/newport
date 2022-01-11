@@ -29,9 +29,9 @@ impl Query {
 		self
 	}
 
-	pub async fn execute(self, world: &World) -> Vec<Entity> {
+	pub fn execute(self, world: &World) -> Vec<Entity> {
 		let found = {
-			let entities = world.entities.lock().await;
+			let entities = world.entities.lock().unwrap();
 			entities
 				.iter()
 				.filter(|(_, info)| {

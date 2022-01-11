@@ -22,7 +22,7 @@ use {
 		Vec3,
 		Vec4,
 	},
-	platform::input::*,
+	os::input::*,
 
 	resources::Handle,
 	std::sync::Arc,

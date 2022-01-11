@@ -74,7 +74,7 @@ impl Renderer {
 		inner.frames[current % len] = Frame::DrawList(scene);
 	}
 
-	pub async fn render_scene(&self) {
+	pub fn render_scene(&self) {
 		let frame = {
 			let mut inner = self.0.lock().unwrap();
 
@@ -237,15 +237,11 @@ pub struct DrawList {
 }
 
 impl DrawList {
-	pub async fn build(world: &World, viewport: Vec2) -> Self {
-		let filters = world.read::<MeshFilter>().await;
-		let transforms = world.read::<Transform>().await;
+	pub fn build(world: &World, viewport: Vec2) -> Self {
+		let filters = world.read::<MeshFilter>();
+		let transforms = world.read::<Transform>();
 
-		let entities = Query::new()
-			.read(&filters)
-			.read(&transforms)
-			.execute(world)
-			.await;
+		let entities = Query::new().read(&filters).read(&transforms).execute(world);
 
 		let mut world_transforms = Vec::with_capacity(entities.len());
 		let mut mesh_filters = Vec::with_capacity(entities.len());
@@ -258,12 +254,8 @@ impl DrawList {
 			mesh_filters.push(filter.clone());
 		}
 
-		let cameras = world.read::<Camera>().await;
-		let entities = Query::new()
-			.read(&cameras)
-			.read(&transforms)
-			.execute(world)
-			.await;
+		let cameras = world.read::<Camera>();
+		let entities = Query::new().read(&cameras).read(&transforms).execute(world);
 
 		let mut camera_transform = None;
 		let mut camera = None;

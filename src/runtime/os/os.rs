@@ -1,4 +1,4 @@
-mod input;
+pub mod input;
 pub use input::*;
 
 pub mod time;
@@ -8,43 +8,46 @@ pub mod windows {
 	pub use winapi::*;
 }
 
+pub use winit::{
+	self,
+	event::{
+		Event,
+		VirtualKeyCode,
+		WindowEvent,
+	},
+	event_loop::{
+		ControlFlow,
+		EventLoop,
+	},
+	window::{
+		Window,
+		WindowBuilder,
+	},
+};
+
+pub use raw_window_handle::{
+	HasRawWindowHandle,
+	RawWindowHandle,
+};
+
 #[cfg(target_os = "windows")]
 use std::{
 	ffi::OsStr,
 	iter::Iterator,
-	num::Wrapping,
-	ops::{
-		Deref,
-		DerefMut,
-	},
+	ops::Deref,
 	os::windows::ffi::OsStrExt,
 };
 
 #[cfg(target_os = "windows")]
 use windows::{
-	shared::{
-		minwindef::{
-			FARPROC,
-			HMODULE,
-			LPARAM,
-			LRESULT,
-			UINT,
-			WPARAM,
-		},
-		windef::{
-			HWND,
-			RECT,
-		},
+	shared::minwindef::{
+		FARPROC,
+		HMODULE,
 	},
-	um::{
-		errhandlingapi::GetLastError,
-		libloaderapi::{
-			FreeLibrary,
-			GetModuleHandleA,
-			GetProcAddress,
-			LoadLibraryW,
-		},
-		winuser,
+	um::libloaderapi::{
+		FreeLibrary,
+		GetProcAddress,
+		LoadLibraryW,
 	},
 };
 
@@ -117,267 +120,174 @@ impl Drop for Library {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg(target_os = "windows")]
-pub struct WindowId(HWND);
+pub fn virtual_keycode_to_input(vk: VirtualKeyCode) -> Input {
+	const VK_MAP: &[Input] = &[
+		KEY_1,         // Key1,
+		KEY_2,         // Key2,
+		KEY_3,         // Key3,
+		KEY_4,         // Key4,
+		KEY_5,         // Key5,
+		KEY_6,         // Key6,
+		KEY_7,         // Key7,
+		KEY_8,         // Key8,
+		KEY_9,         // Key9,
+		KEY_0,         // Key0,
+		KEY_A,         // A,
+		KEY_B,         // B,
+		KEY_C,         // C,
+		KEY_D,         // D,
+		KEY_E,         // E,
+		KEY_F,         // F,
+		KEY_G,         // G,
+		KEY_H,         // H,
+		KEY_I,         // I,
+		KEY_J,         // J,
+		KEY_K,         // K,
+		KEY_L,         // L,
+		KEY_M,         // M,
+		KEY_N,         // N,
+		KEY_O,         // O,
+		KEY_P,         // P,
+		KEY_Q,         // Q,
+		KEY_R,         // R,
+		KEY_S,         // S,
+		KEY_T,         // T,
+		KEY_U,         // U,
+		KEY_V,         // V,
+		KEY_W,         // W,
+		KEY_X,         // X,
+		KEY_Y,         // Y,
+		KEY_Z,         // Z,
+		KEY_ESCAPE,    // Escape,
+		KEY_F1,        // F1,
+		KEY_F2,        // F2,
+		KEY_F3,        // F3,
+		KEY_F4,        // F4,
+		KEY_F5,        // F5,
+		KEY_F6,        // F6,
+		KEY_F7,        // F7,
+		KEY_F8,        // F8,
+		KEY_F9,        // F9,
+		KEY_F10,       // F10,
+		KEY_F11,       // F11,
+		KEY_F12,       // F12,
+		KEY_F13,       // F13,
+		KEY_F14,       // F14,
+		KEY_F15,       // F15,
+		KEY_F16,       // F16,
+		KEY_F17,       // F17,
+		KEY_F18,       // F18,
+		KEY_F19,       // F19,
+		KEY_F20,       // F20,
+		KEY_F21,       // F21,
+		KEY_F22,       // F22,
+		KEY_F23,       // F23,
+		KEY_F24,       // F24,
+		UNKNOWN,       // Snapshot,
+		UNKNOWN,       // Scroll,
+		UNKNOWN,       // Pause,
+		KEY_INSERT,    // Insert,
+		KEY_HOME,      // Home,
+		KEY_DELETE,    // Delete,
+		KEY_END,       // End,
+		UNKNOWN,       // PageDown,
+		UNKNOWN,       // PageUp,
+		KEY_LEFT,      // Left,
+		KEY_UP,        // Up,
+		KEY_RIGHT,     // Right,
+		KEY_DOWN,      // Down,
+		KEY_BACKSPACE, // Back,
+		KEY_ENTER,     // Return,
+		KEY_SPACE,     // Space,
+		UNKNOWN,       // Compose,
+		UNKNOWN,       // Caret,
+		UNKNOWN,       // Numlock,
+		KEY_NUMPAD0,   // Numpad0,
+		KEY_NUMPAD1,   // Numpad1,
+		KEY_NUMPAD2,   // Numpad2,
+		KEY_NUMPAD3,   // Numpad3,
+		KEY_NUMPAD4,   // Numpad4,
+		KEY_NUMPAD5,   // Numpad5,
+		KEY_NUMPAD6,   // Numpad6,
+		KEY_NUMPAD7,   // Numpad7,
+		KEY_NUMPAD8,   // Numpad8,
+		KEY_NUMPAD9,   // Numpad9,
+		UNKNOWN,       // NumpadAdd,
+		UNKNOWN,       // NumpadDivide,
+		UNKNOWN,       // NumpadDecimal,
+		UNKNOWN,       // NumpadComma,
+		UNKNOWN,       // NumpadEnter,
+		UNKNOWN,       // NumpadEquals,
+		UNKNOWN,       // NumpadMultiply,
+		UNKNOWN,       // NumpadSubtract,
+		UNKNOWN,       // AbntC1,
+		UNKNOWN,       // AbntC2,
+		UNKNOWN,       // Apostrophe,
+		UNKNOWN,       // Apps,
+		UNKNOWN,       // Asterisk,
+		UNKNOWN,       // At,
+		UNKNOWN,       // Ax,
+		UNKNOWN,       // Backslash,
+		UNKNOWN,       // Calculator,
+		UNKNOWN,       // Capital,
+		UNKNOWN,       // Colon,
+		UNKNOWN,       // Comma,
+		UNKNOWN,       // Convert,
+		UNKNOWN,       // Equals,
+		UNKNOWN,       // Grave,
+		UNKNOWN,       // Kana,
+		UNKNOWN,       // Kanji,
+		UNKNOWN,       // LAlt,
+		UNKNOWN,       // LBracket,
+		UNKNOWN,       // LControl,
+		UNKNOWN,       // LShift,
+		UNKNOWN,       // LWin,
+		UNKNOWN,       // Mail,
+		UNKNOWN,       // MediaSelect,
+		UNKNOWN,       // MediaStop,
+		UNKNOWN,       // Minus,
+		UNKNOWN,       // Mute,
+		UNKNOWN,       // MyComputer,
+		UNKNOWN,       // // also called "Next"
+		UNKNOWN,       // NavigateForward,
+		UNKNOWN,       // // also called "Prior"
+		UNKNOWN,       // NavigateBackward,
+		UNKNOWN,       // NextTrack,
+		UNKNOWN,       // NoConvert,
+		UNKNOWN,       // OEM102,
+		UNKNOWN,       // Period,
+		UNKNOWN,       // PlayPause,
+		UNKNOWN,       // Plus,
+		UNKNOWN,       // Power,
+		UNKNOWN,       // PrevTrack,
+		UNKNOWN,       // RAlt,
+		UNKNOWN,       // RBracket,
+		UNKNOWN,       // RControl,
+		UNKNOWN,       // RShift,
+		UNKNOWN,       // RWin,
+		UNKNOWN,       // Semicolon,
+		UNKNOWN,       // Slash,
+		UNKNOWN,       // Sleep,
+		UNKNOWN,       // Stop,
+		UNKNOWN,       // Sysrq,
+		KEY_TAB,       // Tab,
+		UNKNOWN,       // Underline,
+		UNKNOWN,       // Unlabeled,
+		UNKNOWN,       // VolumeDown,
+		UNKNOWN,       // VolumeUp,
+		UNKNOWN,       // Wake,
+		UNKNOWN,       // WebBack,
+		UNKNOWN,       // WebFavorites,
+		UNKNOWN,       // WebForward,
+		UNKNOWN,       // WebHome,
+		UNKNOWN,       // WebRefresh,
+		UNKNOWN,       // WebSearch,
+		UNKNOWN,       // WebStop,
+		UNKNOWN,       // Yen,
+		UNKNOWN,       // Copy,
+		UNKNOWN,       // Paste,
+		UNKNOWN,       // Cut,
+	];
 
-#[cfg(target_os = "windows")]
-pub struct Window {
-	hwnd: HWND,
-}
-
-#[cfg(target_os = "windows")]
-impl Window {
-	pub fn builder() -> WindowBuilder {
-		WindowBuilder {
-			title: None,
-			width: 1280,
-			height: 720,
-
-			maximized: false,
-			visible: true,
-		}
-	}
-
-	pub fn set_visible(&mut self, visible: bool) {
-		let cmd = if visible {
-			winuser::SW_SHOW
-		} else {
-			winuser::SW_HIDE
-		};
-		unsafe { winuser::ShowWindow(self.hwnd, cmd) };
-	}
-
-	pub fn set_maximized(&mut self, maximized: bool) {
-		let cmd = if maximized {
-			winuser::SW_MAXIMIZE
-		} else {
-			winuser::SW_NORMAL
-		};
-		unsafe { winuser::ShowWindow(self.hwnd, cmd) };
-	}
-
-	pub fn id(&self) -> WindowId {
-		WindowId(self.hwnd)
-	}
-}
-
-#[derive(Debug)]
-pub enum WindowError {
-	ClassRegisterFailed,
-	CreationFailed,
-}
-
-pub struct WindowBuilder {
-	title: Option<String>,
-	width: u32,
-	height: u32,
-
-	maximized: bool,
-	visible: bool,
-}
-
-impl WindowBuilder {
-	pub fn title(&mut self, title: impl Into<String>) -> &mut Self {
-		self.title = Some(title.into());
-		self
-	}
-
-	pub fn width(&mut self, width: u32) -> &mut Self {
-		self.width = width;
-		self
-	}
-
-	pub fn height(&mut self, height: u32) -> &mut Self {
-		self.height = height;
-		self
-	}
-
-	pub fn maximized(&mut self, maximized: bool) -> &mut Self {
-		self.maximized = maximized;
-		self
-	}
-
-	pub fn visible(&mut self, visible: bool) -> &mut Self {
-		self.visible = visible;
-		self
-	}
-
-	#[cfg(target_os = "windows")]
-	pub fn spawn(&mut self, event_handler: &mut WindowEventHandler) -> Result<Window, WindowError> {
-		unsafe {
-			let title = self.title.take().unwrap_or_else(|| String::from("Window"));
-
-			let mut class_name: Vec<u16> = OsStr::new("class_name\0").encode_wide().collect();
-			class_name.push(0);
-
-			let window_class = winuser::WNDCLASSEXW {
-				cbSize: std::mem::size_of::<winuser::WNDCLASSEXW>() as UINT,
-				hInstance: GetModuleHandleA(std::ptr::null()),
-				lpfnWndProc: Some(window_proc),
-				lpszClassName: class_name.as_ptr(),
-				..Default::default()
-			};
-
-			let result = winuser::RegisterClassExW(&window_class);
-			if result == 0 {
-				return Err(WindowError::ClassRegisterFailed);
-			}
-
-			let width = self.width;
-			let height = self.height;
-
-			let mut adjusted_rect = RECT {
-				left: 0,
-				top: 0,
-				right: width as _,
-				bottom: height as _,
-			};
-
-			let style = winuser::WS_OVERLAPPEDWINDOW;
-			let result = winuser::AdjustWindowRect(&mut adjusted_rect, style, 0);
-			if result == 0 {
-				todo!("Error handling");
-			}
-
-			let width = (Wrapping(adjusted_rect.right) - Wrapping(adjusted_rect.left)).0;
-			let height = (Wrapping(adjusted_rect.bottom) - Wrapping(adjusted_rect.top)).0;
-
-			let monitor_width = winuser::GetSystemMetrics(winuser::SM_CXSCREEN);
-			let monitor_height = winuser::GetSystemMetrics(winuser::SM_CYSCREEN);
-
-			let x = monitor_width / 2 - width / 2;
-			let y = monitor_height / 2 - height / 2;
-
-			let mut window_name: Vec<u16> = OsStr::new(&title).encode_wide().collect();
-			window_name.push(0);
-			let hwnd = winuser::CreateWindowExW(
-				0,
-				window_class.lpszClassName,
-				window_name.as_ptr(),
-				style,
-				x,
-				y,
-				width,
-				height,
-				std::ptr::null_mut(),
-				std::ptr::null_mut(),
-				window_class.hInstance,
-				std::ptr::null_mut(),
-			);
-
-			if hwnd.is_null() {
-				println!("{:#x?}", GetLastError());
-				return Err(WindowError::CreationFailed);
-			}
-
-			// winuser::SetWindowLongPtrW(
-			// 	hwnd,
-			// 	winuser::GWLP_USERDATA,
-			// 	event_handler.0.deref_mut() as *mut Option<WindowEvent> as isize,
-			// );
-
-			if self.visible {
-				winuser::ShowWindow(hwnd, winuser::SW_SHOWNORMAL);
-			}
-
-			if self.maximized {
-				winuser::ShowWindow(hwnd, winuser::SW_MAXIMIZE);
-			}
-
-			Ok(Window { hwnd })
-		}
-	}
-}
-
-unsafe extern "system" fn window_proc(
-	hwnd: HWND,
-	msg: UINT,
-	wparam: WPARAM,
-	lparam: LPARAM,
-) -> LRESULT {
-	let event_handler = &mut *(winuser::GetWindowLongPtrW(hwnd, winuser::GWLP_USERDATA) as usize
-		as *const u8 as *mut dyn FnMut(WindowEvent));
-
-	let window = WindowId(hwnd);
-
-	match msg {
-		winuser::WM_DESTROY => {
-			*event_handler = Some(WindowEvent {
-				window,
-				variant: WindowEventVariant::Destroyed,
-			})
-		}
-		winuser::WM_CLOSE => {
-			*event_handler = Some(WindowEvent {
-				window,
-				variant: WindowEventVariant::ExitRequested,
-			})
-		}
-		_ => {}
-	}
-	winuser::DefWindowProcW(hwnd, msg, wparam, lparam)
-}
-
-#[derive(Clone, Copy)]
-pub enum WindowEventVariant {
-	ExitRequested,
-	Destroyed,
-	FocusGained,
-	FocusLost,
-	Key { key: Input, pressed: bool },
-	Resized(u32, u32),
-	Char(char),
-	MouseWheel(f32, f32),
-	MouseButton { mouse_button: Input, pressed: bool },
-	MouseMove(u32, u32),
-	MouseLeave,
-	MouseEnter,
-}
-
-#[derive(Clone, Copy)]
-pub struct WindowEvent {
-	pub window: WindowId,
-	pub variant: WindowEventVariant,
-}
-
-#[derive(Default)]
-pub struct WindowEventHandler(Box<usize>);
-
-impl WindowEventHandler {
-	pub fn new() -> Self {
-		Self(Box::new(0))
-	}
-
-	pub fn poll(&mut self, mut event_handler: impl FnMut(WindowEvent)) {
-		unsafe {
-			let foo = &mut event_handler as *mut dyn FnMut(WindowEvent) as *mut u8 as usize;
-
-			let mut msg = std::mem::zeroed();
-			while winuser::PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, winuser::PM_REMOVE)
-				> 0
-			{
-				winuser::TranslateMessage(&msg);
-				winuser::DispatchMessageW(&msg);
-			}
-		}
-	}
-}
-
-#[test]
-fn foo() {
-	let mut event_handler = WindowEventHandler::new();
-	let _window = Window::builder()
-		.visible(true)
-		.title("Hello World💖")
-		.spawn(&mut event_handler)
-		.unwrap();
-
-	let mut running = true;
-	while running {
-		event_handler.poll(|event| match event.variant {
-			WindowEventVariant::Destroyed | WindowEventVariant::ExitRequested => running = false,
-			_ => println!("foo"),
-		})
-	}
+	VK_MAP[vk as u32 as usize]
 }

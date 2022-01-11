@@ -3,7 +3,7 @@ use crate::{
 	Device,
 };
 
-use platform::winit::window::Window;
+use os::Window;
 
 use std::sync::Arc;
 

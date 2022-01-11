@@ -33,12 +33,26 @@ use std::{
 	time::Instant,
 };
 
-use os::Input;
+use os::{
+	winit::event::{
+		DeviceEvent,
+		ElementState,
+		MouseButton,
+		MouseScrollDelta,
+	},
+	ControlFlow,
+	Event as WinEvent,
+	EventLoop,
+	Input,
+	Window,
+	WindowBuilder,
+	WindowEvent,
+};
 
 static mut ENGINE: Option<Engine> = None;
 
 pub const ENGINE_NAME: &str = "Newport";
-pub const ENGINE_VERSION: &str = "0.1                                                                                                                                       ";
+pub const ENGINE_VERSION: &str = "0.1";
 
 /// Global runnable structure used for instantiating engine modules and handling app code
 ///
@@ -193,7 +207,7 @@ impl Engine {
 			};
 
 			match event {
-				WinitEvent::WindowEvent {
+				WinEvent::WindowEvent {
 					event: WindowEvent::CloseRequested,
 					..
 				} => {
@@ -205,13 +219,12 @@ impl Engine {
 						window.set_visible(false);
 					}
 				}
-				WinitEvent::WindowEvent {
+				WinEvent::WindowEvent {
 					event: WindowEvent::KeyboardInput { input, .. },
 					..
 				} => {
 					if let Some(virtual_keycode) = input.virtual_keycode {
-						let key = Input::key_from_code(virtual_keycode)
-							.unwrap_or(platform::input::UNKNOWN);
+						let key = os::virtual_keycode_to_input(virtual_keycode);
 						let event = Event::Key {
 							key,
 							pressed: input.state == ElementState::Pressed,
@@ -220,7 +233,7 @@ impl Engine {
 						process_input.iter().for_each(|process| process(&event));
 					}
 				}
-				WinitEvent::DeviceEvent {
+				WinEvent::DeviceEvent {
 					event: DeviceEvent::MouseMotion { delta },
 					..
 				} => {
@@ -228,14 +241,14 @@ impl Engine {
 
 					process_input.iter().for_each(|process| process(&event));
 				}
-				WinitEvent::WindowEvent {
+				WinEvent::WindowEvent {
 					event: WindowEvent::MouseInput { button, state, .. },
 					..
 				} => {
 					let mouse_button = match button {
-						MouseButton::Left => platform::input::MOUSE_BUTTON_LEFT,
-						MouseButton::Right => platform::input::MOUSE_BUTTON_RIGHT,
-						MouseButton::Middle => platform::input::MOUSE_BUTTON_MIDDLE,
+						MouseButton::Left => os::MOUSE_BUTTON_LEFT,
+						MouseButton::Right => os::MOUSE_BUTTON_RIGHT,
+						MouseButton::Middle => os::MOUSE_BUTTON_MIDDLE,
 						_ => unimplemented!(),
 					};
 					let event = Event::MouseButton {
@@ -245,21 +258,21 @@ impl Engine {
 
 					process_input.iter().for_each(|process| process(&event));
 				}
-				WinitEvent::WindowEvent {
+				WinEvent::WindowEvent {
 					event: WindowEvent::CursorMoved { position, .. },
 					..
 				} => {
 					let event = Event::MouseMove(position.x as f32, height - position.y as f32);
 					process_input.iter().for_each(|process| process(&event));
 				}
-				WinitEvent::WindowEvent {
+				WinEvent::WindowEvent {
 					event: WindowEvent::Resized(size),
 					..
 				} => {
 					let event = Event::Resized(size.width, size.height);
 					process_input.iter().for_each(|process| process(&event));
 				}
-				WinitEvent::WindowEvent {
+				WinEvent::WindowEvent {
 					event: WindowEvent::MouseWheel { delta, .. },
 					..
 				} => {
@@ -271,14 +284,14 @@ impl Engine {
 					};
 					process_input.iter().for_each(|process| process(&event));
 				}
-				WinitEvent::WindowEvent {
+				WinEvent::WindowEvent {
 					event: WindowEvent::ReceivedCharacter(c),
 					..
 				} => {
 					let event = Event::Char(c);
 					process_input.iter().for_each(|process| process(&event));
 				}
-				WinitEvent::WindowEvent {
+				WinEvent::WindowEvent {
 					event: WindowEvent::Focused(focused),
 					..
 				} => {
@@ -289,21 +302,21 @@ impl Engine {
 					};
 					process_input.iter().for_each(|process| process(&event));
 				}
-				WinitEvent::WindowEvent {
+				WinEvent::WindowEvent {
 					event: WindowEvent::CursorEntered { .. },
 					..
 				} => {
 					let event = Event::MouseEnter;
 					process_input.iter().for_each(|process| process(&event));
 				}
-				WinitEvent::WindowEvent {
+				WinEvent::WindowEvent {
 					event: WindowEvent::CursorLeft { .. },
 					..
 				} => {
 					let event = Event::MouseLeave;
 					process_input.iter().for_each(|process| process(&event));
 				}
-				WinitEvent::MainEventsCleared => {
+				WinEvent::MainEventsCleared => {
 					let now = Instant::now();
 					let dt = now.duration_since(last_frame_time).as_secs_f32();
 					last_frame_time = now;
@@ -333,7 +346,7 @@ impl Engine {
 						do_first_show = false;
 					}
 				}
-				WinitEvent::RedrawRequested(_) => match &display {
+				WinEvent::RedrawRequested(_) => match &display {
 					Some(display) => {
 						(display)();
 						displayed = true;
@@ -448,4 +461,19 @@ impl Engine {
 	pub fn logger<'a>() -> &'a Logger {
 		&Engine::as_ref().logger
 	}
+}
+
+#[derive(Clone)]
+pub enum Event {
+	FocusGained,
+	FocusLost,
+	Key { key: Input, pressed: bool },
+	Resized(u32, u32),
+	Char(char),
+	MouseWheel(f32, f32),
+	MouseButton { mouse_button: Input, pressed: bool },
+	MouseMove(f32, f32),
+	MouseLeave,
+	MouseEnter,
+	MouseMotion(f32, f32),
 }

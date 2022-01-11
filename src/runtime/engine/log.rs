@@ -1,5 +1,5 @@
 use crate::*;
-use platform::time::SystemDate;
+use os::time::SystemDate;
 
 #[cfg(not(test))]
 use std::fs::{

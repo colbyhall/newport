@@ -35,11 +35,11 @@ use std::sync::{
 };
 use std::thread::ThreadId;
 
-use platform::raw_window_handle::{
+use os::{
 	HasRawWindowHandle,
 	RawWindowHandle,
+	Window,
 };
-use platform::winit::window::Window;
 
 struct Swapchain {
 	// HACK: Leak the swapchain handle because it crashes when trying to free it. Probably due to it being attached to resources???
@@ -348,7 +348,7 @@ impl Device {
 				let handle = window.raw_window_handle();
 
 				match handle {
-					RawWindowHandle::Windows(handle) => {
+					RawWindowHandle::Win32(handle) => {
 						let surface_khr =
 							khr::Win32Surface::new(&instance.entry, &instance.instance);
 						let create_info = vk::Win32SurfaceCreateInfoKHR::builder()

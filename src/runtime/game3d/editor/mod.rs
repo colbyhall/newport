@@ -65,7 +65,7 @@ impl Module for Editor {
 				SidePanel::right("details").show(ctx, |ui| {
 					egui::CollapsingHeader::new("World Inspector").show(ui, |ui| {
 						egui::ScrollArea::new([true, false]).show(ui, |ui| {
-							let entities = sync::block_on(Query::new().execute(&game.world));
+							let entities = Query::new().execute(&game.world);
 							for e in entities.iter() {
 								let selected = selected_entity.map(|f| f == *e).unwrap_or_default();
 								if ui.selectable_label(selected, format!("{:?}", e)).clicked() {

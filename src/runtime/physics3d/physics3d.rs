@@ -1,7 +1,6 @@
 use {
 	ecs::{
 		Component,
-		Entity,
 		System,
 		World,
 	},
@@ -14,7 +13,6 @@ use {
 		Deserialize,
 		Serialize,
 	},
-	sync::async_trait,
 };
 
 pub struct Physics;
@@ -95,10 +93,9 @@ pub struct RigidBody {
 #[derive(Clone)]
 pub struct PhysicsStep;
 
-#[async_trait]
 impl System for PhysicsStep {
-	async fn run(&self, world: &World, dt: f32) {
-		let mut physics_states = world.write::<PhysicsState>().await;
+	fn run(&self, world: &World, dt: f32) {
+		let mut physics_states = world.write::<PhysicsState>();
 		let PhysicsState {
 			integration_parameters,
 			physics_pipeline,
