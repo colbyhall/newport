@@ -3,7 +3,6 @@
 
 mod builder;
 mod config;
-mod event;
 mod log;
 mod module;
 mod uuid;
@@ -14,7 +13,6 @@ mod test;
 pub use {
 	builder::*,
 	config::*,
-	event::*,
 	log::*,
 	module::*,
 	uuid::*,

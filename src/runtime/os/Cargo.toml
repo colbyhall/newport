@@ -15,4 +15,4 @@ path = "os.rs"
 [dependencies]
 math = { path = "../math" }
 
-winapi = { version = "0.3.9", features = ["winuser", "sysinfoapi", "impl-default"] }
+winapi = { version = "0.3.9", features = ["winuser", "sysinfoapi", "libloaderapi", "errhandlingapi", "impl-default"] }
