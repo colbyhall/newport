@@ -14,6 +14,7 @@ serde = { path = "../../third_party/serde" }
 gpu = { path = "../gpu" }
 graphics = { path = "../graphics" }
 resources = { path = "../resources" }
+os = { path = "../os" }
 
 egui = { path = "../../third_party/egui", optional = true }
 

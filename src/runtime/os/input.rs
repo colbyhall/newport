@@ -1,5 +1,10 @@
+use serde::{
+	Deserialize,
+	Serialize,
+};
+
 /// Variant enum for `Input` used to distinguish between input types
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum InputVariant {
 	Unknown,
 	Key,
@@ -7,8 +12,18 @@ pub enum InputVariant {
 	MouseAxis,
 }
 
+impl InputVariant {
+	pub fn is_button(self) -> bool {
+		matches!(self, Self::Key | Self::MouseButton)
+	}
+
+	pub fn is_axis(self) -> bool {
+		matches!(self, Self::MouseAxis)
+	}
+}
+
 /// Static information about input sets
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Input {
 	pub display_name: &'static str,
 	pub variant: InputVariant,

@@ -5,7 +5,7 @@ use std::ops::{
 	MulAssign,
 };
 
-use crate::Quaternion;
+use crate::Quat;
 use crate::Vec3;
 use crate::Vec4;
 use crate::PI;
@@ -136,7 +136,7 @@ impl Mat4 {
 		result
 	}
 
-	pub fn rotate(quat: impl Into<Quaternion>) -> Mat4 {
+	pub fn rotate(quat: impl Into<Quat>) -> Mat4 {
 		let normalized = quat.into().norm();
 
 		let mut result = Mat4::IDENTITY;

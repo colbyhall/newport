@@ -10,6 +10,8 @@ use std::ops::Mul;
 use crate::Vec3;
 use crate::TO_RAD;
 
+pub type Quat = Quaternion;
+
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct Quaternion {
 	pub x: f32,

@@ -18,8 +18,8 @@ Modular 2D and 3D game engine built in Rust for Rust. It is designed to be easil
 ## Features
 * **GPU Abstraction Layer** - Thread Safe, HLSL Shaders, Built over Vulkan with DirectX12 back end coming soon, Bindless Resource Model
 * **Resource Manager** - Thread Safe, Supports Import Variation, Garbage Collected
-* **Entity Component System** - Thread Safe, Async, Readable Scene Format
-* **2D Paint** - Shape rendering, Text Rendering, Single Draw Call
+* **Entity Component System** - Thread Safe, Text Scene Format
+* **2D Paint** - Shape Rendering, Text Rendering, Single Draw Call
 
 ## Inspiration
 This project is heavily inspired by those that came before it. This including AAA engines like the Naughty Dog Engine or other Rust engines such as [Bevy](https://github.com/bevyengine/bevy).

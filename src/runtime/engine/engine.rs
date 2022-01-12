@@ -463,7 +463,7 @@ impl Engine {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Event {
 	FocusGained,
 	FocusLost,

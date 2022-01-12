@@ -4,9 +4,13 @@ B - Moderate
 C - Low
 
 [A]
-* Retained Gui library
+* Child Entities 
+* Schedule Serialization - What if we called this a gamemode?
+* Scene Loading
+* Scene editing
 
 [B]
+* Retained Gui library
 * Cleanup the gpu library
 
 [C]

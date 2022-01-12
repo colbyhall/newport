@@ -239,7 +239,7 @@ pub fn virtual_keycode_to_input(vk: VirtualKeyCode) -> Input {
 		UNKNOWN,       // Kanji,
 		UNKNOWN,       // LAlt,
 		UNKNOWN,       // LBracket,
-		UNKNOWN,       // LControl,
+		KEY_LCTRL,     // LControl,
 		UNKNOWN,       // LShift,
 		UNKNOWN,       // LWin,
 		UNKNOWN,       // Mail,

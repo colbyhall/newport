@@ -1,14 +1,11 @@
 use {
 	crate::Game,
-	ecs::{
-		Entity,
-		Query,
-	},
+	// ecs::Entity,
 	egui::{
 		CentralPanel,
 		Egui,
 		EguiScope,
-		SidePanel,
+		// SidePanel,
 		TopBottomPanel,
 	},
 
@@ -22,14 +19,13 @@ use {
 
 pub struct Editor {
 	dt: f32,
-
-	selected_entity: Option<Entity>,
+	// selected_entity: Option<Entity>,
 }
 impl Module for Editor {
 	fn new() -> Self {
 		Self {
 			dt: 0.0,
-			selected_entity: None,
+			// selected_entity: None,
 		}
 	}
 	fn depends_on(builder: Builder) -> Builder {
@@ -43,7 +39,7 @@ impl Module for Editor {
 				let game: &Game = Engine::module().unwrap();
 				let Editor {
 					dt,
-					selected_entity,
+					// selected_entity,
 					..
 				} = unsafe { Engine::module_mut().unwrap() };
 
@@ -62,19 +58,19 @@ impl Module for Editor {
 					});
 				});
 
-				SidePanel::right("details").show(ctx, |ui| {
-					egui::CollapsingHeader::new("World Inspector").show(ui, |ui| {
-						egui::ScrollArea::new([true, false]).show(ui, |ui| {
-							let entities = Query::new().execute(&game.world);
-							for e in entities.iter() {
-								let selected = selected_entity.map(|f| f == *e).unwrap_or_default();
-								if ui.selectable_label(selected, format!("{:?}", e)).clicked() {
-									*selected_entity = Some(*e);
-								}
-							}
-						});
-					});
-				});
+				// SidePanel::right("details").show(ctx, |ui| {
+				// 	egui::CollapsingHeader::new("World Inspector").show(ui, |ui| {
+				// 		egui::ScrollArea::new([true, false]).show(ui, |ui| {
+				// 			let entities = Query::new().execute(&game.world);
+				// 			for e in entities.iter() {
+				// 				let selected = selected_entity.map(|f| f == *e).unwrap_or_default();
+				// 				if ui.selectable_label(selected, format!("{:?}", e)).clicked() {
+				// 					*selected_entity = Some(*e);
+				// 				}
+				// 			}
+				// 		});
+				// 	});
+				// });
 
 				CentralPanel::default()
 					.frame(egui::Frame::none())
