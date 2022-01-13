@@ -19,11 +19,13 @@ impl Query {
 		}
 	}
 
+	#[must_use]
 	pub fn read<T: Component>(mut self, _: &ReadStorage<'_, T>) -> Self {
 		self.info.components |= T::VARIANT_ID.to_mask();
 		self
 	}
 
+	#[must_use]
 	pub fn write<T: Component>(mut self, _: &WriteStorage<'_, T>) -> Self {
 		self.info.components |= T::VARIANT_ID.to_mask();
 		self

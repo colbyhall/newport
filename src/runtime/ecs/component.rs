@@ -1,3 +1,4 @@
+use engine::Engine;
 use serde::de::DeserializeOwned;
 use serde::{
 	self,
@@ -50,6 +51,7 @@ pub trait Component:
 
 			create_storage: create_storage::<Self>,
 			parse_value: parse_value::<Self>,
+			on_added: None,
 		}
 	}
 }
@@ -59,6 +61,10 @@ where
 	T: Sync + Send + Sized + Clone + Serialize + DeserializeOwned + Default + 'static,
 {
 	default const VARIANT_ID: ComponentVariantId = ComponentVariantId::new(type_name::<Self>());
+}
+
+pub trait OnAdded: Component {
+	fn on_added(entity: Entity, storage: &mut AnyWriteStorage);
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
@@ -93,6 +99,15 @@ pub struct ComponentVariant {
 
 	create_storage: fn() -> Box<dyn DynamicStorage>,
 	pub parse_value: fn(value: ron::Value) -> ron::Result<Box<dyn Any>>,
+	on_added: Option<fn(Entity, &mut AnyWriteStorage)>,
+}
+
+impl ComponentVariant {
+	#[must_use]
+	pub fn on_added<T: Component + OnAdded>(mut self) -> Self {
+		self.on_added = Some(T::on_added);
+		self
+	}
 }
 
 pub(crate) trait DynamicStorage: Send + Sync + DynamicStorageClone + 'static {
@@ -207,17 +222,16 @@ impl<T: Component> DynamicStorage for Storage<T> {
 #[derive(Default)]
 pub struct ComponentsContainer {
 	map: HashMap<ComponentVariantId, RwLock<Box<dyn DynamicStorage>>>,
-	pub variants: HashMap<ComponentVariantId, ComponentVariant>,
 }
 
 impl ComponentsContainer {
-	pub fn new(mut variants: Vec<ComponentVariant>) -> Self {
+	pub fn new() -> Self {
+		let variants: &[ComponentVariant] = Engine::register();
 		let map = variants
 			.iter()
 			.map(|v| (v.id, RwLock::new((v.create_storage)())))
 			.collect();
-		let variants = variants.drain(..).map(|v| (v.id, v)).collect();
-		Self { map, variants }
+		Self { map }
 	}
 
 	pub fn read_id(&self, variant_id: ComponentVariantId) -> AnyReadStorage<'_> {

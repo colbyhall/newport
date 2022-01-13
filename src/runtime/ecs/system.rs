@@ -36,11 +36,13 @@ impl ScheduleBlock {
 		}
 	}
 
+	#[must_use]
 	pub fn system(mut self, system: impl System) -> Self {
 		self.entries.push(Entry::System(Box::new(system)));
 		self
 	}
 
+	#[must_use]
 	pub fn block(mut self, block: impl FnOnce(ScheduleBlock) -> ScheduleBlock) -> Self {
 		self.entries.push(Entry::Block(block(ScheduleBlock::new())));
 		self

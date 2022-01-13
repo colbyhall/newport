@@ -250,7 +250,7 @@ impl DrawList {
 			let transform = transforms.get(e).unwrap();
 			let filter = filters.get(e).unwrap();
 
-			world_transforms.push(transform.to_mat4());
+			world_transforms.push(transform.local_mat4());
 			mesh_filters.push(filter.clone());
 		}
 
@@ -263,7 +263,7 @@ impl DrawList {
 			let transform = transforms.get(e).unwrap();
 			let cam = cameras.get(e).unwrap();
 
-			camera_transform = Some(*transform);
+			camera_transform = Some(transform.clone());
 			camera = Some(cam.clone());
 
 			// For some reason this has to be here to prevent a clippy bug

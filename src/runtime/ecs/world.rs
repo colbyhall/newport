@@ -1,6 +1,10 @@
+use std::collections::HashMap;
+
 use {
 	crate::{
 		Component,
+		ComponentVariant,
+		ComponentVariantId,
 		ComponentsContainer,
 		Entity,
 		EntityContainer,
@@ -21,6 +25,7 @@ pub struct World {
 	pub(crate) components: ComponentsContainer,
 	pub singleton: Entity,
 	schedule: ScheduleBlock,
+	pub variants: HashMap<ComponentVariantId, ComponentVariant>,
 }
 
 impl World {
@@ -30,11 +35,15 @@ impl World {
 		let singleton = Entity::new();
 		entities.insert(singleton, EntityInfo::default());
 
+		let variants: &[ComponentVariant] = Engine::register();
+		let variants = variants.iter().map(|v| (v.id, v.clone())).collect();
+
 		Self {
 			entities: Mutex::new(entities),
-			components: ComponentsContainer::new(Engine::register().to_vec()),
+			components: ComponentsContainer::new(),
 			singleton,
 			schedule,
+			variants,
 		}
 	}
 
@@ -95,6 +104,7 @@ pub struct EntityBuilder<'a> {
 }
 
 impl<'a> EntityBuilder<'a> {
+	#[must_use]
 	pub fn with<T: Component>(mut self, t: T, storage: &mut WriteStorage<T>) -> Self {
 		let info = self.entities.get_mut(&self.entity).unwrap();
 
@@ -106,6 +116,7 @@ impl<'a> EntityBuilder<'a> {
 
 		info.components |= mask;
 		storage.storage.insert(self.entity, t);
+
 		self
 	}
 

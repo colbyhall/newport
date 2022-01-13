@@ -10,6 +10,7 @@ use {
 	ecs::{
 		Component,
 		Ecs,
+		Entity,
 		Query,
 		ScheduleBlock,
 		System,
@@ -158,16 +159,25 @@ impl Module for Game {
 	}
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Transform {
-	pub location: Point3,
-	pub rotation: Quat,
-	pub scale: Vec3,
+	location: Point3,
+	rotation: Quat,
+	scale: Vec3,
+
+	parent: Option<Entity>,
+	children: Vec<Entity>,
+
+	// Cached data
+	changed: bool,
+	local_to_world: Mat4,
+	world_to_local: Mat4,
 }
 
 impl Transform {
-	pub fn to_mat4(&self) -> Mat4 {
+	pub fn local_mat4(&self) -> Mat4 {
 		// TODO: Do this without mat4 multiplication
+		// TODO: Scale
 		Mat4::rotate(self.rotation) * Mat4::translate(self.location)
 	}
 }
@@ -178,6 +188,13 @@ impl Default for Transform {
 			location: Point3::ZERO,
 			rotation: Quat::IDENTITY,
 			scale: Vec3::ONE,
+
+			parent: None,
+			children: Vec::with_capacity(32),
+
+			changed: false,
+			local_to_world: Mat4::IDENTITY,
+			world_to_local: Mat4::IDENTITY,
 		}
 	}
 }

@@ -87,6 +87,7 @@ impl Quaternion {
 		self.len() < crate::SMALL_NUMBER
 	}
 
+	#[must_use]
 	pub fn norm(self) -> Self {
 		let len = self.len();
 
@@ -104,6 +105,7 @@ impl Quaternion {
 		}
 	}
 
+	#[must_use]
 	pub fn inverse(self) -> Self {
 		Self {
 			x: -self.x,
