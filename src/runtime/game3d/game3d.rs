@@ -54,6 +54,7 @@ impl Module for Game {
 		let world = World::new(
 			ScheduleBlock::new()
 				.system(InputSystem)
+				.system(DebugSystem)
 				.system(EditorCameraSystem),
 		);
 		{
@@ -154,6 +155,7 @@ impl Module for Game {
 			.register(MeshFilter::variant())
 			.register(InputManager::variant())
 			.register(EditorCameraController::variant())
+			.register(DebugManager::variant())
 			.tick(|delta_time| {
 				let Game {
 					world,

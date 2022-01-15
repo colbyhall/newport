@@ -161,6 +161,25 @@ impl Vec3 {
 	pub fn xy(self) -> Vec2 {
 		Vec2::new(self.x, self.y)
 	}
+
+	pub fn orthonormal_basis(forward: &mut Self, right: &mut Self, up: &mut Self) {
+		// Copied from unreal
+		const DELTA: f32 = 0.00001;
+
+		// Project the X and Y axes onto the plane perpendicular to the Z axis.
+		*forward -= Vec3::splat(forward.dot(*up) / up.dot(*up)) * *up;
+		*right -= Vec3::splat(right.dot(*up) / up.dot(*up)) * *up;
+
+		// If the X axis was parallel to the Z axis, choose a vector which is orthogonal to the Y and Z axes.
+		if forward.len_sq() < DELTA * DELTA {
+			*forward = Vec3::cross(*right, *up);
+		}
+
+		// If the Y axis was parallel to the Z axis, choose a vector which is orthogonal to the X and Z axes.
+		if right.len_sq() < DELTA * DELTA {
+			*right = Vec3::cross(*forward, *right);
+		}
+	}
 }
 
 impl Add for Vec3 {

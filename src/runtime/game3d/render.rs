@@ -2,6 +2,7 @@ use {
 	crate::Transform,
 	ecs::{
 		Query,
+		System,
 		World,
 	},
 	gpu::{
@@ -54,9 +55,122 @@ pub struct MeshFilter {
 }
 
 #[derive(Clone, Debug)]
+pub struct DebugShape {
+	line_width: f32,
+	color: Color,
+
+	time_left: f32,
+
+	location: Point3,
+	rotation: Quat,
+	variant: DebugShapeVariant,
+}
+
+impl DebugShape {
+	pub fn color(&mut self, color: Color) -> &mut Self {
+		self.color = color;
+		self
+	}
+
+	pub fn line_width(&mut self, line_width: f32) -> &mut Self {
+		self.line_width = line_width;
+		self
+	}
+}
+
+#[derive(Clone, Debug)]
+#[allow(dead_code)]
+enum DebugShapeVariant {
+	Line { end: Point3 },
+	Box { extent: Vec3 },
+	Sphere { radius: f32 },
+	Capsule { half_height: f32, radius: f32 },
+	Plane { normal: Vec3, size: f32 },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct DebugManager {
+	#[serde(skip)]
+	shapes: Vec<DebugShape>,
+
+	#[serde(skip)]
+	pipeline: Handle<GraphicsPipeline>,
+}
+
+impl DebugManager {
+	const DEFAULT_COLOR: Color = Color::CYAN;
+	const DEFAULT_LINE_WIDTH: f32 = 0.01;
+
+	pub fn new() -> Self {
+		Self {
+			shapes: Vec::with_capacity(2048),
+			pipeline: Handle::find_or_load("{063952B6-40B8-4D22-A26F-339185008B76}").unwrap(),
+		}
+	}
+
+	pub fn draw_line(&mut self, a: Point3, b: Point3, life_time: f32) -> &mut DebugShape {
+		self.shapes.push(DebugShape {
+			line_width: Self::DEFAULT_LINE_WIDTH,
+			color: Self::DEFAULT_COLOR,
+
+			time_left: life_time,
+
+			location: a,
+			rotation: Quat::IDENTITY,
+			variant: DebugShapeVariant::Line { end: b },
+		});
+		self.shapes.last_mut().unwrap()
+	}
+
+	pub fn draw_box(
+		&mut self,
+		location: Point3,
+		rotation: Quat,
+		extent: Vec3,
+		life_time: f32,
+	) -> &mut DebugShape {
+		self.shapes.push(DebugShape {
+			line_width: Self::DEFAULT_LINE_WIDTH,
+			color: Self::DEFAULT_COLOR,
+
+			time_left: life_time,
+
+			location,
+			rotation,
+			variant: DebugShapeVariant::Box { extent },
+		});
+		self.shapes.last_mut().unwrap()
+	}
+}
+
+#[derive(Clone)]
+pub struct DebugSystem;
+impl System for DebugSystem {
+	fn run(&self, world: &World, dt: f32) {
+		let mut debug_managers = world.write::<DebugManager>();
+		let debug_manager = match debug_managers.get_mut(&world.singleton) {
+			Some(c) => c,
+			None => {
+				world.insert(&mut debug_managers, world.singleton, DebugManager::new());
+				debug_managers.get_mut(&world.singleton).unwrap()
+			}
+		};
+
+		// Update "time_left" for all shapes and then remove any that are "dead"
+		debug_manager
+			.shapes
+			.iter_mut()
+			.for_each(|e| e.time_left -= dt);
+		debug_manager.shapes.retain(|e| e.time_left > 0.0)
+	}
+}
+
+#[derive(Clone, Debug)]
 pub struct DrawList {
 	meshes: Vec<MeshFilter>,
 	world_transforms: Vec<Mat4>,
+
+	debug_shapes: Vec<DebugShape>,
 
 	camera_transform: Transform,
 	camera: Camera,
@@ -102,9 +216,17 @@ impl DrawList {
 		let camera_transform = camera_transform.unwrap_or_default();
 		let camera = camera.unwrap_or_default();
 
+		let debug_managers = world.read::<DebugManager>();
+		let debug_shapes = match debug_managers.get(&world.singleton) {
+			Some(e) => e.shapes.clone(),
+			None => Vec::default(),
+		};
+
 		Self {
 			meshes: mesh_filters,
 			world_transforms,
+
+			debug_shapes,
 
 			camera_transform,
 			camera,
@@ -170,6 +292,238 @@ impl Renderer {
 			_ => return,
 		};
 
+		// TODO: Should this be done in the scene building part?
+		#[allow(dead_code)]
+		struct DebugVertex {
+			position: Vec3,
+			color: Color,
+		}
+		fn debug_batch_line(
+			vertices: &mut Vec<DebugVertex>,
+			a: Point3,
+			b: Point3,
+			up: Vec3,
+			line_width: f32,
+			color: Color,
+		) {
+			let mut forward = (b - a).norm();
+			let mut up = up;
+			let mut right = Vec3::cross(forward, up);
+			Vec3::orthonormal_basis(&mut forward, &mut right, &mut up);
+
+			let half_line_width = line_width / 2.0;
+
+			let bl = a - right * half_line_width;
+			let br = a + right * half_line_width;
+			let tl = b - right * half_line_width;
+			let tr = b + right * half_line_width;
+
+			vertices.push(DebugVertex {
+				position: bl,
+				color,
+			});
+			vertices.push(DebugVertex {
+				position: tl,
+				color,
+			});
+			vertices.push(DebugVertex {
+				position: tr,
+				color,
+			});
+
+			vertices.push(DebugVertex {
+				position: bl,
+				color,
+			});
+			vertices.push(DebugVertex {
+				position: tr,
+				color,
+			});
+			vertices.push(DebugVertex {
+				position: br,
+				color,
+			});
+
+			let bl = a - up * half_line_width;
+			let br = a + up * half_line_width;
+			let tl = b - up * half_line_width;
+			let tr = b + up * half_line_width;
+
+			vertices.push(DebugVertex {
+				position: bl,
+				color,
+			});
+			vertices.push(DebugVertex {
+				position: tl,
+				color,
+			});
+			vertices.push(DebugVertex {
+				position: tr,
+				color,
+			});
+
+			vertices.push(DebugVertex {
+				position: bl,
+				color,
+			});
+			vertices.push(DebugVertex {
+				position: tr,
+				color,
+			});
+			vertices.push(DebugVertex {
+				position: br,
+				color,
+			});
+		}
+		let mut debug_vertices = Vec::with_capacity(4096);
+		for shape in scene.debug_shapes.iter() {
+			match &shape.variant {
+				DebugShapeVariant::Line { end } => {
+					let forward = (*end - shape.location).norm();
+					let up = if forward.dot(Vec3::UP) >= 0.5 {
+						Vec3::FORWARD
+					} else {
+						Vec3::UP
+					};
+					debug_batch_line(
+						&mut debug_vertices,
+						shape.location,
+						*end,
+						up,
+						shape.line_width,
+						shape.color,
+					)
+				}
+				DebugShapeVariant::Box { extent } => {
+					let forward = shape.rotation.forward() * extent.x;
+					let right = shape.rotation.right() * extent.y;
+					let up = shape.rotation.up() * extent.z;
+
+					let fbl = shape.location + forward - up - right;
+					let fbr = shape.location + forward - up + right;
+					let ftl = shape.location + forward + up - right;
+					let ftr = shape.location + forward + up + right;
+					let bbl = shape.location + -forward - up - right;
+					let bbr = shape.location + -forward - up + right;
+					let btl = shape.location + -forward + up - right;
+					let btr = shape.location + -forward + up + right;
+
+					let up = up.norm();
+					let forward = forward.norm();
+
+					debug_batch_line(
+						&mut debug_vertices,
+						fbl,
+						fbr,
+						up,
+						shape.line_width,
+						shape.color,
+					);
+					debug_batch_line(
+						&mut debug_vertices,
+						fbl,
+						bbl,
+						up,
+						shape.line_width,
+						shape.color,
+					);
+					debug_batch_line(
+						&mut debug_vertices,
+						fbr,
+						bbr,
+						up,
+						shape.line_width,
+						shape.color,
+					);
+					debug_batch_line(
+						&mut debug_vertices,
+						ftl,
+						ftr,
+						up,
+						shape.line_width,
+						shape.color,
+					);
+					debug_batch_line(
+						&mut debug_vertices,
+						ftl,
+						btl,
+						up,
+						shape.line_width,
+						shape.color,
+					);
+					debug_batch_line(
+						&mut debug_vertices,
+						ftr,
+						btr,
+						up,
+						shape.line_width,
+						shape.color,
+					);
+					debug_batch_line(
+						&mut debug_vertices,
+						bbl,
+						bbr,
+						up,
+						shape.line_width,
+						shape.color,
+					);
+					debug_batch_line(
+						&mut debug_vertices,
+						ftl,
+						fbl,
+						forward,
+						shape.line_width,
+						shape.color,
+					);
+					debug_batch_line(
+						&mut debug_vertices,
+						ftr,
+						fbr,
+						forward,
+						shape.line_width,
+						shape.color,
+					);
+					debug_batch_line(
+						&mut debug_vertices,
+						btl,
+						bbl,
+						forward,
+						shape.line_width,
+						shape.color,
+					);
+					debug_batch_line(
+						&mut debug_vertices,
+						btr,
+						bbr,
+						forward,
+						shape.line_width,
+						shape.color,
+					);
+					debug_batch_line(
+						&mut debug_vertices,
+						btl,
+						btr,
+						up,
+						shape.line_width,
+						shape.color,
+					);
+				}
+				_ => unimplemented!(),
+			}
+		}
+		let debug_vertex_buffer = if debug_vertices.is_empty() {
+			None
+		} else {
+			let buffer = Buffer::new(
+				BufferUsage::VERTEX,
+				MemoryType::HostVisible,
+				debug_vertices.len(),
+			)
+			.unwrap();
+			buffer.copy_to(&debug_vertices).unwrap();
+			Some(buffer)
+		};
+
 		let world_transforms_buffer = Buffer::new(
 			BufferUsage::CONSTANTS,
 			MemoryType::HostVisible,
@@ -224,6 +578,10 @@ impl Renderer {
 			}])
 			.unwrap();
 
+		let debug_pipeline =
+			Handle::find_or_load("{063952B6-40B8-4D22-A26F-339185008B76}").unwrap();
+		let debug_pipeline = debug_pipeline.read();
+
 		GraphicsRecorder::new()
 			.resource_barrier_texture(&diffuse_buffer, Layout::Undefined, Layout::ColorAttachment)
 			.resource_barrier_texture(&depth_buffer, Layout::Undefined, Layout::DepthAttachment)
@@ -242,7 +600,14 @@ impl Renderer {
 						.draw_indexed(mesh.indices.len(), 0)
 				}
 
-				ctx
+				if let Some(buffer) = debug_vertex_buffer {
+					ctx.bind_pipeline(&debug_pipeline)
+						.bind_vertex_buffer(&buffer)
+						.bind_constants("camera", &view_buffer, 0)
+						.draw(buffer.len(), 0)
+				} else {
+					ctx
+				}
 			})
 			.resource_barrier_texture(
 				&diffuse_buffer,
@@ -292,66 +657,4 @@ impl Default for Renderer {
 pub struct RenderedScene {
 	pub diffuse_buffer: Texture,
 	pub depth_buffer: Texture,
-}
-
-#[derive(Clone, Debug)]
-pub struct DebugShape {
-	line_width: f32,
-	color: Color,
-
-	time_left: f32,
-
-	location: Point3,
-	rotation: Quat,
-	variant: DebugShapeVariant,
-}
-
-impl DebugShape {
-	pub fn color(&mut self, color: Color) -> &mut Self {
-		self.color = color;
-		self
-	}
-
-	pub fn line_width(&mut self, line_width: f32) -> &mut Self {
-		self.line_width = line_width;
-		self
-	}
-}
-
-#[derive(Clone, Debug)]
-enum DebugShapeVariant {
-	Line { end: Point3 },
-	Box { extent: Vec3 },
-	Sphere { radius: f32 },
-	Capsule { half_height: f32, radius: f32 },
-	Plane { normal: Vec3, size: f32 },
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-pub struct DebugManager {
-	#[serde(skip)]
-	shapes: Vec<DebugShape>,
-}
-
-impl DebugManager {
-	pub fn new() -> Self {
-		Self {
-			shapes: Vec::with_capacity(2048),
-		}
-	}
-
-	pub fn draw_line(&mut self, a: Point3, b: Point3, life_time: f32) -> &mut DebugShape {
-		self.shapes.push(DebugShape {
-			line_width: 1.0,
-			color: Color::CYAN,
-
-			time_left: life_time,
-
-			location: a,
-			rotation: Quat::IDENTITY,
-			variant: DebugShapeVariant::Line { end: b },
-		});
-
-		self.shapes.last_mut().unwrap()
-	}
 }

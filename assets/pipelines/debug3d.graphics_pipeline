@@ -1,0 +1,45 @@
+GraphicsPipeline(
+	depth_stencil_states: (
+		depth_test: true,
+		depth_write: true,
+		depth_compare: Less,
+	),
+
+	constants: {
+		"camera": [
+			("view", Matrix4),
+			("position", Vector3),
+		],
+	},
+
+	vertex_shader: (
+		attributes: [
+			("position",  Vector3),
+			("color",     Color),
+		],
+
+		exports: [
+			("color", Color),
+		],
+
+		code: r#"
+			Camera camera = get_camera();
+
+			output.position = mul(camera.view, float4(input.position, 1.0));
+			output.color = input.color;
+
+			return output;
+		"#,
+	),
+
+	pixel_shader: (
+		exports: [
+			("color", RGBA_U8)
+		],
+
+		code: r#"
+			output.color = input.color;
+			return output;
+		"#
+	),
+)
