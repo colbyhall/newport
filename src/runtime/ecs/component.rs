@@ -99,7 +99,7 @@ pub struct ComponentVariant {
 
 	create_storage: fn() -> Box<dyn DynamicStorage>,
 	pub parse_value: fn(value: ron::Value) -> ron::Result<Box<dyn Any>>,
-	on_added: Option<fn(Entity, &mut AnyWriteStorage)>,
+	pub on_added: Option<fn(Entity, &mut AnyWriteStorage)>,
 }
 
 impl ComponentVariant {
@@ -301,7 +301,7 @@ pub struct AnyWriteStorage<'a> {
 }
 
 impl<'a> AnyWriteStorage<'a> {
-	pub fn insert<T: Component>(&mut self, entity: Entity, t: T) {
+	pub(crate) fn insert<T: Component>(&mut self, entity: Entity, t: T) {
 		self.write
 			.as_any_mut()
 			.downcast_mut::<Storage<T>>()
@@ -309,7 +309,7 @@ impl<'a> AnyWriteStorage<'a> {
 			.insert(entity, t)
 	}
 
-	pub fn insert_box(&mut self, entity: Entity, value: &Box<dyn Any>) {
+	pub(crate) fn insert_box(&mut self, entity: Entity, value: &Box<dyn Any>) {
 		self.write.insert_box(entity, value)
 	}
 
@@ -329,7 +329,7 @@ impl<'a> AnyWriteStorage<'a> {
 			.get_mut(entity)
 	}
 
-	pub fn remove(&mut self, entity: Entity) -> bool {
+	pub(crate) fn remove(&mut self, entity: Entity) -> bool {
 		self.write.remove(entity)
 	}
 }

@@ -1,5 +1,6 @@
 mod editor;
 mod render;
+use ecs::OnAdded;
 pub use os::input::*;
 pub(crate) use {
 	editor::*,
@@ -64,13 +65,10 @@ impl Module for Game {
 				.with(EditorCameraController::default(), &mut camera_controllers)
 				.finish();
 
-			world
+			let parent = world
 				.spawn()
 				.with(
-					Transform {
-						location: Point3::new(5.0, 0.0, -1.0),
-						..Default::default()
-					},
+					Transform::builder().location([5.0, 0.0, 0.0]).finish(),
 					&mut transforms,
 				)
 				.with(
@@ -86,10 +84,10 @@ impl Module for Game {
 			world
 				.spawn()
 				.with(
-					Transform {
-						location: Point3::new(5.0, 5.0, -1.0),
-						..Default::default()
-					},
+					Transform::builder()
+						.location([5.0, 0.0, 0.0])
+						.parent(parent)
+						.finish(),
 					&mut transforms,
 				)
 				.with(
@@ -121,7 +119,7 @@ impl Module for Game {
 			.module::<Graphics>()
 			.module::<Ecs>()
 			.module::<Editor>()
-			.register(Transform::variant())
+			.register(Transform::variant().on_added::<Transform>())
 			.register(Camera::variant())
 			.register(MeshFilter::variant())
 			.register(InputManager::variant())
@@ -175,10 +173,61 @@ pub struct Transform {
 }
 
 impl Transform {
+	pub fn builder() -> TransformBuilder {
+		TransformBuilder {
+			transform: Transform::default(),
+		}
+	}
+
 	pub fn local_mat4(&self) -> Mat4 {
 		// TODO: Do this without mat4 multiplication
 		// TODO: Scale
 		Mat4::rotate(self.rotation) * Mat4::translate(self.location)
+	}
+}
+
+pub struct TransformBuilder {
+	transform: Transform,
+}
+
+impl TransformBuilder {
+	#[must_use]
+	pub fn location(mut self, location: impl Into<Point3>) -> Self {
+		self.transform.location = location.into();
+		self
+	}
+
+	#[must_use]
+	pub fn rotation(mut self, rotation: Quat) -> Self {
+		self.transform.rotation = rotation;
+		self
+	}
+
+	#[must_use]
+	pub fn scale(mut self, scale: impl Into<Vec3>) -> Self {
+		self.transform.scale = scale.into();
+		self
+	}
+
+	#[must_use]
+	pub fn parent(mut self, entity: Entity) -> Self {
+		self.transform.parent = Some(entity);
+		self
+	}
+
+	pub fn finish(self) -> Transform {
+		self.transform
+	}
+}
+
+impl OnAdded for Transform {
+	fn on_added(entity: Entity, storage: &mut ecs::AnyWriteStorage) {
+		// We need to ensure the parent is aware we exist and update all the cache data
+		let parent = storage.get::<Transform>(entity).unwrap().parent;
+		if let Some(parent) = parent {
+			let transform: &mut Transform = storage.get_mut(parent).unwrap();
+			transform.children.push(entity);
+		}
 	}
 }
 

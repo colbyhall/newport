@@ -51,7 +51,11 @@ impl World {
 		let mut entities = self.entities.lock().unwrap();
 		let entity = Entity::new();
 		entities.insert(entity, EntityInfo::default());
-		EntityBuilder { entities, entity }
+		EntityBuilder {
+			world: self,
+			entities,
+			entity,
+		}
 	}
 
 	pub fn read<T: Component>(&self) -> ReadStorage<'_, T> {
@@ -72,6 +76,12 @@ impl World {
 		}
 		info.components |= mask;
 		storage.storage.insert(entity, t);
+
+		// Call the on added method
+		let variant = self.variants.get(&T::VARIANT_ID).unwrap();
+		if let Some(on_added) = variant.on_added {
+			(on_added)(entity, &mut storage.storage);
+		}
 	}
 
 	pub fn remove<T: Component>(&self, storage: &mut WriteStorage<'_, T>, entity: Entity) -> bool {
@@ -99,6 +109,7 @@ impl Default for World {
 }
 
 pub struct EntityBuilder<'a> {
+	world: &'a World,
 	entities: MutexGuard<'a, EntityContainer>,
 	entity: Entity,
 }
@@ -116,6 +127,12 @@ impl<'a> EntityBuilder<'a> {
 
 		info.components |= mask;
 		storage.storage.insert(self.entity, t);
+
+		// Call the on added method
+		let variant = self.world.variants.get(&T::VARIANT_ID).unwrap();
+		if let Some(on_added) = variant.on_added {
+			(on_added)(self.entity, &mut storage.storage);
+		}
 
 		self
 	}
