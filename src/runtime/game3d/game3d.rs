@@ -7,6 +7,12 @@ pub(crate) use {
 	render::*,
 };
 
+pub use render::{
+	Camera,
+	DebugManager,
+	MeshFilter,
+};
+
 use {
 	ecs::{
 		Component,
@@ -205,7 +211,6 @@ impl Transform {
 
 	pub fn local_mat4(&self) -> Mat4 {
 		// TODO: Do this without mat4 multiplication
-		// Mat4::scale(self.scale) * Mat4::rotate(self.rotation) * Mat4::translate(self.location)
 		Mat4::translate(self.location) * Mat4::rotate(self.rotation) * Mat4::scale(self.scale)
 	}
 }

@@ -4,10 +4,11 @@ B - Moderate
 C - Low
 
 [A]
-* Child Entities 
+* Debug shape drawing for 3d
+* Physics
 * Schedule Serialization - What if we called this a gamemode?
 * Scene Loading
-* Scene editing
+* Scene Editing
 
 [B]
 * Retained Gui library

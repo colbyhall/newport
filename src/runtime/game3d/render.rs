@@ -19,6 +19,8 @@ use {
 	math::{
 		Color,
 		Mat4,
+		Point3,
+		Quat,
 		Vec2,
 		Vec3,
 		Vec4,
@@ -290,4 +292,66 @@ impl Default for Renderer {
 pub struct RenderedScene {
 	pub diffuse_buffer: Texture,
 	pub depth_buffer: Texture,
+}
+
+#[derive(Clone, Debug)]
+pub struct DebugShape {
+	line_width: f32,
+	color: Color,
+
+	time_left: f32,
+
+	location: Point3,
+	rotation: Quat,
+	variant: DebugShapeVariant,
+}
+
+impl DebugShape {
+	pub fn color(&mut self, color: Color) -> &mut Self {
+		self.color = color;
+		self
+	}
+
+	pub fn line_width(&mut self, line_width: f32) -> &mut Self {
+		self.line_width = line_width;
+		self
+	}
+}
+
+#[derive(Clone, Debug)]
+enum DebugShapeVariant {
+	Line { end: Point3 },
+	Box { extent: Vec3 },
+	Sphere { radius: f32 },
+	Capsule { half_height: f32, radius: f32 },
+	Plane { normal: Vec3, size: f32 },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct DebugManager {
+	#[serde(skip)]
+	shapes: Vec<DebugShape>,
+}
+
+impl DebugManager {
+	pub fn new() -> Self {
+		Self {
+			shapes: Vec::with_capacity(2048),
+		}
+	}
+
+	pub fn draw_line(&mut self, a: Point3, b: Point3, life_time: f32) -> &mut DebugShape {
+		self.shapes.push(DebugShape {
+			line_width: 1.0,
+			color: Color::CYAN,
+
+			time_left: life_time,
+
+			location: a,
+			rotation: Quat::IDENTITY,
+			variant: DebugShapeVariant::Line { end: b },
+		});
+
+		self.shapes.last_mut().unwrap()
+	}
 }
