@@ -4,11 +4,11 @@ B - Moderate
 C - Low
 
 [A]
-* Debug shape drawing for 3d
-* Physics
 * Schedule Serialization - What if we called this a gamemode?
 * Scene Loading
+* Physics
 * Scene Editing
+* Config Diffing
 
 [B]
 * Retained Gui library

@@ -1,8 +1,27 @@
 use engine::Uuid;
 
+use serde::{
+	Deserialize,
+	Serialize,
+};
 use std::collections::HashMap;
 
-pub type Entity = Uuid;
+use crate::SceneId;
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+pub struct Entity {
+	pub(crate) id: Uuid,
+	pub(crate) scene: SceneId,
+}
+
+impl Entity {
+	pub fn new(scene: SceneId) -> Self {
+		Self {
+			id: Uuid::new(),
+			scene,
+		}
+	}
+}
 
 #[derive(Default, Clone)]
 pub struct EntityInfo {

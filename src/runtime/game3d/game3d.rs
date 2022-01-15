@@ -1,6 +1,9 @@
 mod editor;
 mod render;
-use ecs::OnAdded;
+use ecs::{
+	OnAdded,
+	SceneId,
+};
 pub use os::input::*;
 pub(crate) use {
 	editor::*,
@@ -52,6 +55,7 @@ pub struct Game {
 impl Module for Game {
 	fn new() -> Self {
 		let world = World::new(
+			None,
 			ScheduleBlock::new()
 				.system(InputSystem)
 				.system(DebugSystem)
@@ -66,14 +70,14 @@ impl Module for Game {
 			let pipeline =
 				Handle::find_or_load("{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}").unwrap_or_default();
 			world
-				.spawn()
+				.spawn(SceneId::PERSISTENT)
 				.with(Transform::default(), &mut transforms)
 				.with(Camera::default(), &mut cameras)
 				.with(EditorCameraController::default(), &mut camera_controllers)
 				.finish();
 
 			world
-				.spawn()
+				.spawn(SceneId::PERSISTENT)
 				.with(
 					Transform::builder()
 						.location(Vec3::new(5.0, 5.0, 5.0))
@@ -92,7 +96,7 @@ impl Module for Game {
 				.finish();
 
 			let parent = world
-				.spawn()
+				.spawn(SceneId::PERSISTENT)
 				.with(
 					Transform::builder()
 						.location([5.0, 0.0, 0.0])
@@ -112,7 +116,7 @@ impl Module for Game {
 				.finish();
 
 			world
-				.spawn()
+				.spawn(SceneId::PERSISTENT)
 				.with(
 					Transform::builder()
 						.location([5.0, 0.0, 0.0])

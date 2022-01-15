@@ -2,6 +2,7 @@ use std::any::Any;
 use std::collections::HashMap;
 
 use resources::{
+	Handle,
 	Importer,
 	Resource,
 };
@@ -20,6 +21,7 @@ use serde::{
 
 use crate::ComponentVariant;
 use crate::ComponentVariantId;
+use crate::EntityContainer;
 
 #[derive(Debug)]
 pub struct SceneEntry {
@@ -96,3 +98,18 @@ impl Importer for SceneImporter {
 		todo!()
 	}
 }
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, Serialize, Deserialize)]
+pub struct SceneId(pub(crate) usize);
+
+impl SceneId {
+	pub const PERSISTENT: SceneId = SceneId(0);
+}
+pub(crate) type SceneCollection = Vec<Option<SceneRuntime>>;
+
+pub(crate) struct SceneRuntime {
+	pub scene: Option<Handle<Scene>>,
+	pub entities: EntityContainer,
+}
+
+impl SceneRuntime {}

@@ -24,12 +24,12 @@ impl Module for Physics {
 	fn depends_on(builder: Builder) -> Builder {
 		builder
 			.module::<game3d::Game>()
-			.register(PhysicsState::variant())
+			.register(PhysicsManager::variant())
 	}
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct PhysicsState {
+pub struct PhysicsManager {
 	integration_parameters: IntegrationParameters,
 	#[serde(skip, default = "PhysicsPipeline::new")]
 	physics_pipeline: PhysicsPipeline,
@@ -42,7 +42,7 @@ pub struct PhysicsState {
 	collider_set: ColliderSet,
 }
 
-impl PhysicsState {
+impl PhysicsManager {
 	pub fn new() -> Self {
 		Self {
 			integration_parameters: IntegrationParameters::default(),
@@ -58,13 +58,13 @@ impl PhysicsState {
 	}
 }
 
-impl Default for PhysicsState {
+impl Default for PhysicsManager {
 	fn default() -> Self {
 		Self::new()
 	}
 }
 
-impl Clone for PhysicsState {
+impl Clone for PhysicsManager {
 	fn clone(&self) -> Self {
 		Self {
 			integration_parameters: self.integration_parameters,
@@ -91,12 +91,12 @@ pub struct RigidBody {
 }
 
 #[derive(Clone)]
-pub struct PhysicsStep;
+pub struct PhysicsSystem;
 
-impl System for PhysicsStep {
+impl System for PhysicsSystem {
 	fn run(&self, world: &World, dt: f32) {
-		let mut physics_states = world.write::<PhysicsState>();
-		let PhysicsState {
+		let mut physics_states = world.write::<PhysicsManager>();
+		let PhysicsManager {
 			integration_parameters,
 			physics_pipeline,
 			island_manager,

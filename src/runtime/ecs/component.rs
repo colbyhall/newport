@@ -309,9 +309,9 @@ impl<'a> AnyWriteStorage<'a> {
 			.insert(entity, t)
 	}
 
-	// pub(crate) fn insert_box(&mut self, entity: Entity, value: &Box<dyn Any>) {
-	// 	self.write.insert_box(entity, value)
-	// }
+	pub(crate) fn insert_box(&mut self, entity: Entity, value: &Box<dyn Any>) {
+		self.write.insert_box(entity, value)
+	}
 
 	pub fn get<T: Component>(&self, entity: Entity) -> Option<&T> {
 		self.write

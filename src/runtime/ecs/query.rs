@@ -32,17 +32,19 @@ impl Query {
 	}
 
 	pub fn execute(self, world: &World) -> Vec<Entity> {
-		let found = {
-			let entities = world.entities.lock().unwrap();
-			entities
+		let scenes = world.scenes.lock().unwrap();
+		let mut result = Vec::with_capacity(2048);
+		for scene in scenes.iter().flatten() {
+			let mut entities = scene
+				.entities
 				.iter()
 				.filter(|(_, info)| {
 					(info.components & self.info.components) == self.info.components
 				})
 				.map(|(id, _)| *id)
-				.collect()
-		};
-
-		found
+				.collect();
+			result.append(&mut entities);
+		}
+		result
 	}
 }
