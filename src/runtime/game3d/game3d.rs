@@ -65,10 +65,33 @@ impl Module for Game {
 				.with(EditorCameraController::default(), &mut camera_controllers)
 				.finish();
 
+			world
+				.spawn()
+				.with(
+					Transform::builder()
+						.location(Vec3::new(5.0, 5.0, 5.0))
+						// .scale(Vec3::splat(0.2))
+						.finish(),
+					&mut transforms,
+				)
+				.with(
+					MeshFilter {
+						mesh: Handle::find_or_load("{03383b92-566f-4036-aeb4-850b61685ea6}")
+							.unwrap_or_default(),
+						pipeline: pipeline.clone(),
+					},
+					&mut filters,
+				)
+				.finish();
+
 			let parent = world
 				.spawn()
 				.with(
-					Transform::builder().location([5.0, 0.0, 0.0]).finish(),
+					Transform::builder()
+						.location([5.0, 0.0, 0.0])
+						.rotation(Quat::from_euler([45.0, 45.0, 0.0]))
+						.scale(Vec3::splat(0.2))
+						.finish(),
 					&mut transforms,
 				)
 				.with(
@@ -86,6 +109,7 @@ impl Module for Game {
 				.with(
 					Transform::builder()
 						.location([5.0, 0.0, 0.0])
+						.rotation(Quat::from_euler([45.0, 45.0, 0.0]))
 						.parent(parent)
 						.finish(),
 					&mut transforms,
@@ -181,8 +205,8 @@ impl Transform {
 
 	pub fn local_mat4(&self) -> Mat4 {
 		// TODO: Do this without mat4 multiplication
-		// TODO: Scale
-		Mat4::rotate(self.rotation) * Mat4::translate(self.location)
+		// Mat4::scale(self.scale) * Mat4::rotate(self.rotation) * Mat4::translate(self.location)
+		Mat4::translate(self.location) * Mat4::rotate(self.rotation) * Mat4::scale(self.scale)
 	}
 }
 
@@ -227,6 +251,11 @@ impl OnAdded for Transform {
 		if let Some(parent) = parent {
 			let transform: &mut Transform = storage.get_mut(parent).unwrap();
 			transform.children.push(entity);
+
+			let local_to_world = transform.local_to_world * transform.local_mat4();
+			let transform: &mut Transform = storage.get_mut(entity).unwrap();
+			transform.local_to_world = local_to_world;
+			transform.world_to_local = local_to_world.inverse().unwrap();
 		}
 	}
 }

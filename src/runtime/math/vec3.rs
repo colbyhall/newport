@@ -53,10 +53,19 @@ impl Vec3 {
 		}
 	}
 
+	pub const fn splat(xyz: f32) -> Self {
+		Self {
+			x: xyz,
+			y: xyz,
+			z: xyz,
+		}
+	}
+
 	pub const fn dot(self, other: Self) -> f32 {
 		self.x * other.x + self.y * other.y + self.z * other.z
 	}
 
+	#[must_use]
 	pub const fn cross(self, other: Self) -> Self {
 		Self {
 			x: self.y * other.z - other.y * self.z,

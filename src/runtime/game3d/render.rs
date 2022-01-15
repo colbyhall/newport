@@ -51,6 +51,67 @@ pub struct MeshFilter {
 	pub pipeline: Handle<GraphicsPipeline>, // TODO: Material system
 }
 
+#[derive(Clone, Debug)]
+pub struct DrawList {
+	meshes: Vec<MeshFilter>,
+	world_transforms: Vec<Mat4>,
+
+	camera_transform: Transform,
+	camera: Camera,
+
+	viewport: Vec2,
+}
+
+impl DrawList {
+	pub fn build(world: &World, viewport: Vec2) -> Self {
+		let filters = world.read::<MeshFilter>();
+		let transforms = world.read::<Transform>();
+
+		let entities = Query::new().read(&filters).read(&transforms).execute(world);
+
+		let mut world_transforms = Vec::with_capacity(entities.len());
+		let mut mesh_filters = Vec::with_capacity(entities.len());
+
+		for e in entities.iter() {
+			let transform = transforms.get(e).unwrap();
+			let filter = filters.get(e).unwrap();
+
+			world_transforms.push(transform.local_to_world * transform.local_mat4());
+			mesh_filters.push(filter.clone());
+		}
+
+		let cameras = world.read::<Camera>();
+		let entities = Query::new().read(&cameras).read(&transforms).execute(world);
+
+		let mut camera_transform = None;
+		let mut camera = None;
+		for e in entities.iter() {
+			let transform = transforms.get(e).unwrap();
+			let cam = cameras.get(e).unwrap();
+
+			camera_transform = Some(transform.clone());
+			camera = Some(cam.clone());
+
+			// For some reason this has to be here to prevent a clippy bug
+			if camera_transform.is_some() && camera.is_some() {
+				break;
+			}
+		}
+		let camera_transform = camera_transform.unwrap_or_default();
+		let camera = camera.unwrap_or_default();
+
+		Self {
+			meshes: mesh_filters,
+			world_transforms,
+
+			camera_transform,
+			camera,
+
+			viewport,
+		}
+	}
+}
+
 pub enum Frame {
 	None,
 	DrawList(DrawList),
@@ -63,6 +124,24 @@ struct RendererInner {
 }
 
 pub struct Renderer(Mutex<RendererInner>);
+
+impl Renderer {
+	pub fn new() -> Self {
+		Self(Mutex::new(RendererInner {
+			frames: [
+				Frame::None,
+				Frame::None,
+				Frame::None,
+				Frame::None,
+				Frame::None,
+				Frame::None,
+				Frame::None,
+				Frame::None,
+			],
+			current: 8,
+		}))
+	}
+}
 
 impl Renderer {
 	pub fn push_scene(&self, scene: DrawList) {
@@ -201,88 +280,9 @@ impl Renderer {
 	}
 }
 
-impl Renderer {
-	pub fn new() -> Self {
-		Self(Mutex::new(RendererInner {
-			frames: [
-				Frame::None,
-				Frame::None,
-				Frame::None,
-				Frame::None,
-				Frame::None,
-				Frame::None,
-				Frame::None,
-				Frame::None,
-			],
-			current: 8,
-		}))
-	}
-}
-
 impl Default for Renderer {
 	fn default() -> Self {
 		Self::new()
-	}
-}
-
-#[derive(Clone, Debug)]
-pub struct DrawList {
-	meshes: Vec<MeshFilter>,
-	world_transforms: Vec<Mat4>,
-
-	camera_transform: Transform,
-	camera: Camera,
-
-	viewport: Vec2,
-}
-
-impl DrawList {
-	pub fn build(world: &World, viewport: Vec2) -> Self {
-		let filters = world.read::<MeshFilter>();
-		let transforms = world.read::<Transform>();
-
-		let entities = Query::new().read(&filters).read(&transforms).execute(world);
-
-		let mut world_transforms = Vec::with_capacity(entities.len());
-		let mut mesh_filters = Vec::with_capacity(entities.len());
-
-		for e in entities.iter() {
-			let transform = transforms.get(e).unwrap();
-			let filter = filters.get(e).unwrap();
-
-			world_transforms.push(transform.local_mat4());
-			mesh_filters.push(filter.clone());
-		}
-
-		let cameras = world.read::<Camera>();
-		let entities = Query::new().read(&cameras).read(&transforms).execute(world);
-
-		let mut camera_transform = None;
-		let mut camera = None;
-		for e in entities.iter() {
-			let transform = transforms.get(e).unwrap();
-			let cam = cameras.get(e).unwrap();
-
-			camera_transform = Some(transform.clone());
-			camera = Some(cam.clone());
-
-			// For some reason this has to be here to prevent a clippy bug
-			if camera_transform.is_some() && camera.is_some() {
-				break;
-			}
-		}
-		let camera_transform = camera_transform.unwrap_or_default();
-		let camera = camera.unwrap_or_default();
-
-		Self {
-			meshes: mesh_filters,
-			world_transforms,
-
-			camera_transform,
-			camera,
-
-			viewport,
-		}
 	}
 }
 
