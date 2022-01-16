@@ -99,13 +99,7 @@ impl Importer for SceneImporter {
 	}
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, Serialize, Deserialize)]
-pub struct SceneId(pub(crate) usize);
-
-impl SceneId {
-	pub const PERSISTENT: SceneId = SceneId(0);
-}
-pub(crate) type SceneCollection = Vec<Option<SceneRuntime>>;
+pub(crate) type SceneCollection = HashMap<Uuid, SceneRuntime>;
 
 pub(crate) struct SceneRuntime {
 	pub scene: Option<Handle<Scene>>,

@@ -34,7 +34,7 @@ impl Query {
 	pub fn execute(self, world: &World) -> Vec<Entity> {
 		let scenes = world.scenes.lock().unwrap();
 		let mut result = Vec::with_capacity(2048);
-		for scene in scenes.iter().flatten() {
+		for (_, scene) in scenes.iter() {
 			let mut entities = scene
 				.entities
 				.iter()

@@ -1,9 +1,6 @@
 mod editor;
 mod render;
-use ecs::{
-	OnAdded,
-	SceneId,
-};
+use ecs::OnAdded;
 pub use os::input::*;
 pub(crate) use {
 	editor::*,
@@ -70,14 +67,14 @@ impl Module for Game {
 			let pipeline =
 				Handle::find_or_load("{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}").unwrap_or_default();
 			world
-				.spawn(SceneId::PERSISTENT)
+				.spawn(world.persistent)
 				.with(Transform::default(), &mut transforms)
 				.with(Camera::default(), &mut cameras)
 				.with(EditorCameraController::default(), &mut camera_controllers)
 				.finish();
 
 			world
-				.spawn(SceneId::PERSISTENT)
+				.spawn(world.persistent)
 				.with(
 					Transform::builder()
 						.location(Vec3::new(5.0, 5.0, 5.0))
@@ -96,7 +93,7 @@ impl Module for Game {
 				.finish();
 
 			let parent = world
-				.spawn(SceneId::PERSISTENT)
+				.spawn(world.persistent)
 				.with(
 					Transform::builder()
 						.location([5.0, 0.0, 0.0])
@@ -116,7 +113,7 @@ impl Module for Game {
 				.finish();
 
 			world
-				.spawn(SceneId::PERSISTENT)
+				.spawn(world.persistent)
 				.with(
 					Transform::builder()
 						.location([5.0, 0.0, 0.0])

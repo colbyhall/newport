@@ -6,16 +6,14 @@ use serde::{
 };
 use std::collections::HashMap;
 
-use crate::SceneId;
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub struct Entity {
 	pub(crate) id: Uuid,
-	pub(crate) scene: SceneId,
+	pub(crate) scene: Uuid,
 }
 
 impl Entity {
-	pub fn new(scene: SceneId) -> Self {
+	pub fn new(scene: Uuid) -> Self {
 		Self {
 			id: Uuid::new(),
 			scene,

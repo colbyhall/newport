@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
+use engine::Uuid;
 use resources::Handle;
 
 use crate::{
 	Scene,
 	SceneCollection,
-	SceneId,
 	SceneRuntime,
 };
 
@@ -30,27 +30,29 @@ use {
 };
 
 pub struct World {
-	pub(crate) components: ComponentsContainer,
-	pub singleton: Entity,
 	schedule: ScheduleBlock,
 	pub variants: HashMap<ComponentVariantId, ComponentVariant>,
+	pub(crate) components: ComponentsContainer,
 	pub(crate) scenes: Mutex<SceneCollection>,
+	pub singleton: Entity,
+	pub persistent: Uuid,
 }
 
 impl World {
 	pub fn new(persistent: Option<&Handle<Scene>>, schedule: ScheduleBlock) -> Self {
-		let singleton = Entity::new(SceneId::PERSISTENT);
-		// entities.insert(singleton, EntityInfo::default());
+		let persistent_id = persistent.map(|f| f.uuid()).unwrap_or(Uuid::new());
+		let singleton = Entity::new(persistent_id);
 
 		let variants: &[ComponentVariant] = Engine::register();
 		let variants = variants.iter().map(|v| (v.id, v.clone())).collect();
 
 		let world = Self {
 			components: ComponentsContainer::new(),
-			singleton,
 			schedule,
 			variants,
 			scenes: Mutex::new(SceneCollection::with_capacity(32)),
+			singleton,
+			persistent: persistent_id,
 		};
 
 		// Add the first initial scene
@@ -59,45 +61,35 @@ impl World {
 
 			// TODO: This is a double lock maybe i should make this better
 			let mut scenes = world.scenes.lock().unwrap();
-			let persistent = scenes[SceneId::PERSISTENT.0].as_mut().unwrap();
+			let persistent = scenes.get_mut(&world.persistent).unwrap();
 			persistent.entities.insert(singleton, EntityInfo::default());
 		} else {
 			let mut scenes = world.scenes.lock().unwrap();
 
 			let mut entities = EntityContainer::new();
 			entities.insert(singleton, EntityInfo::default());
-			scenes.push(Some(SceneRuntime {
-				scene: None,
-				entities,
-			}))
+			scenes.insert(
+				persistent_id,
+				SceneRuntime {
+					scene: None,
+					entities,
+				},
+			);
 		}
 
 		world
 	}
 
-	pub fn push_scene(&self, scene: &Handle<Scene>) -> Option<SceneId> {
+	pub fn push_scene(&self, scene: &Handle<Scene>) {
 		let mut scenes = self.scenes.lock().unwrap();
-
-		// Make sure we havent added this scene before and also cache an empty spot if we could find one
-		let mut result = None;
-		for (index, it) in scenes.iter().enumerate() {
-			if let Some(it) = it {
-				if it.scene.as_ref() == Some(scene) {
-					return None;
-				}
-			} else {
-				result = Some(index);
-			}
-		}
-		let result = SceneId(result.unwrap_or_else(|| scenes.len()));
 
 		let mut entities = EntityContainer::new();
 		{
-			let scene = scene.read();
-			for e in scene.entities.iter() {
+			let actual = scene.read();
+			for e in actual.entities.iter() {
 				let entity = Entity {
 					id: e.id,
-					scene: result,
+					scene: scene.uuid(),
 				};
 
 				let mut info = EntityInfo::default();
@@ -118,32 +110,24 @@ impl World {
 			}
 		}
 
-		let runtime = SceneRuntime {
-			scene: Some(scene.clone()),
-			entities,
-		};
-		if let Some(at) = scenes.get_mut(result.0) {
-			*at = Some(runtime);
-		} else {
-			scenes.push(Some(runtime));
-		}
-
-		Some(result)
+		scenes.insert(
+			scene.uuid(),
+			SceneRuntime {
+				scene: Some(scene.clone()),
+				entities,
+			},
+		);
 	}
 
-	pub fn spawn(&self, scene: SceneId) -> EntityBuilder<'_> {
+	pub fn spawn(&self, scene_id: Uuid) -> EntityBuilder<'_> {
 		let mut scenes = self.scenes.lock().unwrap();
-		// TODO: Should we return an optional here?
-		// If we can't find the specificed scene just throw it into the persistent scene
-		let (id, scene) = match scenes.get_mut(scene.0) {
-			Some(Some(x)) => (scene, x),
-			_ => (
-				SceneId::PERSISTENT,
-				scenes[SceneId::PERSISTENT.0].as_mut().unwrap(),
-			),
+
+		let scene = match scenes.get_mut(&scene_id) {
+			Some(x) => x,
+			None => scenes.get_mut(&self.persistent).unwrap(),
 		};
 
-		let entity = Entity::new(id);
+		let entity = Entity::new(scene_id);
 		scene.entities.insert(entity, EntityInfo::default());
 		EntityBuilder {
 			world: self,
@@ -162,7 +146,7 @@ impl World {
 
 	pub fn insert<T: Component>(&self, storage: &mut WriteStorage<'_, T>, entity: Entity, t: T) {
 		let mut scenes = self.scenes.lock().unwrap();
-		let scene = scenes[entity.scene.0].as_mut().unwrap();
+		let scene = scenes.get_mut(&entity.scene).unwrap();
 		let info = scene.entities.get_mut(&entity).unwrap();
 
 		let mask = T::VARIANT_ID.to_mask();
@@ -181,7 +165,7 @@ impl World {
 
 	pub fn remove<T: Component>(&self, storage: &mut WriteStorage<'_, T>, entity: Entity) -> bool {
 		let mut scenes = self.scenes.lock().unwrap();
-		let scene = scenes[entity.scene.0].as_mut().unwrap();
+		let scene = scenes.get_mut(&entity.scene).unwrap();
 		let info = scene.entities.get_mut(&entity).unwrap();
 
 		let mask = T::VARIANT_ID.to_mask();
@@ -206,14 +190,14 @@ impl Default for World {
 
 pub struct EntityBuilder<'a> {
 	world: &'a World,
-	scenes: MutexGuard<'a, Vec<Option<SceneRuntime>>>,
+	scenes: MutexGuard<'a, SceneCollection>,
 	entity: Entity,
 }
 
 impl<'a> EntityBuilder<'a> {
 	#[must_use]
 	pub fn with<T: Component>(mut self, t: T, storage: &mut WriteStorage<T>) -> Self {
-		let scene = self.scenes[self.entity.scene.0].as_mut().unwrap();
+		let scene = self.scenes.get_mut(&self.entity.scene).unwrap();
 		let info = scene.entities.get_mut(&self.entity).unwrap();
 
 		let mask = T::VARIANT_ID.to_mask();
