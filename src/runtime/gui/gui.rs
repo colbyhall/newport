@@ -4,6 +4,7 @@ use {
 	engine::{
 		Builder,
 		Engine,
+		Event,
 		Module,
 	},
 	gpu::{
@@ -45,6 +46,33 @@ pub struct Gui {
 	base: Option<WidgetRef>,
 	pipeline: Handle<GraphicsPipeline>,
 	viewport: Vec2,
+
+	hovered: Option<WidgetRef>,
+	focused: Option<WidgetRef>,
+
+	events: Vec<Event>,
+}
+
+impl Gui {
+	fn hit_test(&self, current: &WidgetRef, mouse_position: Vec2) -> Option<WidgetRef> {
+		let borrow = current.borrow();
+
+		let num_children = borrow.num_children();
+		for i in 0..num_children {
+			if let Some(child) = borrow.child(i) {
+				if let Some(result) = self.hit_test(child, mouse_position) {
+					return Some(result);
+				}
+			}
+		}
+
+		let layout = borrow.layout()?;
+		if layout.absolute_bounds().point_overlap(mouse_position) {
+			Some(current.clone())
+		} else {
+			None
+		}
+	}
 }
 
 impl Module for Gui {
@@ -74,6 +102,11 @@ impl Module for Gui {
 			pipeline: Handle::find_or_load("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}")
 				.unwrap_or_default(),
 			viewport: Vec2::ZERO,
+
+			hovered: None,
+			focused: None,
+
+			events: Vec::with_capacity(256),
 		}
 	}
 
@@ -81,6 +114,35 @@ impl Module for Gui {
 		builder
 			.module::<Graphics>()
 			.module::<ResourceManager>()
+			.process_input(|event| {
+				let gui: &mut Gui = Engine::module_mut_checked().unwrap();
+				gui.events.push(*event);
+			})
+			.tick(|_| {
+				let gui: &mut Gui = Engine::module_mut_checked().unwrap();
+				let mut events = Vec::with_capacity(256);
+				std::mem::swap(&mut events, &mut gui.events);
+
+				for e in events.drain(..) {
+					match e {
+						Event::MouseMove(x, y) => {
+							let mouse_position = Vec2::new(x, y);
+							if let Some(base) = &gui.base {
+								gui.hovered = gui.hit_test(base, mouse_position);
+							}
+						}
+						Event::MouseLeave => {
+							gui.hovered = None;
+						}
+						_ => {
+							if let Some(hovered) = &gui.hovered {
+								let hovered = hovered.borrow();
+								hovered.handle_event(&e); // TODO: replies
+							}
+						}
+					}
+				}
+			})
 			.display(|| {
 				let gui: &mut Gui = Engine::module_mut_checked().unwrap();
 
@@ -153,15 +215,17 @@ impl Module for Gui {
 }
 
 #[allow(unused_variables)]
-pub trait Widget: Debug + 'static {
+pub trait Widget: Debug + 'static + Sized {
 	type Slot: Slot = InvalidSlot;
 	const MAX_SLOTS: Option<usize> = Some(0);
 
-	fn layout_children(&self, parent_layout: &Layout, slots: &[Self::Slot]) {}
+	fn layout_children(container: &WidgetContainer<Self>) {}
 
-	fn desired_size(&self, slots: &[Self::Slot]) -> Vec2;
+	fn desired_size(container: &WidgetContainer<Self>) -> Vec2;
 
-	fn paint(&self, layout: &Layout, slots: &[Self::Slot], painter: &mut Painter) {}
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {}
+
+	fn handle_event(container: &WidgetContainer<Self>, event: &Event) {}
 }
 
 pub trait Slot: Debug + 'static {
@@ -208,13 +272,13 @@ pub enum Visibility {
 	HitTestInvisible,
 }
 
-struct WidgetContainer<T: Widget> {
-	widget: T,
-	parent: Option<WidgetRef>,
-	slots: Vec<T::Slot>,
-	visibility: Visibility,
+pub struct WidgetContainer<T: Widget> {
+	pub widget: T,
+	pub parent: Option<WidgetRef>,
+	pub slots: Vec<T::Slot>,
+	pub visibility: Visibility,
 
-	layout: Option<Layout>,
+	pub layout: Option<Layout>,
 }
 
 impl<T: Widget> Debug for WidgetContainer<T> {
@@ -222,6 +286,8 @@ impl<T: Widget> Debug for WidgetContainer<T> {
 		f.debug_struct("WidgetContainer")
 			.field("parent", &self.parent.as_ref().map(|f| f.as_ptr()))
 			.field("widget", &self.widget)
+			.field("slots", &self.slots)
+			.field("visibility", &self.visibility)
 			.field("layout", &self.layout)
 			.finish()
 	}
@@ -237,6 +303,7 @@ pub trait DynamicWidgetContainer: Debug {
 	fn layout_children(&self);
 	fn desired_size(&self) -> Vec2;
 	fn paint(&self, painter: &mut Painter);
+	fn handle_event(&self, event: &Event);
 
 	fn layout(&self) -> Option<&Layout>;
 	fn layout_mut(&mut self) -> &mut Option<Layout>;
@@ -264,19 +331,19 @@ impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
 	}
 
 	fn layout_children(&self) {
-		self.widget.layout_children(
-			&self.layout.expect("Parents layout must be built first"),
-			&self.slots,
-		);
+		T::layout_children(self);
 	}
 
 	fn desired_size(&self) -> Vec2 {
-		self.widget.desired_size(&self.slots)
+		T::desired_size(self)
 	}
 
 	fn paint(&self, painter: &mut Painter) {
-		self.widget
-			.paint(self.layout().unwrap(), &self.slots, painter);
+		T::paint(self, painter);
+	}
+
+	fn handle_event(&self, event: &Event) {
+		T::handle_event(self, event);
 	}
 
 	fn layout(&self) -> Option<&Layout> {
@@ -412,23 +479,28 @@ impl Text {
 impl Widget for Text {
 	type Slot = InvalidSlot;
 
-	fn desired_size(&self, _slots: &[InvalidSlot]) -> Vec2 {
-		let font = self.font.read();
+	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
+		let font = container.widget.font.read();
 		let font = font
-			.font_at_size(self.size, 2.0)
+			.font_at_size(container.widget.size, 2.0)
 			.expect("Invalid font size");
-		font.string_rect(&self.text, 1000000.0).size()
+		font.string_rect(&container.widget.text, 1000000.0).size()
 	}
 
-	fn paint(&self, layout: &Layout, _slots: &[InvalidSlot], painter: &mut Painter) {
-		let absolute = layout.absolute_bounds();
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
+		let absolute = container.layout.unwrap().absolute_bounds();
 
-		let font = self.font.read();
+		let font = container.widget.font.read();
 		let font = font
-			.font_at_size(self.size, 2.0)
+			.font_at_size(container.widget.size, 2.0)
 			.expect("Invalid font size");
 
-		painter.text(&self.text, self.color, absolute.top_left(), &font);
+		painter.text(
+			&container.widget.text,
+			container.widget.color,
+			absolute.top_left(),
+			&font,
+		);
 	}
 }
 
@@ -452,8 +524,9 @@ impl Widget for Panel {
 	type Slot = PanelSlot;
 	const MAX_SLOTS: Option<usize> = Some(1);
 
-	fn layout_children(&self, parent_layout: &Layout, slots: &[PanelSlot]) {
-		if let Some(slot) = &slots.get(0) {
+	fn layout_children(container: &WidgetContainer<Self>) {
+		let parent_layout = container.layout.unwrap();
+		if let Some(slot) = &container.slots.get(0) {
 			let mut child = slot.child().borrow_mut();
 			let child_desired = child.desired_size();
 			let parent_size = parent_layout.local_bounds.size();
@@ -506,8 +579,8 @@ impl Widget for Panel {
 		}
 	}
 
-	fn desired_size(&self, slots: &[PanelSlot]) -> Vec2 {
-		if let Some(slot) = &slots.get(0) {
+	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
+		if let Some(slot) = &container.slots.get(0) {
 			let child = slot.child.borrow();
 			child.desired_size() + slot.padding.size() + slot.margin.size()
 		} else {
@@ -515,13 +588,20 @@ impl Widget for Panel {
 		}
 	}
 
-	fn paint(&self, layout: &Layout, slots: &[PanelSlot], painter: &mut Painter) {
-		painter.fill_rect(layout.absolute_bounds(), self.color);
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
+		painter.fill_rect(
+			container.layout.unwrap().absolute_bounds(),
+			container.widget.color,
+		);
 
-		if let Some(slot) = &slots.get(0) {
+		if let Some(slot) = &container.slots.get(0) {
 			let child = slot.child().borrow();
 			child.paint(painter);
 		}
+	}
+
+	fn handle_event(_container: &WidgetContainer<Self>, event: &Event) {
+		println!("{:?}", event);
 	}
 }
 
