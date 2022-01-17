@@ -1,3 +1,5 @@
+#![feature(associated_type_defaults)]
+
 use {
 	engine::{
 		Builder,
@@ -31,6 +33,7 @@ use {
 		ResourceManager,
 	},
 	std::{
+		any::Any,
 		cell::RefCell,
 		fmt::Debug,
 		ops::Deref,
@@ -48,26 +51,23 @@ impl Module for Gui {
 	const LOCAL: bool = true;
 
 	fn new() -> Self {
-		let base = WidgetRef::new(
-			Panel::new()
-				.slot(
-					PanelSlot::new(Panel::new().color(Color::GREEN).slot(
-						PanelSlot::new(Text::new("Hello World").color(Color::RED)).margin(Margin {
-							bottom: 5.0,
-							top: 5.0,
-							left: 5.0,
-							right: 5.0,
-						}),
-					))
+		let base = WidgetRef::new_with(Panel::new().color(Color::BLACK), |gui| {
+			gui.slot_with(Panel::new().color(Color::GREEN), |gui| {
+				gui.slot(Text::new("Hello World").color(Color::RED))
 					.margin(Margin {
 						bottom: 5.0,
 						top: 5.0,
 						left: 5.0,
 						right: 5.0,
-					}), // .alignment(Alignment2::FILL_FILL),
-				)
-				.color(Color::BLACK),
-		);
+					});
+			})
+			.margin(Margin {
+				bottom: 5.0,
+				top: 5.0,
+				left: 5.0,
+				right: 5.0,
+			});
+		});
 
 		Self {
 			base: Some(base),
@@ -106,18 +106,12 @@ impl Module for Gui {
 						}
 					};
 
-					if changed {
-						if let Some(layout) = base.layout() {
-							base.widget().layout(layout);
-						}
-						println!("{:#?}", base);
+					if changed && base.layout().is_some() {
+						base.layout_children();
 					}
 
 					let mut painter = Painter::new();
-					base.widget().paint(
-						base.layout().expect("Layout should be completed by draw"),
-						&mut painter,
-					);
+					base.paint(&mut painter);
 					let (vertices, indices) = painter.finish().unwrap();
 					let device = Gpu::device();
 					let backbuffer = device.acquire_backbuffer().unwrap();
@@ -160,26 +154,39 @@ impl Module for Gui {
 
 #[allow(unused_variables)]
 pub trait Widget: Debug + 'static {
-	fn layout(&self, layout: &Layout) {}
+	type Slot: Slot = InvalidSlot;
+	const MAX_SLOTS: Option<usize> = Some(0);
 
-	fn desired_size(&self) -> Vec2;
+	fn layout_children(&self, parent_layout: &Layout, slots: &[Self::Slot]) {}
 
-	fn paint(&self, layout: &Layout, painter: &mut Painter) {}
+	fn desired_size(&self, slots: &[Self::Slot]) -> Vec2;
 
-	fn slot(&self, index: usize) -> Option<&dyn Slot> {
-		None
-	}
+	fn paint(&self, layout: &Layout, slots: &[Self::Slot], painter: &mut Painter) {}
+}
 
-	fn slot_mut(&mut self, index: usize) -> Option<&mut dyn Slot> {
-		None
-	}
-
-	fn num_slots(&self) -> Option<usize> {
-		None
-	}
+pub trait Slot: Debug + 'static {
+	fn new(child: WidgetRef) -> Self;
+	fn child(&self) -> &WidgetRef;
+	fn child_mut(&mut self) -> &mut WidgetRef;
 }
 
 #[derive(Debug)]
+pub struct InvalidSlot;
+impl Slot for InvalidSlot {
+	fn new(_widget: WidgetRef) -> Self {
+		unreachable!()
+	}
+
+	fn child(&self) -> &WidgetRef {
+		unreachable!()
+	}
+
+	fn child_mut(&mut self) -> &mut WidgetRef {
+		unreachable!()
+	}
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Layout {
 	pub local_bounds: Rect,
 	pub local_to_absolute: Mat3,
@@ -193,13 +200,24 @@ impl Layout {
 	}
 }
 
-struct Container<T: Widget> {
-	parent: Option<WidgetRef>,
+#[derive(PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub enum Visibility {
+	Visible,
+	Hidden,
+	Collapsed,
+	HitTestInvisible,
+}
+
+struct WidgetContainer<T: Widget> {
 	widget: T,
+	parent: Option<WidgetRef>,
+	slots: Vec<T::Slot>,
+	visibility: Visibility,
+
 	layout: Option<Layout>,
 }
 
-impl<T: Widget> Debug for Container<T> {
+impl<T: Widget> Debug for WidgetContainer<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("WidgetContainer")
 			.field("parent", &self.parent.as_ref().map(|f| f.as_ptr()))
@@ -209,18 +227,26 @@ impl<T: Widget> Debug for Container<T> {
 	}
 }
 
-pub trait WidgetContainer: Debug {
+pub trait DynamicWidgetContainer: Debug {
 	fn parent(&self) -> Option<&WidgetRef>;
 	fn parent_mut(&mut self) -> &mut Option<WidgetRef>;
 
-	fn widget(&self) -> &dyn Widget;
-	fn widget_mut(&mut self) -> &mut dyn Widget;
+	fn get(&self) -> &dyn Any;
+	fn get_mut(&mut self) -> &mut dyn Any;
+
+	fn layout_children(&self);
+	fn desired_size(&self) -> Vec2;
+	fn paint(&self, painter: &mut Painter);
 
 	fn layout(&self) -> Option<&Layout>;
 	fn layout_mut(&mut self) -> &mut Option<Layout>;
+
+	fn child(&self, index: usize) -> Option<&WidgetRef>;
+	fn child_mut(&mut self, index: usize) -> Option<&mut WidgetRef>;
+	fn num_children(&self) -> usize;
 }
 
-impl<T: Widget> WidgetContainer for Container<T> {
+impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
 	fn parent(&self) -> Option<&WidgetRef> {
 		self.parent.as_ref()
 	}
@@ -229,12 +255,28 @@ impl<T: Widget> WidgetContainer for Container<T> {
 		&mut self.parent
 	}
 
-	fn widget(&self) -> &dyn Widget {
+	fn get(&self) -> &dyn Any {
 		&self.widget
 	}
 
-	fn widget_mut(&mut self) -> &mut dyn Widget {
+	fn get_mut(&mut self) -> &mut dyn Any {
 		&mut self.widget
+	}
+
+	fn layout_children(&self) {
+		self.widget.layout_children(
+			&self.layout.expect("Parents layout must be built first"),
+			&self.slots,
+		);
+	}
+
+	fn desired_size(&self) -> Vec2 {
+		self.widget.desired_size(&self.slots)
+	}
+
+	fn paint(&self, painter: &mut Painter) {
+		self.widget
+			.paint(self.layout().unwrap(), &self.slots, painter);
 	}
 
 	fn layout(&self) -> Option<&Layout> {
@@ -244,25 +286,73 @@ impl<T: Widget> WidgetContainer for Container<T> {
 	fn layout_mut(&mut self) -> &mut Option<Layout> {
 		&mut self.layout
 	}
+
+	fn child(&self, index: usize) -> Option<&WidgetRef> {
+		self.slots.get(index).map(|f| f.child())
+	}
+
+	fn child_mut(&mut self, index: usize) -> Option<&mut WidgetRef> {
+		self.slots.get_mut(index).map(|f| f.child_mut())
+	}
+
+	fn num_children(&self) -> usize {
+		self.slots.len()
+	}
+}
+
+#[derive(Default)]
+pub struct LayoutBuilder<T: Slot> {
+	slots: Vec<T>,
+}
+
+impl<T: Slot> LayoutBuilder<T> {
+	pub fn slot(&mut self, widget: impl Widget) -> &mut T {
+		self.slots.push(T::new(WidgetRef::new(widget)));
+		self.slots.last_mut().unwrap()
+	}
+	pub fn slot_with<W: Widget>(
+		&mut self,
+		widget: W,
+		slots: impl FnOnce(&mut LayoutBuilder<W::Slot>),
+	) -> &mut T {
+		self.slots.push(T::new(WidgetRef::new_with(widget, slots)));
+		self.slots.last_mut().unwrap()
+	}
 }
 
 #[derive(Clone)]
-pub struct WidgetRef(Rc<RefCell<dyn WidgetContainer>>);
+pub struct WidgetRef(Rc<RefCell<dyn DynamicWidgetContainer>>);
 
 impl WidgetRef {
 	pub fn new(widget: impl Widget) -> Self {
-		let result = Self(Rc::new(RefCell::new(Container {
+		Self(Rc::new(RefCell::new(WidgetContainer {
 			parent: None,
 			widget,
 			layout: None,
+			visibility: Visibility::Visible,
+			slots: Vec::default(),
+		})))
+	}
+
+	pub fn new_with<T: Widget>(widget: T, slots: impl FnOnce(&mut LayoutBuilder<T::Slot>)) -> Self {
+		let mut builder: LayoutBuilder<T::Slot> = LayoutBuilder { slots: Vec::new() };
+		slots(&mut builder);
+
+		let result = Self(Rc::new(RefCell::new(WidgetContainer {
+			parent: None,
+			widget,
+			layout: None,
+			visibility: Visibility::Visible,
+			slots: builder.slots,
 		})));
+
 		{
 			let mut container = result.borrow_mut();
 
-			let num_slots = container.widget().num_slots().unwrap_or_default();
-			for i in 0..num_slots {
-				if let Some(slot) = container.widget_mut().slot_mut(i) {
-					let mut child = slot.child_mut().borrow_mut();
+			let num_children = container.num_children();
+			for i in 0..num_children {
+				if let Some(child) = container.child_mut(i) {
+					let mut child = child.borrow_mut();
 					*child.parent_mut() = Some(result.clone())
 				}
 			}
@@ -272,7 +362,7 @@ impl WidgetRef {
 }
 
 impl Deref for WidgetRef {
-	type Target = RefCell<dyn WidgetContainer>;
+	type Target = RefCell<dyn DynamicWidgetContainer>;
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
@@ -286,11 +376,6 @@ impl Debug for WidgetRef {
 			.field("container", &container)
 			.finish()
 	}
-}
-
-pub trait Slot: Debug {
-	fn child(&self) -> &WidgetRef;
-	fn child_mut(&mut self) -> &mut WidgetRef;
 }
 
 #[derive(Default, Debug)]
@@ -325,7 +410,9 @@ impl Text {
 }
 
 impl Widget for Text {
-	fn desired_size(&self) -> Vec2 {
+	type Slot = InvalidSlot;
+
+	fn desired_size(&self, _slots: &[InvalidSlot]) -> Vec2 {
 		let font = self.font.read();
 		let font = font
 			.font_at_size(self.size, 2.0)
@@ -333,7 +420,7 @@ impl Widget for Text {
 		font.string_rect(&self.text, 1000000.0).size()
 	}
 
-	fn paint(&self, layout: &Layout, painter: &mut Painter) {
+	fn paint(&self, layout: &Layout, _slots: &[InvalidSlot], painter: &mut Painter) {
 		let absolute = layout.absolute_bounds();
 
 		let font = self.font.read();
@@ -347,7 +434,6 @@ impl Widget for Text {
 
 #[derive(Default, Debug)]
 pub struct Panel {
-	slot: Option<PanelSlot>,
 	color: Color,
 }
 
@@ -360,19 +446,17 @@ impl Panel {
 		self.color = color.into();
 		self
 	}
-
-	pub fn slot(mut self, slot: PanelSlot) -> Self {
-		self.slot = Some(slot);
-		self
-	}
 }
 
 impl Widget for Panel {
-	fn layout(&self, layout: &Layout) {
-		if let Some(slot) = &self.slot {
+	type Slot = PanelSlot;
+	const MAX_SLOTS: Option<usize> = Some(1);
+
+	fn layout_children(&self, parent_layout: &Layout, slots: &[PanelSlot]) {
+		if let Some(slot) = &slots.get(0) {
 			let mut child = slot.child().borrow_mut();
-			let child_desired = child.widget().desired_size();
-			let parent_size = layout.local_bounds.size();
+			let child_desired = child.desired_size();
+			let parent_size = parent_layout.local_bounds.size();
 
 			let (x0, x1) = match slot.alignment.horizontal {
 				Alignment::LEFT => {
@@ -414,61 +498,30 @@ impl Widget for Panel {
 
 			*child.layout_mut() = Some(Layout {
 				local_bounds: Rect::from_min_max((x0, y0), (x1, y1)),
-				local_to_absolute: layout.local_to_absolute
-					* Mat3::translate(layout.local_bounds.min),
+				local_to_absolute: parent_layout.local_to_absolute
+					* Mat3::translate(parent_layout.local_bounds.min),
 			});
 
-			child.widget().layout(child.layout().unwrap());
+			child.layout_children();
 		}
 	}
 
-	fn desired_size(&self) -> Vec2 {
-		if let Some(slot) = &self.slot {
+	fn desired_size(&self, slots: &[PanelSlot]) -> Vec2 {
+		if let Some(slot) = &slots.get(0) {
 			let child = slot.child.borrow();
-			child.widget().desired_size() + slot.padding.size() + slot.margin.size()
+			child.desired_size() + slot.padding.size() + slot.margin.size()
 		} else {
 			Vec2::ZERO
 		}
 	}
 
-	fn paint(&self, layout: &Layout, painter: &mut Painter) {
+	fn paint(&self, layout: &Layout, slots: &[PanelSlot], painter: &mut Painter) {
 		painter.fill_rect(layout.absolute_bounds(), self.color);
 
-		if let Some(slot) = &self.slot {
+		if let Some(slot) = &slots.get(0) {
 			let child = slot.child().borrow();
-			child.widget().paint(
-				child.layout().expect("Layout should be built by this time"),
-				painter,
-			);
+			child.paint(painter);
 		}
-	}
-
-	fn slot(&self, index: usize) -> Option<&dyn Slot> {
-		if index == 0 {
-			if let Some(slot) = &self.slot {
-				Some(slot)
-			} else {
-				None
-			}
-		} else {
-			None
-		}
-	}
-
-	fn slot_mut(&mut self, index: usize) -> Option<&mut dyn Slot> {
-		if index == 0 {
-			if let Some(slot) = &mut self.slot {
-				Some(slot)
-			} else {
-				None
-			}
-		} else {
-			None
-		}
-	}
-
-	fn num_slots(&self) -> Option<usize> {
-		Some(1)
 	}
 }
 
@@ -478,37 +531,37 @@ pub struct PanelSlot {
 
 	pub alignment: Alignment2,
 	pub margin: Margin,
-	pub padding: Margin,
+	pub padding: Padding,
 }
 
 impl PanelSlot {
-	pub fn new(child: impl Widget) -> Self {
-		Self {
-			child: WidgetRef::new(child),
-
-			alignment: Alignment2::default(),
-			margin: Margin::default(),
-			padding: Margin::default(),
-		}
-	}
-
-	pub fn alignment(mut self, alignment: Alignment2) -> Self {
+	pub fn alignment(&mut self, alignment: Alignment2) -> &mut Self {
 		self.alignment = alignment;
 		self
 	}
 
-	pub fn margin(mut self, margin: Margin) -> Self {
+	pub fn margin(&mut self, margin: Margin) -> &mut Self {
 		self.margin = margin;
 		self
 	}
 
-	pub fn padding(mut self, padding: Margin) -> Self {
+	pub fn padding(&mut self, padding: Padding) -> &mut Self {
 		self.padding = padding;
 		self
 	}
 }
 
 impl Slot for PanelSlot {
+	fn new(child: WidgetRef) -> Self {
+		Self {
+			child,
+
+			alignment: Alignment2::default(),
+			margin: Margin::default(),
+			padding: Padding::default(),
+		}
+	}
+
 	fn child(&self) -> &WidgetRef {
 		&self.child
 	}
@@ -517,6 +570,8 @@ impl Slot for PanelSlot {
 		&mut self.child
 	}
 }
+
+pub type Padding = Margin;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Margin {
