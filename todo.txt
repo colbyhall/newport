@@ -1,19 +1,21 @@
-[Priority Key]
-A - Highest
-B - Moderate
-C - Low
-
-[A]
+[Game Stuff]
 * Schedule Serialization - What if we called this a gamemode?
 * Scene Loading
-* Physics
+* Physics - Relies on Schedule Serialization due to physics module
 * Scene Editing
-* Config Diffing
 
-[B]
-* Retained Gui library
+[Gui]
+* Horizontal Box
+* Vertical Box
+* Input Handling
+* Buttons,
+* Scrolling
+* Text Input
+
+[Engine]
+* Config Diffing
 * Cleanup the gpu library
 
-[C]
+[Other]
 * Create a system macro for ECS to auto gen all the Box async stuff. async trait has 
    issues with parsing a proc macro and rust analyzer
