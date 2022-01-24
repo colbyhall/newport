@@ -39,7 +39,7 @@ GraphicsPipeline(
 
 		code: r#"
 			output.color = input.color;
-			return output;
+			return output; 
 		"#
 	),
 )

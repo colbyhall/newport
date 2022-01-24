@@ -67,7 +67,9 @@ impl Gui {
 		}
 
 		let layout = borrow.layout()?;
-		if layout.absolute_bounds().point_overlap(mouse_position) {
+		if layout.absolute_bounds().point_overlap(mouse_position)
+			&& borrow.visibility() == Visibility::Visible
+		{
 			Some(current.clone())
 		} else {
 			None
@@ -80,7 +82,7 @@ impl Module for Gui {
 
 	fn new() -> Self {
 		let base = WidgetRef::new_with(Panel::new().color(Color::BLACK), |gui| {
-			gui.slot_with(Panel::new().color(Color::GREEN), |gui| {
+			gui.slot_with(Button::new(), |gui| {
 				gui.slot(Text::new("Hello World").color(Color::RED))
 					.margin(Margin {
 						bottom: 5.0,
@@ -218,6 +220,7 @@ impl Module for Gui {
 pub trait Widget: Debug + 'static + Sized {
 	type Slot: Slot = InvalidSlot;
 	const MAX_SLOTS: Option<usize> = Some(0);
+	const DEFAULT_VISIBILITY: Visibility;
 
 	fn layout_children(container: &WidgetContainer<Self>) {}
 
@@ -264,7 +267,7 @@ impl Layout {
 	}
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Visibility {
 	Visible,
 	Hidden,
@@ -311,6 +314,10 @@ pub trait DynamicWidgetContainer: Debug {
 	fn child(&self, index: usize) -> Option<&WidgetRef>;
 	fn child_mut(&mut self, index: usize) -> Option<&mut WidgetRef>;
 	fn num_children(&self) -> usize;
+
+	fn visibility(&self) -> Visibility;
+
+	fn id(&self) -> usize;
 }
 
 impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
@@ -365,6 +372,14 @@ impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
 	fn num_children(&self) -> usize {
 		self.slots.len()
 	}
+
+	fn visibility(&self) -> Visibility {
+		self.visibility
+	}
+
+	fn id(&self) -> usize {
+		self as *const Self as usize
+	}
 }
 
 #[derive(Default)]
@@ -391,12 +406,12 @@ impl<T: Slot> LayoutBuilder<T> {
 pub struct WidgetRef(Rc<RefCell<dyn DynamicWidgetContainer>>);
 
 impl WidgetRef {
-	pub fn new(widget: impl Widget) -> Self {
+	pub fn new<T: Widget>(widget: T) -> Self {
 		Self(Rc::new(RefCell::new(WidgetContainer {
 			parent: None,
 			widget,
 			layout: None,
-			visibility: Visibility::Visible,
+			visibility: T::DEFAULT_VISIBILITY,
 			slots: Vec::default(),
 		})))
 	}
@@ -409,7 +424,7 @@ impl WidgetRef {
 			parent: None,
 			widget,
 			layout: None,
-			visibility: Visibility::Visible,
+			visibility: T::DEFAULT_VISIBILITY,
 			slots: builder.slots,
 		})));
 
@@ -425,6 +440,14 @@ impl WidgetRef {
 			}
 		}
 		result
+	}
+}
+
+impl PartialEq for WidgetRef {
+	fn eq(&self, other: &Self) -> bool {
+		let a = self.borrow();
+		let b = other.borrow();
+		a.id() == b.id()
 	}
 }
 
@@ -478,6 +501,7 @@ impl Text {
 
 impl Widget for Text {
 	type Slot = InvalidSlot;
+	const DEFAULT_VISIBILITY: Visibility = Visibility::HitTestInvisible;
 
 	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
 		let font = container.widget.font.read();
@@ -505,6 +529,111 @@ impl Widget for Text {
 }
 
 #[derive(Default, Debug)]
+pub struct Button {
+	normal: Color,
+	hovered: Color,
+	focused: Color,
+}
+
+impl Button {
+	pub fn new() -> Self {
+		Self {
+			normal: Color::WHITE,
+			hovered: Color::GREEN,
+			focused: Color::BLACK,
+		}
+	}
+}
+
+pub type ButtonSlot = PanelSlot;
+
+impl Widget for Button {
+	type Slot = ButtonSlot;
+	const MAX_SLOTS: Option<usize> = Some(1);
+	const DEFAULT_VISIBILITY: Visibility = Visibility::Visible;
+
+	fn layout_children(container: &WidgetContainer<Self>) {
+		let parent_layout = container.layout.unwrap();
+		if let Some(slot) = &container.slots.get(0) {
+			let mut child = slot.child().borrow_mut();
+			let child_desired = child.desired_size();
+			let parent_size = parent_layout.local_bounds.size();
+
+			let (x0, x1) = match slot.alignment.horizontal {
+				Alignment::LEFT => {
+					let x0 = slot.margin.left;
+					let x1 = x0 + child_desired.x;
+					(x0, x1)
+				}
+				Alignment::RIGHT => {
+					let x1 = parent_size.x - slot.margin.right;
+					let x0 = x1 - child_desired.x;
+					(x0, x1)
+				}
+				Alignment::Center => {
+					let center = parent_size.x / 2.0;
+					let half_desired = child_desired.x / 2.0;
+					(center - half_desired, center + half_desired)
+				}
+				Alignment::Fill => (slot.margin.left, parent_size.x - slot.margin.right),
+			};
+
+			let (y0, y1) = match slot.alignment.vertical {
+				Alignment::BOTTOM => {
+					let y0 = slot.margin.bottom;
+					let y1 = x0 + child_desired.y;
+					(y0, y1)
+				}
+				Alignment::TOP => {
+					let y1 = parent_size.y - slot.margin.top;
+					let y0 = y1 - child_desired.y;
+					(y0, y1)
+				}
+				Alignment::Center => {
+					let center = parent_size.y / 2.0;
+					let half_desired = child_desired.y / 2.0;
+					(center - half_desired, center + half_desired)
+				}
+				Alignment::Fill => (slot.margin.bottom, parent_size.y - slot.margin.top),
+			};
+
+			*child.layout_mut() = Some(Layout {
+				local_bounds: Rect::from_min_max((x0, y0), (x1, y1)),
+				local_to_absolute: parent_layout.local_to_absolute
+					* Mat3::translate(parent_layout.local_bounds.min),
+			});
+
+			child.layout_children();
+		}
+	}
+
+	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
+		if let Some(slot) = &container.slots.get(0) {
+			let child = slot.child.borrow();
+			child.desired_size() + slot.padding.size() + slot.margin.size()
+		} else {
+			Vec2::ZERO
+		}
+	}
+
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
+		painter.fill_rect(
+			container.layout.unwrap().absolute_bounds(),
+			container.widget.normal,
+		);
+
+		if let Some(slot) = &container.slots.get(0) {
+			let child = slot.child().borrow();
+			child.paint(painter);
+		}
+	}
+
+	fn handle_event(_container: &WidgetContainer<Self>, event: &Event) {
+		println!("{:?}", event);
+	}
+}
+
+#[derive(Default, Debug)]
 pub struct Panel {
 	color: Color,
 }
@@ -523,6 +652,7 @@ impl Panel {
 impl Widget for Panel {
 	type Slot = PanelSlot;
 	const MAX_SLOTS: Option<usize> = Some(1);
+	const DEFAULT_VISIBILITY: Visibility = Visibility::Visible;
 
 	fn layout_children(container: &WidgetContainer<Self>) {
 		let parent_layout = container.layout.unwrap();
@@ -598,10 +728,6 @@ impl Widget for Panel {
 			let child = slot.child().borrow();
 			child.paint(painter);
 		}
-	}
-
-	fn handle_event(_container: &WidgetContainer<Self>, event: &Event) {
-		println!("{:?}", event);
 	}
 }
 

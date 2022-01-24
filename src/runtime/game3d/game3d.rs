@@ -18,6 +18,7 @@ use {
 		Component,
 		Ecs,
 		Entity,
+		Named,
 		Query,
 		ScheduleBlock,
 		System,
@@ -62,6 +63,7 @@ impl Module for Game {
 			let mut transforms = world.write::<Transform>();
 			let mut filters = world.write::<MeshFilter>();
 			let mut cameras = world.write::<Camera>();
+			let mut names = world.write::<Named>();
 			let mut camera_controllers = world.write::<EditorCameraController>();
 
 			let pipeline =
@@ -70,6 +72,7 @@ impl Module for Game {
 				.spawn(world.persistent)
 				.with(Transform::default(), &mut transforms)
 				.with(Camera::default(), &mut cameras)
+				.with(Named::new("Camera"), &mut names)
 				.with(EditorCameraController::default(), &mut camera_controllers)
 				.finish();
 
@@ -90,6 +93,7 @@ impl Module for Game {
 					},
 					&mut filters,
 				)
+				.with(Named::new("Block"), &mut names)
 				.finish();
 
 			let parent = world
