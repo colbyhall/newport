@@ -272,13 +272,9 @@ impl Importer for TextureImporter {
 				.spawn()?;
 
 				GraphicsRecorder::new()
-					.resource_barrier_texture(&gpu_texture, Layout::Undefined, Layout::TransferDst)
+					.texture_barrier(&gpu_texture, Layout::Undefined, Layout::TransferDst)
 					.copy_buffer_to_texture(&gpu_texture, &pixel_buffer)
-					.resource_barrier_texture(
-						&gpu_texture,
-						Layout::TransferDst,
-						Layout::ShaderReadOnly,
-					)
+					.texture_barrier(&gpu_texture, Layout::TransferDst, Layout::ShaderReadOnly)
 					.submit()
 					.wait();
 

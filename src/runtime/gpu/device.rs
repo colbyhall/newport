@@ -12,6 +12,7 @@ use std::sync::Arc;
 pub struct Device(pub(crate) Arc<api::Device>);
 
 impl Device {
+	// @TODO: This should return a reference to a Texture
 	pub fn acquire_backbuffer(&self) -> Result<Texture> {
 		Ok(Texture(self.0.acquire_backbuffer()?))
 	}

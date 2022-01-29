@@ -27,7 +27,7 @@ impl GraphicsRecorder {
 		GraphicsRecorder(inner)
 	}
 
-	pub fn resource_barrier_texture(
+	pub fn texture_barrier(
 		mut self,
 		texture: &Texture,
 		old_layout: Layout,
@@ -98,7 +98,7 @@ impl RenderPassRecorder {
 		self
 	}
 
-	pub fn bind_pipeline(mut self, pipeline: &GraphicsPipeline) -> Self {
+	pub fn set_pipeline(mut self, pipeline: &GraphicsPipeline) -> Self {
 		self.0 .0.bind_pipeline(pipeline.0.clone());
 		self
 	}
@@ -108,12 +108,12 @@ impl RenderPassRecorder {
 		self
 	}
 
-	pub fn bind_vertex_buffer<T: Sized>(mut self, buffer: &Buffer<T>) -> Self {
+	pub fn set_vertex_buffer<T: Sized>(mut self, buffer: &Buffer<T>) -> Self {
 		self.0 .0.bind_vertex_buffer(buffer.api.clone());
 		self
 	}
 
-	pub fn bind_index_buffer<T: Sized>(mut self, buffer: &Buffer<T>) -> Self {
+	pub fn set_index_buffer<T: Sized>(mut self, buffer: &Buffer<T>) -> Self {
 		self.0 .0.bind_index_buffer(buffer.api.clone());
 		self
 	}
@@ -128,12 +128,7 @@ impl RenderPassRecorder {
 		self
 	}
 
-	pub fn bind_constants<T: Sized>(
-		mut self,
-		name: &str,
-		buffer: &Buffer<T>,
-		index: usize,
-	) -> Self {
+	pub fn set_constants<T: Sized>(mut self, name: &str, buffer: &Buffer<T>, index: usize) -> Self {
 		self.0 .0.bind_constants(name, buffer.api.clone(), index);
 		self
 	}

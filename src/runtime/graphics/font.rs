@@ -175,9 +175,9 @@ impl FontCollection {
 			.ok()?;
 
 			gpu::GraphicsRecorder::new()
-				.resource_barrier_texture(&atlas, Layout::Undefined, Layout::TransferDst)
+				.texture_barrier(&atlas, Layout::Undefined, Layout::TransferDst)
 				.copy_buffer_to_texture(&atlas, &pixel_buffer)
-				.resource_barrier_texture(&atlas, Layout::TransferDst, Layout::ShaderReadOnly)
+				.texture_barrier(&atlas, Layout::TransferDst, Layout::ShaderReadOnly)
 				.finish()
 				.submit()
 				.wait();

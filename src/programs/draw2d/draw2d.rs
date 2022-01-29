@@ -87,13 +87,13 @@ impl Module for Draw2d {
 				let receipt = GraphicsRecorder::new()
 					.render_pass(&[&backbuffer], |ctx| {
 						ctx.clear_color(Color::BLACK)
-							.bind_pipeline(&pipeline)
-							.bind_vertex_buffer(&vertices)
-							.bind_index_buffer(&indices)
-							.bind_constants("imports", &imports, 0)
+							.set_pipeline(&pipeline)
+							.set_vertex_buffer(&vertices)
+							.set_index_buffer(&indices)
+							.set_constants("imports", &imports, 0)
 							.draw_indexed(indices.len(), 0)
 					})
-					.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present)
+					.texture_barrier(&backbuffer, Layout::ColorAttachment, Layout::Present)
 					.finish()
 					.submit();
 

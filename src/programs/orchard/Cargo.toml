@@ -1,0 +1,16 @@
+[package]
+name = "orchard"
+version = "0.0.0"
+edition = "2021"
+
+[[bin]]
+path = "orchard.rs"
+name = "orchard"
+
+[dependencies]
+engine = { path = "../../runtime/engine" }
+gpu = { path = "../../runtime/gpu" }
+graphics = { path = "../../runtime/graphics" }
+resources = { path = "../../runtime/resources" }
+ecs = { path = "../../runtime/ecs" }
+math = { path = "../../runtime/math" }

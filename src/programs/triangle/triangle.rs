@@ -105,11 +105,11 @@ impl Module for Triangle {
 			let receipt = GraphicsRecorder::new()
 				.render_pass(&[&backbuffer], |ctx| {
 					ctx.clear_color(Color::BLACK)
-						.bind_pipeline(&triangle.pipeline)
-						.bind_vertex_buffer(&triangle.vertices)
+						.set_pipeline(&triangle.pipeline)
+						.set_vertex_buffer(&triangle.vertices)
 						.draw(VERTICES.len(), 0)
 				})
-				.resource_barrier_texture(&backbuffer, Layout::ColorAttachment, Layout::Present)
+				.texture_barrier(&backbuffer, Layout::ColorAttachment, Layout::Present)
 				.finish()
 				.submit();
 
