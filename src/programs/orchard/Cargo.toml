@@ -14,3 +14,4 @@ graphics = { path = "../../runtime/graphics" }
 resources = { path = "../../runtime/resources" }
 ecs = { path = "../../runtime/ecs" }
 math = { path = "../../runtime/math" }
+serde = { path = "../../third_party/serde" }
