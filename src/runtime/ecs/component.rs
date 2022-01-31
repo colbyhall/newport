@@ -291,8 +291,8 @@ pub struct ReadStorage<'a, T: Component> {
 }
 
 impl<'a, T: Component> ReadStorage<'a, T> {
-	pub fn get(&self, entity: &Entity) -> Option<&T> {
-		self.storage.get(*entity)
+	pub fn get(&self, entity: Entity) -> Option<&T> {
+		self.storage.get(entity)
 	}
 }
 
@@ -340,11 +340,11 @@ pub struct WriteStorage<'a, T: Component> {
 }
 
 impl<'a, T: Component> WriteStorage<'a, T> {
-	pub fn get(&self, entity: &Entity) -> Option<&T> {
-		self.storage.get(*entity)
+	pub fn get(&self, entity: Entity) -> Option<&T> {
+		self.storage.get(entity)
 	}
 
-	pub fn get_mut(&mut self, entity: &Entity) -> Option<&mut T> {
-		self.storage.get_mut(*entity)
+	pub fn get_mut(&mut self, entity: Entity) -> Option<&mut T> {
+		self.storage.get_mut(entity)
 	}
 }

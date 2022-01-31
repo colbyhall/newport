@@ -101,7 +101,7 @@ impl System for PhysicsStep {
 			ccd_solver,
 			rigid_body_set,
 			collider_set,
-		} = physics_states.get_mut(&world.singleton).unwrap();
+		} = physics_states.get_mut(world.singleton).unwrap();
 
 		let physics_hooks = ();
 		let event_handler = ();

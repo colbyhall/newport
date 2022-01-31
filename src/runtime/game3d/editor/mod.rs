@@ -67,12 +67,12 @@ impl Module for Editor {
 						egui::ScrollArea::new([true, false]).show(ui, |ui| {
 							let named: ReadStorage<Named> = game.world.read();
 							let entities = Query::new().read(&named).execute(&game.world);
-							for e in entities.iter() {
+							for e in entities.iter().copied() {
 								let name = named.get(e).unwrap();
 
-								let selected = selected_entity.map(|f| f == *e).unwrap_or_default();
+								let selected = selected_entity.map(|f| f == e).unwrap_or_default();
 								if ui.selectable_label(selected, &name.name).clicked() {
-									*selected_entity = Some(*e);
+									*selected_entity = Some(e);
 								}
 							}
 						});

@@ -378,7 +378,7 @@ impl System for InputSystem {
 	fn run(&self, world: &World, _dt: f32) {
 		// Lazy load the input manager component
 		let mut input_managers = world.write::<InputManager>();
-		let input_manager = match input_managers.get_mut(&world.singleton) {
+		let input_manager = match input_managers.get_mut(world.singleton) {
 			Some(c) => c,
 			None => {
 				world.insert(
@@ -386,7 +386,7 @@ impl System for InputSystem {
 					world.singleton,
 					InputManager::default(),
 				);
-				input_managers.get_mut(&world.singleton).unwrap()
+				input_managers.get_mut(world.singleton).unwrap()
 			}
 		};
 
@@ -473,7 +473,7 @@ pub struct EditorCameraSystem;
 impl System for EditorCameraSystem {
 	fn run(&self, world: &World, dt: f32) {
 		let input = world.read::<InputManager>();
-		let input = input.get(&world.singleton).unwrap();
+		let input = input.get(world.singleton).unwrap();
 
 		// Query for all controllers that could be functioning
 		let mut transforms = world.write::<Transform>();
@@ -486,7 +486,7 @@ impl System for EditorCameraSystem {
 			.execute(world);
 
 		// Essentially all we're doing is handling inputs and updating transforms
-		for e in entities.iter() {
+		for e in entities.iter().copied() {
 			let transform = transforms.get_mut(e).unwrap();
 			let controller = controllers.get_mut(e).unwrap();
 

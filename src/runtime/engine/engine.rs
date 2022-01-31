@@ -49,6 +49,8 @@ use os::{
 	WindowEvent,
 };
 
+pub use os::input;
+
 static mut ENGINE: Option<Engine> = None;
 
 pub const ENGINE_NAME: &str = "Newport";

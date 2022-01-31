@@ -16,7 +16,7 @@ use std::fmt;
 use std::fmt::Debug;
 use std::intrinsics::copy_nonoverlapping;
 
-#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Hash, Default)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Hash)]
 pub struct Uuid {
 	a: u32,
 	b: u16,
@@ -30,15 +30,21 @@ impl Uuid {
 		getrandom::getrandom(&mut bytes)
 			.unwrap_or_else(|err| panic!("Could not generate random bytes for uuid: {}", err));
 
-		let mut result = Uuid::default();
 		unsafe {
+			let mut result = std::mem::zeroed();
 			copy_nonoverlapping(
 				bytes.as_ptr(),
 				&mut result as *mut Uuid as *mut u8,
 				bytes.len(),
-			)
-		};
-		result
+			);
+			result
+		}
+	}
+}
+
+impl Default for Uuid {
+	fn default() -> Self {
+		Self::new()
 	}
 }
 

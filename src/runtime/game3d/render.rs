@@ -148,11 +148,11 @@ pub struct DebugSystem;
 impl System for DebugSystem {
 	fn run(&self, world: &World, dt: f32) {
 		let mut debug_managers = world.write::<DebugManager>();
-		let debug_manager = match debug_managers.get_mut(&world.singleton) {
+		let debug_manager = match debug_managers.get_mut(world.singleton) {
 			Some(c) => c,
 			None => {
 				world.insert(&mut debug_managers, world.singleton, DebugManager::new());
-				debug_managers.get_mut(&world.singleton).unwrap()
+				debug_managers.get_mut(world.singleton).unwrap()
 			}
 		};
 
@@ -188,7 +188,7 @@ impl DrawList {
 		let mut world_transforms = Vec::with_capacity(entities.len());
 		let mut mesh_filters = Vec::with_capacity(entities.len());
 
-		for e in entities.iter() {
+		for e in entities.iter().copied() {
 			let transform = transforms.get(e).unwrap();
 			let filter = filters.get(e).unwrap();
 
@@ -201,7 +201,7 @@ impl DrawList {
 
 		let mut camera_transform = None;
 		let mut camera = None;
-		for e in entities.iter() {
+		for e in entities.iter().copied() {
 			let transform = transforms.get(e).unwrap();
 			let cam = cameras.get(e).unwrap();
 
@@ -217,7 +217,7 @@ impl DrawList {
 		let camera = camera.unwrap_or_default();
 
 		let debug_managers = world.read::<DebugManager>();
-		let debug_shapes = match debug_managers.get(&world.singleton) {
+		let debug_shapes = match debug_managers.get(world.singleton) {
 			Some(e) => e.shapes.clone(),
 			None => Vec::default(),
 		};

@@ -40,7 +40,7 @@ pub struct World {
 
 impl World {
 	pub fn new(persistent: Option<&Handle<Scene>>, schedule: ScheduleBlock) -> Self {
-		let persistent_id = persistent.map(|f| f.uuid()).unwrap_or(Uuid::new());
+		let persistent_id = persistent.map(|f| f.uuid()).unwrap_or_default();
 		let singleton = Entity::new(persistent_id);
 
 		let variants: &[ComponentVariant] = Engine::register();
