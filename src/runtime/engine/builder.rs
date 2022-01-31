@@ -13,6 +13,7 @@ use std::{
 	time::Instant,
 };
 
+#[allow(dead_code)]
 pub(crate) struct ModuleEntry {
 	pub id: TypeId,
 	pub name: &'static str,

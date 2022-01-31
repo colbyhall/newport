@@ -101,6 +101,7 @@ impl Importer for SceneImporter {
 
 pub(crate) type SceneCollection = HashMap<Uuid, SceneRuntime>;
 
+#[allow(dead_code)]
 pub(crate) struct SceneRuntime {
 	pub scene: Option<Handle<Scene>>,
 	pub entities: EntityContainer,

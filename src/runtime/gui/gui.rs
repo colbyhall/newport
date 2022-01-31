@@ -42,6 +42,7 @@ use {
 	},
 };
 
+#[allow(dead_code)]
 pub struct Gui {
 	base: Option<WidgetRef>,
 	pipeline: Handle<GraphicsPipeline>,

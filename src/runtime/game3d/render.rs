@@ -236,6 +236,7 @@ impl DrawList {
 	}
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum Frame {
 	None,
 	DrawList(DrawList),
