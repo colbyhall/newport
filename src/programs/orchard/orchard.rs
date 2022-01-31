@@ -2,6 +2,7 @@ use {
 	ecs::{
 		Component,
 		Ecs,
+		Entity,
 		Query,
 		ScheduleBlock,
 		System,
@@ -54,11 +55,21 @@ pub struct Game {
 }
 impl Module for Game {
 	fn new() -> Self {
-		let world = World::new(None, ScheduleBlock::new());
+		let world = World::new(
+			None,
+			ScheduleBlock::new()
+				.system(InputSystem)
+				.system(PlayerControlledMovement)
+				.system(CharacterMovementSystem)
+				.system(CameraTracking),
+		);
 		{
 			let mut transforms = world.write::<Transform>();
 			let mut box_colliders = world.write::<BoxCollider>();
+			let mut player_controllers = world.write::<PlayerControlled>();
+			let mut character_movements = world.write::<CharacterMovement>();
 			let mut cameras = world.write::<Camera>();
+			let mut targets = world.write::<Target>();
 
 			// Test Block
 			world
@@ -73,6 +84,25 @@ impl Module for Game {
 				.with(BoxCollider::default(), &mut box_colliders)
 				.finish();
 
+			let player = world
+				.spawn(world.persistent)
+				.with(
+					Transform {
+						location: Vec2::new(5.0, 1.5),
+						..Default::default()
+					},
+					&mut transforms,
+				)
+				.with(
+					BoxCollider {
+						size: Vec2::new(1.0, 2.0),
+					},
+					&mut box_colliders,
+				)
+				.with(PlayerControlled, &mut player_controllers)
+				.with(CharacterMovement::default(), &mut character_movements)
+				.finish();
+
 			// Floor
 			world
 				.spawn(world.persistent)
@@ -85,10 +115,17 @@ impl Module for Game {
 				)
 				.finish();
 
+			// Camera
 			world
 				.spawn(world.persistent)
 				.with(Transform::default(), &mut transforms)
 				.with(Camera::default(), &mut cameras)
+				.with(
+					Target {
+						entity: Some(player),
+					},
+					&mut targets,
+				)
 				.finish();
 		}
 
@@ -109,6 +146,9 @@ impl Module for Game {
 			.register(Camera::variant())
 			.register(BoxCollider::variant())
 			.register(InputManager::variant())
+			.register(PlayerControlled::variant())
+			.register(CharacterMovement::variant())
+			.register(Target::variant())
 			.process_input(|event| {
 				let game: &mut Game = unsafe { Engine::module_mut().unwrap() };
 				game.input_queue.push(*event);
@@ -231,7 +271,7 @@ pub struct Camera {
 
 impl Default for Camera {
 	fn default() -> Self {
-		Self { size: 20.0 }
+		Self { size: 10.0 }
 	}
 }
 
@@ -400,6 +440,86 @@ impl System for InputSystem {
 					}
 				}
 				_ => {}
+			}
+		}
+	}
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct PlayerControlled;
+
+#[derive(Clone)]
+pub struct PlayerControlledMovement;
+impl System for PlayerControlledMovement {
+	fn run(&self, world: &World, _dt: f32) {
+		let input = world.read::<InputManager>();
+		let input = input.get(world.singleton).unwrap();
+
+		let controllers = world.read::<PlayerControlled>();
+		let mut character_movements = world.write::<CharacterMovement>();
+
+		let entities = Query::new()
+			.read(&controllers)
+			.write(&character_movements)
+			.execute(world);
+
+		for e in entities.iter().copied() {
+			let character_movement = character_movements.get_mut(e).unwrap();
+
+			let mut new_input = Vec2::ZERO;
+			if input.is_button_down(KEY_A) {
+				new_input.x = -1.0;
+			}
+			if input.is_button_down(KEY_D) {
+				new_input.x = 1.0;
+			}
+			character_movement.jump_pressed = input.was_button_pressed(KEY_SPACE);
+		}
+	}
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct CharacterMovement {
+	last_input: Option<Vec2>,
+	jump_pressed: bool,
+	velocity: Vec2,
+}
+
+#[derive(Clone)]
+pub struct CharacterMovementSystem;
+impl System for CharacterMovementSystem {
+	fn run(&self, _world: &World, _dt: f32) {}
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct Target {
+	entity: Option<Entity>,
+}
+
+#[derive(Clone)]
+pub struct CameraTracking;
+impl System for CameraTracking {
+	fn run(&self, world: &World, dt: f32) {
+		let mut transforms = world.write::<Transform>();
+		let cameras = world.read::<Camera>();
+		let targets = world.read::<Target>();
+
+		const SPEED: f32 = 5.0;
+
+		let entities = Query::new()
+			.write(&transforms)
+			.read(&cameras)
+			.read(&targets)
+			.execute(world);
+
+		for e in entities.iter().cloned() {
+			let target = targets.get(e).unwrap();
+			if let Some(target) = &target.entity {
+				if let Some(target) = transforms.get(*target).cloned() {
+					let transform = transforms.get_mut(e).unwrap();
+					transform.location =
+						Vec2::lerp(transform.location, target.location, dt * SPEED);
+				}
 			}
 		}
 	}
