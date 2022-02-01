@@ -1,5 +1,3 @@
-use resources::Collection;
-
 use {
 	ecs::{
 		Component,
@@ -9,7 +7,6 @@ use {
 		ScheduleBlock,
 		System,
 		World,
-		WriteStorage,
 	},
 	engine::{
 		define_run_module,
@@ -40,6 +37,13 @@ use {
 		Rect,
 		Vec2,
 	},
+	physics2d::{
+		Collider,
+		Physics,
+		PhysicsState,
+		PhysicsStep,
+		RigidBody,
+	},
 	resources::{
 		Handle,
 		ResourceManager,
@@ -63,6 +67,7 @@ impl Module for Game {
 			None,
 			ScheduleBlock::new()
 				.system(InputSystem)
+				.system(PhysicsStep)
 				.system(PlayerControlledMovement)
 				.system(CharacterMovementSystem)
 				.system(CameraTracking),
@@ -74,6 +79,8 @@ impl Module for Game {
 			let mut character_movements = world.write::<CharacterMovement>();
 			let mut cameras = world.write::<Camera>();
 			let mut targets = world.write::<Target>();
+			let mut colliders = world.write::<Collider>();
+			let mut rigid_bodies = world.write::<RigidBody>();
 
 			// Test Block
 			world
@@ -86,6 +93,35 @@ impl Module for Game {
 					&mut transforms,
 				)
 				.with(Sprite::default(), &mut sprites)
+				.finish();
+
+			// Test Block with Collider
+			world
+				.spawn(world.persistent)
+				.with(
+					Transform {
+						location: Vec2::new(0.0, 1.0),
+						..Default::default()
+					},
+					&mut transforms,
+				)
+				.with(Sprite::default(), &mut sprites)
+				.with(Collider::default(), &mut colliders)
+				.finish();
+
+			// Test Block with Collider + RigidBody
+			world
+				.spawn(world.persistent)
+				.with(
+					Transform {
+						location: Vec2::new(0.0, 1.0),
+						..Default::default()
+					},
+					&mut transforms,
+				)
+				.with(Sprite::default(), &mut sprites)
+				.with(Collider::default(), &mut colliders)
+				.with(RigidBody::default(), &mut rigid_bodies)
 				.finish();
 
 			let player = world
@@ -148,6 +184,7 @@ impl Module for Game {
 			.module::<Ecs>()
 			.module::<Graphics>()
 			.module::<ResourceManager>()
+			.module::<Physics>()
 			.register(Transform::variant())
 			.register(Camera::variant())
 			.register(Sprite::variant())

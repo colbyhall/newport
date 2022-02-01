@@ -1,15 +1,19 @@
-use ecs::{
-	System,
-	World,
-};
-use engine::{
-	Builder,
-	Module,
-};
-use rapier2d::prelude::*;
-use serde::{
-	Deserialize,
-	Serialize,
+use {
+	ecs::{
+		Component,
+		System,
+		World,
+	},
+	engine::{
+		Builder,
+		Module,
+	},
+	math::Vec2,
+	rapier2d::prelude::*,
+	serde::{
+		Deserialize,
+		Serialize,
+	},
 };
 
 pub struct Physics;
@@ -20,6 +24,9 @@ impl Module for Physics {
 
 	fn depends_on(builder: Builder) -> Builder {
 		builder
+			.register(PhysicsState::variant())
+			.register(Collider::variant())
+			.register(RigidBody::variant())
 	}
 }
 
@@ -75,21 +82,96 @@ impl Clone for PhysicsState {
 	}
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Collider {
-	handle: ColliderHandle,
+#[derive(Serialize, Deserialize, Clone)]
+pub enum Shape {
+	Circle { radius: f32 },
+	Square { half_extents: Vec2 },
+	Capsule { half_height: f32, radius: f32 },
 }
 
-#[derive(Serialize, Deserialize)]
+impl Shape {
+	pub fn circle(radius: f32) -> Self {
+		Shape::Circle { radius }
+	}
+
+	pub fn square(half_extents: impl Into<Vec2>) -> Self {
+		Shape::Square {
+			half_extents: half_extents.into(),
+		}
+	}
+
+	pub fn capsule(half_height: f32, radius: f32) -> Self {
+		Shape::Capsule {
+			half_height,
+			radius,
+		}
+	}
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Collider {
+	handle: Option<ColliderHandle>,
+	shape: Shape,
+	enabled: bool,
+	sensor: bool,
+	offset: Vec2,
+}
+
+impl Collider {
+	pub fn builder(shape: Shape) -> ColliderBuilder {
+		ColliderBuilder {
+			shape,
+			enabled: true,
+			sensor: false,
+			offset: Vec2::ZERO,
+		}
+	}
+}
+
+pub struct ColliderBuilder {
+	shape: Shape,
+	enabled: bool,
+	sensor: bool,
+	offset: Vec2,
+}
+
+impl ColliderBuilder {
+	pub fn enabled(mut self, enabled: bool) -> Self {
+		self.enabled = enabled;
+		self
+	}
+
+	pub fn sensor(mut self, sensor: bool) -> Self {
+		self.sensor = sensor;
+		self
+	}
+
+	pub fn offset(mut self, offset: impl Into<Vec2>) -> Self {
+		self.offset = offset.into();
+		self
+	}
+
+	pub fn build(self) -> Collider {
+		Collider {
+			handle: None,
+			shape: self.shape,
+			enabled: self.enabled,
+			sensor: self.sensor,
+			offset: self.offset,
+		}
+	}
+}
+
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct RigidBody {
-	handle: RigidBodyHandle,
+	handle: Option<RigidBodyHandle>,
 }
 
 #[derive(Clone)]
 pub struct PhysicsStep;
-
 impl System for PhysicsStep {
 	fn run(&self, world: &World, dt: f32) {
+		// Lazy load the physics state component
 		let mut physics_states = world.write::<PhysicsState>();
 		let PhysicsState {
 			integration_parameters,
@@ -101,14 +183,25 @@ impl System for PhysicsStep {
 			ccd_solver,
 			rigid_body_set,
 			collider_set,
-		} = physics_states.get_mut(world.singleton).unwrap();
+		} = match physics_states.get_mut(world.singleton) {
+			Some(c) => c,
+			None => {
+				world.insert(
+					&mut physics_states,
+					world.singleton,
+					PhysicsState::default(),
+				);
+				physics_states.get_mut(world.singleton).unwrap()
+			}
+		};
 
 		let physics_hooks = ();
 		let event_handler = ();
 
 		let gravity = vector![0.0, -9.81];
 
-		integration_parameters.dt = dt as _; // TODO: use the type here
+		// TODO: Should this just be 60 fps for stability?
+		integration_parameters.dt = dt;
 
 		physics_pipeline.step(
 			&gravity,
