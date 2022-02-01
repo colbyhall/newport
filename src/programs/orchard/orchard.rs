@@ -1,3 +1,5 @@
+use resources::Collection;
+
 use {
 	ecs::{
 		Component,
@@ -7,6 +9,7 @@ use {
 		ScheduleBlock,
 		System,
 		World,
+		WriteStorage,
 	},
 	engine::{
 		define_run_module,
@@ -24,6 +27,7 @@ use {
 		GraphicsRecorder,
 		Layout::*,
 		MemoryType::*,
+		Texture,
 	},
 	graphics::{
 		Graphics,
@@ -65,7 +69,7 @@ impl Module for Game {
 		);
 		{
 			let mut transforms = world.write::<Transform>();
-			let mut colliders = world.write::<Collider>();
+			let mut sprites = world.write::<Sprite>();
 			let mut player_controllers = world.write::<PlayerControlled>();
 			let mut character_movements = world.write::<CharacterMovement>();
 			let mut cameras = world.write::<Camera>();
@@ -81,12 +85,7 @@ impl Module for Game {
 					},
 					&mut transforms,
 				)
-				.with(
-					Collider {
-						shape: Shape::square((1.0, 1.0)),
-					},
-					&mut colliders,
-				)
+				.with(Sprite::default(), &mut sprites)
 				.finish();
 
 			let player = world
@@ -99,10 +98,11 @@ impl Module for Game {
 					&mut transforms,
 				)
 				.with(
-					Collider {
-						shape: Shape::square((1.0, 2.0)),
+					Sprite {
+						extents: Vec2::new(1.0, 2.0),
+						..Default::default()
 					},
-					&mut colliders,
+					&mut sprites,
 				)
 				.with(PlayerControlled, &mut player_controllers)
 				.with(CharacterMovement::default(), &mut character_movements)
@@ -113,10 +113,11 @@ impl Module for Game {
 				.spawn(world.persistent)
 				.with(Transform::default(), &mut transforms)
 				.with(
-					Collider {
-						shape: Shape::square((500.0, 1.0)),
+					Sprite {
+						extents: Vec2::new(500.0, 1.0),
+						..Default::default()
 					},
-					&mut colliders,
+					&mut sprites,
 				)
 				.finish();
 
@@ -149,7 +150,7 @@ impl Module for Game {
 			.module::<ResourceManager>()
 			.register(Transform::variant())
 			.register(Camera::variant())
-			.register(Collider::variant())
+			.register(Sprite::variant())
 			.register(InputManager::variant())
 			.register(PlayerControlled::variant())
 			.register(CharacterMovement::variant())
@@ -173,7 +174,7 @@ impl Module for Game {
 				let aspect_ratio = (backbuffer.width() as f32) / (backbuffer.height() as f32);
 
 				let transforms = world.read::<Transform>();
-				let colliders = world.read::<Collider>();
+				let sprites = world.read::<Sprite>();
 				let cameras = world.read::<Camera>();
 
 				let entities = Query::new().read(&cameras).read(&transforms).execute(world);
@@ -187,20 +188,17 @@ impl Module for Game {
 					None
 				};
 
-				let entities = Query::new()
-					.read(&transforms)
-					.read(&colliders)
-					.execute(world);
+				let entities = Query::new().read(&transforms).read(&sprites).execute(world);
 
 				let mut painter = Painter::new();
 				for e in entities.iter().copied() {
 					let transform = transforms.get(e).unwrap();
-					let collider = colliders.get(e).unwrap();
+					let sprite = sprites.get(e).unwrap();
 
-					match &collider.shape {
-						Shape::Square { extents } => painter.fill_rect(
-							Rect::from_center(transform.location, *extents),
-							Color::WHITE,
+					match &sprite.texture {
+						None => painter.fill_rect(
+							Rect::from_center(transform.location, sprite.extents),
+							sprite.color,
 						),
 						_ => unimplemented!(),
 					};
@@ -262,32 +260,22 @@ impl Default for Transform {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum Shape {
-	Circle { radius: f32 },
-	Square { extents: Vec2 },
+pub struct Sprite {
+	texture: Option<Handle<Texture>>,
+	color: Color,
+	uv: Rect,
+	pipeline: Handle<GraphicsPipeline>,
+	extents: Vec2,
 }
 
-impl Shape {
-	pub fn circle(radius: f32) -> Self {
-		Self::Circle { radius }
-	}
-
-	pub fn square(extents: impl Into<Vec2>) -> Self {
-		Self::Square {
-			extents: extents.into(),
-		}
-	}
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Collider {
-	shape: Shape,
-}
-
-impl Default for Collider {
+impl Default for Sprite {
 	fn default() -> Self {
 		Self {
-			shape: Shape::circle(1.0),
+			texture: None, // TODO: Default sprite texture????
+			color: Color::WHITE,
+			uv: Rect::from_min_max((0.0, 0.0), (1.0, 1.0)),
+			pipeline: Handle::find_or_load("{03996604-84B2-437D-98CA-A816D7768DCB}").unwrap(),
+			extents: Vec2::splat(1.0),
 		}
 	}
 }

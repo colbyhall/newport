@@ -14,4 +14,6 @@ graphics = { path = "../../runtime/graphics" }
 resources = { path = "../../runtime/resources" }
 ecs = { path = "../../runtime/ecs" }
 math = { path = "../../runtime/math" }
+physics2d = { path = "../../runtime/physics2d" }
+
 serde = { path = "../../third_party/serde" }
