@@ -65,7 +65,7 @@ impl Module for Game {
 		);
 		{
 			let mut transforms = world.write::<Transform>();
-			let mut box_colliders = world.write::<BoxCollider>();
+			let mut colliders = world.write::<Collider>();
 			let mut player_controllers = world.write::<PlayerControlled>();
 			let mut character_movements = world.write::<CharacterMovement>();
 			let mut cameras = world.write::<Camera>();
@@ -81,7 +81,12 @@ impl Module for Game {
 					},
 					&mut transforms,
 				)
-				.with(BoxCollider::default(), &mut box_colliders)
+				.with(
+					Collider {
+						shape: Shape::square((1.0, 1.0)),
+					},
+					&mut colliders,
+				)
 				.finish();
 
 			let player = world
@@ -94,10 +99,10 @@ impl Module for Game {
 					&mut transforms,
 				)
 				.with(
-					BoxCollider {
-						size: Vec2::new(1.0, 2.0),
+					Collider {
+						shape: Shape::square((1.0, 2.0)),
 					},
-					&mut box_colliders,
+					&mut colliders,
 				)
 				.with(PlayerControlled, &mut player_controllers)
 				.with(CharacterMovement::default(), &mut character_movements)
@@ -108,10 +113,10 @@ impl Module for Game {
 				.spawn(world.persistent)
 				.with(Transform::default(), &mut transforms)
 				.with(
-					BoxCollider {
-						size: Vec2::new(500.0, 1.0),
+					Collider {
+						shape: Shape::square((500.0, 1.0)),
 					},
-					&mut box_colliders,
+					&mut colliders,
 				)
 				.finish();
 
@@ -144,7 +149,7 @@ impl Module for Game {
 			.module::<ResourceManager>()
 			.register(Transform::variant())
 			.register(Camera::variant())
-			.register(BoxCollider::variant())
+			.register(Collider::variant())
 			.register(InputManager::variant())
 			.register(PlayerControlled::variant())
 			.register(CharacterMovement::variant())
@@ -168,7 +173,7 @@ impl Module for Game {
 				let aspect_ratio = (backbuffer.width() as f32) / (backbuffer.height() as f32);
 
 				let transforms = world.read::<Transform>();
-				let box_colliders = world.read::<BoxCollider>();
+				let colliders = world.read::<Collider>();
 				let cameras = world.read::<Camera>();
 
 				let entities = Query::new().read(&cameras).read(&transforms).execute(world);
@@ -184,18 +189,21 @@ impl Module for Game {
 
 				let entities = Query::new()
 					.read(&transforms)
-					.read(&box_colliders)
+					.read(&colliders)
 					.execute(world);
 
 				let mut painter = Painter::new();
 				for e in entities.iter().copied() {
 					let transform = transforms.get(e).unwrap();
-					let collider = box_colliders.get(e).unwrap();
+					let collider = colliders.get(e).unwrap();
 
-					painter.fill_rect(
-						Rect::from_center(transform.location, collider.size),
-						Color::WHITE,
-					);
+					match &collider.shape {
+						Shape::Square { extents } => painter.fill_rect(
+							Rect::from_center(transform.location, *extents),
+							Color::WHITE,
+						),
+						_ => unimplemented!(),
+					};
 				}
 				if view.is_none() {
 					todo!("No Camera Debug Text");
@@ -254,13 +262,33 @@ impl Default for Transform {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct BoxCollider {
-	size: Vec2,
+pub enum Shape {
+	Circle { radius: f32 },
+	Square { extents: Vec2 },
 }
 
-impl Default for BoxCollider {
+impl Shape {
+	pub fn circle(radius: f32) -> Self {
+		Self::Circle { radius }
+	}
+
+	pub fn square(extents: impl Into<Vec2>) -> Self {
+		Self::Square {
+			extents: extents.into(),
+		}
+	}
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Collider {
+	shape: Shape,
+}
+
+impl Default for Collider {
 	fn default() -> Self {
-		Self { size: Vec2::ONE }
+		Self {
+			shape: Shape::circle(1.0),
+		}
 	}
 }
 
