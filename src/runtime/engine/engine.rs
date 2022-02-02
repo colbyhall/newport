@@ -145,6 +145,7 @@ impl Engine {
 				main: std::thread::current().id(),
 			});
 
+			// Set the new panic hook after engine initialization so we can use logger
 			panic::set_hook(Box::new(move |info| {
 				// The current implementation always returns `Some`.
 				let location = info.location().unwrap();
