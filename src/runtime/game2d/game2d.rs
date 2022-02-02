@@ -13,7 +13,6 @@ use {
 		input::*,
 		Builder,
 		Engine,
-		Event,
 		Module,
 	},
 	gpu::{
@@ -30,19 +29,13 @@ use {
 		Graphics,
 		Painter,
 	},
+	input::*,
 	math::{
 		Color,
 		Mat4,
 		Point2,
 		Rect,
 		Vec2,
-	},
-	physics2d::{
-		Collider,
-		Physics,
-		PhysicsState,
-		PhysicsStep,
-		RigidBody,
 	},
 	resources::{
 		Handle,
@@ -52,13 +45,10 @@ use {
 		Deserialize,
 		Serialize,
 	},
-	std::collections::HashMap,
 };
 
 pub struct Game {
 	world: World,
-	input_queue: Vec<Event>,
-
 	pipeline: Handle<GraphicsPipeline>,
 }
 impl Module for Game {
@@ -67,115 +57,13 @@ impl Module for Game {
 			None,
 			ScheduleBlock::new()
 				.system(InputSystem)
-				.system(PhysicsStep)
 				.system(PlayerControlledMovement)
 				.system(CharacterMovementSystem)
 				.system(CameraTracking),
 		);
 
-		// Initialize the world state
-		{
-			let mut transforms = world.write::<Transform>();
-			let mut sprites = world.write::<Sprite>();
-			let mut player_controllers = world.write::<PlayerControlled>();
-			let mut character_movements = world.write::<CharacterMovement>();
-			let mut cameras = world.write::<Camera>();
-			let mut targets = world.write::<Target>();
-			let mut colliders = world.write::<Collider>();
-			let mut rigid_bodies = world.write::<RigidBody>();
-
-			// Test Block
-			world
-				.spawn(world.persistent)
-				.with(
-					Transform {
-						location: Vec2::new(0.0, 1.0),
-						..Default::default()
-					},
-					&mut transforms,
-				)
-				.with(Sprite::default(), &mut sprites)
-				.finish();
-
-			// Test Block with Collider
-			world
-				.spawn(world.persistent)
-				.with(
-					Transform {
-						location: Vec2::new(0.0, 1.0),
-						..Default::default()
-					},
-					&mut transforms,
-				)
-				.with(Sprite::default(), &mut sprites)
-				.with(Collider::default(), &mut colliders)
-				.finish();
-
-			// Test Block with Collider + RigidBody
-			world
-				.spawn(world.persistent)
-				.with(
-					Transform {
-						location: Vec2::new(0.0, 1.0),
-						..Default::default()
-					},
-					&mut transforms,
-				)
-				.with(Sprite::default(), &mut sprites)
-				.with(Collider::default(), &mut colliders)
-				.with(RigidBody::default(), &mut rigid_bodies)
-				.finish();
-
-			let player = world
-				.spawn(world.persistent)
-				.with(
-					Transform {
-						location: Vec2::new(5.0, 1.5),
-						..Default::default()
-					},
-					&mut transforms,
-				)
-				.with(
-					Sprite {
-						extents: Vec2::new(1.0, 2.0),
-						..Default::default()
-					},
-					&mut sprites,
-				)
-				.with(PlayerControlled, &mut player_controllers)
-				.with(CharacterMovement::default(), &mut character_movements)
-				.finish();
-
-			// Floor
-			world
-				.spawn(world.persistent)
-				.with(Transform::default(), &mut transforms)
-				.with(
-					Sprite {
-						extents: Vec2::new(500.0, 1.0),
-						..Default::default()
-					},
-					&mut sprites,
-				)
-				.finish();
-
-			// Camera
-			world
-				.spawn(world.persistent)
-				.with(Transform::default(), &mut transforms)
-				.with(Camera::default(), &mut cameras)
-				.with(
-					Target {
-						entity: Some(player),
-					},
-					&mut targets,
-				)
-				.finish();
-		}
-
 		Self {
 			world,
-			input_queue: Vec::with_capacity(256),
 			pipeline: Handle::find_or_load("{03996604-84B2-437D-98CA-A816D7768DCB}")
 				.unwrap_or_default(),
 		}
@@ -186,18 +74,13 @@ impl Module for Game {
 			.module::<Ecs>()
 			.module::<Graphics>()
 			.module::<ResourceManager>()
-			.module::<Physics>()
+			.module::<GameInput>()
 			.register(Transform::variant())
 			.register(Camera::variant())
 			.register(Sprite::variant())
-			.register(InputManager::variant())
 			.register(PlayerControlled::variant())
 			.register(CharacterMovement::variant())
 			.register(Target::variant())
-			.process_input(|event| {
-				let game: &mut Game = unsafe { Engine::module_mut().unwrap() };
-				game.input_queue.push(*event);
-			})
 			.tick(|dt| {
 				let game: &Game = Engine::module().unwrap();
 				game.world.step(dt);
@@ -327,176 +210,6 @@ pub struct Camera {
 impl Default for Camera {
 	fn default() -> Self {
 		Self { size: 10.0 }
-	}
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum InputState {
-	Button(bool),
-	Axis1D(f32),
-}
-
-impl InputState {
-	pub fn button(self) -> bool {
-		match self {
-			Self::Button(b) => b,
-			_ => unreachable!(),
-		}
-	}
-
-	pub fn axis1d(self) -> f32 {
-		match self {
-			Self::Axis1D(x) => x,
-			_ => unreachable!(),
-		}
-	}
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-pub struct InputManager {
-	#[serde(skip)]
-	current: HashMap<Input, InputState>,
-	#[serde(skip)]
-	last: HashMap<Input, InputState>,
-}
-
-impl InputManager {
-	pub fn is_button_down(&self, button: Input) -> bool {
-		match self.current.get(&button) {
-			Some(input_state) => input_state.button(),
-			None => false,
-		}
-	}
-
-	pub fn was_button_pressed(&self, button: Input) -> bool {
-		let down = match self.current.get(&button) {
-			Some(input_state) => input_state.button(),
-			None => false,
-		};
-		let last = match self.last.get(&button) {
-			Some(input_state) => input_state.button(),
-			None => false,
-		};
-
-		!last && down
-	}
-
-	pub fn was_button_released(&self, button: Input) -> bool {
-		let down = match self.current.get(&button) {
-			Some(input_state) => input_state.button(),
-			None => false,
-		};
-		let last = match self.last.get(&button) {
-			Some(input_state) => input_state.button(),
-			None => false,
-		};
-
-		last && !down
-	}
-
-	pub fn current_axis1d(&self, axis: Input) -> f32 {
-		match self.current.get(&axis) {
-			Some(input_state) => input_state.axis1d(),
-			None => 0.0,
-		}
-	}
-
-	pub fn last_axis1d(&self, axis: Input) -> f32 {
-		match self.last.get(&axis) {
-			Some(input_state) => input_state.axis1d(),
-			None => 0.0,
-		}
-	}
-
-	pub fn delta_axis1d(&self, axis: Input) -> f32 {
-		self.current_axis1d(axis) - self.last_axis1d(axis)
-	}
-}
-
-#[derive(Clone)]
-pub struct InputSystem;
-impl System for InputSystem {
-	fn run(&self, world: &World, _dt: f32) {
-		// Lazy load the input manager component
-		let mut input_managers = world.write::<InputManager>();
-		let input_manager = match input_managers.get_mut(world.singleton) {
-			Some(c) => c,
-			None => {
-				world.insert(
-					&mut input_managers,
-					world.singleton,
-					InputManager::default(),
-				);
-				input_managers.get_mut(world.singleton).unwrap()
-			}
-		};
-
-		// Swap current state to last for new current state
-		input_manager.last = input_manager.current.clone();
-
-		let InputManager { current, .. } = input_manager;
-
-		// Reset all current axis input to 0
-		for (_, value) in current.iter_mut() {
-			if let InputState::Axis1D(x) = value {
-				*x = 0.0;
-			}
-		}
-
-		// Process input into state maps
-		let game: &Game = Engine::module().unwrap();
-		for event in game.input_queue.iter() {
-			match event {
-				Event::Key { key, pressed } => match current.get_mut(key) {
-					Some(input_state) => {
-						if let InputState::Button(b) = input_state {
-							*b = *pressed;
-						} else {
-							unreachable!();
-						}
-					}
-					None => {
-						current.insert(*key, InputState::Button(*pressed));
-					}
-				},
-				Event::MouseButton {
-					mouse_button,
-					pressed,
-				} => match current.get_mut(mouse_button) {
-					Some(input_state) => {
-						if let InputState::Button(b) = input_state {
-							*b = *pressed;
-						} else {
-							unreachable!();
-						}
-					}
-					None => {
-						current.insert(*mouse_button, InputState::Button(*pressed));
-					}
-				},
-				Event::MouseMotion(x, y) => {
-					let mut set_motion = |input, value| match current.get_mut(&input) {
-						Some(input_state) => {
-							if let InputState::Axis1D(x) = input_state {
-								*x = value;
-							} else {
-								unreachable!();
-							}
-						}
-						None => {
-							current.insert(input, InputState::Axis1D(value));
-						}
-					};
-					if *x != 0.0 {
-						set_motion(MOUSE_AXIS_X, *x);
-					}
-					if *y != 0.0 {
-						set_motion(MOUSE_AXIS_Y, *y);
-					}
-				}
-				_ => {}
-			}
-		}
 	}
 }
 

@@ -1,0 +1,9 @@
+# Example Config File
+#
+# [game]
+# default_scene = "{44EF625A-017F-4FD9-8AEB-AF41C8585C05}"
+#
+# [game.data]
+# health = 100.0
+# name = "Billy Bob"
+# enemies = [ 0, 123, 351243 ]

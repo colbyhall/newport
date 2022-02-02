@@ -4,7 +4,6 @@ use engine::{
 };
 
 struct HelloWorld;
-
 impl Module for HelloWorld {
 	fn new() -> Self {
 		Self

@@ -1,5 +1,6 @@
 #![feature(trait_alias)]
 #![feature(string_remove_matches)]
+#![feature(backtrace)]
 
 mod builder;
 mod config;
@@ -23,7 +24,9 @@ use std::{
 		Any,
 		TypeId,
 	},
+	backtrace::Backtrace,
 	collections::HashMap,
+	panic,
 	sync::atomic::{
 		AtomicBool,
 		AtomicI32,
@@ -54,7 +57,7 @@ pub use os::input;
 static mut ENGINE: Option<Engine> = None;
 
 pub const ENGINE_NAME: &str = "Newport";
-pub const ENGINE_VERSION: &str = "0.1";
+pub const ENGINE_VERSION: &str = "0.0.0";
 
 /// Global runnable structure used for instantiating engine modules and handling app code
 ///
@@ -114,15 +117,17 @@ impl Engine {
 			let name = builder.name.take().unwrap_or_else(|| "project".to_string());
 
 			// Manually clone the config register as the config map needs it. Config must happen before module initialization so they can rely on it
-			let id = TypeId::of::<ConfigRegister>();
-			let config_registers: Vec<ConfigRegister> =
+			let now = Instant::now();
+			let id = TypeId::of::<ConfigVariant>();
+			let config_registers: Vec<ConfigVariant> =
 				match builder.registers.as_ref().unwrap().get(&id) {
 					Some(any_vec) => any_vec
-						.downcast_ref::<Vec<ConfigRegister>>()
+						.downcast_ref::<Vec<ConfigVariant>>()
 						.unwrap()
 						.clone(),
 					None => Vec::default(),
 				};
+			let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
 
 			ENGINE = Some(Engine {
 				name,
@@ -140,10 +145,38 @@ impl Engine {
 				main: std::thread::current().id(),
 			});
 
+			panic::set_hook(Box::new(move |info| {
+				// The current implementation always returns `Some`.
+				let location = info.location().unwrap();
+
+				let msg = match info.payload().downcast_ref::<&'static str>() {
+					Some(s) => *s,
+					None => match info.payload().downcast_ref::<String>() {
+						Some(s) => &s[..],
+						None => "Box<Any>",
+					},
+				};
+				let thread = std::thread::current();
+				let name = thread.name().unwrap_or("<unnamed>");
+
+				let backtrace = Backtrace::force_capture();
+				error!(
+					ENGINE_CATEGORY,
+					"thread '{}' panicked at '{}', {} \n{}", name, msg, location, backtrace
+				);
+
+				// Sadly this must be here due to aftermath in the GPU module
+				// Aftermath runs on another thread and needs time to catch gpu hangs
+				// TODO: One day maybe remove this somehow?
+				std::thread::sleep(std::time::Duration::from_millis(3000));
+			}));
+
 			info!(
 				ENGINE_CATEGORY,
 				"Registration process took {:.2}ms", registration_finish_time
 			);
+
+			info!(ENGINE_CATEGORY, "Config loaded in {:.2}ms.", dur);
 
 			let engine = ENGINE.as_mut().unwrap();
 

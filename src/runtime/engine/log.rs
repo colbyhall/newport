@@ -6,7 +6,6 @@ use std::fs::{
 	create_dir,
 	File,
 };
-use std::panic;
 
 #[cfg(not(test))]
 use std::path::{
@@ -82,34 +81,6 @@ impl Logger {
 
 		#[cfg(not(test))]
 		let file = File::create(&path).unwrap();
-
-		let og_hook = panic::take_hook();
-
-		panic::set_hook(Box::new(move |info| {
-			// The current implementation always returns `Some`.
-			let location = info.location().unwrap();
-
-			let msg = match info.payload().downcast_ref::<&'static str>() {
-				Some(s) => *s,
-				None => match info.payload().downcast_ref::<String>() {
-					Some(s) => &s[..],
-					None => "Box<Any>",
-				},
-			};
-			let thread = std::thread::current();
-			let name = thread.name().unwrap_or("<unnamed>");
-
-			(og_hook)(info);
-			error!(
-				ENGINE_CATEGORY,
-				"thread '{}' panicked at '{}', {}", name, msg, location
-			);
-
-			// Sadly this must be here due to aftermath in the GPU module
-			// Aftermath runs on another thread and needs time to catch gpu hangs
-			// TODO: One day maybe remove this somehow?
-			std::thread::sleep(std::time::Duration::from_millis(3000));
-		}));
 
 		Logger(Mutex::new(Inner {
 			#[cfg(not(test))]

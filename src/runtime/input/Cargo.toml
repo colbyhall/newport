@@ -1,0 +1,13 @@
+[package]
+name = "input"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+path = "input.rs"
+
+[dependencies]
+engine = { path = "../engine" }
+ecs = { path = "../ecs" }
+serde = { path = "../../third_party/serde" }
+os = { path = "../os" }

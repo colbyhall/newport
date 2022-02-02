@@ -111,6 +111,8 @@ impl Shape {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Collider {
 	handle: Option<ColliderHandle>,
+
+	// TODO: Should all this copied builder data just be the builder composed into the struct
 	shape: Shape,
 	enabled: bool,
 	sensor: bool,
@@ -125,6 +127,12 @@ impl Collider {
 			sensor: false,
 			offset: Vec2::ZERO,
 		}
+	}
+}
+
+impl Default for Collider {
+	fn default() -> Self {
+		Self::builder(Shape::square(Vec2::splat(0.5))).build()
 	}
 }
 
@@ -162,9 +170,72 @@ impl ColliderBuilder {
 	}
 }
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct RigidBody {
 	handle: Option<RigidBodyHandle>,
+
+	// TODO: Should all this copied builder data just be the builder composed into the struct
+	linear_velocity: Vec2,
+	angular_velocity: f32,
+	gravity_scale: f32,
+	linear_damping: f32,
+	angular_damping: f32,
+	can_sleep: bool,
+	sleeping: bool,
+	ccd_enabled: bool,
+	is_kinematic: bool,
+}
+
+impl RigidBody {
+	pub fn builder() -> RigidBodyBuilder {
+		RigidBodyBuilder {
+			linear_velocity: Vec2::ZERO,
+			angular_velocity: 0.0,
+			gravity_scale: 1.0,
+			linear_damping: 0.0,
+			angular_damping: 0.0,
+			can_sleep: true,
+			sleeping: false,
+			ccd_enabled: false,
+			is_kinematic: true,
+		}
+	}
+}
+
+impl Default for RigidBody {
+	fn default() -> Self {
+		Self::builder().build()
+	}
+}
+
+pub struct RigidBodyBuilder {
+	linear_velocity: Vec2,
+	angular_velocity: f32,
+	gravity_scale: f32,
+	linear_damping: f32,
+	angular_damping: f32,
+	can_sleep: bool,
+	sleeping: bool,
+	ccd_enabled: bool,
+	is_kinematic: bool,
+}
+
+impl RigidBodyBuilder {
+	pub fn build(self) -> RigidBody {
+		RigidBody {
+			handle: None,
+
+			linear_velocity: self.linear_velocity,
+			angular_velocity: self.angular_velocity,
+			gravity_scale: self.gravity_scale,
+			linear_damping: self.linear_damping,
+			angular_damping: self.angular_damping,
+			can_sleep: self.can_sleep,
+			sleeping: self.sleeping,
+			ccd_enabled: self.ccd_enabled,
+			is_kinematic: self.is_kinematic,
+		}
+	}
 }
 
 #[derive(Clone)]

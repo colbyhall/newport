@@ -1,23 +1,18 @@
 [package]
-name = "game3d"
+name = "game2d"
 version = "0.0.0"
 edition = "2021"
 
 [lib]
-path = "game3d.rs"
+path = "game2d.rs"
 
 [dependencies]
 engine = { path = "../engine" }
 ecs = { path = "../ecs" }
 math = { path = "../math" }
-serde = { path = "../../third_party/serde" }
 gpu = { path = "../gpu" }
 graphics = { path = "../graphics" }
 resources = { path = "../resources" }
 input = { path = "../input" }
 
-egui = { path = "../../third_party/egui", optional = true }
-
-[features]
-default = ["editor"]
-editor = ["egui"]
+serde = { path = "../../third_party/serde" }
