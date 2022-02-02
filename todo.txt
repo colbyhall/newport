@@ -1,6 +1,5 @@
 [Game Stuff]
-* Schedule Serialization - What if we called this a gamemode?
-* Scene Loading
+* Schedule Serialization - What if this was called a gamemode?
 * Physics - Relies on Schedule Serialization due to physics module
 * Scene Editing
 
