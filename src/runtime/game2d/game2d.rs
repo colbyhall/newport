@@ -1,15 +1,19 @@
 use {
+	config::{
+		Config,
+		ConfigManager,
+	},
 	ecs::{
 		Component,
 		Ecs,
 		Entity,
 		Query,
+		Scene,
 		ScheduleBlock,
 		System,
 		World,
 	},
 	engine::{
-		define_run_module,
 		input::*,
 		Builder,
 		Engine,
@@ -47,14 +51,28 @@ use {
 	},
 };
 
+pub const GAME_CONFIG_FILE: &str = "game.toml";
+
+#[derive(Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct GameConfig {
+	pub default_scene: Option<Handle<Scene>>,
+}
+
+impl Config for GameConfig {
+	const FILE: &'static str = GAME_CONFIG_FILE;
+	const NAME_OVERRIDE: Option<&'static str> = Some("Game");
+}
+
 pub struct Game {
 	world: World,
 	pipeline: Handle<GraphicsPipeline>,
 }
 impl Module for Game {
 	fn new() -> Self {
+		let config: &GameConfig = ConfigManager::read();
 		let world = World::new(
-			None,
+			config.default_scene.as_ref(),
 			ScheduleBlock::new()
 				.system(InputSystem)
 				.system(PlayerControlledMovement)
@@ -74,7 +92,9 @@ impl Module for Game {
 			.module::<Ecs>()
 			.module::<Graphics>()
 			.module::<ResourceManager>()
+			.module::<ConfigManager>()
 			.module::<GameInput>()
+			.register(GameConfig::variant())
 			.register(Transform::variant())
 			.register(Camera::variant())
 			.register(Sprite::variant())
@@ -160,9 +180,8 @@ impl Module for Game {
 	}
 }
 
-define_run_module!(Game, "Orchard");
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default)]
 pub struct Transform {
 	location: Point2,
 	layer: u32,
@@ -182,11 +201,12 @@ impl Default for Transform {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default)]
 pub struct Sprite {
 	texture: Option<Handle<Texture>>,
 	color: Color,
 	uv: Rect,
-	pipeline: Handle<GraphicsPipeline>,
+	pipeline: Handle<GraphicsPipeline>, // TODO: Materials?
 	extents: Vec2,
 }
 
@@ -203,6 +223,7 @@ impl Default for Sprite {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default)]
 pub struct Camera {
 	size: f32,
 }

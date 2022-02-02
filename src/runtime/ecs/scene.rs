@@ -76,8 +76,10 @@ impl Importer for SceneImporter {
 										};
 
 										let variant = variants.get(name).unwrap_or_else(|| todo!());
-										let component = (variant.parse_value)(value.clone())?;
-
+										let component = match &value {
+											Value::Unit => (variant.default)(),
+											_ => (variant.parse_value)(value.clone())?,
+										};
 										components.insert(variant.id, component);
 									}
 									entries.push(SceneEntry { id, components });

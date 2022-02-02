@@ -3,7 +3,6 @@
 #![feature(backtrace)]
 
 mod builder;
-mod config;
 mod log;
 mod module;
 mod uuid;
@@ -13,7 +12,6 @@ mod test;
 
 pub use {
 	builder::*,
-	config::*,
 	log::*,
 	module::*,
 	uuid::*,
@@ -73,7 +71,6 @@ pub struct Engine {
 	window: Option<Window>,
 
 	logger: Logger,
-	config: ConfigMap,
 
 	main: ThreadId,
 }
@@ -116,19 +113,6 @@ impl Engine {
 			// Ensure we have a valid name for the project. This is used for a variety of things
 			let name = builder.name.take().unwrap_or_else(|| "project".to_string());
 
-			// Manually clone the config register as the config map needs it. Config must happen before module initialization so they can rely on it
-			let now = Instant::now();
-			let id = TypeId::of::<ConfigVariant>();
-			let config_registers: Vec<ConfigVariant> =
-				match builder.registers.as_ref().unwrap().get(&id) {
-					Some(any_vec) => any_vec
-						.downcast_ref::<Vec<ConfigVariant>>()
-						.unwrap()
-						.clone(),
-					None => Vec::default(),
-				};
-			let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
-
 			ENGINE = Some(Engine {
 				name,
 				modules: HashMap::with_capacity(builder.modules.len()),
@@ -140,7 +124,6 @@ impl Engine {
 				window,
 
 				logger: Logger::new(),
-				config: ConfigMap::new(config_registers),
 
 				main: std::thread::current().id(),
 			});
@@ -163,7 +146,11 @@ impl Engine {
 				let backtrace = Backtrace::force_capture();
 				error!(
 					ENGINE_CATEGORY,
-					"thread '{}' panicked at '{}', {} \n{}", name, msg, location, backtrace
+					"stack trace: \n{}\nthread '{}' panicked at '{}', {}",
+					backtrace,
+					name,
+					msg,
+					location
 				);
 
 				// Sadly this must be here due to aftermath in the GPU module
@@ -176,8 +163,6 @@ impl Engine {
 				ENGINE_CATEGORY,
 				"Registration process took {:.2}ms", registration_finish_time
 			);
-
-			info!(ENGINE_CATEGORY, "Config loaded in {:.2}ms.", dur);
 
 			let engine = ENGINE.as_mut().unwrap();
 
@@ -449,20 +434,6 @@ impl Engine {
 			Some(reg) => reg.downcast_ref::<Vec<T>>().unwrap(),
 			None => &[],
 		}
-	}
-
-	pub fn config<'a, T: Config>() -> &'a T {
-		let engine = Engine::as_ref();
-		let id = TypeId::of::<T>();
-
-		let entry = engine.config.entries.get(&id).unwrap_or_else(|| {
-			panic!(
-				"Config of type \"{}\" is not registered.",
-				std::any::type_name::<T>()
-			)
-		});
-
-		entry.value.downcast_ref().unwrap()
 	}
 
 	/// Returns the name of the engine runnable

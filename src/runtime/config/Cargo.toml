@@ -1,0 +1,11 @@
+[package]
+name = "config"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "config.rs"
+
+[dependencies]
+engine    = { path = "../engine" }
+serde = { path = "../../third_party/serde" }

@@ -42,6 +42,10 @@ pub trait Component:
 			Ok(Box::new(t))
 		}
 
+		fn default<T: Component>() -> Box<dyn Any> {
+			Box::new(T::default())
+		}
+
 		ComponentVariant {
 			name: type_name::<Self>()
 				.rsplit_once("::")
@@ -51,6 +55,7 @@ pub trait Component:
 
 			create_storage: create_storage::<Self>,
 			parse_value: parse_value::<Self>,
+			default: default::<Self>,
 			on_added: None,
 		}
 	}
@@ -99,6 +104,7 @@ pub struct ComponentVariant {
 
 	create_storage: fn() -> Box<dyn DynamicStorage>,
 	pub parse_value: fn(value: ron::Value) -> ron::Result<Box<dyn Any>>,
+	pub default: fn() -> Box<dyn Any>,
 	pub on_added: Option<fn(Entity, &mut AnyWriteStorage)>,
 }
 

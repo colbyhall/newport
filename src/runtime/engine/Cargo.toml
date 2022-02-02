@@ -18,5 +18,4 @@ math  = { path = "../math" }
 
 serde = { path = "../../third_party/serde" }
 
-toml      = "0.5"
 getrandom = "0.2"
