@@ -7,7 +7,11 @@ use std::{
 		Any,
 		TypeId,
 	},
-	collections::HashMap,
+	collections::{
+		HashMap,
+		HashSet,
+		VecDeque,
+	},
 	error::Error,
 	fmt,
 	fs,
@@ -24,7 +28,10 @@ use std::{
 		RwLock,
 		Weak,
 	},
-	time::Instant,
+	time::{
+		Instant,
+		SystemTime,
+	},
 };
 
 use serde::{
@@ -130,11 +137,12 @@ impl<T: Resource> Handle<T> {
 				None => return Err(Box::new(RefError::NotFound(uuid))),
 			};
 
-			let path_cache = CacheRef::<ResourcesCache>::new().unwrap();
-			let path = path_cache
-				.uuid_to_path
+			let resource_cache = CacheRef::<ResourcesCache>::new().unwrap();
+			let info = resource_cache
+				.uuid_to_info
 				.get(&uuid)
 				.ok_or(RefError::NotFound(uuid))?;
+			let path = &info.path;
 
 			let importer_variant = manager
 				.importer_variants_by_type
@@ -446,27 +454,32 @@ impl Collection {
 	}
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct FileInfo {
+	path: PathBuf,
+	last_write_time: SystemTime,
+}
+
 /// TODO: Document
 #[derive(Serialize, Deserialize, Debug)]
 struct ResourcesCache {
-	uuid_to_path: HashMap<Uuid, PathBuf>,
+	uuid_to_info: HashMap<Uuid, FileInfo>,
 }
 
 impl Cache for ResourcesCache {
 	fn new() -> Self {
-		let collections = Engine::register::<Collection>();
-
-		let importer_variants = Engine::register::<ImporterVariant>();
-
-		// TODO: Look into a functional way of doing this
-		let mut variants = HashMap::new();
-		for variant in importer_variants.iter() {
+		// Sort the Importers by extension for quicker lookup later
+		// TODO: Figure out how to do this in a more functional way
+		let importers: &[ImporterVariant] = Engine::register();
+		let mut extension_to_importer = HashMap::with_capacity(importers.len());
+		for variant in importers.iter() {
 			for ext in variant.extensions.iter() {
-				variants.insert(*ext, variant.clone());
+				extension_to_importer.insert(*ext, variant.clone());
 			}
 		}
 
 		// Run through all the collections and create a directory if one is not created
+		let collections: &[Collection] = Engine::register();
 		for it in collections.iter() {
 			if !it.path.exists() {
 				fs::create_dir(&it.path).unwrap();
@@ -478,32 +491,34 @@ impl Cache for ResourcesCache {
 			}
 		}
 
-		// Recursive directory reader
-		fn discover(
-			mut path: PathBuf,
-			uuid_to_path: &mut HashMap<Uuid, PathBuf>,
-			variants: &HashMap<&'static str, ImporterVariant>,
-		) -> PathBuf {
-			for entry in fs::read_dir(&path).unwrap() {
-				let entry = entry.unwrap();
-				let file_type = entry.file_type().unwrap();
+		// Iterate through each colllection. If we find a sub directory add it to the queue and keep moving.
+		let mut uuid_to_info = HashMap::new();
+		let directories: Vec<PathBuf> = collections.iter().map(|e| e.path.clone()).collect();
+		let mut directories: VecDeque<PathBuf> = directories.into();
+		while let Some(directory) = directories.pop_front() {
+			for e in fs::read_dir(&directory).unwrap() {
+				let e = e.unwrap();
+				let file_type = e.file_type().unwrap();
 
 				if file_type.is_dir() {
-					path.push(entry.file_name());
-					path = discover(path, uuid_to_path, variants);
-					path.pop();
+					let mut new_directory = directory.clone();
+					new_directory.push(e.file_name());
+					directories.push_back(new_directory);
 				} else if file_type.is_file() {
-					let path = entry.path();
+					let path = e.path();
 
-					let variant = {
+					let importer = {
 						let ext = path
 							.extension()
 							.unwrap_or_default()
 							.to_str()
 							.unwrap_or_default();
-						variants.get(ext)
+						extension_to_importer.get(ext)
 					};
-					if let Some(variant) = variant {
+
+					// If we found an appropriate importer for this extension then load the meta file
+					// grab the uuid and also cache the last write time to be used for reloading
+					if let Some(importer) = importer {
 						let mut meta_path = path.clone().into_os_string();
 						meta_path.push(crate::META_EXTENSION);
 
@@ -516,34 +531,117 @@ impl Cache for ResourcesCache {
 							"Caching resource ({})",
 							path.display()
 						);
-						let uuid = (variant.load_meta)(&contents).unwrap().0;
+						let uuid = (importer.load_meta)(&contents).unwrap().0;
 
-						uuid_to_path.insert(uuid, path);
+						let meta_data = e.metadata().unwrap();
+						let last_write_time = meta_data.modified().unwrap();
+
+						uuid_to_info.insert(
+							uuid,
+							FileInfo {
+								path,
+								last_write_time,
+							},
+						);
 					}
-				} else {
-					continue;
 				}
 			}
-
-			path
 		}
 
-		let mut uuid_to_path = HashMap::new();
-		for it in collections.iter() {
-			info!(
-				RESOURCE_SYSTEM_CATEGORY,
-				"Discovering resources in ({})",
-				it.path.display()
-			);
-			discover(it.path.clone(), &mut uuid_to_path, &variants);
-		}
-
-		Self { uuid_to_path }
+		Self { uuid_to_info }
 	}
 
 	fn reload(&mut self) -> bool {
-		*self = Self::new(); // TODO: This should be a check for last write times and such to reduce file loading
-		true
+		let mut changed = false;
+
+		// Run through every entry and check if it has changed. If it hasnt keep track of that
+		// to prevent loading extra files. Remove any that have changed or are missing
+		let mut paths_to_avoid = HashSet::new();
+		self.uuid_to_info.retain(|_, info| {
+			if info.path.exists() {
+				let metadata = info.path.metadata().unwrap();
+				let last_write_time = metadata.modified().unwrap();
+				if info.last_write_time == last_write_time {
+					paths_to_avoid.insert(info.path.clone());
+					return true;
+				}
+			}
+			false
+		});
+
+		// Sort the Importers by extension for quicker lookup later
+		// TODO: Figure out how to do this in a more functional way
+		let importers: &[ImporterVariant] = Engine::register();
+		let mut extension_to_importer = HashMap::with_capacity(importers.len());
+		for variant in importers.iter() {
+			for ext in variant.extensions.iter() {
+				extension_to_importer.insert(*ext, variant.clone());
+			}
+		}
+
+		// Iterate through all collection directories only loading new or modified meta files
+		let collections: &[Collection] = Engine::register();
+		let directories: Vec<PathBuf> = collections.iter().map(|e| e.path.clone()).collect();
+		let mut directories: VecDeque<PathBuf> = directories.into();
+		while let Some(directory) = directories.pop_front() {
+			for e in fs::read_dir(&directory).unwrap() {
+				let e = e.unwrap();
+				let file_type = e.file_type().unwrap();
+
+				if file_type.is_dir() {
+					let mut new_directory = directory.clone();
+					new_directory.push(e.file_name());
+					directories.push_back(new_directory);
+				} else if file_type.is_file() {
+					let path = e.path();
+
+					if paths_to_avoid.contains(&path) {
+						continue;
+					}
+
+					let importer = {
+						let ext = path
+							.extension()
+							.unwrap_or_default()
+							.to_str()
+							.unwrap_or_default();
+						extension_to_importer.get(ext)
+					};
+
+					// If we found an appropriate importer for this extension then load the meta file
+					// grab the uuid and also cache the last write time to be used for reloading
+					if let Some(importer) = importer {
+						let mut meta_path = path.clone().into_os_string();
+						meta_path.push(crate::META_EXTENSION);
+
+						let contents = match fs::read(&meta_path) {
+							Ok(contents) => contents,
+							_ => continue,
+						};
+						info!(
+							RESOURCE_SYSTEM_CATEGORY,
+							"Caching resource ({})",
+							path.display()
+						);
+						let uuid = (importer.load_meta)(&contents).unwrap().0;
+
+						let meta_data = e.metadata().unwrap();
+						let last_write_time = meta_data.modified().unwrap();
+
+						self.uuid_to_info.insert(
+							uuid,
+							FileInfo {
+								path,
+								last_write_time,
+							},
+						);
+						changed = true;
+					}
+				}
+			}
+		}
+
+		changed
 	}
 }
 
@@ -586,10 +684,11 @@ impl Module for ResourceManager {
 		}
 
 		let path_cache = CacheRef::<ResourcesCache>::new().unwrap();
-		let mut resources = HashMap::with_capacity(path_cache.uuid_to_path.len());
+		let mut resources = HashMap::with_capacity(path_cache.uuid_to_info.len());
 
-		for (id, path) in path_cache.uuid_to_path.iter() {
-			let ext = path
+		for (id, info) in path_cache.uuid_to_info.iter() {
+			let ext = info
+				.path
 				.extension()
 				.unwrap_or_default()
 				.to_str()
@@ -605,7 +704,7 @@ impl Module for ResourceManager {
 			resources.insert(
 				*id,
 				Mutex::new(ResourceEntry {
-					path: Some(path.clone()),
+					path: Some(info.path.clone()),
 					importer: Some(importer_variant.importer),
 
 					variant: importer_variant.resource,
