@@ -62,7 +62,7 @@ use engine::{
 
 pub use derive::Resource;
 
-define_log_category!(ResourceSystem, RESOURCE_SYSTEM_CATEGORY);
+define_log_category!(Resources, RESOURCE_SYSTEM_CATEGORY);
 
 #[derive(Clone)]
 pub struct ResourceVariant {

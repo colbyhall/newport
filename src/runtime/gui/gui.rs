@@ -910,3 +910,8 @@ impl Alignment2 {
 		}
 	}
 }
+
+pub enum Sizing {
+	Automatic,
+	Fill(f32),
+}
