@@ -9,7 +9,7 @@ use {
 	engine::{
 		Builder,
 		Engine,
-		Event,
+		Event as EngineEvent,
 		Module,
 	},
 	gpu::{
@@ -20,6 +20,7 @@ use {
 		GraphicsRecorder,
 		MemoryType,
 	},
+	input::*,
 	math::{
 		Color,
 		Mat3,
@@ -74,6 +75,22 @@ impl Gui {
 			None
 		}
 	}
+
+	fn handle_event(&mut self, widget: WidgetRef, event: Event) {
+		let mut container = widget.borrow_mut();
+		let reply = container.handle_event(event);
+		match reply {
+			Reply::Focus => {
+				self.focused = Some(widget.clone());
+				container.set_focused(true);
+			}
+			Reply::Unfocus => {
+				self.focused = None;
+				container.set_focused(false);
+			}
+			_ => {}
+		}
+	}
 }
 
 impl Module for Gui {
@@ -97,7 +114,7 @@ impl Module for Gui {
 
 				gui.slot_with(HorizontalBox, |gui| {
 					for _ in 0..10 {
-						gui.slot_with(Button::new(), |gui| {
+						gui.slot_with(Button::new().on_pressed(|_| println!("Bing Bong")), |gui| {
 							gui.slot(Text::new("Hello World").color(Color::RED))
 								.margin(5.0);
 						})
@@ -132,35 +149,84 @@ impl Module for Gui {
 				let gui: &mut Gui = Engine::module_mut_checked().unwrap();
 
 				match event {
-					Event::MouseMove(x, y) => {
+					EngineEvent::MouseMove(x, y) => {
 						let window = Engine::window().unwrap();
 						let dpi = window.scale_factor() as f32;
 						let mouse_position = Vec2::new(*x / dpi, *y / dpi);
 						if let Some(base) = &gui.base {
-							if let Some(hovered) = &gui.hovered {
-								let mut hovered = hovered.borrow_mut();
-								hovered.set_hovered(false);
-							}
+							let old = gui.hovered.clone();
 							gui.hovered = gui.hit_test(base, mouse_position);
-							if let Some(hovered) = &gui.hovered {
-								let mut hovered = hovered.borrow_mut();
-								hovered.set_hovered(true);
+							if gui.hovered != old {
+								if let Some(old) = old {
+									{
+										let mut borrow = old.borrow_mut();
+										borrow.set_hovered(false);
+									}
+									gui.handle_event(old, Event::UnHovered);
+								}
+								if let Some(hovered) = gui.hovered.clone() {
+									{
+										let mut borrow = hovered.borrow_mut();
+										borrow.set_hovered(true);
+									}
+									gui.handle_event(hovered, Event::Hovered);
+								}
 							}
 						}
 					}
-					Event::MouseLeave => {
-						if let Some(hovered) = &gui.hovered {
-							let mut hovered = hovered.borrow_mut();
-							hovered.set_hovered(false);
+					EngineEvent::MouseLeave => {
+						if let Some(hovered) = gui.hovered.clone() {
+							{
+								let mut borrow = hovered.borrow_mut();
+								borrow.set_hovered(false);
+							}
+							gui.handle_event(hovered, Event::UnHovered);
 						}
 						gui.hovered = None;
 					}
-					_ => {
-						if let Some(hovered) = &gui.hovered {
-							let hovered = hovered.borrow();
-							hovered.handle_event(event); // TODO: replies
+					EngineEvent::Char(c) => {
+						if let Some(focused) = gui.focused.clone() {
+							gui.handle_event(focused, Event::Char(*c));
 						}
 					}
+					EngineEvent::MouseButton {
+						mouse_button,
+						pressed,
+					} => {
+						if *pressed {
+							if let Some(hovered) = gui.hovered.clone() {
+								gui.handle_event(
+									hovered,
+									Event::Button {
+										input: *mouse_button,
+										pressed: *pressed,
+									},
+								);
+							}
+						} else {
+							let event = Event::Button {
+								input: *mouse_button,
+								pressed: *pressed,
+							};
+							if let Some(focused) = gui.focused.clone() {
+								gui.handle_event(focused, event);
+							} else if let Some(hovered) = gui.hovered.clone() {
+								gui.handle_event(hovered, event);
+							}
+						}
+					}
+					EngineEvent::Key { key, pressed } => {
+						if let Some(hovered) = gui.hovered.clone() {
+							gui.handle_event(
+								hovered,
+								Event::Button {
+									input: *key,
+									pressed: *pressed,
+								},
+							);
+						}
+					}
+					_ => {}
 				}
 			})
 			.display(|| {
@@ -246,7 +312,9 @@ pub trait Widget: Debug + 'static + Sized {
 
 	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {}
 
-	fn handle_event(container: &WidgetContainer<Self>, event: &Event) {}
+	fn handle_event(container: &mut WidgetContainer<Self>, event: Event) -> Reply {
+		Reply::None
+	}
 }
 
 pub trait Slot: Debug + 'static {
@@ -336,7 +404,7 @@ pub trait DynamicWidgetContainer: Debug {
 	fn layout_children(&self);
 	fn desired_size(&self) -> Vec2;
 	fn paint(&self, painter: &mut Painter);
-	fn handle_event(&self, event: &Event);
+	fn handle_event(&mut self, event: Event) -> Reply;
 
 	fn layout(&self) -> Option<&Layout>;
 	fn layout_mut(&mut self) -> &mut Option<Layout>;
@@ -391,8 +459,8 @@ impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
 		}
 	}
 
-	fn handle_event(&self, event: &Event) {
-		T::handle_event(self, event);
+	fn handle_event(&mut self, event: Event) -> Reply {
+		T::handle_event(self, event)
 	}
 
 	fn layout(&self) -> Option<&Layout> {
@@ -574,11 +642,46 @@ impl Widget for Text {
 	}
 }
 
+pub enum Event {
+	Hovered,
+	UnHovered,
+	Button { input: Input, pressed: bool },
+	Char(char),
+}
+
+pub enum Reply {
+	None,
+	Focus,
+	Unfocus,
+}
+
+pub enum EventHandler<T: Widget> {
+	None,
+	Closure(Box<dyn FnMut(&WidgetContainer<T>) + 'static>),
+}
+
+impl<T: Widget> Default for EventHandler<T> {
+	fn default() -> Self {
+		Self::None
+	}
+}
+
+impl<T: Widget> Debug for EventHandler<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::None => f.write_str("None"),
+			Self::Closure(_) => f.write_str("Closure"),
+		}
+	}
+}
+
 #[derive(Default, Debug)]
 pub struct Button {
 	normal: Color,
 	hovered: Color,
 	focused: Color,
+
+	on_pressed: EventHandler<Self>,
 }
 
 impl Button {
@@ -587,7 +690,14 @@ impl Button {
 			normal: Color::WHITE,
 			hovered: Color::GREEN,
 			focused: Color::BLACK,
+
+			on_pressed: EventHandler::None,
 		}
+	}
+
+	pub fn on_pressed(mut self, on_pressed: impl FnMut(&WidgetContainer<Self>) + 'static) -> Self {
+		self.on_pressed = EventHandler::Closure(Box::new(on_pressed));
+		self
 	}
 }
 
@@ -640,7 +750,30 @@ impl Widget for Button {
 		}
 	}
 
-	fn handle_event(_container: &WidgetContainer<Self>, event: &Event) {}
+	fn handle_event(container: &mut WidgetContainer<Self>, event: Event) -> Reply {
+		match event {
+			Event::Button { input, pressed } => {
+				if input == MOUSE_BUTTON_LEFT {
+					if pressed {
+						Reply::Focus
+					} else {
+						let mut handler =
+							std::mem::replace(&mut container.widget.on_pressed, EventHandler::None);
+						#[allow(clippy::single_match)]
+						match &mut handler {
+							EventHandler::Closure(x) => (x)(container),
+							_ => {}
+						}
+						let _ = std::mem::replace(&mut container.widget.on_pressed, handler);
+						Reply::Unfocus
+					}
+				} else {
+					Reply::Unfocus
+				}
+			}
+			_ => Reply::None,
+		}
+	}
 }
 
 #[derive(Default, Debug)]
