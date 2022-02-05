@@ -84,50 +84,33 @@ impl Module for Gui {
 			gui.slot_with(VerticalBox, |gui| {
 				gui.slot_with(Button::new(), |gui| {
 					gui.slot(Text::new("Hello World").color(Color::RED))
-						.margin(Margin {
-							bottom: 5.0,
-							top: 5.0,
-							left: 5.0,
-							right: 5.0,
-						});
+						.margin(5.0);
 				});
+
+				for _ in 0..10 {
+					gui.slot_with(Button::new(), |gui| {
+						gui.slot(Text::new("urmom rawr xd").color(Color::MAGENTA))
+							.margin(5.0);
+					})
+					.margin(5.0);
+				}
 
 				gui.slot_with(HorizontalBox, |gui| {
 					for _ in 0..10 {
 						gui.slot_with(Button::new(), |gui| {
 							gui.slot(Text::new("Hello World").color(Color::RED))
-								.margin(Margin {
-									bottom: 5.0,
-									top: 5.0,
-									left: 5.0,
-									right: 5.0,
-								});
+								.margin(5.0);
 						})
-						.margin(Margin {
-							bottom: 5.0,
-							top: 5.0,
-							left: 5.0,
-							right: 5.0,
-						});
+						.margin(5.0);
 					}
 				});
 
 				gui.slot_with(Button::new(), |gui| {
 					gui.slot(Text::new("Hello World").color(Color::BLUE))
-						.margin(Margin {
-							bottom: 5.0,
-							top: 5.0,
-							left: 5.0,
-							right: 5.0,
-						});
+						.margin(5.0);
 				});
 			})
-			.margin(Margin {
-				bottom: 5.0,
-				top: 5.0,
-				left: 5.0,
-				right: 5.0,
-			});
+			.margin(5.0);
 		});
 
 		Self {
@@ -150,12 +133,26 @@ impl Module for Gui {
 
 				match event {
 					Event::MouseMove(x, y) => {
-						let mouse_position = Vec2::new(*x, *y);
+						let window = Engine::window().unwrap();
+						let dpi = window.scale_factor() as f32;
+						let mouse_position = Vec2::new(*x / dpi, *y / dpi);
 						if let Some(base) = &gui.base {
+							if let Some(hovered) = &gui.hovered {
+								let mut hovered = hovered.borrow_mut();
+								hovered.set_hovered(false);
+							}
 							gui.hovered = gui.hit_test(base, mouse_position);
+							if let Some(hovered) = &gui.hovered {
+								let mut hovered = hovered.borrow_mut();
+								hovered.set_hovered(true);
+							}
 						}
 					}
 					Event::MouseLeave => {
+						if let Some(hovered) = &gui.hovered {
+							let mut hovered = hovered.borrow_mut();
+							hovered.set_hovered(false);
+						}
 						gui.hovered = None;
 					}
 					_ => {
@@ -308,6 +305,8 @@ pub struct WidgetContainer<T: Widget> {
 	pub parent: Option<WidgetRef>,
 	pub slots: Vec<T::Slot>,
 	pub visibility: Visibility,
+	pub focused: bool,
+	pub hovered: bool,
 
 	pub layout: Option<Layout>,
 }
@@ -330,6 +329,9 @@ pub trait DynamicWidgetContainer: Debug {
 
 	fn get(&self) -> &dyn Any;
 	fn get_mut(&mut self) -> &mut dyn Any;
+
+	fn set_focused(&mut self, focused: bool);
+	fn set_hovered(&mut self, focused: bool);
 
 	fn layout_children(&self);
 	fn desired_size(&self) -> Vec2;
@@ -365,6 +367,14 @@ impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
 		&mut self.widget
 	}
 
+	fn set_focused(&mut self, focused: bool) {
+		self.focused = focused;
+	}
+
+	fn set_hovered(&mut self, hovered: bool) {
+		self.hovered = hovered;
+	}
+
 	fn layout_children(&self) {
 		T::layout_children(self);
 	}
@@ -377,7 +387,7 @@ impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
 		T::paint(self, painter);
 		if let Some(layout) = &self.layout {
 			let absolute = layout.absolute_bounds();
-			painter.stroke_rect(absolute, 1.0, Color::RED);
+			// painter.stroke_rect(absolute, 1.0, Color::RED);
 		}
 	}
 
@@ -445,6 +455,8 @@ impl WidgetRef {
 			layout: None,
 			visibility: T::DEFAULT_VISIBILITY,
 			slots: Vec::default(),
+			focused: false,
+			hovered: false,
 		})))
 	}
 
@@ -458,6 +470,8 @@ impl WidgetRef {
 			layout: None,
 			visibility: T::DEFAULT_VISIBILITY,
 			slots: builder.slots,
+			focused: false,
+			hovered: false,
 		})));
 
 		{
@@ -594,7 +608,6 @@ impl Widget for Button {
 				Rect::from_min_max(Vec2::ZERO, layout.local_bounds.size()),
 				desired,
 				slot.alignment,
-				slot.margin,
 			);
 
 			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
@@ -612,10 +625,14 @@ impl Widget for Button {
 	}
 
 	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
-		painter.fill_rect(
-			container.layout.unwrap().absolute_bounds(),
-			container.widget.normal,
-		);
+		let color = if container.focused {
+			container.widget.focused
+		} else if container.hovered {
+			container.widget.hovered
+		} else {
+			container.widget.normal
+		};
+		painter.fill_rect(container.layout.unwrap().absolute_bounds(), color);
 
 		if let Some(slot) = &container.slots.get(0) {
 			let child = slot.child().borrow();
@@ -623,9 +640,7 @@ impl Widget for Button {
 		}
 	}
 
-	fn handle_event(_container: &WidgetContainer<Self>, event: &Event) {
-		println!("{:?}", event);
-	}
+	fn handle_event(_container: &WidgetContainer<Self>, event: &Event) {}
 }
 
 #[derive(Default, Debug)]
@@ -659,7 +674,6 @@ impl Widget for Panel {
 				Rect::from_min_max(Vec2::ZERO, layout.local_bounds.size()),
 				desired,
 				slot.alignment,
-				slot.margin,
 			);
 
 			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
@@ -704,13 +718,13 @@ impl PanelSlot {
 		self
 	}
 
-	pub fn margin(&mut self, margin: Margin) -> &mut Self {
-		self.margin = margin;
+	pub fn margin(&mut self, margin: impl Into<Margin>) -> &mut Self {
+		self.margin = margin.into();
 		self
 	}
 
-	pub fn padding(&mut self, padding: Padding) -> &mut Self {
-		self.padding = padding;
+	pub fn padding(&mut self, padding: impl Into<Padding>) -> &mut Self {
+		self.padding = padding.into();
 		self
 	}
 }
@@ -751,13 +765,13 @@ impl BoxSlot {
 		self
 	}
 
-	pub fn margin(&mut self, margin: Margin) -> &mut Self {
-		self.margin = margin;
+	pub fn margin(&mut self, margin: impl Into<Margin>) -> &mut Self {
+		self.margin = margin.into();
 		self
 	}
 
-	pub fn padding(&mut self, padding: Padding) -> &mut Self {
-		self.padding = padding;
+	pub fn padding(&mut self, padding: impl Into<Padding>) -> &mut Self {
+		self.padding = padding.into();
 		self
 	}
 
@@ -801,13 +815,15 @@ impl Widget for VerticalBox {
 			let mut child = slot.child().borrow_mut();
 			let desired = child.desired_size();
 
-			let x0 = 0.0;
-			let x1 = layout.local_bounds.size().x;
+			let x0 = slot.margin.left;
+			let x1 = layout.local_bounds.size().x - slot.margin.right;
+			y += slot.margin.bottom;
 			let y0 = y;
 			y += desired.y;
 			let y1 = y;
+			y += slot.margin.top;
 			let available = Rect::from((x0, y0, x1, y1));
-			let local_bounds = rect_in_rect(available, desired, slot.alignment, slot.margin);
+			let local_bounds = rect_in_rect(available, desired, slot.alignment);
 
 			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
 			child.layout_children();
@@ -850,13 +866,15 @@ impl Widget for HorizontalBox {
 			let mut child = slot.child().borrow_mut();
 			let desired = child.desired_size();
 
-			let x0 = x + slot.margin.left;
-			x += desired.x + slot.margin.right;
+			x += slot.margin.left;
+			let x0 = x;
+			x += desired.x;
 			let x1 = x;
+			x += slot.margin.right;
 			let y0 = slot.margin.bottom;
 			let y1 = layout.local_bounds.size().y - slot.margin.top;
 			let available = Rect::from((x0, y0, x1, y1));
-			let local_bounds = rect_in_rect(available, desired, slot.alignment, slot.margin);
+			let local_bounds = rect_in_rect(available, desired, slot.alignment);
 
 			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
 
@@ -900,6 +918,17 @@ pub struct Margin {
 impl Margin {
 	pub fn size(self) -> Vec2 {
 		Vec2::new(self.left + self.right, self.bottom + self.top)
+	}
+}
+
+impl From<f32> for Margin {
+	fn from(x: f32) -> Self {
+		Self {
+			bottom: x,
+			left: x,
+			top: x,
+			right: x,
+		}
 	}
 }
 
@@ -1020,18 +1049,18 @@ impl Alignment2 {
 	}
 }
 
-pub fn rect_in_rect(parent: Rect, desired: Vec2, alignment: Alignment2, margin: Margin) -> Rect {
+pub fn rect_in_rect(parent: Rect, desired: Vec2, alignment: Alignment2) -> Rect {
 	// Used for centering
 	let parent_size = parent.size();
 
 	let (x0, x1) = match alignment.horizontal {
 		Alignment::LEFT => {
-			let x0 = parent.min.x + margin.left;
+			let x0 = parent.min.x;
 			let x1 = x0 + desired.x;
 			(x0, x1)
 		}
 		Alignment::RIGHT => {
-			let x1 = parent.max.x - margin.right;
+			let x1 = parent.max.x;
 			let x0 = x1 - desired.x;
 			(x0, x1)
 		}
@@ -1040,17 +1069,17 @@ pub fn rect_in_rect(parent: Rect, desired: Vec2, alignment: Alignment2, margin: 
 			let half_desired = desired.x / 2.0;
 			(center - half_desired, center + half_desired)
 		}
-		Alignment::Fill => (parent.min.x + margin.left, parent.max.x - margin.right),
+		Alignment::Fill => (parent.min.x, parent.max.x),
 	};
 
 	let (y0, y1) = match alignment.vertical {
 		Alignment::BOTTOM => {
-			let y0 = parent.min.y + margin.bottom;
+			let y0 = parent.min.y;
 			let y1 = x0 + desired.y;
 			(y0, y1)
 		}
 		Alignment::TOP => {
-			let y1 = parent.max.y - margin.top;
+			let y1 = parent.max.y;
 			let y0 = y1 - desired.y;
 			(y0, y1)
 		}
@@ -1059,7 +1088,7 @@ pub fn rect_in_rect(parent: Rect, desired: Vec2, alignment: Alignment2, margin: 
 			let half_desired = desired.y / 2.0;
 			(center - half_desired, center + half_desired)
 		}
-		Alignment::Fill => (parent.min.y + margin.bottom, parent.max.y - margin.top),
+		Alignment::Fill => (parent.min.y, parent.max.y),
 	};
 
 	Rect::from((x0, y0, x1, y1))

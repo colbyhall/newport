@@ -339,6 +339,7 @@ impl Engine {
 					if time >= 1.0 {
 						time = 0.0;
 						engine.fps.store(frame_count, Ordering::Relaxed);
+						println!("{:?}", frame_count);
 						frame_count = 0;
 					}
 					frame_count += 1;
