@@ -11,7 +11,7 @@ engine = { path = "../engine" }
 ecs = { path = "../ecs" }
 math = { path = "../math" }
 gpu = { path = "../gpu" }
-graphics = { path = "../graphics" }
+draw2d = { path = "../draw2d" }
 resources = { path = "../resources" }
 input = { path = "../input" }
 config = { path = "../config" }

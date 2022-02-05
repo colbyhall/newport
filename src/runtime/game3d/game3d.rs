@@ -13,6 +13,7 @@ pub use render::{
 };
 
 use {
+	draw2d::Draw2d,
 	ecs::{
 		Component,
 		Ecs,
@@ -28,7 +29,6 @@ use {
 		Engine,
 		Module,
 	},
-	graphics::Graphics,
 	input::*,
 	math::*,
 	resources::Handle,
@@ -146,7 +146,7 @@ impl Module for Game {
 
 	fn depends_on(builder: Builder) -> Builder {
 		builder
-			.module::<Graphics>()
+			.module::<Draw2d>()
 			.module::<Ecs>()
 			.module::<Editor>()
 			.module::<GameInput>()

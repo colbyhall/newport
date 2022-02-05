@@ -1,17 +1,50 @@
-use gpu::{
-	Buffer,
-	BufferUsage,
-	Texture,
-};
-use math::vec2;
-use math::{
-	Color,
-	Rect,
-	Vec2,
-	Vec4,
+use {
+	engine::{
+		Builder,
+		Module,
+	},
+	gpu::{
+		Buffer,
+		BufferUsage,
+		Gpu,
+		Texture,
+	},
+	math::{
+		vec2,
+		Color,
+		Rect,
+		Vec2,
+		Vec4,
+	},
+	resources::{
+		Importer,
+		Resource,
+	},
 };
 
-use crate::Font;
+pub use font::*;
+
+mod font;
+
+// TODO: Bring font into this file
+pub use font::*;
+
+pub struct Draw2d;
+
+impl Module for Draw2d {
+	fn new() -> Self {
+		Self
+	}
+
+	fn depends_on(builder: Builder) -> Builder {
+		builder
+			.module::<Gpu>()
+			.register(FontCollection::variant())
+			.register(FontImporter::variant(&["ttf"]))
+		// .register(Mesh::variant())
+		// .register(MeshGltfImporter::variant(&["gltf", "glb"]))
+	}
+}
 
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Roundness {

@@ -3,6 +3,10 @@ use {
 		Config,
 		ConfigManager,
 	},
+	draw2d::{
+		Draw2d,
+		Painter,
+	},
 	ecs::{
 		Component,
 		Ecs,
@@ -28,10 +32,6 @@ use {
 		Layout::*,
 		MemoryType::*,
 		Texture,
-	},
-	graphics::{
-		Graphics,
-		Painter,
 	},
 	input::*,
 	math::{
@@ -90,7 +90,7 @@ impl Module for Game {
 	fn depends_on(builder: Builder) -> Builder {
 		builder
 			.module::<Ecs>()
-			.module::<Graphics>()
+			.module::<Draw2d>()
 			.module::<ResourceManager>()
 			.module::<ConfigManager>()
 			.module::<GameInput>()

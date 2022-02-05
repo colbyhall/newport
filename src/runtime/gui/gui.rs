@@ -1,6 +1,11 @@
 #![feature(associated_type_defaults)]
 
 use {
+	draw2d::{
+		Draw2d,
+		FontCollection,
+		Painter,
+	},
 	engine::{
 		Builder,
 		Engine,
@@ -14,11 +19,6 @@ use {
 		GraphicsPipeline,
 		GraphicsRecorder,
 		MemoryType,
-	},
-	graphics::{
-		FontCollection,
-		Graphics,
-		Painter,
 	},
 	math::{
 		Color,
@@ -50,8 +50,6 @@ pub struct Gui {
 
 	hovered: Option<WidgetRef>,
 	focused: Option<WidgetRef>,
-
-	events: Vec<Event>,
 }
 
 impl Gui {
@@ -83,14 +81,46 @@ impl Module for Gui {
 
 	fn new() -> Self {
 		let base = WidgetRef::new_with(Panel::new().color(Color::BLACK), |gui| {
-			gui.slot_with(Button::new(), |gui| {
-				gui.slot(Text::new("Hello World").color(Color::RED))
-					.margin(Margin {
-						bottom: 5.0,
-						top: 5.0,
-						left: 5.0,
-						right: 5.0,
-					});
+			gui.slot_with(VerticalBox, |gui| {
+				gui.slot_with(Button::new(), |gui| {
+					gui.slot(Text::new("Hello World").color(Color::RED))
+						.margin(Margin {
+							bottom: 5.0,
+							top: 5.0,
+							left: 5.0,
+							right: 5.0,
+						});
+				});
+
+				gui.slot_with(HorizontalBox, |gui| {
+					for _ in 0..10 {
+						gui.slot_with(Button::new(), |gui| {
+							gui.slot(Text::new("Hello World").color(Color::RED))
+								.margin(Margin {
+									bottom: 5.0,
+									top: 5.0,
+									left: 5.0,
+									right: 5.0,
+								});
+						})
+						.margin(Margin {
+							bottom: 5.0,
+							top: 5.0,
+							left: 5.0,
+							right: 5.0,
+						});
+					}
+				});
+
+				gui.slot_with(Button::new(), |gui| {
+					gui.slot(Text::new("Hello World").color(Color::BLUE))
+						.margin(Margin {
+							bottom: 5.0,
+							top: 5.0,
+							left: 5.0,
+							right: 5.0,
+						});
+				});
 			})
 			.margin(Margin {
 				bottom: 5.0,
@@ -108,40 +138,30 @@ impl Module for Gui {
 
 			hovered: None,
 			focused: None,
-
-			events: Vec::with_capacity(256),
 		}
 	}
 
 	fn depends_on(builder: Builder) -> Builder {
 		builder
-			.module::<Graphics>()
+			.module::<Draw2d>()
 			.module::<ResourceManager>()
 			.process_input(|event| {
 				let gui: &mut Gui = Engine::module_mut_checked().unwrap();
-				gui.events.push(*event);
-			})
-			.tick(|_| {
-				let gui: &mut Gui = Engine::module_mut_checked().unwrap();
-				let mut events = Vec::with_capacity(256);
-				std::mem::swap(&mut events, &mut gui.events);
 
-				for e in events.drain(..) {
-					match e {
-						Event::MouseMove(x, y) => {
-							let mouse_position = Vec2::new(x, y);
-							if let Some(base) = &gui.base {
-								gui.hovered = gui.hit_test(base, mouse_position);
-							}
+				match event {
+					Event::MouseMove(x, y) => {
+						let mouse_position = Vec2::new(*x, *y);
+						if let Some(base) = &gui.base {
+							gui.hovered = gui.hit_test(base, mouse_position);
 						}
-						Event::MouseLeave => {
-							gui.hovered = None;
-						}
-						_ => {
-							if let Some(hovered) = &gui.hovered {
-								let hovered = hovered.borrow();
-								hovered.handle_event(&e); // TODO: replies
-							}
+					}
+					Event::MouseLeave => {
+						gui.hovered = None;
+					}
+					_ => {
+						if let Some(hovered) = &gui.hovered {
+							let hovered = hovered.borrow();
+							hovered.handle_event(event); // TODO: replies
 						}
 					}
 				}
@@ -261,6 +281,13 @@ pub struct Layout {
 }
 
 impl Layout {
+	pub fn new(parent: Layout, local_bounds: Rect) -> Self {
+		Self {
+			local_bounds,
+			local_to_absolute: parent.local_to_absolute * Mat3::translate(parent.local_bounds.min),
+		}
+	}
+
 	pub fn absolute_bounds(&self) -> Rect {
 		let min = self.local_to_absolute * Vec3::append(self.local_bounds.min, 1.0);
 		let max = self.local_to_absolute * Vec3::append(self.local_bounds.max, 1.0);
@@ -348,6 +375,10 @@ impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
 
 	fn paint(&self, painter: &mut Painter) {
 		T::paint(self, painter);
+		if let Some(layout) = &self.layout {
+			let absolute = layout.absolute_bounds();
+			painter.stroke_rect(absolute, 1.0, Color::RED);
+		}
 	}
 
 	fn handle_event(&self, event: &Event) {
@@ -554,56 +585,19 @@ impl Widget for Button {
 	const DEFAULT_VISIBILITY: Visibility = Visibility::Visible;
 
 	fn layout_children(container: &WidgetContainer<Self>) {
-		let parent_layout = container.layout.unwrap();
+		let layout = container.layout.unwrap();
 		if let Some(slot) = &container.slots.get(0) {
 			let mut child = slot.child().borrow_mut();
-			let child_desired = child.desired_size();
-			let parent_size = parent_layout.local_bounds.size();
+			let desired = child.desired_size();
 
-			let (x0, x1) = match slot.alignment.horizontal {
-				Alignment::LEFT => {
-					let x0 = slot.margin.left;
-					let x1 = x0 + child_desired.x;
-					(x0, x1)
-				}
-				Alignment::RIGHT => {
-					let x1 = parent_size.x - slot.margin.right;
-					let x0 = x1 - child_desired.x;
-					(x0, x1)
-				}
-				Alignment::Center => {
-					let center = parent_size.x / 2.0;
-					let half_desired = child_desired.x / 2.0;
-					(center - half_desired, center + half_desired)
-				}
-				Alignment::Fill => (slot.margin.left, parent_size.x - slot.margin.right),
-			};
+			let local_bounds = rect_in_rect(
+				Rect::from_min_max(Vec2::ZERO, layout.local_bounds.size()),
+				desired,
+				slot.alignment,
+				slot.margin,
+			);
 
-			let (y0, y1) = match slot.alignment.vertical {
-				Alignment::BOTTOM => {
-					let y0 = slot.margin.bottom;
-					let y1 = x0 + child_desired.y;
-					(y0, y1)
-				}
-				Alignment::TOP => {
-					let y1 = parent_size.y - slot.margin.top;
-					let y0 = y1 - child_desired.y;
-					(y0, y1)
-				}
-				Alignment::Center => {
-					let center = parent_size.y / 2.0;
-					let half_desired = child_desired.y / 2.0;
-					(center - half_desired, center + half_desired)
-				}
-				Alignment::Fill => (slot.margin.bottom, parent_size.y - slot.margin.top),
-			};
-
-			*child.layout_mut() = Some(Layout {
-				local_bounds: Rect::from_min_max((x0, y0), (x1, y1)),
-				local_to_absolute: parent_layout.local_to_absolute
-					* Mat3::translate(parent_layout.local_bounds.min),
-			});
-
+			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
 			child.layout_children();
 		}
 	}
@@ -656,56 +650,19 @@ impl Widget for Panel {
 	const DEFAULT_VISIBILITY: Visibility = Visibility::Visible;
 
 	fn layout_children(container: &WidgetContainer<Self>) {
-		let parent_layout = container.layout.unwrap();
+		let layout = container.layout.unwrap();
 		if let Some(slot) = &container.slots.get(0) {
 			let mut child = slot.child().borrow_mut();
-			let child_desired = child.desired_size();
-			let parent_size = parent_layout.local_bounds.size();
+			let desired = child.desired_size();
 
-			let (x0, x1) = match slot.alignment.horizontal {
-				Alignment::LEFT => {
-					let x0 = slot.margin.left;
-					let x1 = x0 + child_desired.x;
-					(x0, x1)
-				}
-				Alignment::RIGHT => {
-					let x1 = parent_size.x - slot.margin.right;
-					let x0 = x1 - child_desired.x;
-					(x0, x1)
-				}
-				Alignment::Center => {
-					let center = parent_size.x / 2.0;
-					let half_desired = child_desired.x / 2.0;
-					(center - half_desired, center + half_desired)
-				}
-				Alignment::Fill => (slot.margin.left, parent_size.x - slot.margin.right),
-			};
+			let local_bounds = rect_in_rect(
+				Rect::from_min_max(Vec2::ZERO, layout.local_bounds.size()),
+				desired,
+				slot.alignment,
+				slot.margin,
+			);
 
-			let (y0, y1) = match slot.alignment.vertical {
-				Alignment::BOTTOM => {
-					let y0 = slot.margin.bottom;
-					let y1 = x0 + child_desired.y;
-					(y0, y1)
-				}
-				Alignment::TOP => {
-					let y1 = parent_size.y - slot.margin.top;
-					let y0 = y1 - child_desired.y;
-					(y0, y1)
-				}
-				Alignment::Center => {
-					let center = parent_size.y / 2.0;
-					let half_desired = child_desired.y / 2.0;
-					(center - half_desired, center + half_desired)
-				}
-				Alignment::Fill => (slot.margin.bottom, parent_size.y - slot.margin.top),
-			};
-
-			*child.layout_mut() = Some(Layout {
-				local_bounds: Rect::from_min_max((x0, y0), (x1, y1)),
-				local_to_absolute: parent_layout.local_to_absolute
-					* Mat3::translate(parent_layout.local_bounds.min),
-			});
-
+			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
 			child.layout_children();
 		}
 	}
@@ -775,6 +732,158 @@ impl Slot for PanelSlot {
 
 	fn child_mut(&mut self) -> &mut WidgetRef {
 		&mut self.child
+	}
+}
+
+#[derive(Debug)]
+pub struct BoxSlot {
+	pub child: WidgetRef,
+
+	pub alignment: Alignment2,
+	pub margin: Margin,
+	pub padding: Padding,
+	pub sizing: Sizing,
+}
+
+impl BoxSlot {
+	pub fn alignment(&mut self, alignment: Alignment2) -> &mut Self {
+		self.alignment = alignment;
+		self
+	}
+
+	pub fn margin(&mut self, margin: Margin) -> &mut Self {
+		self.margin = margin;
+		self
+	}
+
+	pub fn padding(&mut self, padding: Padding) -> &mut Self {
+		self.padding = padding;
+		self
+	}
+
+	pub fn sizing(&mut self, sizing: Sizing) -> &mut Self {
+		self.sizing = sizing;
+		self
+	}
+}
+
+impl Slot for BoxSlot {
+	fn new(child: WidgetRef) -> Self {
+		Self {
+			child,
+
+			alignment: Alignment2::default(),
+			margin: Margin::default(),
+			padding: Padding::default(),
+			sizing: Sizing::default(),
+		}
+	}
+
+	fn child(&self) -> &WidgetRef {
+		&self.child
+	}
+
+	fn child_mut(&mut self) -> &mut WidgetRef {
+		&mut self.child
+	}
+}
+
+#[derive(Debug)]
+pub struct VerticalBox;
+impl Widget for VerticalBox {
+	type Slot = BoxSlot;
+	const DEFAULT_VISIBILITY: Visibility = Visibility::HitTestInvisible;
+
+	fn layout_children(container: &WidgetContainer<Self>) {
+		let layout = container.layout.unwrap();
+		let mut y = 0.0;
+		for slot in container.slots.iter() {
+			let mut child = slot.child().borrow_mut();
+			let desired = child.desired_size();
+
+			let x0 = 0.0;
+			let x1 = layout.local_bounds.size().x;
+			let y0 = y;
+			y += desired.y;
+			let y1 = y;
+			let available = Rect::from((x0, y0, x1, y1));
+			let local_bounds = rect_in_rect(available, desired, slot.alignment, slot.margin);
+
+			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
+			child.layout_children();
+		}
+	}
+
+	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
+		let mut size = Vec2::ZERO;
+
+		for slot in container.slots.iter() {
+			let child = slot.child.borrow();
+			let desired = child.desired_size() + slot.margin.size() + slot.padding.size();
+			size.y += desired.y;
+			if size.x < desired.x {
+				size.x = desired.x;
+			}
+		}
+
+		size
+	}
+
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
+		for slot in container.slots.iter() {
+			let child = slot.child().borrow();
+			child.paint(painter);
+		}
+	}
+}
+
+#[derive(Debug)]
+pub struct HorizontalBox;
+impl Widget for HorizontalBox {
+	type Slot = BoxSlot;
+	const DEFAULT_VISIBILITY: Visibility = Visibility::HitTestInvisible;
+
+	fn layout_children(container: &WidgetContainer<Self>) {
+		let layout = container.layout.unwrap();
+		let mut x = 0.0;
+		for slot in container.slots.iter() {
+			let mut child = slot.child().borrow_mut();
+			let desired = child.desired_size();
+
+			let x0 = x + slot.margin.left;
+			x += desired.x + slot.margin.right;
+			let x1 = x;
+			let y0 = slot.margin.bottom;
+			let y1 = layout.local_bounds.size().y - slot.margin.top;
+			let available = Rect::from((x0, y0, x1, y1));
+			let local_bounds = rect_in_rect(available, desired, slot.alignment, slot.margin);
+
+			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
+
+			child.layout_children();
+		}
+	}
+
+	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
+		let mut size = Vec2::ZERO;
+
+		for slot in container.slots.iter() {
+			let child = slot.child.borrow();
+			let desired = child.desired_size() + slot.margin.size() + slot.padding.size();
+			size.x += desired.x;
+			if size.y < desired.y {
+				size.y = desired.y;
+			}
+		}
+
+		size
+	}
+
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
+		for slot in container.slots.iter() {
+			let child = slot.child().borrow();
+			child.paint(painter);
+		}
 	}
 }
 
@@ -911,7 +1020,59 @@ impl Alignment2 {
 	}
 }
 
+pub fn rect_in_rect(parent: Rect, desired: Vec2, alignment: Alignment2, margin: Margin) -> Rect {
+	// Used for centering
+	let parent_size = parent.size();
+
+	let (x0, x1) = match alignment.horizontal {
+		Alignment::LEFT => {
+			let x0 = parent.min.x + margin.left;
+			let x1 = x0 + desired.x;
+			(x0, x1)
+		}
+		Alignment::RIGHT => {
+			let x1 = parent.max.x - margin.right;
+			let x0 = x1 - desired.x;
+			(x0, x1)
+		}
+		Alignment::Center => {
+			let center = parent.min.x + parent_size.x / 2.0;
+			let half_desired = desired.x / 2.0;
+			(center - half_desired, center + half_desired)
+		}
+		Alignment::Fill => (parent.min.x + margin.left, parent.max.x - margin.right),
+	};
+
+	let (y0, y1) = match alignment.vertical {
+		Alignment::BOTTOM => {
+			let y0 = parent.min.y + margin.bottom;
+			let y1 = x0 + desired.y;
+			(y0, y1)
+		}
+		Alignment::TOP => {
+			let y1 = parent.max.y - margin.top;
+			let y0 = y1 - desired.y;
+			(y0, y1)
+		}
+		Alignment::Center => {
+			let center = parent.min.y + parent_size.y / 2.0;
+			let half_desired = desired.y / 2.0;
+			(center - half_desired, center + half_desired)
+		}
+		Alignment::Fill => (parent.min.y + margin.bottom, parent.max.y - margin.top),
+	};
+
+	Rect::from((x0, y0, x1, y1))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Sizing {
 	Automatic,
 	Fill(f32),
+}
+
+impl Default for Sizing {
+	fn default() -> Self {
+		Self::Automatic
+	}
 }
