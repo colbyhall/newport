@@ -1,16 +1,14 @@
-mod editor;
 mod render;
 use ecs::OnAdded;
-pub(crate) use {
-	editor::*,
-	render::*,
-};
+pub(crate) use render::*;
 
 pub use render::{
 	Camera,
 	DebugManager,
+	Mesh,
 	MeshFilter,
 };
+use resources::Importer;
 
 use {
 	draw2d::Draw2d,
@@ -31,7 +29,10 @@ use {
 	},
 	input::*,
 	math::*,
-	resources::Handle,
+	resources::{
+		Handle,
+		Resource,
+	},
 	serde::{
 		Deserialize,
 		Serialize,
@@ -148,10 +149,11 @@ impl Module for Game {
 		builder
 			.module::<Draw2d>()
 			.module::<Ecs>()
-			.module::<Editor>()
 			.module::<GameInput>()
 			.register(Transform::variant().on_added::<Transform>())
 			.register(Camera::variant())
+			.register(Mesh::variant())
+			.register(MeshGltfImporter::variant(&["gltf", "glb"]))
 			.register(MeshFilter::variant())
 			.register(EditorCameraController::variant())
 			.register(DebugManager::variant())
