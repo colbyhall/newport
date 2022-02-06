@@ -45,16 +45,20 @@ use {
 
 #[allow(dead_code)]
 pub struct Gui {
-	base: Option<WidgetRef>,
+	canvas: WidgetHandle,
 	pipeline: Handle<GraphicsPipeline>,
 	viewport: Vec2,
 
-	hovered: Option<WidgetRef>,
-	focused: Option<WidgetRef>,
+	hovered: Option<WidgetHandle>,
+	focused: Option<WidgetHandle>,
 }
 
 impl Gui {
-	fn hit_test(&self, current: &WidgetRef, mouse_position: Vec2) -> Option<WidgetRef> {
+	pub fn canvas(&self) -> &WidgetHandle {
+		&self.canvas
+	}
+
+	fn hit_test(&self, current: &WidgetHandle, mouse_position: Vec2) -> Option<WidgetHandle> {
 		let borrow = current.borrow();
 
 		let num_children = borrow.num_children();
@@ -76,7 +80,7 @@ impl Gui {
 		}
 	}
 
-	fn handle_event(&mut self, widget: WidgetRef, event: Event) {
+	fn handle_event(&mut self, widget: WidgetHandle, event: Event) {
 		let mut container = widget.borrow_mut();
 		let reply = container.handle_event(event);
 		match reply {
@@ -97,41 +101,8 @@ impl Module for Gui {
 	const LOCAL: bool = true;
 
 	fn new() -> Self {
-		let base = WidgetRef::new_with(Panel::new().color(Color::BLACK), |gui| {
-			gui.slot_with(VerticalBox, |gui| {
-				gui.slot_with(Button::new(), |gui| {
-					gui.slot(Text::new("Hello World").color(Color::RED))
-						.margin(5.0);
-				});
-
-				for _ in 0..10 {
-					gui.slot_with(Button::new(), |gui| {
-						gui.slot(Text::new("urmom rawr xd").color(Color::MAGENTA))
-							.margin(5.0);
-					})
-					.margin(5.0);
-				}
-
-				gui.slot_with(HorizontalBox, |gui| {
-					for _ in 0..10 {
-						gui.slot_with(Button::new().on_pressed(|_| println!("Bing Bong")), |gui| {
-							gui.slot(Text::new("Hello World").color(Color::RED))
-								.margin(5.0);
-						})
-						.margin(5.0);
-					}
-				});
-
-				gui.slot_with(Button::new(), |gui| {
-					gui.slot(Text::new("Hello World").color(Color::BLUE))
-						.margin(5.0);
-				});
-			})
-			.margin(5.0);
-		});
-
 		Self {
-			base: Some(base),
+			canvas: WidgetHandle::new(Canvas),
 			pipeline: Handle::find_or_load("{1e1526a8-852c-47f7-8436-2bbb01fe8a22}")
 				.unwrap_or_default(),
 			viewport: Vec2::ZERO,
@@ -153,24 +124,22 @@ impl Module for Gui {
 						let window = Engine::window().unwrap();
 						let dpi = window.scale_factor() as f32;
 						let mouse_position = Vec2::new(*x / dpi, *y / dpi);
-						if let Some(base) = &gui.base {
-							let old = gui.hovered.clone();
-							gui.hovered = gui.hit_test(base, mouse_position);
-							if gui.hovered != old {
-								if let Some(old) = old {
-									{
-										let mut borrow = old.borrow_mut();
-										borrow.set_hovered(false);
-									}
-									gui.handle_event(old, Event::UnHovered);
+						let old = gui.hovered.clone();
+						gui.hovered = gui.hit_test(&gui.canvas, mouse_position);
+						if gui.hovered != old {
+							if let Some(old) = old {
+								{
+									let mut borrow = old.borrow_mut();
+									borrow.set_hovered(false);
 								}
-								if let Some(hovered) = gui.hovered.clone() {
-									{
-										let mut borrow = hovered.borrow_mut();
-										borrow.set_hovered(true);
-									}
-									gui.handle_event(hovered, Event::Hovered);
+								gui.handle_event(old, Event::UnHovered);
+							}
+							if let Some(hovered) = gui.hovered.clone() {
+								{
+									let mut borrow = hovered.borrow_mut();
+									borrow.set_hovered(true);
 								}
+								gui.handle_event(hovered, Event::Hovered);
 							}
 						}
 					}
@@ -237,29 +206,18 @@ impl Module for Gui {
 				let viewport = window.inner_size();
 				let viewport = Vec2::new(viewport.width as f32 / dpi, viewport.height as f32 / dpi);
 
-				if let Some(base) = &mut gui.base {
-					let mut base = base.borrow_mut();
+				let mut canvas = gui.canvas.borrow_mut();
+				if canvas.layout().is_none() || gui.viewport != viewport {
+					gui.viewport = viewport;
+					canvas.update_layout(Layout {
+						local_bounds: Rect::from_min_max(Point2::ZERO, viewport),
+						local_to_absolute: Mat3::IDENTITY,
+					});
+				}
 
-					let changed = {
-						let layout = base.layout_mut();
-						if layout.is_none() || gui.viewport != viewport {
-							gui.viewport = viewport;
-							*layout = Some(Layout {
-								local_bounds: Rect::from_min_max(Point2::ZERO, viewport),
-								local_to_absolute: Mat3::IDENTITY,
-							});
-							true
-						} else {
-							false
-						}
-					};
-
-					if changed && base.layout().is_some() {
-						base.layout_children();
-					}
-
-					let mut painter = Painter::new();
-					base.paint(&mut painter);
+				let mut painter = Painter::new();
+				canvas.paint(&mut painter);
+				if !painter.is_empty() {
 					let (vertices, indices) = painter.finish().unwrap();
 					let device = Gpu::device();
 					let backbuffer = device.acquire_backbuffer().unwrap();
@@ -306,7 +264,7 @@ pub trait Widget: Debug + 'static + Sized {
 	const MAX_SLOTS: Option<usize> = Some(0);
 	const DEFAULT_VISIBILITY: Visibility;
 
-	fn layout_children(container: &WidgetContainer<Self>) {}
+	fn update_layout(container: &WidgetContainer<Self>) {}
 
 	fn desired_size(container: &WidgetContainer<Self>) -> Vec2;
 
@@ -318,23 +276,23 @@ pub trait Widget: Debug + 'static + Sized {
 }
 
 pub trait Slot: Debug + 'static {
-	fn new(child: WidgetRef) -> Self;
-	fn child(&self) -> &WidgetRef;
-	fn child_mut(&mut self) -> &mut WidgetRef;
+	fn new(child: WidgetHandle) -> Self;
+	fn child(&self) -> &WidgetHandle;
+	fn child_mut(&mut self) -> &mut WidgetHandle;
 }
 
 #[derive(Debug)]
 pub struct InvalidSlot;
 impl Slot for InvalidSlot {
-	fn new(_widget: WidgetRef) -> Self {
+	fn new(_widget: WidgetHandle) -> Self {
 		unreachable!()
 	}
 
-	fn child(&self) -> &WidgetRef {
+	fn child(&self) -> &WidgetHandle {
 		unreachable!()
 	}
 
-	fn child_mut(&mut self) -> &mut WidgetRef {
+	fn child_mut(&mut self) -> &mut WidgetHandle {
 		unreachable!()
 	}
 }
@@ -368,15 +326,64 @@ pub enum Visibility {
 	HitTestInvisible,
 }
 
+pub enum Event {
+	Hovered,
+	UnHovered,
+	Button { input: Input, pressed: bool },
+	Char(char),
+}
+
+pub enum Reply {
+	None,
+	Focus,
+	Unfocus,
+}
+
+pub enum EventHandler<T: Widget> {
+	None,
+	Closure(Box<dyn FnMut(&WidgetContainer<T>) + 'static>),
+}
+
+impl<T: Widget> Default for EventHandler<T> {
+	fn default() -> Self {
+		Self::None
+	}
+}
+
+impl<T: Widget> Debug for EventHandler<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::None => f.write_str("None"),
+			Self::Closure(_) => f.write_str("Closure"),
+		}
+	}
+}
+
 pub struct WidgetContainer<T: Widget> {
 	pub widget: T,
-	pub parent: Option<WidgetRef>,
+	pub parent: Option<WidgetHandle>,
 	pub slots: Vec<T::Slot>,
 	pub visibility: Visibility,
 	pub focused: bool,
 	pub hovered: bool,
 
 	pub layout: Option<Layout>,
+}
+
+impl<T: Widget> WidgetContainer<T> {
+	pub fn slot(&mut self, widget: impl Widget) -> &mut T::Slot {
+		self.slots.push(T::Slot::new(WidgetHandle::new(widget)));
+		self.slots.last_mut().unwrap()
+	}
+	pub fn slot_with<W: Widget>(
+		&mut self,
+		widget: W,
+		slots: impl FnOnce(&mut LayoutBuilder<W::Slot>),
+	) -> &mut T::Slot {
+		self.slots
+			.push(T::Slot::new(WidgetHandle::new_with(widget, slots)));
+		self.slots.last_mut().unwrap()
+	}
 }
 
 impl<T: Widget> Debug for WidgetContainer<T> {
@@ -391,26 +398,26 @@ impl<T: Widget> Debug for WidgetContainer<T> {
 	}
 }
 
-pub trait DynamicWidgetContainer: Debug {
-	fn parent(&self) -> Option<&WidgetRef>;
-	fn parent_mut(&mut self) -> &mut Option<WidgetRef>;
+pub trait AnyWidgetContainer: Debug {
+	fn parent(&self) -> Option<&WidgetHandle>;
+	fn parent_mut(&mut self) -> &mut Option<WidgetHandle>;
 
-	fn get(&self) -> &dyn Any;
-	fn get_mut(&mut self) -> &mut dyn Any;
+	fn as_any(&self) -> &dyn Any;
+	fn as_any_mut(&mut self) -> &mut dyn Any;
 
 	fn set_focused(&mut self, focused: bool);
 	fn set_hovered(&mut self, focused: bool);
 
-	fn layout_children(&self);
+	fn update_layout(&mut self, layout: Layout);
+	fn layout(&self) -> Option<&Layout>;
+
 	fn desired_size(&self) -> Vec2;
 	fn paint(&self, painter: &mut Painter);
+
 	fn handle_event(&mut self, event: Event) -> Reply;
 
-	fn layout(&self) -> Option<&Layout>;
-	fn layout_mut(&mut self) -> &mut Option<Layout>;
-
-	fn child(&self, index: usize) -> Option<&WidgetRef>;
-	fn child_mut(&mut self, index: usize) -> Option<&mut WidgetRef>;
+	fn child(&self, index: usize) -> Option<&WidgetHandle>;
+	fn child_mut(&mut self, index: usize) -> Option<&mut WidgetHandle>;
 	fn num_children(&self) -> usize;
 
 	fn visibility(&self) -> Visibility;
@@ -418,21 +425,21 @@ pub trait DynamicWidgetContainer: Debug {
 	fn id(&self) -> usize;
 }
 
-impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
-	fn parent(&self) -> Option<&WidgetRef> {
+impl<T: Widget> AnyWidgetContainer for WidgetContainer<T> {
+	fn parent(&self) -> Option<&WidgetHandle> {
 		self.parent.as_ref()
 	}
 
-	fn parent_mut(&mut self) -> &mut Option<WidgetRef> {
+	fn parent_mut(&mut self) -> &mut Option<WidgetHandle> {
 		&mut self.parent
 	}
 
-	fn get(&self) -> &dyn Any {
-		&self.widget
+	fn as_any(&self) -> &dyn Any {
+		self
 	}
 
-	fn get_mut(&mut self) -> &mut dyn Any {
-		&mut self.widget
+	fn as_any_mut(&mut self) -> &mut dyn Any {
+		self
 	}
 
 	fn set_focused(&mut self, focused: bool) {
@@ -443,8 +450,9 @@ impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
 		self.hovered = hovered;
 	}
 
-	fn layout_children(&self) {
-		T::layout_children(self);
+	fn update_layout(&mut self, layout: Layout) {
+		self.layout = Some(layout);
+		T::update_layout(self);
 	}
 
 	fn desired_size(&self) -> Vec2 {
@@ -453,9 +461,10 @@ impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
 
 	fn paint(&self, painter: &mut Painter) {
 		T::paint(self, painter);
+
 		if let Some(layout) = &self.layout {
 			let absolute = layout.absolute_bounds();
-			// painter.stroke_rect(absolute, 1.0, Color::RED);
+			painter.stroke_rect(absolute, 1.0, Color::RED);
 		}
 	}
 
@@ -467,15 +476,11 @@ impl<T: Widget> DynamicWidgetContainer for WidgetContainer<T> {
 		self.layout.as_ref()
 	}
 
-	fn layout_mut(&mut self) -> &mut Option<Layout> {
-		&mut self.layout
-	}
-
-	fn child(&self, index: usize) -> Option<&WidgetRef> {
+	fn child(&self, index: usize) -> Option<&WidgetHandle> {
 		self.slots.get(index).map(|f| f.child())
 	}
 
-	fn child_mut(&mut self, index: usize) -> Option<&mut WidgetRef> {
+	fn child_mut(&mut self, index: usize) -> Option<&mut WidgetHandle> {
 		self.slots.get_mut(index).map(|f| f.child_mut())
 	}
 
@@ -499,7 +504,7 @@ pub struct LayoutBuilder<T: Slot> {
 
 impl<T: Slot> LayoutBuilder<T> {
 	pub fn slot(&mut self, widget: impl Widget) -> &mut T {
-		self.slots.push(T::new(WidgetRef::new(widget)));
+		self.slots.push(T::new(WidgetHandle::new(widget)));
 		self.slots.last_mut().unwrap()
 	}
 	pub fn slot_with<W: Widget>(
@@ -507,15 +512,16 @@ impl<T: Slot> LayoutBuilder<T> {
 		widget: W,
 		slots: impl FnOnce(&mut LayoutBuilder<W::Slot>),
 	) -> &mut T {
-		self.slots.push(T::new(WidgetRef::new_with(widget, slots)));
+		self.slots
+			.push(T::new(WidgetHandle::new_with(widget, slots)));
 		self.slots.last_mut().unwrap()
 	}
 }
 
 #[derive(Clone)]
-pub struct WidgetRef(Rc<RefCell<dyn DynamicWidgetContainer>>);
+pub struct WidgetHandle(Rc<RefCell<dyn AnyWidgetContainer>>);
 
-impl WidgetRef {
+impl WidgetHandle {
 	pub fn new<T: Widget>(widget: T) -> Self {
 		Self(Rc::new(RefCell::new(WidgetContainer {
 			parent: None,
@@ -557,7 +563,7 @@ impl WidgetRef {
 	}
 }
 
-impl PartialEq for WidgetRef {
+impl PartialEq for WidgetHandle {
 	fn eq(&self, other: &Self) -> bool {
 		let a = self.borrow();
 		let b = other.borrow();
@@ -565,476 +571,20 @@ impl PartialEq for WidgetRef {
 	}
 }
 
-impl Deref for WidgetRef {
-	type Target = RefCell<dyn DynamicWidgetContainer>;
+impl Deref for WidgetHandle {
+	type Target = RefCell<dyn AnyWidgetContainer>;
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
 }
 
-impl Debug for WidgetRef {
+impl Debug for WidgetHandle {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let container = self.borrow();
 		f.debug_struct("WidgetRef")
 			.field("address", &self.as_ptr())
 			.field("container", &container)
 			.finish()
-	}
-}
-
-#[derive(Default, Debug)]
-pub struct Text {
-	pub text: String, // TODO: This should be some localized string structure probably
-	pub font: Handle<FontCollection>,
-	pub size: u32,
-	pub color: Color,
-	pub alignment: Alignment2,
-}
-
-impl Text {
-	pub fn new(text: impl ToString) -> Self {
-		Self {
-			text: text.to_string(),
-			font: Handle::default(),
-			size: 16,
-			color: Color::WHITE,
-			alignment: Default::default(),
-		}
-	}
-
-	pub fn color(mut self, color: impl Into<Color>) -> Self {
-		self.color = color.into();
-		self
-	}
-
-	pub fn alignment(mut self, alignment: Alignment2) -> Self {
-		self.alignment = alignment;
-		self
-	}
-}
-
-impl Widget for Text {
-	type Slot = InvalidSlot;
-	const DEFAULT_VISIBILITY: Visibility = Visibility::HitTestInvisible;
-
-	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
-		let font = container.widget.font.read();
-		let font = font
-			.font_at_size(container.widget.size, 2.0)
-			.expect("Invalid font size");
-		font.string_rect(&container.widget.text, 1000000.0).size()
-	}
-
-	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
-		let absolute = container.layout.unwrap().absolute_bounds();
-
-		let font = container.widget.font.read();
-		let font = font
-			.font_at_size(container.widget.size, 2.0)
-			.expect("Invalid font size");
-
-		painter.text(
-			&container.widget.text,
-			container.widget.color,
-			absolute.top_left(),
-			&font,
-		);
-	}
-}
-
-pub enum Event {
-	Hovered,
-	UnHovered,
-	Button { input: Input, pressed: bool },
-	Char(char),
-}
-
-pub enum Reply {
-	None,
-	Focus,
-	Unfocus,
-}
-
-pub enum EventHandler<T: Widget> {
-	None,
-	Closure(Box<dyn FnMut(&WidgetContainer<T>) + 'static>),
-}
-
-impl<T: Widget> Default for EventHandler<T> {
-	fn default() -> Self {
-		Self::None
-	}
-}
-
-impl<T: Widget> Debug for EventHandler<T> {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::None => f.write_str("None"),
-			Self::Closure(_) => f.write_str("Closure"),
-		}
-	}
-}
-
-#[derive(Default, Debug)]
-pub struct Button {
-	normal: Color,
-	hovered: Color,
-	focused: Color,
-
-	on_pressed: EventHandler<Self>,
-}
-
-impl Button {
-	pub fn new() -> Self {
-		Self {
-			normal: Color::WHITE,
-			hovered: Color::GREEN,
-			focused: Color::BLACK,
-
-			on_pressed: EventHandler::None,
-		}
-	}
-
-	pub fn on_pressed(mut self, on_pressed: impl FnMut(&WidgetContainer<Self>) + 'static) -> Self {
-		self.on_pressed = EventHandler::Closure(Box::new(on_pressed));
-		self
-	}
-}
-
-pub type ButtonSlot = PanelSlot;
-
-impl Widget for Button {
-	type Slot = ButtonSlot;
-	const MAX_SLOTS: Option<usize> = Some(1);
-	const DEFAULT_VISIBILITY: Visibility = Visibility::Visible;
-
-	fn layout_children(container: &WidgetContainer<Self>) {
-		let layout = container.layout.unwrap();
-		if let Some(slot) = &container.slots.get(0) {
-			let mut child = slot.child().borrow_mut();
-			let desired = child.desired_size();
-
-			let local_bounds = rect_in_rect(
-				Rect::from_min_max(Vec2::ZERO, layout.local_bounds.size()),
-				desired,
-				slot.alignment,
-			);
-
-			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
-			child.layout_children();
-		}
-	}
-
-	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
-		if let Some(slot) = &container.slots.get(0) {
-			let child = slot.child.borrow();
-			child.desired_size() + slot.padding.size() + slot.margin.size()
-		} else {
-			Vec2::ZERO
-		}
-	}
-
-	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
-		let color = if container.focused {
-			container.widget.focused
-		} else if container.hovered {
-			container.widget.hovered
-		} else {
-			container.widget.normal
-		};
-		painter.fill_rect(container.layout.unwrap().absolute_bounds(), color);
-
-		if let Some(slot) = &container.slots.get(0) {
-			let child = slot.child().borrow();
-			child.paint(painter);
-		}
-	}
-
-	fn handle_event(container: &mut WidgetContainer<Self>, event: Event) -> Reply {
-		match event {
-			Event::Button { input, pressed } => {
-				if input == MOUSE_BUTTON_LEFT {
-					if pressed {
-						Reply::Focus
-					} else {
-						let mut handler =
-							std::mem::replace(&mut container.widget.on_pressed, EventHandler::None);
-						#[allow(clippy::single_match)]
-						match &mut handler {
-							EventHandler::Closure(x) => (x)(container),
-							_ => {}
-						}
-						let _ = std::mem::replace(&mut container.widget.on_pressed, handler);
-						Reply::Unfocus
-					}
-				} else {
-					Reply::Unfocus
-				}
-			}
-			_ => Reply::None,
-		}
-	}
-}
-
-#[derive(Default, Debug)]
-pub struct Panel {
-	color: Color,
-}
-
-impl Panel {
-	pub fn new() -> Self {
-		Self::default()
-	}
-
-	pub fn color(mut self, color: impl Into<Color>) -> Self {
-		self.color = color.into();
-		self
-	}
-}
-
-impl Widget for Panel {
-	type Slot = PanelSlot;
-	const MAX_SLOTS: Option<usize> = Some(1);
-	const DEFAULT_VISIBILITY: Visibility = Visibility::Visible;
-
-	fn layout_children(container: &WidgetContainer<Self>) {
-		let layout = container.layout.unwrap();
-		if let Some(slot) = &container.slots.get(0) {
-			let mut child = slot.child().borrow_mut();
-			let desired = child.desired_size();
-
-			let local_bounds = rect_in_rect(
-				Rect::from_min_max(Vec2::ZERO, layout.local_bounds.size()),
-				desired,
-				slot.alignment,
-			);
-
-			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
-			child.layout_children();
-		}
-	}
-
-	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
-		if let Some(slot) = &container.slots.get(0) {
-			let child = slot.child.borrow();
-			child.desired_size() + slot.padding.size() + slot.margin.size()
-		} else {
-			Vec2::ZERO
-		}
-	}
-
-	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
-		painter.fill_rect(
-			container.layout.unwrap().absolute_bounds(),
-			container.widget.color,
-		);
-
-		if let Some(slot) = &container.slots.get(0) {
-			let child = slot.child().borrow();
-			child.paint(painter);
-		}
-	}
-}
-
-#[derive(Debug)]
-pub struct PanelSlot {
-	pub child: WidgetRef,
-
-	pub alignment: Alignment2,
-	pub margin: Margin,
-	pub padding: Padding,
-}
-
-impl PanelSlot {
-	pub fn alignment(&mut self, alignment: Alignment2) -> &mut Self {
-		self.alignment = alignment;
-		self
-	}
-
-	pub fn margin(&mut self, margin: impl Into<Margin>) -> &mut Self {
-		self.margin = margin.into();
-		self
-	}
-
-	pub fn padding(&mut self, padding: impl Into<Padding>) -> &mut Self {
-		self.padding = padding.into();
-		self
-	}
-}
-
-impl Slot for PanelSlot {
-	fn new(child: WidgetRef) -> Self {
-		Self {
-			child,
-
-			alignment: Alignment2::default(),
-			margin: Margin::default(),
-			padding: Padding::default(),
-		}
-	}
-
-	fn child(&self) -> &WidgetRef {
-		&self.child
-	}
-
-	fn child_mut(&mut self) -> &mut WidgetRef {
-		&mut self.child
-	}
-}
-
-#[derive(Debug)]
-pub struct BoxSlot {
-	pub child: WidgetRef,
-
-	pub alignment: Alignment2,
-	pub margin: Margin,
-	pub padding: Padding,
-	pub sizing: Sizing,
-}
-
-impl BoxSlot {
-	pub fn alignment(&mut self, alignment: Alignment2) -> &mut Self {
-		self.alignment = alignment;
-		self
-	}
-
-	pub fn margin(&mut self, margin: impl Into<Margin>) -> &mut Self {
-		self.margin = margin.into();
-		self
-	}
-
-	pub fn padding(&mut self, padding: impl Into<Padding>) -> &mut Self {
-		self.padding = padding.into();
-		self
-	}
-
-	pub fn sizing(&mut self, sizing: Sizing) -> &mut Self {
-		self.sizing = sizing;
-		self
-	}
-}
-
-impl Slot for BoxSlot {
-	fn new(child: WidgetRef) -> Self {
-		Self {
-			child,
-
-			alignment: Alignment2::default(),
-			margin: Margin::default(),
-			padding: Padding::default(),
-			sizing: Sizing::default(),
-		}
-	}
-
-	fn child(&self) -> &WidgetRef {
-		&self.child
-	}
-
-	fn child_mut(&mut self) -> &mut WidgetRef {
-		&mut self.child
-	}
-}
-
-#[derive(Debug)]
-pub struct VerticalBox;
-impl Widget for VerticalBox {
-	type Slot = BoxSlot;
-	const DEFAULT_VISIBILITY: Visibility = Visibility::HitTestInvisible;
-
-	fn layout_children(container: &WidgetContainer<Self>) {
-		let layout = container.layout.unwrap();
-		let mut y = 0.0;
-		for slot in container.slots.iter() {
-			let mut child = slot.child().borrow_mut();
-			let desired = child.desired_size();
-
-			let x0 = slot.margin.left;
-			let x1 = layout.local_bounds.size().x - slot.margin.right;
-			y += slot.margin.bottom;
-			let y0 = y;
-			y += desired.y;
-			let y1 = y;
-			y += slot.margin.top;
-			let available = Rect::from((x0, y0, x1, y1));
-			let local_bounds = rect_in_rect(available, desired, slot.alignment);
-
-			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
-			child.layout_children();
-		}
-	}
-
-	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
-		let mut size = Vec2::ZERO;
-
-		for slot in container.slots.iter() {
-			let child = slot.child.borrow();
-			let desired = child.desired_size() + slot.margin.size() + slot.padding.size();
-			size.y += desired.y;
-			if size.x < desired.x {
-				size.x = desired.x;
-			}
-		}
-
-		size
-	}
-
-	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
-		for slot in container.slots.iter() {
-			let child = slot.child().borrow();
-			child.paint(painter);
-		}
-	}
-}
-
-#[derive(Debug)]
-pub struct HorizontalBox;
-impl Widget for HorizontalBox {
-	type Slot = BoxSlot;
-	const DEFAULT_VISIBILITY: Visibility = Visibility::HitTestInvisible;
-
-	fn layout_children(container: &WidgetContainer<Self>) {
-		let layout = container.layout.unwrap();
-		let mut x = 0.0;
-		for slot in container.slots.iter() {
-			let mut child = slot.child().borrow_mut();
-			let desired = child.desired_size();
-
-			x += slot.margin.left;
-			let x0 = x;
-			x += desired.x;
-			let x1 = x;
-			x += slot.margin.right;
-			let y0 = slot.margin.bottom;
-			let y1 = layout.local_bounds.size().y - slot.margin.top;
-			let available = Rect::from((x0, y0, x1, y1));
-			let local_bounds = rect_in_rect(available, desired, slot.alignment);
-
-			*child.layout_mut() = Some(Layout::new(layout, local_bounds));
-
-			child.layout_children();
-		}
-	}
-
-	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
-		let mut size = Vec2::ZERO;
-
-		for slot in container.slots.iter() {
-			let child = slot.child.borrow();
-			let desired = child.desired_size() + slot.margin.size() + slot.padding.size();
-			size.x += desired.x;
-			if size.y < desired.y {
-				size.y = desired.y;
-			}
-		}
-
-		size
-	}
-
-	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
-		for slot in container.slots.iter() {
-			let child = slot.child().borrow();
-			child.paint(painter);
-		}
 	}
 }
 
@@ -1236,5 +786,479 @@ pub enum Sizing {
 impl Default for Sizing {
 	fn default() -> Self {
 		Self::Automatic
+	}
+}
+
+#[derive(Default, Debug)]
+pub struct Text {
+	pub text: String, // TODO: This should be some localized string structure probably
+	pub font: Handle<FontCollection>,
+	pub size: u32,
+	pub color: Color,
+	pub alignment: Alignment2,
+}
+
+impl Text {
+	pub fn new(text: impl ToString) -> Self {
+		Self {
+			text: text.to_string(),
+			font: Handle::default(),
+			size: 16,
+			color: Color::WHITE,
+			alignment: Default::default(),
+		}
+	}
+
+	pub fn color(mut self, color: impl Into<Color>) -> Self {
+		self.color = color.into();
+		self
+	}
+
+	pub fn alignment(mut self, alignment: Alignment2) -> Self {
+		self.alignment = alignment;
+		self
+	}
+}
+
+impl Widget for Text {
+	type Slot = InvalidSlot;
+	const DEFAULT_VISIBILITY: Visibility = Visibility::HitTestInvisible;
+
+	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
+		let font = container.widget.font.read();
+		let font = font
+			.font_at_size(container.widget.size, 2.0)
+			.expect("Invalid font size");
+		font.string_rect(&container.widget.text, 1000000.0).size()
+	}
+
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
+		let absolute = container.layout.unwrap().absolute_bounds();
+
+		let font = container.widget.font.read();
+		let font = font
+			.font_at_size(container.widget.size, 2.0)
+			.expect("Invalid font size");
+
+		painter.text(
+			&container.widget.text,
+			container.widget.color,
+			absolute.top_left(),
+			&font,
+		);
+	}
+}
+
+#[derive(Default, Debug)]
+pub struct Button {
+	normal: Color,
+	hovered: Color,
+	focused: Color,
+
+	on_pressed: EventHandler<Self>,
+}
+
+impl Button {
+	pub fn new() -> Self {
+		Self {
+			normal: Color::WHITE,
+			hovered: Color::GREEN,
+			focused: Color::BLACK,
+
+			on_pressed: EventHandler::None,
+		}
+	}
+
+	pub fn on_pressed(mut self, on_pressed: impl FnMut(&WidgetContainer<Self>) + 'static) -> Self {
+		self.on_pressed = EventHandler::Closure(Box::new(on_pressed));
+		self
+	}
+}
+
+pub type ButtonSlot = PanelSlot;
+
+impl Widget for Button {
+	type Slot = ButtonSlot;
+	const MAX_SLOTS: Option<usize> = Some(1);
+	const DEFAULT_VISIBILITY: Visibility = Visibility::Visible;
+
+	fn update_layout(container: &WidgetContainer<Self>) {
+		let layout = container.layout.unwrap();
+		if let Some(slot) = &container.slots.get(0) {
+			let mut child = slot.child().borrow_mut();
+			let desired = child.desired_size();
+
+			let local_bounds = rect_in_rect(
+				Rect::from_min_max(Vec2::ZERO, layout.local_bounds.size()),
+				desired,
+				slot.alignment,
+			);
+
+			child.update_layout(Layout::new(layout, local_bounds));
+		}
+	}
+
+	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
+		if let Some(slot) = &container.slots.get(0) {
+			let child = slot.child.borrow();
+			child.desired_size() + slot.padding.size() + slot.margin.size()
+		} else {
+			Vec2::ZERO
+		}
+	}
+
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
+		let color = if container.focused {
+			container.widget.focused
+		} else if container.hovered {
+			container.widget.hovered
+		} else {
+			container.widget.normal
+		};
+		painter.fill_rect(container.layout.unwrap().absolute_bounds(), color);
+
+		if let Some(slot) = &container.slots.get(0) {
+			let child = slot.child().borrow();
+			child.paint(painter);
+		}
+	}
+
+	fn handle_event(container: &mut WidgetContainer<Self>, event: Event) -> Reply {
+		match event {
+			Event::Button { input, pressed } => {
+				if input == MOUSE_BUTTON_LEFT {
+					if pressed {
+						Reply::Focus
+					} else {
+						let mut handler =
+							std::mem::replace(&mut container.widget.on_pressed, EventHandler::None);
+						#[allow(clippy::single_match)]
+						match &mut handler {
+							EventHandler::Closure(x) => (x)(container),
+							_ => {}
+						}
+						let _ = std::mem::replace(&mut container.widget.on_pressed, handler);
+						Reply::Unfocus
+					}
+				} else {
+					Reply::Unfocus
+				}
+			}
+			_ => Reply::None,
+		}
+	}
+}
+
+#[derive(Default, Debug)]
+pub struct Panel {
+	color: Color,
+}
+
+impl Panel {
+	pub fn new() -> Self {
+		Self::default()
+	}
+
+	pub fn color(mut self, color: impl Into<Color>) -> Self {
+		self.color = color.into();
+		self
+	}
+}
+
+impl Widget for Panel {
+	type Slot = PanelSlot;
+	const MAX_SLOTS: Option<usize> = Some(1);
+	const DEFAULT_VISIBILITY: Visibility = Visibility::Visible;
+
+	fn update_layout(container: &WidgetContainer<Self>) {
+		let layout = container.layout.unwrap();
+		if let Some(slot) = &container.slots.get(0) {
+			let mut child = slot.child().borrow_mut();
+			let desired = child.desired_size();
+
+			let local_bounds = rect_in_rect(
+				Rect::from_min_max(Vec2::ZERO, layout.local_bounds.size()),
+				desired,
+				slot.alignment,
+			);
+
+			child.update_layout(Layout::new(layout, local_bounds));
+		}
+	}
+
+	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
+		if let Some(slot) = &container.slots.get(0) {
+			let child = slot.child.borrow();
+			child.desired_size() + slot.padding.size() + slot.margin.size()
+		} else {
+			Vec2::ZERO
+		}
+	}
+
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
+		painter.fill_rect(
+			container.layout.unwrap().absolute_bounds(),
+			container.widget.color,
+		);
+
+		if let Some(slot) = &container.slots.get(0) {
+			let child = slot.child().borrow();
+			child.paint(painter);
+		}
+	}
+}
+
+#[derive(Debug)]
+pub struct PanelSlot {
+	pub child: WidgetHandle,
+
+	pub alignment: Alignment2,
+	pub margin: Margin,
+	pub padding: Padding,
+}
+
+impl PanelSlot {
+	pub fn alignment(&mut self, alignment: Alignment2) -> &mut Self {
+		self.alignment = alignment;
+		self
+	}
+
+	pub fn margin(&mut self, margin: impl Into<Margin>) -> &mut Self {
+		self.margin = margin.into();
+		self
+	}
+
+	pub fn padding(&mut self, padding: impl Into<Padding>) -> &mut Self {
+		self.padding = padding.into();
+		self
+	}
+}
+
+impl Slot for PanelSlot {
+	fn new(child: WidgetHandle) -> Self {
+		Self {
+			child,
+
+			alignment: Alignment2::default(),
+			margin: Margin::default(),
+			padding: Padding::default(),
+		}
+	}
+
+	fn child(&self) -> &WidgetHandle {
+		&self.child
+	}
+
+	fn child_mut(&mut self) -> &mut WidgetHandle {
+		&mut self.child
+	}
+}
+
+#[derive(Debug)]
+pub struct BoxSlot {
+	pub child: WidgetHandle,
+
+	pub alignment: Alignment2,
+	pub margin: Margin,
+	pub padding: Padding,
+	pub sizing: Sizing,
+}
+
+impl BoxSlot {
+	pub fn alignment(&mut self, alignment: Alignment2) -> &mut Self {
+		self.alignment = alignment;
+		self
+	}
+
+	pub fn margin(&mut self, margin: impl Into<Margin>) -> &mut Self {
+		self.margin = margin.into();
+		self
+	}
+
+	pub fn padding(&mut self, padding: impl Into<Padding>) -> &mut Self {
+		self.padding = padding.into();
+		self
+	}
+
+	pub fn sizing(&mut self, sizing: Sizing) -> &mut Self {
+		self.sizing = sizing;
+		self
+	}
+}
+
+impl Slot for BoxSlot {
+	fn new(child: WidgetHandle) -> Self {
+		Self {
+			child,
+
+			alignment: Alignment2::default(),
+			margin: Margin::default(),
+			padding: Padding::default(),
+			sizing: Sizing::default(),
+		}
+	}
+
+	fn child(&self) -> &WidgetHandle {
+		&self.child
+	}
+
+	fn child_mut(&mut self) -> &mut WidgetHandle {
+		&mut self.child
+	}
+}
+
+#[derive(Debug)]
+pub struct VerticalBox;
+impl Widget for VerticalBox {
+	type Slot = BoxSlot;
+	const DEFAULT_VISIBILITY: Visibility = Visibility::HitTestInvisible;
+
+	fn update_layout(container: &WidgetContainer<Self>) {
+		let layout = container.layout.unwrap();
+		let mut y = 0.0;
+		for slot in container.slots.iter() {
+			let mut child = slot.child().borrow_mut();
+			let desired = child.desired_size();
+
+			let x0 = slot.margin.left;
+			let x1 = layout.local_bounds.size().x - slot.margin.right;
+			y += slot.margin.bottom;
+			let y0 = y;
+			y += desired.y;
+			let y1 = y;
+			y += slot.margin.top;
+			let available = Rect::from((x0, y0, x1, y1));
+			let local_bounds = rect_in_rect(available, desired, slot.alignment);
+
+			child.update_layout(Layout::new(layout, local_bounds));
+		}
+	}
+
+	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
+		let mut size = Vec2::ZERO;
+
+		for slot in container.slots.iter() {
+			let child = slot.child.borrow();
+			let desired = child.desired_size() + slot.margin.size() + slot.padding.size();
+			size.y += desired.y;
+			if size.x < desired.x {
+				size.x = desired.x;
+			}
+		}
+
+		size
+	}
+
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
+		for slot in container.slots.iter() {
+			let child = slot.child().borrow();
+			child.paint(painter);
+		}
+	}
+}
+
+#[derive(Debug)]
+pub struct HorizontalBox;
+impl Widget for HorizontalBox {
+	type Slot = BoxSlot;
+	const DEFAULT_VISIBILITY: Visibility = Visibility::HitTestInvisible;
+
+	fn update_layout(container: &WidgetContainer<Self>) {
+		let layout = container.layout.unwrap();
+		let mut x = 0.0;
+		for slot in container.slots.iter() {
+			let mut child = slot.child().borrow_mut();
+			let desired = child.desired_size();
+
+			x += slot.margin.left;
+			let x0 = x;
+			x += desired.x;
+			let x1 = x;
+			x += slot.margin.right;
+			let y0 = slot.margin.bottom;
+			let y1 = layout.local_bounds.size().y - slot.margin.top;
+			let available = Rect::from((x0, y0, x1, y1));
+			let local_bounds = rect_in_rect(available, desired, slot.alignment);
+
+			child.update_layout(Layout::new(layout, local_bounds));
+		}
+	}
+
+	fn desired_size(container: &WidgetContainer<Self>) -> Vec2 {
+		let mut size = Vec2::ZERO;
+
+		for slot in container.slots.iter() {
+			let child = slot.child.borrow();
+			let desired = child.desired_size() + slot.margin.size() + slot.padding.size();
+			size.x += desired.x;
+			if size.y < desired.y {
+				size.y = desired.y;
+			}
+		}
+
+		size
+	}
+
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
+		for slot in container.slots.iter() {
+			let child = slot.child().borrow();
+			child.paint(painter);
+		}
+	}
+}
+
+#[derive(Debug)]
+// TODO: Anchors
+// TODO: Sizing
+pub struct CanvasSlot {
+	pub child: WidgetHandle,
+}
+
+impl Slot for CanvasSlot {
+	fn new(child: WidgetHandle) -> Self {
+		Self { child }
+	}
+
+	fn child(&self) -> &WidgetHandle {
+		&self.child
+	}
+
+	fn child_mut(&mut self) -> &mut WidgetHandle {
+		&mut self.child
+	}
+}
+
+#[derive(Debug)]
+pub struct Canvas;
+impl Widget for Canvas {
+	type Slot = CanvasSlot;
+	const DEFAULT_VISIBILITY: Visibility = Visibility::HitTestInvisible;
+
+	fn update_layout(container: &WidgetContainer<Self>) {
+		let layout = container.layout.unwrap();
+		for slot in container.slots.iter() {
+			let mut child = slot.child().borrow_mut();
+			let desired = child.desired_size();
+			let local_bounds = rect_in_rect(
+				Rect::from_min_max(Vec2::ZERO, layout.local_bounds.size()),
+				desired,
+				Alignment2::FILL_FILL,
+			);
+
+			println!("{:?}", local_bounds);
+
+			child.update_layout(Layout::new(layout, local_bounds));
+		}
+	}
+
+	fn desired_size(_container: &WidgetContainer<Self>) -> Vec2 {
+		Vec2::ZERO
+	}
+
+	fn paint(container: &WidgetContainer<Self>, painter: &mut Painter) {
+		for slot in container.slots.iter() {
+			let child = slot.child().borrow();
+			child.paint(painter);
+		}
 	}
 }

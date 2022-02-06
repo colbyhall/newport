@@ -9,8 +9,5 @@ name = "orchard"
 
 [dependencies]
 engine = { path = "../../runtime/engine" }
-game2d = { path = "../../runtime/game2d" }
-physics2d = { path = "../../runtime/physics2d" }
-
-serde = { path = "../../third_party/serde" }
+editor = { path = "../../runtime/editor" }
 

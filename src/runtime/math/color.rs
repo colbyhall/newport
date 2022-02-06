@@ -8,6 +8,7 @@ use serde::{
 	Serializer,
 };
 
+/// Linear Color
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct Color {
 	pub r: f32,

@@ -397,4 +397,8 @@ impl Painter {
 		index_buffer.copy_to(&self.indices)?;
 		Ok((vertex_buffer, index_buffer))
 	}
+
+	pub fn is_empty(&self) -> bool {
+		self.indices.is_empty()
+	}
 }

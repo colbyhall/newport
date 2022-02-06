@@ -1,0 +1,16 @@
+[package]
+name = "editor"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+path = "editor.rs"
+
+[dependencies]
+engine    = { path = "../engine" }
+resources = { path = "../resources" }
+math = { path = "../math" }
+gui = { path = "../gui" }
+config = { path = "../config" }
+
+serde = { path = "../../third_party/serde" }
