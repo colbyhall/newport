@@ -171,7 +171,13 @@ impl Engine {
 
 			// NOTE: All modules a module depends on will be available at initialization
 			builder.modules.drain(..).for_each(|it| {
+				let now = Instant::now();
 				engine.modules.insert(it.id, (it.spawn)());
+				let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
+				info!(
+					ENGINE_CATEGORY,
+					"{} initialization took {:.2}ms.", it.name, dur
+				);
 			});
 
 			let dur = Instant::now().duration_since(now).as_secs_f64() * 1000.0;
