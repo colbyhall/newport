@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016-2019, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2016-2021, NVIDIA CORPORATION.  All rights reserved.
 *
 * NVIDIA CORPORATION and its licensors retain all intellectual property
 * and proprietary rights in and to this software, related documentation
@@ -22,22 +22,66 @@
 #ifndef GFSDK_Aftermath_Defines_H
 #define GFSDK_Aftermath_Defines_H
 
+#if defined(_MSC_VER)
+#if defined(_M_X86)
+#define GFSDK_AFTERMATH_CALL __cdecl
+#else
+#define GFSDK_AFTERMATH_CALL
+#endif
+#elif defined(__clang__) || defined(__GNUC__)
+#if defined(__i386__)
+#define GFSDK_AFTERMATH_CALL __attribute__((cdecl))
+#else
+#define GFSDK_AFTERMATH_CALL
+#endif
+#else
+#error "Unsupported compiler"
+#endif
+
+#ifdef __cplusplus
+#include <cstdint>
+#else
+#include <stdint.h>
+#include <stdbool.h>
+#endif
+
 // Library stuff...
 #define GFSDK_Aftermath_PFN typedef GFSDK_Aftermath_Result
 
+#if defined(_MSC_VER)
 #ifdef EXPORTS
 #define GFSDK_Aftermath_DLLSPEC __declspec(dllexport)
 #else
 #define GFSDK_Aftermath_DLLSPEC
 #endif
+#elif defined(__clang__) || defined(__GNUC__)
+#define GFSDK_Aftermath_DLLSPEC __attribute__((visibility("default")))
+#endif
 
-#define GFSDK_Aftermath_API extern "C" GFSDK_Aftermath_DLLSPEC GFSDK_Aftermath_Result
+#ifdef __cplusplus
+#define GFSDK_Aftermath_API extern "C" GFSDK_Aftermath_DLLSPEC GFSDK_Aftermath_Result GFSDK_AFTERMATH_CALL
+#else
+#define GFSDK_Aftermath_API GFSDK_Aftermath_DLLSPEC GFSDK_Aftermath_Result GFSDK_AFTERMATH_CALL
+#endif
 
-#define AFTERMATH_DECLARE_HANDLE(name) struct name##__ { int ID; }; typedef struct name##__ *name
+#pragma pack(push, 8)
 
-enum GFSDK_Aftermath_Version { GFSDK_Aftermath_Version_API = 0x0000206 }; // Version 2.6
+// Helper macros for declare struct members and types with guaranteed properties
+#define GFSDK_AFTERMATH_DECLARE_HANDLE(name) struct name##__ { int32_t ID; }; typedef struct name##__ *name
+#ifdef __cplusplus
+#define GFSDK_AFTERMATH_DECLARE_ENUM(name) enum GFSDK_Aftermath_##name : uint32_t
+#else
+#define GFSDK_AFTERMATH_DECLARE_ENUM(name) typedef uint32_t GFSDK_Aftermath_##name; enum GFSDK_Aftermath_##name
+#endif
+#define GFSDK_AFTERMATH_DECLARE_POINTER_MEMBER(type, name) union { type name; uint64_t ptr_align_##name; }
+#define GFSDK_AFTERMATH_DECLARE_BOOLEAN_MEMBER(name) union { bool name; uint32_t bool_align_##name; }
 
-enum GFSDK_Aftermath_Result
+GFSDK_AFTERMATH_DECLARE_ENUM(Version)
+{
+    GFSDK_Aftermath_Version_API = 0x000020b  // Version 2.11
+};
+
+GFSDK_AFTERMATH_DECLARE_ENUM(Result)
 {
     GFSDK_Aftermath_Result_Success = 0x1,
 
@@ -120,18 +164,24 @@ enum GFSDK_Aftermath_Result
     GFSDK_Aftermath_Result_FAIL_D3dDllInterceptionNotSupported = GFSDK_Aftermath_Result_Fail | 21,
 
     // Aftermath is disabled on the system by the current user.
-    //  This is controlled by a Windows registry key:
+    //  On Windows, this is controlled by a Windows registry key:
     //    KeyPath   : HKEY_CURRENT_USER\Software\NVIDIA Corporation\Nsight Aftermath
     //    KeyValue  : ForceOff
     //    ValueType : REG_DWORD
     //    ValueData : Any value != 0 will force the functionality of the Aftermath
     //                SDK off on the system.
+    //
+    //  On Linux, this is controlled by an environment variable:
+    //    Name: NV_AFTERMATH_FORCE_OFF
+    //    Value: Any value != '0' will force the functionality of the Aftermath
+    //                SDK off.
+    //
     GFSDK_Aftermath_Result_FAIL_Disabled = GFSDK_Aftermath_Result_Fail | 22,
 };
 
 #define GFSDK_Aftermath_SUCCEED(value) (((value) & 0xFFF00000) != GFSDK_Aftermath_Result_Fail)
 
-enum GFSDK_Aftermath_Context_Status
+GFSDK_AFTERMATH_DECLARE_ENUM(Context_Status)
 {
     // GPU:
     // The GPU has not started processing this command list yet.
@@ -151,7 +201,7 @@ enum GFSDK_Aftermath_Context_Status
     GFSDK_Aftermath_Context_Status_Invalid,
 };
 
-enum GFSDK_Aftermath_Device_Status
+GFSDK_AFTERMATH_DECLARE_ENUM(Device_Status)
 {
     // The GPU is still active, and hasn't gone down.
     GFSDK_Aftermath_Device_Status_Active = 0,
@@ -180,5 +230,7 @@ enum GFSDK_Aftermath_Device_Status
     // An invalid rendering call has percolated through the driver
     GFSDK_Aftermath_Device_Status_DmaFault,
 };
+
+#pragma pack(pop)
 
 #endif // GFSDK_Aftermath_Defines_H

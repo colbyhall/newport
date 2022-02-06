@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2019-2021, NVIDIA CORPORATION.  All rights reserved.
 *
 * NVIDIA CORPORATION and its licensors retain all intellectual property
 * and proprietary rights in and to this software, related documentation
@@ -36,9 +36,14 @@
 *      Nsight Graphics GPU crash dump monitor for the calling process.
 *
 *
-*  2)  Call 'GFSDK_Aftermath_DXxx_Initialize', to initialize the library and to enable
-*      additional Aftermath features that will affect the data captured in the GPU crash
-*      dumps, such as Aftermath event markers; call stacks for draw calls, compute
+*  2)  On DX11/DX12, call 'GFSDK_Aftermath_DXxx_Initialize', to initialize the library and
+*      to enable additional Aftermath features that will affect the data captured in the
+*      GPU crash dumps, such as Aftermath event markers; automatic call stack markers for
+*      all draw calls, compute dispatches, ray dispatches, or copy operations; resource
+*      tracking; or shader debug information. See GFSDK_Aftermath.h for more details.
+*
+*      On Vulkan use the VK_NV_device_diagnostics_config extension to enable additional
+*      Aftermath features, such as automatic call stack markers for all draw calls, compute
 *      dispatches, ray dispatches, or copy operations; resource tracking; or shader debug
 *      information. See GFSDK_Aftermath.h for more details.
 *
@@ -48,12 +53,17 @@
 *
 *      Disabling GPU crash dumps will also re-establish any settings from an also active
 *      Nsight Graphics GPU crash dump monitor for the calling process.
-*      
+*
 *
 *  OPTIONAL:
 *
 *  o)  (Optional) Instrument the application with event markers as described in
-*      GFSD_Aftermath.h.
+*      GFSDK_Aftermath.h.
+*  o)  (Optional, D3D12) Register D3D12 resource pointers with Aftermath as described in
+*      GFSDK_Aftermath.h.
+*  o)  (Optional) To disable all GPU crash dump functionality at runtime:
+*          On Windows, set the registry key: 'HKEY_CURRENT_USER\Software\NVIDIA Corporation\Nsight Aftermath\ForceOff'.
+*          On Linux, set environment 'NV_AFTERMATH_FORCE_OFF'.
 *
 *
 *  PERFORMANCE TIPS:
@@ -74,8 +84,27 @@
 
 #include "GFSDK_Aftermath_Defines.h"
 
+#pragma pack(push, 8)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Flags to configure for which graphisc APIs to enable GPU crash dumps
+GFSDK_AFTERMATH_DECLARE_ENUM(GpuCrashDumpWatchedApiFlags)
+{
+    // Default setting
+    GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_None = 0x0,
+
+    // Enable GPU crash dump tracking for the DX API
+    GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_DX = 0x1,
+
+    // Enable GPU crash dump tracking for the Vulkan API
+    GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_Vulkan = 0x2,
+};
+
 // Flags to configure GPU crash dump-specific Aftermath features
-enum GFSDK_Aftermath_GpuCrashDumpFeatureFlags
+GFSDK_AFTERMATH_DECLARE_ENUM(GpuCrashDumpFeatureFlags)
 {
     // Default settings
     GFSDK_Aftermath_GpuCrashDumpFeatureFlags_Default = 0x0,
@@ -89,7 +118,7 @@ enum GFSDK_Aftermath_GpuCrashDumpFeatureFlags
 };
 
 // Key definitions for user-defined GPU crash dump description
-enum GFSDK_Aftermath_GpuCrashDumpDescriptionKey
+GFSDK_AFTERMATH_DECLARE_ENUM(GpuCrashDumpDescriptionKey)
 {
     // Predefined key for application name
     GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName = 0x00000001,
@@ -109,15 +138,15 @@ enum GFSDK_Aftermath_GpuCrashDumpDescriptionKey
 // All keys greater than the last predefined key in GFSDK_Aftermath_GpuCrashDumpDescriptionKey
 // and smaller than GFSDK_Aftermath_GpuCrashDumpDescriptionKey_UserDefined are
 // considered illegal and ignored.
-typedef void (*PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription)(int key, const char* value);
+typedef void (GFSDK_AFTERMATH_CALL *PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription)(uint32_t key, const char* value);
 
 // GPU crash dump callback definitions.
 // NOTE: Except for the pUserData pointer, all pointer values passed to the
 // callbacks are only valid for the duration of the call! An implementation
 // must make copies of the data, if it intends to store it beyond that.
-typedef void (*PFN_GFSDK_Aftermath_GpuCrashDumpCb)(const void* pGpuCrashDump, const size_t gpuCrashDumpSize, void* pUserData);
-typedef void (*PFN_GFSDK_Aftermath_ShaderDebugInfoCb)(const void* pShaderDebugInfo, const size_t shaderDebugInfoSize, void* pUserData);
-typedef void (*PFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb)(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addValue, void* pUserData);
+typedef void (GFSDK_AFTERMATH_CALL *PFN_GFSDK_Aftermath_GpuCrashDumpCb)(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize, void* pUserData);
+typedef void (GFSDK_AFTERMATH_CALL *PFN_GFSDK_Aftermath_ShaderDebugInfoCb)(const void* pShaderDebugInfo, const uint32_t shaderDebugInfoSize, void* pUserData);
+typedef void (GFSDK_AFTERMATH_CALL *PFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb)(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addValue, void* pUserData);
 
 /////////////////////////////////////////////////////////////////////////
 // GFSDK_Aftermath_EnableGpuCrashDumps
@@ -126,7 +155,11 @@ typedef void (*PFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb)(PFN_GFSDK_Aftermat
 // apiVersion;
 //      Must be set to GFSDK_Aftermath_Version_API. Used for checking against library
 //      version.
-//      
+//
+// watchedApis;
+//      Controls which graphics APIs to watch for crashes. A combination (with OR) of
+//      GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags.
+//
 // flags;
 //      Controls GPU crash dump specific behavior. A combination (with OR) of
 //      GFSDK_Aftermath_GpuCrashDumpFeatureFlags.
@@ -163,7 +196,8 @@ typedef void (*PFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb)(PFN_GFSDK_Aftermat
 /////////////////////////////////////////////////////////////////////////
 GFSDK_Aftermath_API GFSDK_Aftermath_EnableGpuCrashDumps(
     GFSDK_Aftermath_Version apiVersion,
-    int flags,
+    uint32_t watchedApis,
+    uint32_t flags,
     PFN_GFSDK_Aftermath_GpuCrashDumpCb gpuCrashDumpCb,
     PFN_GFSDK_Aftermath_ShaderDebugInfoCb shaderDebugInfoCb,
     PFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb descriptionCb,
@@ -182,38 +216,17 @@ GFSDK_Aftermath_API GFSDK_Aftermath_EnableGpuCrashDumps(
 GFSDK_Aftermath_API GFSDK_Aftermath_DisableGpuCrashDumps();
 
 /////////////////////////////////////////////////////////////////////////
-// GFSDK_Aftermath_SetShaderDebugInfoPaths
-// ---------------------------------
-//
-//      DEPRECATED - do not use!
-//
-// shaderDebugInfoSearchPaths;
-//      (NUL-terminated) List of file paths in which to search for shader
-//      (source) debug information, i.e. shader code precompiled with
-//      the /Zi compiler flag.
-//
-// recursiveSearch;
-//      If set, search includes all subdirectories in the provided search
-//      paths.
-//
-//// DESCRIPTION;
-//      Allows to set search paths for (source) debug info to be used when
-//      GFSDK_Aftermath_FeatureFlags_EnableShaderSourceTracking is enabled.
-//      This would be the directories where the unstripped shader binaries
-//      (compiled with the /Zi compiler flag) are stored.
-//
-/////////////////////////////////////////////////////////////////////////
-GFSDK_Aftermath_API GFSDK_Aftermath_SetShaderDebugInfoPaths(
-    const char** shaderDebugInfoSearchPaths,
-    bool recursiveSearch);
-
-/////////////////////////////////////////////////////////////////////////
 //
 // NOTE: Function table provided - if dynamic loading is preferred.
 //
 /////////////////////////////////////////////////////////////////////////
-GFSDK_Aftermath_PFN(*PFN_GFSDK_Aftermath_EnableGpuCrashDumps)(GFSDK_Aftermath_Version apiVersion, int flags, PFN_GFSDK_Aftermath_GpuCrashDumpCb gpuCrashDumpCb, PFN_GFSDK_Aftermath_ShaderDebugInfoCb shaderDebugInfoCb, PFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb descriptionCb, void* pUserData);
-GFSDK_Aftermath_PFN(*PFN_GFSDK_Aftermath_DisableGpuCrashDumps)();
-GFSDK_Aftermath_PFN(*PFN_GFSDK_Aftermath_SetShaderDebugInfoPaths)(const char** shaderDebugInfoSearchPaths, bool recursiveSearch);
+GFSDK_Aftermath_PFN(GFSDK_AFTERMATH_CALL *PFN_GFSDK_Aftermath_EnableGpuCrashDumps)(GFSDK_Aftermath_Version apiVersion, uint32_t watchedApis, uint32_t flags, PFN_GFSDK_Aftermath_GpuCrashDumpCb gpuCrashDumpCb, PFN_GFSDK_Aftermath_ShaderDebugInfoCb shaderDebugInfoCb, PFN_GFSDK_Aftermath_GpuCrashDumpDescriptionCb descriptionCb, void* pUserData);
+GFSDK_Aftermath_PFN(GFSDK_AFTERMATH_CALL *PFN_GFSDK_Aftermath_DisableGpuCrashDumps)();
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
+
+#pragma pack(pop)
 
 #endif // GFSDK_Aftermath_GpuCrashDump_H

@@ -462,10 +462,11 @@ impl<T: Widget> AnyWidgetContainer for WidgetContainer<T> {
 	fn paint(&self, painter: &mut Painter) {
 		T::paint(self, painter);
 
-		if let Some(layout) = &self.layout {
-			let absolute = layout.absolute_bounds();
-			painter.stroke_rect(absolute, 1.0, Color::RED);
-		}
+		// Draw the bounds for this widget
+		// if let Some(layout) = &self.layout {
+		// 	let absolute = layout.absolute_bounds();
+		// 	painter.stroke_rect(absolute, 1.0, Color::RED);
+		// }
 	}
 
 	fn handle_event(&mut self, event: Event) -> Reply {
@@ -803,7 +804,7 @@ impl Text {
 		Self {
 			text: text.to_string(),
 			font: Handle::default(),
-			size: 16,
+			size: 12,
 			color: Color::WHITE,
 			alignment: Default::default(),
 		}
@@ -1244,8 +1245,6 @@ impl Widget for Canvas {
 				desired,
 				Alignment2::FILL_FILL,
 			);
-
-			println!("{:?}", local_bounds);
 
 			child.update_layout(Layout::new(layout, local_bounds));
 		}

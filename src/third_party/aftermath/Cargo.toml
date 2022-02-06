@@ -8,3 +8,6 @@ path = "aftermath.rs"
 
 [dependencies]
 libloading = "0.7"
+
+[build-dependencies]
+bindgen = "0.59.1"

@@ -20,8 +20,13 @@ use {
 pub const CONFIG_FILE: &str = "editor.toml";
 
 #[derive(Serialize, Deserialize)]
+#[serde(default)]
 pub struct Style {
 	background: Color,
+	background_s: Color,
+	background_h: Color,
+
+	foreground: Color,
 }
 
 impl Config for Style {
@@ -32,6 +37,10 @@ impl Default for Style {
 	fn default() -> Self {
 		Self {
 			background: Color::from_srgb(0x282828FF),
+			background_s: Color::from_srgb(0x32303FFF),
+			background_h: Color::from_srgb(0x1D2021FF),
+
+			foreground: Color::from_srgb(0xEBDBB2FF),
 		}
 	}
 }
@@ -45,7 +54,17 @@ impl Module for Editor {
 		let mut canvas = gui.canvas().borrow_mut();
 		let canvas: &mut WidgetContainer<Canvas> = canvas.as_any_mut().downcast_mut().unwrap();
 		canvas.slot_with(Panel::new().color(style.background), |gui| {
-			gui.slot_with(VerticalBox, |gui| {});
+			gui.slot_with(VerticalBox, |gui| {
+				gui.slot_with(Panel::new().color(style.background_h), |gui| {
+					gui.slot_with(HorizontalBox, |gui| {
+						gui.slot(Text::new("Foo Bar").color(style.foreground))
+							.margin(5.0);
+					})
+					.alignment(Alignment2::CENTER_FILL);
+				})
+				.alignment(Alignment2::CENTER_FILL);
+			})
+			.alignment(Alignment2::FILL_FILL);
 		});
 
 		Self

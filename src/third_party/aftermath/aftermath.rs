@@ -15,7 +15,7 @@ static DMPS_PATH: &str = "target/gpu_dmps/";
 
 unsafe extern "C" fn gpu_crash_dump_callback(
 	dump: *const c_void,
-	dump_size: size_t,
+	dump_size: u32,
 	_user_data: *mut c_void,
 ) {
 	// dump to file
@@ -65,7 +65,8 @@ impl Aftermath {
 		let result = unsafe {
 			enable(
 				GFSDK_Aftermath_Version_GFSDK_Aftermath_Version_API,
-				0,
+				GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_Vulkan,
+				GFSDK_Aftermath_GpuCrashDumpFeatureFlags_GFSDK_Aftermath_GpuCrashDumpFeatureFlags_DeferDebugInfoCallbacks,
 				Some(gpu_crash_dump_callback),
 				None,
 				None,
