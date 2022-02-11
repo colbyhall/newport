@@ -57,8 +57,13 @@ impl Module for Editor {
 			gui.slot_with(VerticalBox, |gui| {
 				gui.slot_with(Panel::new().color(style.background_h), |gui| {
 					gui.slot_with(HorizontalBox, |gui| {
-						gui.slot(Text::new("Foo Bar").color(style.foreground))
-							.margin(5.0);
+						gui.slot_with(
+							Button::new().on_pressed(|_| println!("Hello World!")),
+							|gui| {
+								gui.slot(Text::new("Foo Bar").color(style.foreground))
+									.margin(5.0);
+							},
+						);
 					})
 					.alignment(Alignment2::CENTER_FILL);
 				})

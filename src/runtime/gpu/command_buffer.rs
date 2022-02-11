@@ -53,16 +53,17 @@ impl GraphicsRecorder {
 	pub fn render_pass(
 		mut self,
 		attachments: &[&Texture],
-		pass: impl FnOnce(RenderPassRecorder) -> RenderPassRecorder,
+		pass: impl FnOnce(&mut RenderPassRecorder) -> &mut RenderPassRecorder,
 	) -> Self {
 		let mut a = Vec::with_capacity(attachments.len());
 		attachments.iter().for_each(|e| a.push(e.0.clone()));
 
 		self.0.begin_render_pass(&a[..]).unwrap();
-		let mut recorder = pass(RenderPassRecorder(self)).0;
-		recorder.0.end_render_pass();
-
-		recorder
+		let mut recorder = RenderPassRecorder(self);
+		pass(&mut recorder);
+		let mut result = recorder.0;
+		result.0.end_render_pass();
+		result
 	}
 
 	pub fn finish(mut self) -> GraphicsCommandBuffer {
@@ -88,52 +89,57 @@ impl Default for GraphicsRecorder {
 pub struct RenderPassRecorder(GraphicsRecorder);
 
 impl RenderPassRecorder {
-	pub fn clear_color(mut self, color: impl Into<Color>) -> Self {
+	pub fn clear_color(&mut self, color: impl Into<Color>) -> &mut Self {
 		self.0 .0.clear_color(color.into());
 		self
 	}
 
-	pub fn clear_depth(mut self, depth: f32) -> Self {
+	pub fn clear_depth(&mut self, depth: f32) -> &mut Self {
 		self.0 .0.clear_depth(depth);
 		self
 	}
 
-	pub fn set_pipeline(mut self, pipeline: &GraphicsPipeline) -> Self {
+	pub fn set_pipeline(&mut self, pipeline: &GraphicsPipeline) -> &mut Self {
 		self.0 .0.bind_pipeline(pipeline.0.clone());
 		self
 	}
 
-	pub fn bind_scissor(mut self, scissor: Option<Rect>) -> Self {
+	pub fn bind_scissor(&mut self, scissor: Option<Rect>) -> &mut Self {
 		self.0 .0.bind_scissor(scissor);
 		self
 	}
 
-	pub fn set_vertex_buffer<T: Sized>(mut self, buffer: &Buffer<T>) -> Self {
+	pub fn set_vertex_buffer<T: Sized>(&mut self, buffer: &Buffer<T>) -> &mut Self {
 		self.0 .0.bind_vertex_buffer(buffer.api.clone());
 		self
 	}
 
-	pub fn set_index_buffer<T: Sized>(mut self, buffer: &Buffer<T>) -> Self {
+	pub fn set_index_buffer<T: Sized>(&mut self, buffer: &Buffer<T>) -> &mut Self {
 		self.0 .0.bind_index_buffer(buffer.api.clone());
 		self
 	}
 
-	pub fn draw(mut self, vertex_count: usize, first_vertex: usize) -> Self {
+	pub fn draw(&mut self, vertex_count: usize, first_vertex: usize) -> &mut Self {
 		self.0 .0.draw(vertex_count, first_vertex);
 		self
 	}
 
-	pub fn draw_indexed(mut self, index_count: usize, first_index: usize) -> Self {
+	pub fn draw_indexed(&mut self, index_count: usize, first_index: usize) -> &mut Self {
 		self.0 .0.draw_indexed(index_count, first_index);
 		self
 	}
 
-	pub fn set_constants<T: Sized>(mut self, name: &str, buffer: &Buffer<T>, index: usize) -> Self {
+	pub fn set_constants<T: Sized>(
+		&mut self,
+		name: &str,
+		buffer: &Buffer<T>,
+		index: usize,
+	) -> &mut Self {
 		self.0 .0.bind_constants(name, buffer.api.clone(), index);
 		self
 	}
 
-	pub fn bind_texture(mut self, name: &str, texture: &Texture) -> Self {
+	pub fn bind_texture(&mut self, name: &str, texture: &Texture) -> &mut Self {
 		self.0 .0.bind_texture(name, texture.0.clone());
 		self
 	}

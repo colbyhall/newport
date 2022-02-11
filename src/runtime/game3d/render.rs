@@ -747,28 +747,31 @@ impl Renderer {
 			.texture_barrier(&diffuse_buffer, Layout::Undefined, Layout::ColorAttachment)
 			.texture_barrier(&depth_buffer, Layout::Undefined, Layout::DepthAttachment)
 			.render_pass(&[&diffuse_buffer, &depth_buffer], |ctx| {
-				let mut ctx = ctx.clear_color(Color::BLACK).clear_depth(1.0);
+				ctx.clear_color(Color::BLACK).clear_depth(1.0);
 
+				// Draw all the meshes in the world with their given pipeline
+				// TODO: Actual material based renderer
 				for (index, filter) in scene.meshes.iter().enumerate() {
 					let pipeline = filter.pipeline.read();
 					let mesh = filter.mesh.read();
-					ctx = ctx
-						.set_pipeline(&pipeline)
+					ctx.set_pipeline(&pipeline)
 						.set_vertex_buffer(&mesh.vertex_buffer)
 						.set_index_buffer(&mesh.index_buffer)
 						.set_constants("imports", &world_transforms_buffer, index)
 						.set_constants("camera", &view_buffer, 0)
-						.draw_indexed(mesh.indices.len(), 0)
+						.draw_indexed(mesh.indices.len(), 0);
 				}
 
+				// Draw all debug geometry
+				// TODO: Should this be disabled on cooked build?
 				if let Some(buffer) = debug_vertex_buffer {
 					ctx.set_pipeline(&debug_pipeline)
 						.set_vertex_buffer(&buffer)
 						.set_constants("camera", &view_buffer, 0)
-						.draw(buffer.len(), 0)
-				} else {
-					ctx
+						.draw(buffer.len(), 0);
 				}
+
+				ctx
 			})
 			.texture_barrier(
 				&diffuse_buffer,
