@@ -13,7 +13,7 @@ pub trait Module: Sized + 'static {
 	/// # Arguments
 	///
 	/// * `builder` - A [`Builder`] used to add dep modules or functions
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
 	}
 }

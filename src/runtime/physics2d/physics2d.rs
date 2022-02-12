@@ -22,7 +22,7 @@ impl Module for Physics {
 		Physics
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
 			.register(PhysicsState::variant())
 			.register(Collider::variant())

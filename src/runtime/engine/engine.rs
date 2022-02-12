@@ -77,7 +77,7 @@ pub struct Engine {
 
 impl Engine {
 	pub(crate) fn spawn(
-		mut builder: Builder,
+		builder: &mut Builder,
 		window: Option<Window>,
 		test: bool,
 	) -> Result<(), std::io::Error> {
@@ -187,7 +187,7 @@ impl Engine {
 		}
 	}
 
-	pub(crate) fn run(mut builder: Builder) -> Result<(), std::io::Error> {
+	pub(crate) fn run(builder: &mut Builder) -> Result<(), std::io::Error> {
 		let display = builder.display.take();
 		let process_input = std::mem::take(&mut builder.process_input);
 		let tick = std::mem::take(&mut builder.tick);

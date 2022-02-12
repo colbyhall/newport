@@ -129,7 +129,7 @@ impl Module for Gpu {
 		Self { device }
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
 			.module::<ResourceManager>()
 			.register(GraphicsPipeline::variant())

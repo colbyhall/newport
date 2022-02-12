@@ -12,7 +12,7 @@ impl Module for FirstPerson {
 		Self
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder.module::<Game>().module::<Physics>()
 	}
 }

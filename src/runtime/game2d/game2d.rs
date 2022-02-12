@@ -62,7 +62,7 @@ pub struct GameConfig {
 
 impl Config for GameConfig {
 	const FILE: &'static str = GAME_CONFIG_FILE;
-	const NAME_OVERRIDE: Option<&'static str> = Some("Game");
+	const NAME: &'static str = "Game";
 }
 
 pub struct Game {
@@ -83,7 +83,7 @@ impl Module for Game {
 		}
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
 			.module::<Ecs>()
 			.module::<Draw2d>()

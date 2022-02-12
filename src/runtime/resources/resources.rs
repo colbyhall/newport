@@ -726,7 +726,7 @@ impl Module for ResourceManager {
 		}
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		let base = Path::new(file!())
 			.parent()
 			.unwrap()

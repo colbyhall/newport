@@ -1,3 +1,5 @@
+#![feature(const_type_name)]
+
 use {
 	engine::{
 		Engine,
@@ -85,14 +87,13 @@ impl Module for ConfigManager {
 						let deserialize = variant.deserialize;
 
 						let entry = entries.get_mut(&variant.id).unwrap();
-						*entry = (deserialize)(value.clone()); // @TODO: This could be super slow. Should do a replace or something
+						*entry = (deserialize)(value.clone()); // FIXME: This could be super slow. Should do a replace or something
 					} else {
 						// TODO: This really should be logging
 					}
 				}
 			} else {
-				// Create an empty file if none existed
-				// @TODO: make default file spawn with example text
+				// Create a file with the default config text
 				fs::write(&path, DEFAULT_CONFIG_FILE).unwrap();
 			}
 		}
@@ -121,15 +122,12 @@ pub const ENGINE_CONFIG_FILE: &str = "engine.toml";
 pub const INPUT_CONFIG_FILE: &str = "input.toml";
 
 pub trait Config: Serialize + DeserializeOwned + 'static + Default {
-	const NAME_OVERRIDE: Option<&'static str> = None;
+	const NAME: &'static str = std::any::type_name::<Self>();
 	const FILE: &'static str;
 
 	fn variant() -> ConfigVariant {
 		let id = TypeId::of::<Self>();
-		let name = match Self::NAME_OVERRIDE {
-			Some(name) => name,
-			None => std::any::type_name::<Self>(),
-		};
+		let name = Self::NAME;
 		let name = {
 			let camel_case = name.rsplit_once("::").unwrap_or(("", name)).1;
 

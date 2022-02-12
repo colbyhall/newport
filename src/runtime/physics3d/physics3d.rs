@@ -29,7 +29,7 @@ impl Module for Physics {
 		Physics
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
 			.module::<game3d::Game>()
 			.register(PhysicsManager::variant())

@@ -36,7 +36,7 @@ impl Module for Draw2d {
 		Self
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
 			.module::<Gpu>()
 			.register(FontCollection::variant())

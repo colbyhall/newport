@@ -70,7 +70,7 @@ impl Module for Egui {
 		}
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
 			.module::<gpu::Gpu>()
 			.module::<resources::ResourceManager>()

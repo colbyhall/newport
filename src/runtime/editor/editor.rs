@@ -19,6 +19,17 @@ use {
 
 pub const CONFIG_FILE: &str = "editor.toml";
 
+#[derive(Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct EditorConfig {
+	pub style: Style,
+}
+
+impl Config for EditorConfig {
+	const NAME: &'static str = "Editor";
+	const FILE: &'static str = CONFIG_FILE;
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
 pub struct Style {
@@ -29,8 +40,10 @@ pub struct Style {
 	foreground: Color,
 }
 
-impl Config for Style {
-	const FILE: &'static str = CONFIG_FILE;
+impl Style {
+	pub fn text(&self, text: impl ToString) -> Text {
+		Text::new(text).color(self.foreground)
+	}
 }
 
 impl Default for Style {
@@ -48,22 +61,16 @@ impl Default for Style {
 pub struct Editor;
 impl Module for Editor {
 	fn new() -> Self {
-		let style = ConfigManager::read::<Style>();
+		let config = ConfigManager::read::<EditorConfig>();
 
 		let gui: &mut Gui = Engine::module_mut_checked().unwrap();
 		let mut canvas = gui.canvas().borrow_mut();
 		let canvas: &mut WidgetContainer<Canvas> = canvas.as_any_mut().downcast_mut().unwrap();
-		canvas.slot_with(Panel::new().color(style.background), |gui| {
+		canvas.slot_with(Panel::new().color(config.style.background), |gui| {
 			gui.slot_with(VerticalBox, |gui| {
-				gui.slot_with(Panel::new().color(style.background_h), |gui| {
+				gui.slot_with(Panel::new().color(config.style.background_h), |gui| {
 					gui.slot_with(HorizontalBox, |gui| {
-						gui.slot_with(
-							Button::new().on_pressed(|_| println!("Hello World!")),
-							|gui| {
-								gui.slot(Text::new("Foo Bar").color(style.foreground))
-									.margin(5.0);
-							},
-						);
+						gui.slot(config.style.text("Foo Bar")).margin(5.0);
 					})
 					.alignment(Alignment2::CENTER_FILL);
 				})
@@ -75,10 +82,10 @@ impl Module for Editor {
 		Self
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
 			.module::<Gui>()
 			.module::<ConfigManager>()
-			.register(Style::variant())
+			.register(EditorConfig::variant())
 	}
 }

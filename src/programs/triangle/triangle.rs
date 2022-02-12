@@ -96,7 +96,7 @@ impl Module for Triangle {
 		Self { pipeline, vertices }
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder.module::<Gpu>().display(|| {
 			let triangle: &Triangle = Engine::module().unwrap();
 			let device = Gpu::device();

@@ -30,7 +30,7 @@ impl Module for GameInput {
 		}
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
 			.register(InputManager::variant())
 			.process_input(|event| {

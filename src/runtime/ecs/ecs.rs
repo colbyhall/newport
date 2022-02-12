@@ -55,7 +55,7 @@ impl Module for Ecs {
 		Self
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
 			.module::<ResourceManager>()
 			.register(SceneImporter::variant(&["scene"]))

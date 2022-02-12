@@ -112,7 +112,7 @@ impl Module for Gui {
 		}
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
 			.module::<Draw2d>()
 			.module::<ResourceManager>()

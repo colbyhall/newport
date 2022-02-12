@@ -101,7 +101,7 @@ impl Module for CacheManager {
 		Self { caches }
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder.tick(|_| {
 			// TODO: Reload
 		})

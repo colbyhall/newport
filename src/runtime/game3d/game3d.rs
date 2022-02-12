@@ -23,6 +23,7 @@ use {
 		System,
 		World,
 	},
+	editor::Editor,
 	engine::{
 		Builder,
 		Engine,
@@ -65,11 +66,14 @@ impl Module for Game {
 		}
 	}
 
-	fn depends_on(builder: Builder) -> Builder {
-		builder
+	fn depends_on(builder: &mut Builder) -> &mut Builder {
+		let builder = builder
 			.module::<Draw2d>()
 			.module::<Ecs>()
-			.module::<GameInput>()
+			.module::<GameInput>();
+		#[cfg(feature = "editor")]
+		builder
+			.module::<Editor>()
 			.register(Transform::variant().on_added::<Transform>())
 			.register(Camera::variant())
 			.register(Mesh::variant())

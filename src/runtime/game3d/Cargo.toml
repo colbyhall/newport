@@ -16,8 +16,9 @@ draw2d = { path = "../draw2d" }
 resources = { path = "../resources" }
 input = { path = "../input" }
 
+editor = { path = "../editor", optional = true }
+
 gltf = "1.0"
 
 [features]
-default = []
-editor = []
+default = ["editor"]

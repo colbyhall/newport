@@ -54,7 +54,7 @@ impl Builder {
 	}
 
 	#[must_use]
-	pub fn module<T: Module>(mut self) -> Self {
+	pub fn module<T: Module>(&mut self) -> &mut Self {
 		// Don't add a module thats already on the list
 		let id = TypeId::of::<T>();
 		for it in self.modules.iter() {
@@ -68,7 +68,7 @@ impl Builder {
 		}
 
 		// Add dependencies to the entries list. There will be duplicates
-		self = T::depends_on(self);
+		T::depends_on(self);
 
 		// Get only the identifier and not modules
 		let name = std::any::type_name::<T>()
@@ -87,31 +87,31 @@ impl Builder {
 	}
 
 	#[must_use]
-	pub fn process_input(mut self, f: impl Fn(&Event) + 'static) -> Self {
+	pub fn process_input(&mut self, f: impl Fn(&Event) + 'static) -> &mut Self {
 		self.process_input.push(Box::new(f));
 		self
 	}
 
 	#[must_use]
-	pub fn tick(mut self, f: impl Fn(f32) + 'static) -> Self {
+	pub fn tick(&mut self, f: impl Fn(f32) + 'static) -> &mut Self {
 		self.tick.push(Box::new(f));
 		self
 	}
 
 	#[must_use]
-	pub fn display(mut self, f: impl Fn() + 'static) -> Self {
+	pub fn display(&mut self, f: impl Fn() + 'static) -> &mut Self {
 		self.display = Some(Box::new(f));
 		self
 	}
 
 	#[must_use]
-	pub fn name(mut self, name: impl Into<String>) -> Self {
+	pub fn name(&mut self, name: impl Into<String>) -> &mut Self {
 		self.name = Some(name.into());
 		self
 	}
 
 	#[must_use]
-	pub fn register<T: Register>(mut self, register: T) -> Self {
+	pub fn register<T: Register>(&mut self, register: T) -> &mut Self {
 		let type_id = TypeId::of::<T>();
 		let registers = self.registers.as_mut().unwrap();
 		let it = match registers.get_mut(&type_id) {
@@ -129,15 +129,15 @@ impl Builder {
 		self
 	}
 
-	pub fn run(self) -> Result<(), std::io::Error> {
+	pub fn run(&mut self) -> Result<(), std::io::Error> {
 		Engine::run(self)
 	}
 
-	pub fn spawn(self) -> Result<(), std::io::Error> {
+	pub fn spawn(&mut self) -> Result<(), std::io::Error> {
 		Engine::spawn(self, None, false)
 	}
 
-	pub fn test(self) -> Result<(), std::io::Error> {
+	pub fn test(&mut self) -> Result<(), std::io::Error> {
 		Engine::spawn(self, None, true)
 	}
 }
