@@ -49,6 +49,7 @@ use {
 		Deserialize,
 		Serialize,
 	},
+	std::sync::Mutex,
 };
 
 pub const GAME_CONFIG_FILE: &str = "game.toml";
@@ -66,22 +67,17 @@ impl Config for GameConfig {
 
 pub struct Game {
 	world: World,
+	schedule: Mutex<ScheduleBlock>,
 	pipeline: Handle<GraphicsPipeline>,
 }
 impl Module for Game {
 	fn new() -> Self {
 		let config: &GameConfig = ConfigManager::read();
-		let world = World::new(
-			config.default_scene.as_ref(),
-			ScheduleBlock::new()
-				.system(InputSystem)
-				.system(PlayerControlledMovement)
-				.system(CharacterMovementSystem)
-				.system(CameraTracking),
-		);
+		let world = World::new(config.default_scene.as_ref());
 
 		Self {
 			world,
+			schedule: Mutex::new(ScheduleBlock::new()),
 			pipeline: Handle::find_or_load("{03996604-84B2-437D-98CA-A816D7768DCB}")
 				.unwrap_or_default(),
 		}
@@ -103,7 +99,8 @@ impl Module for Game {
 			.register(Target::variant())
 			.tick(|dt| {
 				let game: &Game = Engine::module().unwrap();
-				game.world.step(dt);
+				let schedule = game.schedule.lock().unwrap();
+				schedule.execute(&game.world, dt);
 			})
 			.display(|| {
 				let game: &Game = Engine::module().unwrap();

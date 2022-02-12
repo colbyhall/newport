@@ -19,7 +19,6 @@ use {
 		EntityContainer,
 		EntityInfo,
 		ReadStorage,
-		ScheduleBlock,
 		WriteStorage,
 	},
 	engine::Engine,
@@ -30,7 +29,6 @@ use {
 };
 
 pub struct World {
-	schedule: ScheduleBlock,
 	pub variants: HashMap<ComponentVariantId, ComponentVariant>,
 	pub(crate) components: ComponentsContainer,
 	pub(crate) scenes: Mutex<SceneCollection>,
@@ -39,7 +37,7 @@ pub struct World {
 }
 
 impl World {
-	pub fn new(persistent: Option<&Handle<Scene>>, schedule: ScheduleBlock) -> Self {
+	pub fn new(persistent: Option<&Handle<Scene>>) -> Self {
 		let persistent_id = persistent.map(|f| f.uuid()).unwrap_or_default();
 		let singleton = Entity::new(persistent_id);
 
@@ -48,7 +46,6 @@ impl World {
 
 		let world = Self {
 			components: ComponentsContainer::new(),
-			schedule,
 			variants,
 			scenes: Mutex::new(SceneCollection::with_capacity(32)),
 			singleton,
@@ -176,15 +173,11 @@ impl World {
 			false
 		}
 	}
-
-	pub fn step(&'static self, dt: f32) {
-		self.schedule.execute(self, dt);
-	}
 }
 
 impl Default for World {
 	fn default() -> Self {
-		Self::new(None, ScheduleBlock::default())
+		Self::new(None)
 	}
 }
 

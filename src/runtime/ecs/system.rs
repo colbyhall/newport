@@ -49,7 +49,7 @@ impl ScheduleBlock {
 	}
 
 	// TODO: Do a fiber job system
-	pub(crate) fn execute(&'static self, world: &'static World, dt: f32) {
+	pub fn execute(&self, world: &World, dt: f32) {
 		for entry in self.entries.iter() {
 			match entry {
 				Entry::System(single) => single.run(world, dt),

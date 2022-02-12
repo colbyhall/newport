@@ -1,10 +1,10 @@
 mod render;
-use ecs::OnAdded;
 pub(crate) use render::*;
 
 pub use render::{
 	Camera,
 	DebugManager,
+	DebugSystem,
 	Mesh,
 	MeshFilter,
 };
@@ -16,7 +16,7 @@ use {
 		Component,
 		Ecs,
 		Entity,
-		Named,
+		OnAdded,
 		Query,
 		ScheduleBlock,
 		System,
@@ -26,6 +26,11 @@ use {
 		Builder,
 		Engine,
 		Module,
+	},
+	gpu::{
+		Gpu,
+		GraphicsPipeline,
+		GraphicsRecorder,
 	},
 	input::*,
 	math::*,
@@ -37,111 +42,25 @@ use {
 		Deserialize,
 		Serialize,
 	},
-	std::cell::UnsafeCell,
+	std::sync::Mutex,
 };
 
 pub struct Game {
-	world: World,
+	pub world: World,
+	pub schedule: Mutex<ScheduleBlock>,
 	renderer: Renderer,
 
-	viewport: UnsafeCell<Vec2>,
+	present_pipeline: Handle<GraphicsPipeline>,
 }
 impl Module for Game {
 	fn new() -> Self {
-		let world = World::new(
-			None,
-			ScheduleBlock::new()
-				.system(InputSystem)
-				.system(DebugSystem)
-				.system(EditorCameraSystem),
-		);
-		{
-			let mut transforms = world.write::<Transform>();
-			let mut filters = world.write::<MeshFilter>();
-			let mut cameras = world.write::<Camera>();
-			let mut names = world.write::<Named>();
-			let mut camera_controllers = world.write::<EditorCameraController>();
-
-			let pipeline =
-				Handle::find_or_load("{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}").unwrap_or_default();
-			world
-				.spawn(world.persistent)
-				.with(Transform::default(), &mut transforms)
-				.with(Camera::default(), &mut cameras)
-				.with(Named::new("Camera"), &mut names)
-				.with(EditorCameraController::default(), &mut camera_controllers)
-				.finish();
-
-			world
-				.spawn(world.persistent)
-				.with(
-					Transform::builder()
-						.location(Vec3::new(5.0, 5.0, 5.0))
-						// .scale(Vec3::splat(0.2))
-						.finish(),
-					&mut transforms,
-				)
-				.with(
-					MeshFilter {
-						mesh: Handle::find_or_load("{03383b92-566f-4036-aeb4-850b61685ea6}")
-							.unwrap_or_default(),
-						pipeline: pipeline.clone(),
-					},
-					&mut filters,
-				)
-				.with(Named::new("Block"), &mut names)
-				.finish();
-
-			let parent = world
-				.spawn(world.persistent)
-				.with(
-					Transform::builder()
-						.location([5.0, 0.0, 0.0])
-						.rotation(Quat::from_euler([45.0, 45.0, 0.0]))
-						.scale(Vec3::splat(0.2))
-						.finish(),
-					&mut transforms,
-				)
-				.with(
-					MeshFilter {
-						mesh: Handle::find_or_load("{03383b92-566f-4036-aeb4-850b61685ea6}")
-							.unwrap_or_default(),
-						pipeline: pipeline.clone(),
-					},
-					&mut filters,
-				)
-				.finish();
-
-			world
-				.spawn(world.persistent)
-				.with(
-					Transform::builder()
-						.location([5.0, 0.0, 0.0])
-						.rotation(Quat::from_euler([45.0, 45.0, 0.0]))
-						.parent(parent)
-						.finish(),
-					&mut transforms,
-				)
-				.with(
-					MeshFilter {
-						mesh: Handle::find_or_load("{03383b92-566f-4036-aeb4-850b61685ea6}")
-							.unwrap_or_default(),
-						pipeline,
-					},
-					&mut filters,
-				)
-				.finish();
-		}
-
-		let window = Engine::window().unwrap();
-		let viewport = window.inner_size();
-		let viewport = Vec2::new(viewport.width as f32, viewport.height as f32);
-
 		Self {
-			world,
+			world: World::new(None),
+			schedule: Mutex::new(ScheduleBlock::new()),
 			renderer: Renderer::new(),
 
-			viewport: UnsafeCell::new(viewport),
+			present_pipeline: Handle::find_or_load("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}")
+				.unwrap(),
 		}
 	}
 
@@ -161,24 +80,59 @@ impl Module for Game {
 				let Game {
 					world,
 					renderer,
-					viewport,
+					schedule,
 					..
 				} = unsafe { Engine::module_mut().unwrap() };
 
-				let viewport = {
-					let viewport = viewport.get();
-					unsafe { *viewport }
-				};
+				let window = Engine::window().unwrap();
+				let viewport = window.inner_size();
+				let viewport = Vec2::new(viewport.width as f32, viewport.height as f32);
 
 				{
 					{
-						world.step(delta_time);
+						let schedule = schedule.lock().unwrap();
+						schedule.execute(world, delta_time);
 						let scene = DrawList::build(world, viewport);
 						renderer.push_scene(scene);
 					}
 					renderer.render_scene();
 				};
 				renderer.advance_frame();
+			})
+			.display(|| {
+				let game: &Game = Engine::module().unwrap();
+
+				let device = Gpu::device();
+				let backbuffer = device
+					.acquire_backbuffer()
+					.expect("Swapchain failed to find a back buffer");
+
+				let pipeline = game.present_pipeline.read();
+				let receipt = match game.renderer.to_display() {
+					Some(scene) => GraphicsRecorder::new()
+						.render_pass(&[&backbuffer], |ctx| {
+							ctx.clear_color(Color::BLACK)
+								.set_pipeline(&pipeline)
+								.set_texture("texture", &scene.diffuse_buffer)
+								.draw(3, 0)
+						})
+						.texture_barrier(
+							&backbuffer,
+							gpu::Layout::ColorAttachment,
+							gpu::Layout::Present,
+						)
+						.submit(),
+					None => GraphicsRecorder::new()
+						.render_pass(&[&backbuffer], |ctx| ctx.clear_color(Color::BLACK))
+						.texture_barrier(
+							&backbuffer,
+							gpu::Layout::ColorAttachment,
+							gpu::Layout::Present,
+						)
+						.submit(),
+				};
+
+				device.display(&[receipt]);
 			})
 	}
 }
@@ -208,6 +162,10 @@ impl Transform {
 	pub fn local_mat4(&self) -> Mat4 {
 		// TODO: Do this without mat4 multiplication
 		Mat4::translate(self.location) * Mat4::rotate(self.rotation) * Mat4::scale(self.scale)
+	}
+
+	pub fn location(&self) -> Vec3 {
+		self.location
 	}
 }
 

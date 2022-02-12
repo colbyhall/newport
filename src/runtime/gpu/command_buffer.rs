@@ -104,7 +104,7 @@ impl RenderPassRecorder {
 		self
 	}
 
-	pub fn bind_scissor(&mut self, scissor: Option<Rect>) -> &mut Self {
+	pub fn set_scissor(&mut self, scissor: Option<Rect>) -> &mut Self {
 		self.0 .0.bind_scissor(scissor);
 		self
 	}
@@ -139,7 +139,7 @@ impl RenderPassRecorder {
 		self
 	}
 
-	pub fn bind_texture(&mut self, name: &str, texture: &Texture) -> &mut Self {
+	pub fn set_texture(&mut self, name: &str, texture: &Texture) -> &mut Self {
 		self.0 .0.bind_texture(name, texture.0.clone());
 		self
 	}
