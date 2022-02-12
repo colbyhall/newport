@@ -76,6 +76,7 @@ impl Module for Game {
 			.register(MeshFilter::variant())
 			.register(EditorCameraController::variant())
 			.register(DebugManager::variant())
+			.register(Dobbler::variant())
 			.tick(|delta_time| {
 				let Game {
 					world,
@@ -160,12 +161,34 @@ impl Transform {
 	}
 
 	pub fn local_mat4(&self) -> Mat4 {
-		// TODO: Do this without mat4 multiplication
-		Mat4::translate(self.location) * Mat4::rotate(self.rotation) * Mat4::scale(self.scale)
+		let mut result = Mat4::IDENTITY;
+		result.x_column = (self.rotation.rotate(Vec3::FORWARD) * self.scale.x, 0.0).into();
+		result.y_column = (self.rotation.rotate(Vec3::RIGHT) * self.scale.y, 0.0).into();
+		result.z_column = (self.rotation.rotate(Vec3::UP) * self.scale.z, 0.0).into();
+		result.w_column = (self.location, 1.0).into();
+
+		// println!("{:#?}", result);
+
+		result
 	}
 
 	pub fn location(&self) -> Vec3 {
 		self.location
+	}
+
+	// TODO: Figure out best api for local and world location. Also marking as changed
+	pub fn set_location(&mut self, location: impl Into<Vec3>) -> &mut Self {
+		self.location = location.into();
+		self
+	}
+
+	pub fn rotation(&self) -> Quat {
+		self.rotation
+	}
+
+	pub fn set_rotation(&mut self, rotation: Quat) -> &mut Self {
+		self.rotation = rotation;
+		self
 	}
 }
 
@@ -345,6 +368,33 @@ impl System for EditorCameraSystem {
 			if input.is_button_down(KEY_LCTRL) {
 				transform.location -= up * dt * speed;
 			}
+		}
+	}
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct Dobbler {
+	timer: f32,
+}
+
+#[derive(Clone)]
+pub struct DobblerSystem;
+impl System for DobblerSystem {
+	fn run(&self, world: &World, dt: f32) {
+		let mut transforms = world.write::<Transform>();
+		let mut dobblers = world.write::<Dobbler>();
+
+		let entities = Query::new()
+			.write(&transforms)
+			.write(&dobblers)
+			.execute(world);
+		for e in entities.iter().copied() {
+			let transform = transforms.get_mut(e).unwrap();
+			let dobbler = dobblers.get_mut(e).unwrap();
+
+			dobbler.timer += dt;
+			let location = transform.location();
+			transform.set_location([location.x, location.y, dobbler.timer.sin() * 50.0]);
 		}
 	}
 }

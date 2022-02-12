@@ -1,3 +1,5 @@
+use game3d::DebugManager;
+
 use {
 	ecs::{
 		Component,
@@ -10,7 +12,10 @@ use {
 		Module,
 	},
 	game3d::Transform,
-	math::Vec3,
+	math::{
+		Quat,
+		Vec3,
+	},
 	rapier3d::prelude::*,
 	serde::{
 		Deserialize,
@@ -47,6 +52,7 @@ pub struct PhysicsManager {
 	collider_set: ColliderSet,
 
 	gravity: Vec3,
+	timer: f32,
 }
 
 impl PhysicsManager {
@@ -63,6 +69,7 @@ impl PhysicsManager {
 			collider_set: ColliderSet::new(),
 
 			gravity: Vec3::new(0.0, 0.0, -9.8),
+			timer: 0.0,
 		}
 	}
 }
@@ -87,6 +94,7 @@ impl Clone for PhysicsManager {
 			collider_set: self.collider_set.clone(),
 
 			gravity: self.gravity,
+			timer: self.timer,
 		}
 	}
 }
@@ -249,7 +257,8 @@ impl Default for RigidBodyDescription {
 pub struct PhysicsSystem;
 impl System for PhysicsSystem {
 	fn run(&self, world: &World, dt: f32) {
-		let mut physics_states = world.write::<PhysicsManager>();
+		// Lazy load the physics state
+		let mut physics_managers = world.write::<PhysicsManager>();
 		let PhysicsManager {
 			integration_parameters,
 			physics_pipeline,
@@ -261,9 +270,20 @@ impl System for PhysicsSystem {
 			rigid_body_set,
 			collider_set,
 			gravity,
-		} = physics_states.get_mut(world.singleton).unwrap();
+			timer,
+		} = match physics_managers.get_mut(world.singleton) {
+			Some(c) => c,
+			None => {
+				world.insert(
+					&mut physics_managers,
+					world.singleton,
+					PhysicsManager::default(),
+				);
+				physics_managers.get_mut(world.singleton).unwrap()
+			}
+		};
 
-		let transforms = world.write::<Transform>();
+		let mut transforms = world.write::<Transform>();
 		let mut colliders = world.write::<Collider>();
 		let mut rigid_bodies = world.write::<RigidBody>();
 
@@ -273,6 +293,7 @@ impl System for PhysicsSystem {
 			// .write(&rigid_bodies)
 			.execute(world);
 
+		// Register all unknown colliders and rigid bodies
 		for e in entities.iter().copied() {
 			let transform = transforms.get(e).unwrap();
 			let collider = colliders.get_mut(e).unwrap();
@@ -317,25 +338,61 @@ impl System for PhysicsSystem {
 			}
 		}
 
-		let physics_hooks = ();
-		let event_handler = ();
+		*timer += dt;
+		if *timer >= 1.0 / 60.0 {
+			*timer = 0.0;
+			let physics_hooks = ();
+			let event_handler = ();
 
-		let gravity = vector![gravity.x, gravity.y, gravity.z];
+			let gravity = vector![gravity.x, gravity.y, gravity.z];
 
-		integration_parameters.dt = dt as _; // FIXME: use the type here
+			physics_pipeline.step(
+				&gravity,
+				integration_parameters,
+				island_manager,
+				broad_phase,
+				narrow_phase,
+				rigid_body_set,
+				collider_set,
+				joint_set,
+				ccd_solver,
+				&physics_hooks,
+				&event_handler,
+			);
 
-		physics_pipeline.step(
-			&gravity,
-			integration_parameters,
-			island_manager,
-			broad_phase,
-			narrow_phase,
-			rigid_body_set,
-			collider_set,
-			joint_set,
-			ccd_solver,
-			&physics_hooks,
-			&event_handler,
-		);
+			let mut debug_managers = world.write::<DebugManager>();
+			let debug = debug_managers.get_mut(world.singleton).unwrap();
+			for e in entities.iter().copied() {
+				if let Some(rigid_body) = rigid_bodies.get_mut(e) {
+					let transform = transforms.get_mut(e).unwrap();
+					let collider = colliders.get(e).unwrap();
+					let rigid_body = rigid_body_set
+						.get(rigid_body.handle.unwrap())
+						.expect("Should be registered");
+
+					let location = rigid_body.translation();
+					let rotation = rigid_body.rotation();
+					transform.set_location([location[0], location[1], location[2]]);
+					transform.set_rotation(Quat {
+						x: rotation.i,
+						y: rotation.j,
+						z: rotation.k,
+						w: rotation.w,
+					});
+
+					match collider.description.shape {
+						Shape::Cube { half_extents } => {
+							debug.draw_box(
+								transform.location(),
+								transform.rotation(),
+								half_extents,
+								1.0 / 60.0,
+							);
+						}
+						_ => unimplemented!(),
+					}
+				}
+			}
+		}
 	}
 }

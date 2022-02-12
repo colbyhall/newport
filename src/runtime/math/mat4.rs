@@ -342,6 +342,42 @@ impl IndexMut<usize> for Mat4 {
 	}
 }
 
+impl Index<(usize, usize)> for Mat4 {
+	type Output = f32;
+
+	fn index(&self, index: (usize, usize)) -> &Self::Output {
+		let col = index.0;
+		let row = index.1;
+
+		let col = match col {
+			0 => (&self.x_column),
+			1 => (&self.y_column),
+			2 => (&self.z_column),
+			3 => (&self.w_column),
+			_ => unreachable!(),
+		};
+
+		&col[row]
+	}
+}
+
+impl IndexMut<(usize, usize)> for Mat4 {
+	fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
+		let col = index.0;
+		let row = index.1;
+
+		let col = match col {
+			0 => (&mut self.x_column),
+			1 => (&mut self.y_column),
+			2 => (&mut self.z_column),
+			3 => (&mut self.w_column),
+			_ => unreachable!(),
+		};
+
+		&mut col[row]
+	}
+}
+
 impl Mul for Mat4 {
 	type Output = Self;
 

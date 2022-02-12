@@ -16,6 +16,7 @@ GraphicsPipeline(
 		],
 		"imports": [
 			("model", Matrix4),
+			("color", Color),
 		],
 	},
 
@@ -93,8 +94,9 @@ GraphicsPipeline(
 
 		code: r#"
 			Camera camera = get_camera();
+			Imports imports = get_imports();
 
-			float3 albedo = float3(1.0, 1.0, 0.0);
+			float3 albedo = imports.color.xyz;
 			float metallic = 0.0;
 			float roughness = 0.9;
 			float ao = 0.5;
@@ -109,7 +111,6 @@ GraphicsPipeline(
 
 			float3 f0 = float3(0.04, 0.04, 0.04);
 			f0 = lerp(f0, albedo, metallic);
-
 
 			// reflectance equation
 			// calculate light radiance

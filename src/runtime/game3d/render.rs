@@ -326,9 +326,15 @@ impl System for DebugSystem {
 }
 
 #[derive(Clone, Debug)]
+struct DrawListData {
+	model: Mat4,
+	color: Color,
+}
+
+#[derive(Clone, Debug)]
 pub struct DrawList {
 	meshes: Vec<MeshFilter>,
-	world_transforms: Vec<Mat4>,
+	world_transforms: Vec<DrawListData>,
 
 	debug_shapes: Vec<DebugShape>,
 
@@ -348,11 +354,26 @@ impl DrawList {
 		let mut world_transforms = Vec::with_capacity(entities.len());
 		let mut mesh_filters = Vec::with_capacity(entities.len());
 
-		for e in entities.iter().copied() {
+		const COLORS: &[Color] = &[
+			Color::RED,
+			Color::GREEN,
+			Color::BLUE,
+			Color::WHITE,
+			Color::BLACK,
+			Color::CYAN,
+			Color::YELLOW,
+			Color::MAGENTA,
+		];
+
+		for (index, e) in entities.iter().copied().enumerate() {
 			let transform = transforms.get(e).unwrap();
 			let filter = filters.get(e).unwrap();
 
-			world_transforms.push(transform.local_to_world * transform.local_mat4());
+			let color = COLORS[index & (COLORS.len() - 1)];
+			world_transforms.push(DrawListData {
+				model: transform.local_mat4(),
+				color,
+			});
 			mesh_filters.push(filter.clone());
 		}
 
