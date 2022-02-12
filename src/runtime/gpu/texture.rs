@@ -42,16 +42,17 @@ pub enum Format {
 
 	BGR_U8_SRGB,
 
-	D24_S8,
+	Depth16,
+	Depth24_Stencil8,
 }
 
 impl Format {
 	pub fn is_depth(self) -> bool {
-		self == Format::D24_S8
+		matches!(self, Self::Depth24_Stencil8 | Self::Depth16)
 	}
 
 	pub fn is_stencil(self) -> bool {
-		self == Format::D24_S8
+		self == Format::Depth24_Stencil8
 	}
 
 	pub fn is_color(self) -> bool {

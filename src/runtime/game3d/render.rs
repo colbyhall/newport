@@ -214,6 +214,12 @@ pub struct MeshFilter {
 	pub pipeline: Handle<GraphicsPipeline>, // TODO: Material system
 }
 
+#[derive(Default, Clone, Serialize, Deserialize, Debug)]
+pub struct DirectionalLight {
+	pub color: Color, // Alpha will always be ignored
+	pub intensity: f32,
+}
+
 #[derive(Clone, Debug)]
 pub struct DebugShape {
 	line_width: f32,
@@ -727,7 +733,7 @@ impl Renderer {
 
 		let depth_buffer = Texture::new(
 			TextureUsage::DEPTH_ATTACHMENT,
-			Format::D24_S8,
+			Format::Depth24_Stencil8,
 			scene.viewport.x as u32,
 			scene.viewport.y as u32,
 			1,

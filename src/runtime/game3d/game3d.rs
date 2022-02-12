@@ -5,6 +5,7 @@ pub use render::{
 	Camera,
 	DebugManager,
 	DebugSystem,
+	DirectionalLight,
 	Mesh,
 	MeshFilter,
 };
@@ -77,6 +78,7 @@ impl Module for Game {
 			.register(EditorCameraController::variant())
 			.register(DebugManager::variant())
 			.register(Dobbler::variant())
+			.register(DirectionalLight::variant())
 			.tick(|delta_time| {
 				let Game {
 					world,

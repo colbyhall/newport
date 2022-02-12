@@ -279,10 +279,9 @@ impl GraphicsPipeline {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(default)]
 pub struct DepthStencilStates {
-	#[serde(default)]
 	pub depth_test: bool,
-	#[serde(default)]
 	pub depth_write: bool,
 	#[serde(default = "DepthStencilStates::default_depth_compare")]
 	pub depth_compare: CompareOp,
@@ -296,7 +295,7 @@ impl DepthStencilStates {
 	}
 
 	fn default_depth_stencil_format() -> Format {
-		Format::D24_S8
+		Format::Depth24_Stencil8
 	}
 }
 

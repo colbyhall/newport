@@ -166,7 +166,8 @@ impl GraphicsCommandBuffer {
 				src_stage = vk::PipelineStageFlags::TRANSFER;
 				dst_stage = vk::PipelineStageFlags::FRAGMENT_SHADER;
 			}
-			(Layout::ColorAttachment, Layout::ShaderReadOnly) => {
+			(Layout::ColorAttachment, Layout::ShaderReadOnly)
+			| (Layout::DepthAttachment, Layout::ShaderReadOnly) => {
 				src_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;
 				dst_stage = vk::PipelineStageFlags::BOTTOM_OF_PIPE;
 			}
@@ -448,7 +449,9 @@ impl GraphicsCommandBuffer {
 				continue;
 			}
 
-			self.push_constants[index + constants_len] = texture.bindless().unwrap();
+			self.push_constants[index + constants_len] = texture
+				.bindless()
+				.expect("Texture can only be bound if usage is marked with SAMPLED");
 			self.textures.push(texture);
 			break;
 		}

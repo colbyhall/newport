@@ -47,7 +47,8 @@ pub fn vk_format(format: Format) -> vk::Format {
 		Format::RGBA_F16 => vk::Format::R16G16B16A16_SFLOAT,
 		Format::RGBA_F32 => vk::Format::R32G32B32A32_SFLOAT,
 		Format::BGR_U8_SRGB => vk::Format::B8G8R8A8_SRGB,
-		Format::D24_S8 => vk::Format::D24_UNORM_S8_UINT,
+		Format::Depth24_Stencil8 => vk::Format::D24_UNORM_S8_UINT,
+		Format::Depth16 => vk::Format::D16_UNORM,
 	}
 }
 

@@ -98,7 +98,7 @@ GraphicsPipeline(
 
 			float3 albedo = imports.color.xyz;
 			float metallic = 0.0;
-			float roughness = 0.9;
+			float roughness = 0.1;
 			float ao = 0.5;
 			
 			float3 light_position = float3(0.0, 0.0, 10.0);
