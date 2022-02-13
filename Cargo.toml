@@ -1,3 +1,6 @@
 [workspace]
 resolver = "2"
 members = ["src/runtime/*", "src/third_party/*", "src/programs/*", ]
+
+[profile.dev.package.rapier3d]
+opt-level = 3

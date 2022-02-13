@@ -52,35 +52,38 @@ impl Module for Orchard {
 			.with(EditorCameraController::default(), &mut camera_controllers)
 			.finish();
 
-		for i in 0..10 {
-			let z = (i * 2) as f32;
-			let y = i as f32 / 2.0;
-			world
-				.spawn(world.persistent)
-				.with(Named::new("Block"), &mut names)
-				.with(
-					Transform::builder()
-						.location(Vec3::new(5.0, y, z + 5.0))
-						.finish(),
-					&mut transforms,
-				)
-				.with(
-					MeshFilter {
-						mesh: Handle::find_or_load("{03383b92-566f-4036-aeb4-850b61685ea6}")
-							.unwrap(),
-						pipeline: pipeline.clone(),
-					},
-					&mut filters,
-				)
-				.with(
-					Collider::builder(Shape::cube(Vec3::ONE / 2.0)).build(),
-					&mut colliders,
-				)
-				.with(
-					RigidBody::builder(RigidBodyVariant::Dynamic).build(),
-					&mut rigid_bodies,
-				)
-				.finish();
+		for x in 0..10 {
+			for y in 0..10 {
+				let z = ((x + y) * 2) as f32;
+				let x = x as f32 / 2.0;
+				let y = y as f32 / 2.0;
+				world
+					.spawn(world.persistent)
+					.with(Named::new("Block"), &mut names)
+					.with(
+						Transform::builder()
+							.location(Vec3::new(x, y, z + 5.0))
+							.finish(),
+						&mut transforms,
+					)
+					.with(
+						MeshFilter {
+							mesh: Handle::find_or_load("{03383b92-566f-4036-aeb4-850b61685ea6}")
+								.unwrap(),
+							pipeline: pipeline.clone(),
+						},
+						&mut filters,
+					)
+					.with(
+						Collider::builder(Shape::cube(Vec3::ONE / 2.0)).build(),
+						&mut colliders,
+					)
+					.with(
+						RigidBody::builder(RigidBodyVariant::Dynamic).build(),
+						&mut rigid_bodies,
+					)
+					.finish();
+			}
 		}
 
 		let floor_size = Vec3::new(10000.0, 10000.0, 0.1);

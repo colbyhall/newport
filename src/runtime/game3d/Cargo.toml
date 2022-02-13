@@ -21,4 +21,4 @@ editor = { path = "../editor", optional = true }
 gltf = "1.0"
 
 [features]
-default = ["editor"]
+default = []

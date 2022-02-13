@@ -53,7 +53,6 @@ impl Builder {
 		}
 	}
 
-	#[must_use]
 	pub fn module<T: Module>(&mut self) -> &mut Self {
 		// Don't add a module thats already on the list
 		let id = TypeId::of::<T>();
@@ -86,31 +85,26 @@ impl Builder {
 		self
 	}
 
-	#[must_use]
 	pub fn process_input(&mut self, f: impl Fn(&Event) + 'static) -> &mut Self {
 		self.process_input.push(Box::new(f));
 		self
 	}
 
-	#[must_use]
 	pub fn tick(&mut self, f: impl Fn(f32) + 'static) -> &mut Self {
 		self.tick.push(Box::new(f));
 		self
 	}
 
-	#[must_use]
 	pub fn display(&mut self, f: impl Fn() + 'static) -> &mut Self {
 		self.display = Some(Box::new(f));
 		self
 	}
 
-	#[must_use]
 	pub fn name(&mut self, name: impl Into<String>) -> &mut Self {
 		self.name = Some(name.into());
 		self
 	}
 
-	#[must_use]
 	pub fn register<T: Register>(&mut self, register: T) -> &mut Self {
 		let type_id = TypeId::of::<T>();
 		let registers = self.registers.as_mut().unwrap();

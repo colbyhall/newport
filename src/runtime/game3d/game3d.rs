@@ -23,23 +23,14 @@ use {
 		System,
 		World,
 	},
-	editor::Editor,
 	engine::{
 		Builder,
 		Engine,
 		Module,
 	},
-	gpu::{
-		Gpu,
-		GraphicsPipeline,
-		GraphicsRecorder,
-	},
 	input::*,
 	math::*,
-	resources::{
-		Handle,
-		Resource,
-	},
+	resources::Resource,
 	serde::{
 		Deserialize,
 		Serialize,
@@ -47,11 +38,25 @@ use {
 	std::sync::Mutex,
 };
 
+#[cfg(feature = "editor")]
+use editor::Editor;
+
+#[cfg(not(feature = "editor"))]
+use {
+	gpu::{
+		Gpu,
+		GraphicsPipeline,
+		GraphicsRecorder,
+	},
+	resources::Handle,
+};
+
 pub struct Game {
 	pub world: World,
 	pub schedule: Mutex<ScheduleBlock>,
 	renderer: Renderer,
 
+	#[cfg(not(feature = "editor"))]
 	present_pipeline: Handle<GraphicsPipeline>,
 }
 impl Module for Game {
@@ -61,19 +66,22 @@ impl Module for Game {
 			schedule: Mutex::new(ScheduleBlock::new()),
 			renderer: Renderer::new(),
 
+			#[cfg(not(feature = "editor"))]
 			present_pipeline: Handle::find_or_load("{62b4ffa0-9510-4818-a6f2-7645ec304d8e}")
 				.unwrap(),
 		}
 	}
 
 	fn depends_on(builder: &mut Builder) -> &mut Builder {
-		let builder = builder
+		builder
 			.module::<Draw2d>()
 			.module::<Ecs>()
 			.module::<GameInput>();
+
 		#[cfg(feature = "editor")]
+		builder.module::<Editor>();
+
 		builder
-			.module::<Editor>()
 			.register(Transform::variant().on_added::<Transform>())
 			.register(Camera::variant())
 			.register(Mesh::variant())
@@ -89,7 +97,7 @@ impl Module for Game {
 					renderer,
 					schedule,
 					..
-				} = unsafe { Engine::module_mut().unwrap() };
+				} = Engine::module().unwrap();
 
 				let window = Engine::window().unwrap();
 				let viewport = window.inner_size();
@@ -105,42 +113,46 @@ impl Module for Game {
 					renderer.render_scene();
 				};
 				renderer.advance_frame();
-			})
-			.display(|| {
-				let game: &Game = Engine::module().unwrap();
+			});
 
-				let device = Gpu::device();
-				let backbuffer = device
-					.acquire_backbuffer()
-					.expect("Swapchain failed to find a back buffer");
+		#[cfg(not(feature = "editor"))]
+		builder.display(|| {
+			let game: &Game = Engine::module().unwrap();
 
-				let pipeline = game.present_pipeline.read();
-				let receipt = match game.renderer.to_display() {
-					Some(scene) => GraphicsRecorder::new()
-						.render_pass(&[&backbuffer], |ctx| {
-							ctx.clear_color(Color::BLACK)
-								.set_pipeline(&pipeline)
-								.set_texture("texture", &scene.diffuse_buffer)
-								.draw(3, 0)
-						})
-						.texture_barrier(
-							&backbuffer,
-							gpu::Layout::ColorAttachment,
-							gpu::Layout::Present,
-						)
-						.submit(),
-					None => GraphicsRecorder::new()
-						.render_pass(&[&backbuffer], |ctx| ctx.clear_color(Color::BLACK))
-						.texture_barrier(
-							&backbuffer,
-							gpu::Layout::ColorAttachment,
-							gpu::Layout::Present,
-						)
-						.submit(),
-				};
+			let device = Gpu::device();
+			let backbuffer = device
+				.acquire_backbuffer()
+				.expect("Swapchain failed to find a back buffer");
 
-				device.display(&[receipt]);
-			})
+			let pipeline = game.present_pipeline.read();
+			let receipt = match game.renderer.to_display() {
+				Some(scene) => GraphicsRecorder::new()
+					.render_pass(&[&backbuffer], |ctx| {
+						ctx.clear_color(Color::BLACK)
+							.set_pipeline(&pipeline)
+							.set_texture("texture", &scene.diffuse_buffer)
+							.draw(3, 0)
+					})
+					.texture_barrier(
+						&backbuffer,
+						gpu::Layout::ColorAttachment,
+						gpu::Layout::Present,
+					)
+					.submit(),
+				None => GraphicsRecorder::new()
+					.render_pass(&[&backbuffer], |ctx| ctx.clear_color(Color::BLACK))
+					.texture_barrier(
+						&backbuffer,
+						gpu::Layout::ColorAttachment,
+						gpu::Layout::Present,
+					)
+					.submit(),
+			};
+
+			device.display(&[receipt]);
+		});
+
+		builder
 	}
 }
 
