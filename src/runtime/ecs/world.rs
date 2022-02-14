@@ -12,8 +12,8 @@ use crate::{
 use {
 	crate::{
 		Component,
+		ComponentId,
 		ComponentVariant,
-		ComponentVariantId,
 		ComponentsContainer,
 		Entity,
 		EntityContainer,
@@ -29,7 +29,7 @@ use {
 };
 
 pub struct World {
-	pub variants: HashMap<ComponentVariantId, ComponentVariant>,
+	pub variants: HashMap<ComponentId, ComponentVariant>,
 	pub(crate) components: ComponentsContainer,
 	pub(crate) scenes: Mutex<SceneCollection>,
 	pub singleton: Entity,
@@ -138,7 +138,7 @@ impl World {
 	}
 
 	pub fn write<T: Component>(&self) -> WriteStorage<'_, T> {
-		self.components.write()
+		self.components.write(self)
 	}
 
 	pub fn insert<T: Component>(&self, storage: &mut WriteStorage<'_, T>, entity: Entity, t: T) {

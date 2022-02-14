@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use game3d::DebugManager;
 
 use {
@@ -74,6 +76,8 @@ impl PhysicsManager {
 	}
 }
 
+impl Component for PhysicsManager {}
+
 impl Default for PhysicsManager {
 	fn default() -> Self {
 		Self::new()
@@ -115,6 +119,8 @@ impl Collider {
 		}
 	}
 }
+
+impl Component for Collider {}
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum Shape {
@@ -204,6 +210,8 @@ impl RigidBody {
 	}
 }
 
+impl Component for RigidBody {}
+
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RigidBodyVariant {
 	Dynamic,
@@ -257,8 +265,9 @@ impl Default for RigidBodyDescription {
 pub struct PhysicsSystem;
 impl System for PhysicsSystem {
 	fn run(&self, world: &World, dt: f32) {
-		// Lazy load the physics state
 		let mut physics_managers = world.write::<PhysicsManager>();
+		let mut physics_manager = physics_managers.get_mut_or_default(world.singleton);
+
 		let PhysicsManager {
 			integration_parameters,
 			physics_pipeline,
@@ -271,21 +280,11 @@ impl System for PhysicsSystem {
 			collider_set,
 			gravity,
 			timer,
-		} = match physics_managers.get_mut(world.singleton) {
-			Some(c) => c,
-			None => {
-				world.insert(
-					&mut physics_managers,
-					world.singleton,
-					PhysicsManager::default(),
-				);
-				physics_managers.get_mut(world.singleton).unwrap()
-			}
-		};
+		} = physics_manager.deref_mut();
 
-		let mut transforms = world.write::<Transform>();
-		let mut colliders = world.write::<Collider>();
-		let mut rigid_bodies = world.write::<RigidBody>();
+		let transforms = world.write::<Transform>();
+		let colliders = world.write::<Collider>();
+		let rigid_bodies = world.write::<RigidBody>();
 
 		let entities = Query::new()
 			.write(&transforms)
@@ -296,7 +295,7 @@ impl System for PhysicsSystem {
 		// Register all unknown colliders and rigid bodies
 		for e in entities.iter().copied() {
 			let transform = transforms.get(e).unwrap();
-			let collider = colliders.get_mut(e).unwrap();
+			let mut collider = colliders.get_mut(e).unwrap();
 			if collider.handle.is_none() {
 				let rapier_collider = match collider.description.shape {
 					Shape::Cube { half_extents } => rapier3d::prelude::ColliderBuilder::cuboid(
@@ -308,7 +307,7 @@ impl System for PhysicsSystem {
 				}
 				.sensor(collider.description.sensor)
 				.build();
-				if let Some(rigid_body) = rigid_bodies.get_mut(e) {
+				if let Some(mut rigid_body) = rigid_bodies.get_mut(e) {
 					if rigid_body.handle.is_none() {
 						let body_type = match rigid_body.description.variant {
 							RigidBodyVariant::Dynamic => RigidBodyType::Dynamic,
@@ -360,11 +359,11 @@ impl System for PhysicsSystem {
 				&event_handler,
 			);
 
-			let mut debug_managers = world.write::<DebugManager>();
-			let debug = debug_managers.get_mut(world.singleton).unwrap();
+			let debug_managers = world.write::<DebugManager>();
+			let mut debug = debug_managers.get_mut(world.singleton).unwrap();
 			for e in entities.iter().copied() {
 				if let Some(rigid_body) = rigid_bodies.get_mut(e) {
-					let transform = transforms.get_mut(e).unwrap();
+					let mut transform = transforms.get_mut(e).unwrap();
 					let collider = colliders.get(e).unwrap();
 					let rigid_body = rigid_body_set
 						.get(rigid_body.handle.unwrap())

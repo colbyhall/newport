@@ -138,9 +138,6 @@ impl Builder {
 
 impl Default for Builder {
 	fn default() -> Self {
-		Self {
-			creation: Instant::now(),
-			..Default::default()
-		}
+		Self::new()
 	}
 }

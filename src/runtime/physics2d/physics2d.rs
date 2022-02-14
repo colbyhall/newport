@@ -60,6 +60,8 @@ impl PhysicsState {
 	}
 }
 
+impl Component for PhysicsState {}
+
 impl Default for PhysicsState {
 	fn default() -> Self {
 		Self::new()
@@ -129,6 +131,8 @@ impl Collider {
 		}
 	}
 }
+
+impl Component for Collider {}
 
 impl Default for Collider {
 	fn default() -> Self {
@@ -202,6 +206,8 @@ impl RigidBody {
 	}
 }
 
+impl Component for RigidBody {}
+
 impl Default for RigidBody {
 	fn default() -> Self {
 		Self::builder().build()
@@ -242,7 +248,6 @@ impl RigidBodyBuilder {
 pub struct PhysicsStep;
 impl System for PhysicsStep {
 	fn run(&self, world: &World, dt: f32) {
-		// Lazy load the physics state component
 		let mut physics_states = world.write::<PhysicsState>();
 		let PhysicsState {
 			integration_parameters,
@@ -254,17 +259,7 @@ impl System for PhysicsStep {
 			ccd_solver,
 			rigid_body_set,
 			collider_set,
-		} = match physics_states.get_mut(world.singleton) {
-			Some(c) => c,
-			None => {
-				world.insert(
-					&mut physics_states,
-					world.singleton,
-					PhysicsState::default(),
-				);
-				physics_states.get_mut(world.singleton).unwrap()
-			}
-		};
+		} = &mut *physics_states.get_mut_or_default(world.singleton);
 
 		let physics_hooks = ();
 		let event_handler = ();

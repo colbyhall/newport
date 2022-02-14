@@ -49,6 +49,8 @@ impl Named {
 	}
 }
 
+impl Component for Named {}
+
 pub struct Ecs;
 impl Module for Ecs {
 	fn new() -> Self {

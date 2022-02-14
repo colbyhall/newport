@@ -123,28 +123,19 @@ impl InputManager {
 	}
 }
 
+impl Component for InputManager {}
+
 #[derive(Clone)]
 pub struct InputSystem;
 impl System for InputSystem {
 	fn run(&self, world: &World, _dt: f32) {
-		// Lazy load the input manager component
 		let mut input_managers = world.write::<InputManager>();
-		let input_manager = match input_managers.get_mut(world.singleton) {
-			Some(c) => c,
-			None => {
-				world.insert(
-					&mut input_managers,
-					world.singleton,
-					InputManager::default(),
-				);
-				input_managers.get_mut(world.singleton).unwrap()
-			}
-		};
+		let mut input_manager = input_managers.get_mut_or_default(world.singleton);
 
 		// Swap current state to last for new current state
 		input_manager.last = input_manager.current.clone();
 
-		let InputManager { current, .. } = input_manager;
+		let current = &mut input_manager.current;
 
 		// Reset all current axis input to 0
 		for (_, value) in current.iter_mut() {

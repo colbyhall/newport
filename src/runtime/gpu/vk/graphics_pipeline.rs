@@ -60,7 +60,7 @@ impl GraphicsPipeline {
 				.name(&main)
 				.build();
 
-			main.into_raw(); // LEAK LEAK LEAK
+			let _ = main.into_raw(); // FIXME: LEAK LEAK LEAK
 
 			shader_stages.push(stage_info);
 		}

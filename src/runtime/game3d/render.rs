@@ -1,6 +1,7 @@
 use {
 	crate::Transform,
 	ecs::{
+		Component,
 		Query,
 		System,
 		World,
@@ -45,6 +46,8 @@ use {
 pub struct Camera {
 	pub fov: f32,
 }
+
+impl Component for Camera {}
 
 impl Default for Camera {
 	fn default() -> Self {
@@ -214,11 +217,15 @@ pub struct MeshFilter {
 	pub pipeline: Handle<GraphicsPipeline>, // TODO: Material system
 }
 
+impl Component for MeshFilter {}
+
 #[derive(Default, Clone, Serialize, Deserialize, Debug)]
 pub struct DirectionalLight {
 	pub color: Color, // Alpha will always be ignored
 	pub intensity: f32,
 }
+
+impl Component for DirectionalLight {}
 
 #[derive(Clone, Debug)]
 pub struct DebugShape {
@@ -254,7 +261,7 @@ enum DebugShapeVariant {
 	Plane { normal: Vec3, size: f32 },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DebugManager {
 	#[serde(skip)]
 	shapes: Vec<DebugShape>,
@@ -309,18 +316,20 @@ impl DebugManager {
 	}
 }
 
+impl Component for DebugManager {}
+
+impl Default for DebugManager {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 #[derive(Clone)]
 pub struct DebugSystem;
 impl System for DebugSystem {
 	fn run(&self, world: &World, dt: f32) {
 		let mut debug_managers = world.write::<DebugManager>();
-		let debug_manager = match debug_managers.get_mut(world.singleton) {
-			Some(c) => c,
-			None => {
-				world.insert(&mut debug_managers, world.singleton, DebugManager::new());
-				debug_managers.get_mut(world.singleton).unwrap()
-			}
-		};
+		let mut debug_manager = debug_managers.get_mut_or_default(world.singleton);
 
 		// Update "time_left" for all shapes and then remove any that are "dead"
 		debug_manager
@@ -332,6 +341,7 @@ impl System for DebugSystem {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 struct DrawListData {
 	model: Mat4,
 	color: Color,

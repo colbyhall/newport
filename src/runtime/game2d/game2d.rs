@@ -186,6 +186,8 @@ pub struct Transform {
 	scale: Vec2,
 }
 
+impl Component for Transform {}
+
 impl Default for Transform {
 	fn default() -> Self {
 		Self {
@@ -207,6 +209,8 @@ pub struct Sprite {
 	extents: Vec2,
 }
 
+impl Component for Sprite {}
+
 impl Default for Sprite {
 	fn default() -> Self {
 		Self {
@@ -225,6 +229,8 @@ pub struct Camera {
 	size: f32,
 }
 
+impl Component for Camera {}
+
 impl Default for Camera {
 	fn default() -> Self {
 		Self { size: 10.0 }
@@ -234,6 +240,8 @@ impl Default for Camera {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct PlayerControlled;
 
+impl Component for PlayerControlled {}
+
 #[derive(Clone)]
 pub struct PlayerControlledMovement;
 impl System for PlayerControlledMovement {
@@ -242,7 +250,7 @@ impl System for PlayerControlledMovement {
 		let input = input.get(world.singleton).unwrap();
 
 		let controllers = world.read::<PlayerControlled>();
-		let mut character_movements = world.write::<CharacterMovement>();
+		let character_movements = world.write::<CharacterMovement>();
 
 		let entities = Query::new()
 			.read(&controllers)
@@ -250,7 +258,7 @@ impl System for PlayerControlledMovement {
 			.execute(world);
 
 		for e in entities.iter().copied() {
-			let character_movement = character_movements.get_mut(e).unwrap();
+			let mut character_movement = character_movements.get_mut(e).unwrap();
 
 			let mut new_input = Vec2::ZERO;
 			if input.is_button_down(KEY_A) {
@@ -271,6 +279,8 @@ pub struct CharacterMovement {
 	velocity: Vec2,
 }
 
+impl Component for CharacterMovement {}
+
 #[derive(Clone)]
 pub struct CharacterMovementSystem;
 impl System for CharacterMovementSystem {
@@ -282,11 +292,13 @@ pub struct Target {
 	entity: Option<Entity>,
 }
 
+impl Component for Target {}
+
 #[derive(Clone)]
 pub struct CameraTracking;
 impl System for CameraTracking {
 	fn run(&self, world: &World, dt: f32) {
-		let mut transforms = world.write::<Transform>();
+		let transforms = world.write::<Transform>();
 		let cameras = world.read::<Camera>();
 		let targets = world.read::<Target>();
 
@@ -300,9 +312,9 @@ impl System for CameraTracking {
 
 		for e in entities.iter().cloned() {
 			let target = targets.get(e).unwrap();
-			if let Some(target) = &target.entity {
-				if let Some(target) = transforms.get(*target).cloned() {
-					let transform = transforms.get_mut(e).unwrap();
+			if let Some(target) = target.entity {
+				if let Some(target) = transforms.get(target) {
+					let mut transform = transforms.get_mut(e).unwrap();
 					transform.location =
 						Vec2::lerp(transform.location, target.location, dt * SPEED);
 				}

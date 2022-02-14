@@ -19,14 +19,14 @@ use serde::{
 	Serialize,
 };
 
+use crate::ComponentId;
 use crate::ComponentVariant;
-use crate::ComponentVariantId;
 use crate::EntityContainer;
 
 #[derive(Debug)]
 pub struct SceneEntry {
 	pub id: Uuid,
-	pub components: HashMap<ComponentVariantId, Box<dyn Any>>,
+	pub components: HashMap<ComponentId, Box<dyn Any>>,
 }
 
 #[derive(Debug)]

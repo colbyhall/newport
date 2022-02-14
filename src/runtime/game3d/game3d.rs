@@ -17,7 +17,6 @@ use {
 		Component,
 		Ecs,
 		Entity,
-		OnAdded,
 		Query,
 		ScheduleBlock,
 		System,
@@ -82,7 +81,7 @@ impl Module for Game {
 		builder.module::<Editor>();
 
 		builder
-			.register(Transform::variant().on_added::<Transform>())
+			.register(Transform::variant())
 			.register(Camera::variant())
 			.register(Mesh::variant())
 			.register(MeshGltfImporter::variant(&["gltf", "glb"]))
@@ -210,6 +209,25 @@ impl Transform {
 	}
 }
 
+impl Component for Transform {}
+
+impl Default for Transform {
+	fn default() -> Self {
+		Self {
+			location: Point3::ZERO,
+			rotation: Quat::IDENTITY,
+			scale: Vec3::ONE,
+
+			parent: None,
+			children: Vec::with_capacity(32),
+
+			changed: false,
+			local_to_world: Mat4::IDENTITY,
+			world_to_local: Mat4::IDENTITY,
+		}
+	}
+}
+
 pub struct TransformBuilder {
 	transform: Transform,
 }
@@ -244,61 +262,6 @@ impl TransformBuilder {
 	}
 }
 
-impl OnAdded for Transform {
-	fn on_added(entity: Entity, storage: &mut ecs::AnyWriteStorage) {
-		// We need to ensure the parent is aware we exist and update all the cache data
-		let parent = storage.get::<Transform>(entity).unwrap().parent;
-		if let Some(parent) = parent {
-			let transform: &mut Transform = storage.get_mut(parent).unwrap();
-			transform.children.push(entity);
-
-			let local_to_world = transform.local_to_world * transform.local_mat4();
-			let transform: &mut Transform = storage.get_mut(entity).unwrap();
-			transform.local_to_world = local_to_world;
-			transform.world_to_local = local_to_world.inverse().unwrap();
-		}
-	}
-}
-
-impl Default for Transform {
-	fn default() -> Self {
-		Self {
-			location: Point3::ZERO,
-			rotation: Quat::IDENTITY,
-			scale: Vec3::ONE,
-
-			parent: None,
-			children: Vec::with_capacity(32),
-
-			changed: false,
-			local_to_world: Mat4::IDENTITY,
-			world_to_local: Mat4::IDENTITY,
-		}
-	}
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum InputState {
-	Button(bool),
-	Axis1D(f32),
-}
-
-impl InputState {
-	pub fn button(self) -> bool {
-		match self {
-			Self::Button(b) => b,
-			_ => unreachable!(),
-		}
-	}
-
-	pub fn axis1d(self) -> f32 {
-		match self {
-			Self::Axis1D(x) => x,
-			_ => unreachable!(),
-		}
-	}
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct EditorCameraController {
 	pub pitch: f32,
@@ -308,6 +271,8 @@ pub struct EditorCameraController {
 	pub is_sprinting: bool,
 }
 
+impl Component for EditorCameraController {}
+
 #[derive(Clone)]
 pub struct EditorCameraSystem;
 impl System for EditorCameraSystem {
@@ -316,8 +281,8 @@ impl System for EditorCameraSystem {
 		let input = input.get(world.singleton).unwrap();
 
 		// Query for all controllers that could be functioning
-		let mut transforms = world.write::<Transform>();
-		let mut controllers = world.write::<EditorCameraController>();
+		let transforms = world.write::<Transform>();
+		let controllers = world.write::<EditorCameraController>();
 		let cameras = world.read::<Camera>();
 		let entities = Query::new()
 			.write(&transforms)
@@ -327,8 +292,8 @@ impl System for EditorCameraSystem {
 
 		// Essentially all we're doing is handling inputs and updating transforms
 		for e in entities.iter().copied() {
-			let transform = transforms.get_mut(e).unwrap();
-			let controller = controllers.get_mut(e).unwrap();
+			let mut transform = transforms.get_mut(e).unwrap();
+			let mut controller = controllers.get_mut(e).unwrap();
 
 			const MOUSE_INPUT_TOGGLE_KEY: Input = KEY_ESCAPE;
 			if input.was_button_pressed(MOUSE_INPUT_TOGGLE_KEY) {
@@ -395,20 +360,22 @@ pub struct Dobbler {
 	timer: f32,
 }
 
+impl Component for Dobbler {}
+
 #[derive(Clone)]
 pub struct DobblerSystem;
 impl System for DobblerSystem {
 	fn run(&self, world: &World, dt: f32) {
-		let mut transforms = world.write::<Transform>();
-		let mut dobblers = world.write::<Dobbler>();
+		let transforms = world.write::<Transform>();
+		let dobblers = world.write::<Dobbler>();
 
 		let entities = Query::new()
 			.write(&transforms)
 			.write(&dobblers)
 			.execute(world);
 		for e in entities.iter().copied() {
-			let transform = transforms.get_mut(e).unwrap();
-			let dobbler = dobblers.get_mut(e).unwrap();
+			let mut transform = transforms.get_mut(e).unwrap();
+			let mut dobbler = dobblers.get_mut(e).unwrap();
 
 			dobbler.timer += dt;
 			let location = transform.location();
