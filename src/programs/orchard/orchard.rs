@@ -1,7 +1,11 @@
-use ecs::ScheduleBlock;
-
 use {
-	ecs::Named,
+	ecs::{
+		Component,
+		Named,
+		ScheduleBlock,
+		System,
+		World,
+	},
 	engine::{
 		define_run_module,
 		Builder,
@@ -13,6 +17,10 @@ use {
 	math::Vec3,
 	physics3d::*,
 	resources::Handle,
+	serde::{
+		Deserialize,
+		Serialize,
+	},
 };
 
 pub struct Orchard;
@@ -24,6 +32,8 @@ impl Module for Orchard {
 			*schedule = ScheduleBlock::new()
 				.system(InputSystem)
 				.system(DebugSystem)
+				.system(PlayerCharacterControllerSystem)
+				.system(CharacterMovementSystem)
 				.system(PhysicsSystem)
 				.system(EditorCameraSystem);
 		}
@@ -37,6 +47,8 @@ impl Module for Orchard {
 		let mut camera_controllers = world.write::<EditorCameraController>();
 		let mut colliders = world.write::<Collider>();
 		let mut rigid_bodies = world.write::<RigidBody>();
+		let mut character_movements = world.write::<CharacterMovement>();
+		let mut player_character_controllers = world.write::<PlayerCharacterController>();
 
 		let pipeline = Handle::find_or_load("{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}").unwrap();
 
@@ -56,6 +68,11 @@ impl Module for Orchard {
 				RigidBody::builder(RigidBodyVariant::Kinematic).build(),
 				&mut rigid_bodies,
 			)
+			.with(CharacterMovement::default(), &mut character_movements)
+			.with(
+				PlayerCharacterController::default(),
+				&mut player_character_controllers,
+			)
 			.finish();
 
 		world
@@ -69,7 +86,6 @@ impl Module for Orchard {
 				&mut transforms,
 			)
 			.with(Camera::default(), &mut cameras)
-			.with(EditorCameraController::default(), &mut camera_controllers)
 			.finish();
 
 		for x in 0..10 {
@@ -135,8 +151,42 @@ impl Module for Orchard {
 	}
 
 	fn depends_on(builder: &mut Builder) -> &mut Builder {
-		builder.module::<Game>().module::<Physics>()
+		builder
+			.module::<Game>()
+			.module::<Physics>()
+			.register(CharacterMovement::variant())
+			.register(PlayerCharacterController::variant())
 	}
+}
+
+#[derive(Default, Serialize, Deserialize, Clone)]
+pub struct CharacterMovement {
+	pub input: Vec3,
+	pub jump_pressed: bool,
+
+	pub velocity: Vec3,
+}
+
+impl Component for CharacterMovement {}
+
+#[derive(Clone)]
+pub struct CharacterMovementSystem;
+impl System for CharacterMovementSystem {
+	fn run(&self, world: &World, dt: f32) {}
+}
+
+#[derive(Default, Serialize, Deserialize, Clone)]
+pub struct PlayerCharacterController {
+	pub yaw: f32,
+	pub pitch: f32,
+}
+
+impl Component for PlayerCharacterController {}
+
+#[derive(Clone)]
+pub struct PlayerCharacterControllerSystem;
+impl System for PlayerCharacterControllerSystem {
+	fn run(&self, world: &World, dt: f32) {}
 }
 
 define_run_module!(Orchard, "Orchard");

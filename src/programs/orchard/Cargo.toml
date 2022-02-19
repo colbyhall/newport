@@ -15,3 +15,4 @@ math = { path = "../../runtime/math" }
 physics3d = { path = "../../runtime/physics3d" }
 resources = { path = "../../runtime/resources" }
 input = { path = "../../runtime/input" }
+serde = { path = "../../third_party/serde" }
