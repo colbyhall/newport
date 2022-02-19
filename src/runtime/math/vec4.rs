@@ -45,6 +45,10 @@ impl Vec4 {
 	pub const fn to_tuple(self) -> (f32, f32, f32, f32) {
 		(self.x, self.y, self.z, self.w)
 	}
+
+	pub const fn xyz(self) -> Vec3 {
+		Vec3::new(self.x, self.y, self.z)
+	}
 }
 
 impl Index<usize> for Vec4 {

@@ -255,7 +255,7 @@ impl DebugShape {
 #[allow(dead_code)]
 enum DebugShapeVariant {
 	Line { end: Point3 },
-	Box { extent: Vec3 },
+	Box { half_extents: Vec3 },
 	Sphere { radius: f32 },
 	Capsule { half_height: f32, radius: f32 },
 	Plane { normal: Vec3, size: f32 },
@@ -299,7 +299,7 @@ impl DebugManager {
 		&mut self,
 		location: Point3,
 		rotation: Quat,
-		extent: Vec3,
+		half_extents: Vec3,
 		life_time: f32,
 	) -> &mut DebugShape {
 		self.shapes.push(DebugShape {
@@ -310,7 +310,32 @@ impl DebugManager {
 
 			location,
 			rotation,
-			variant: DebugShapeVariant::Box { extent },
+			variant: DebugShapeVariant::Box { half_extents },
+		});
+		self.shapes.last_mut().unwrap()
+	}
+
+	// FIXME: Add batch implementation
+	pub fn draw_capsule(
+		&mut self,
+		location: Point3,
+		rotation: Quat,
+		half_height: f32,
+		radius: f32,
+		life_time: f32,
+	) -> &mut DebugShape {
+		self.shapes.push(DebugShape {
+			line_width: Self::DEFAULT_LINE_WIDTH,
+			color: Self::DEFAULT_COLOR,
+
+			time_left: life_time,
+
+			location,
+			rotation,
+			variant: DebugShapeVariant::Capsule {
+				half_height,
+				radius,
+			},
 		});
 		self.shapes.last_mut().unwrap()
 	}
@@ -592,7 +617,9 @@ impl Renderer {
 						shape.color,
 					)
 				}
-				DebugShapeVariant::Box { extent } => {
+				DebugShapeVariant::Box {
+					half_extents: extent,
+				} => {
 					let forward = shape.rotation.forward() * extent.x;
 					let right = shape.rotation.right() * extent.y;
 					let up = shape.rotation.up() * extent.z;
@@ -750,10 +777,11 @@ impl Renderer {
 		)
 		.unwrap();
 
+		let camera_world_mat4 = scene.camera_transform.world_mat4();
+
 		let viewport = scene.viewport;
 		let proj = Mat4::perspective(scene.camera.fov, viewport.x / viewport.y, 1000.0, 0.1);
-		let view = Mat4::rotate(scene.camera_transform.rotation.inverse())
-			* Mat4::translate(-scene.camera_transform.location);
+		let view = camera_world_mat4.inverse().unwrap_or_default();
 
 		let axis_adjustment = Mat4 {
 			x_column: Vec4::new(0.0, 0.0, -1.0, 0.0),
@@ -768,11 +796,13 @@ impl Renderer {
 			position: Vec3,
 		}
 
+		let camera_position = camera_world_mat4.w_column.xyz();
+
 		let view_buffer = Buffer::new(BufferUsage::CONSTANTS, MemoryType::HostVisible, 1).unwrap();
 		view_buffer
 			.copy_to(&[CameraProperties {
 				view: proj * axis_adjustment * view,
-				position: scene.camera_transform.location,
+				position: camera_position,
 			}])
 			.unwrap();
 

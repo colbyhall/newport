@@ -153,11 +153,7 @@ impl World {
 		info.components |= mask;
 		storage.storage.insert(entity, t);
 
-		// Call the on added method
-		let variant = self.variants.get(&T::VARIANT_ID).unwrap();
-		if let Some(on_added) = variant.on_added {
-			(on_added)(entity, &mut storage.storage);
-		}
+		T::on_added(self, entity, storage);
 	}
 
 	pub fn remove<T: Component>(&self, storage: &mut WriteStorage<'_, T>, entity: Entity) -> bool {
@@ -203,10 +199,7 @@ impl<'a> EntityBuilder<'a> {
 		storage.storage.insert(self.entity, t);
 
 		// Call the on added method
-		let variant = self.world.variants.get(&T::VARIANT_ID).unwrap();
-		if let Some(on_added) = variant.on_added {
-			(on_added)(self.entity, &mut storage.storage);
-		}
+		T::on_added(self.world, self.entity, storage);
 
 		self
 	}

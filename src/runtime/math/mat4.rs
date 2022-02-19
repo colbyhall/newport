@@ -83,7 +83,7 @@ impl Mat4 {
 				self.x_column.y,
 				self.y_column.y,
 				self.z_column.y,
-				self.w_column.z,
+				self.w_column.y,
 			),
 			2 => Vec4::new(
 				self.x_column.z,

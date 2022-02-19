@@ -25,7 +25,6 @@ impl Module for Orchard {
 				.system(InputSystem)
 				.system(DebugSystem)
 				.system(PhysicsSystem)
-				.system(DobblerSystem)
 				.system(EditorCameraSystem);
 		}
 
@@ -41,11 +40,32 @@ impl Module for Orchard {
 
 		let pipeline = Handle::find_or_load("{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}").unwrap();
 
+		// Character Body
+		let character = world
+			.spawn(world.persistent)
+			.with(Named::new("Character"), &mut names)
+			.with(
+				Transform::builder().location([0.0, -5.0, 1.0]).finish(),
+				&mut transforms,
+			)
+			.with(
+				Collider::builder(Shape::capsule(1.0, 0.3)).build(),
+				&mut colliders,
+			)
+			.with(
+				RigidBody::builder(RigidBodyVariant::Kinematic).build(),
+				&mut rigid_bodies,
+			)
+			.finish();
+
 		world
 			.spawn(world.persistent)
 			.with(Named::new("Camera"), &mut names)
 			.with(
-				Transform::builder().location([0.0, 0.0, 5.0]).finish(),
+				Transform::builder()
+					.parent(character)
+					.location([0.0, 0.0, 1.0])
+					.finish(),
 				&mut transforms,
 			)
 			.with(Camera::default(), &mut cameras)

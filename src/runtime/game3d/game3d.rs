@@ -21,6 +21,7 @@ use {
 		ScheduleBlock,
 		System,
 		World,
+		WriteStorage,
 	},
 	engine::{
 		Builder,
@@ -88,7 +89,6 @@ impl Module for Game {
 			.register(MeshFilter::variant())
 			.register(EditorCameraController::variant())
 			.register(DebugManager::variant())
-			.register(Dobbler::variant())
 			.register(DirectionalLight::variant())
 			.tick(|delta_time| {
 				let Game {
@@ -184,32 +184,47 @@ impl Transform {
 		result.z_column = (self.rotation.rotate(Vec3::UP) * self.scale.z, 0.0).into();
 		result.w_column = (self.location, 1.0).into();
 
-		// println!("{:#?}", result);
-
 		result
 	}
 
-	pub fn location(&self) -> Vec3 {
+	pub fn world_mat4(&self) -> Mat4 {
+		if self.parent.is_some() {
+			self.local_to_world * self.local_mat4()
+		} else {
+			self.local_mat4()
+		}
+	}
+
+	pub fn local_location(&self) -> Vec3 {
 		self.location
 	}
 
 	// TODO: Figure out best api for local and world location. Also marking as changed
-	pub fn set_location(&mut self, location: impl Into<Vec3>) -> &mut Self {
+	pub fn set_local_location(&mut self, location: impl Into<Vec3>) -> &mut Self {
 		self.location = location.into();
 		self
 	}
 
-	pub fn rotation(&self) -> Quat {
+	pub fn local_rotation(&self) -> Quat {
 		self.rotation
 	}
 
-	pub fn set_rotation(&mut self, rotation: Quat) -> &mut Self {
+	pub fn set_local_rotation(&mut self, rotation: Quat) -> &mut Self {
 		self.rotation = rotation;
 		self
 	}
 }
 
-impl Component for Transform {}
+impl Component for Transform {
+	fn on_added(_world: &World, entity: Entity, storage: &mut WriteStorage<Self>) {
+		let mut child = storage.get_mut(entity).unwrap();
+
+		if let Some(parent) = child.parent {
+			let parent = storage.get(parent).expect("Parent should have a transform");
+			child.local_to_world = parent.local_to_world * parent.local_mat4();
+		}
+	}
+}
 
 impl Default for Transform {
 	fn default() -> Self {
@@ -351,35 +366,6 @@ impl System for EditorCameraSystem {
 			if input.is_button_down(KEY_LCTRL) {
 				transform.location -= up * dt * speed;
 			}
-		}
-	}
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct Dobbler {
-	timer: f32,
-}
-
-impl Component for Dobbler {}
-
-#[derive(Clone)]
-pub struct DobblerSystem;
-impl System for DobblerSystem {
-	fn run(&self, world: &World, dt: f32) {
-		let transforms = world.write::<Transform>();
-		let dobblers = world.write::<Dobbler>();
-
-		let entities = Query::new()
-			.write(&transforms)
-			.write(&dobblers)
-			.execute(world);
-		for e in entities.iter().copied() {
-			let mut transform = transforms.get_mut(e).unwrap();
-			let mut dobbler = dobblers.get_mut(e).unwrap();
-
-			dobbler.timer += dt;
-			let location = transform.location();
-			transform.set_location([location.x, location.y, dobbler.timer.sin() * 50.0]);
 		}
 	}
 }

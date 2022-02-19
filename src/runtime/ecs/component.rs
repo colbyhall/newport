@@ -64,12 +64,11 @@ pub trait Component:
 			create_storage: create_storage::<Self>,
 			parse_value: parse_value::<Self>,
 			default: default::<Self>,
-			on_added: None,
 		}
 	}
 
 	#[allow(unused_variables)]
-	fn on_added(world: &World, entity: Entity, storage: &mut AnyWriteStorage) {}
+	fn on_added(world: &World, entity: Entity, storage: &mut WriteStorage<Self>) {}
 }
 
 #[derive(Clone)]
@@ -81,7 +80,6 @@ pub struct ComponentVariant {
 	create_storage: fn() -> Box<dyn DynamicStorage>,
 	pub parse_value: fn(value: ron::Value) -> ron::Result<Box<dyn Any>>,
 	pub default: fn() -> Box<dyn Any>,
-	pub on_added: Option<fn(Entity, &mut AnyWriteStorage)>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]

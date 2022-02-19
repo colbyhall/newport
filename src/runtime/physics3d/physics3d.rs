@@ -303,6 +303,10 @@ impl System for PhysicsSystem {
 						half_extents.y,
 						half_extents.z,
 					),
+					Shape::Capsule {
+						half_height,
+						radius,
+					} => rapier3d::prelude::ColliderBuilder::capsule_z(half_height, radius),
 					_ => unimplemented!(),
 				}
 				.sensor(collider.description.sensor)
@@ -315,7 +319,7 @@ impl System for PhysicsSystem {
 							RigidBodyVariant::Kinematic => RigidBodyType::KinematicPositionBased,
 						};
 
-						let location = transform.location();
+						let location = transform.local_location();
 						let rapier_rigid_body = rapier3d::prelude::RigidBodyBuilder::new(body_type)
 							.translation(vector![location.x, location.y, location.z])
 							.build();
@@ -359,8 +363,12 @@ impl System for PhysicsSystem {
 				&event_handler,
 			);
 
+			// Grab the debug manager for later
 			let debug_managers = world.write::<DebugManager>();
 			let mut debug = debug_managers.get_mut(world.singleton).unwrap();
+
+			// Iterate through every entity with a rigid body and update their locations and rotations.
+			// TODO: Only update the entities that actually changed
 			for e in entities.iter().copied() {
 				if let Some(rigid_body) = rigid_bodies.get_mut(e) {
 					let mut transform = transforms.get_mut(e).unwrap();
@@ -371,8 +379,8 @@ impl System for PhysicsSystem {
 
 					let location = rigid_body.translation();
 					let rotation = rigid_body.rotation();
-					transform.set_location([location[0], location[1], location[2]]);
-					transform.set_rotation(Quat {
+					transform.set_local_location([location[0], location[1], location[2]]);
+					transform.set_local_rotation(Quat {
 						x: rotation.i,
 						y: rotation.j,
 						z: rotation.k,
@@ -382,9 +390,21 @@ impl System for PhysicsSystem {
 					match collider.description.shape {
 						Shape::Cube { half_extents } => {
 							debug.draw_box(
-								transform.location(),
-								transform.rotation(),
+								transform.local_location(),
+								transform.local_rotation(),
 								half_extents,
+								1.0 / 60.0,
+							);
+						}
+						Shape::Capsule {
+							half_height,
+							radius,
+						} => {
+							// FIXME: Draw an actual capsule whent that implementation is complete
+							debug.draw_box(
+								transform.local_location(),
+								transform.local_rotation(),
+								Vec3::new(radius, radius, half_height),
 								1.0 / 60.0,
 							);
 						}
