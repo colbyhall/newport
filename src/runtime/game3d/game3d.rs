@@ -202,6 +202,7 @@ impl Transform {
 	// TODO: Figure out best api for local and world location. Also marking as changed
 	pub fn set_local_location(&mut self, location: impl Into<Vec3>) -> &mut Self {
 		self.location = location.into();
+		self.changed = true;
 		self
 	}
 
@@ -211,6 +212,16 @@ impl Transform {
 
 	pub fn set_local_rotation(&mut self, rotation: Quat) -> &mut Self {
 		self.rotation = rotation;
+		self.changed = true;
+		self
+	}
+
+	pub fn changed(&self) -> bool {
+		self.changed
+	}
+
+	pub fn set_changed(&mut self, changed: bool) -> &mut Self {
+		self.changed = changed;
 		self
 	}
 }
@@ -222,6 +233,7 @@ impl Component for Transform {
 		if let Some(parent) = child.parent {
 			let parent = storage.get(parent).expect("Parent should have a transform");
 			child.local_to_world = parent.local_to_world * parent.local_mat4();
+			child.world_to_local = child.local_to_world.inverse().unwrap_or_default();
 		}
 	}
 }

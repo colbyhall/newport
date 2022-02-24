@@ -1,6 +1,10 @@
 use std::ops::DerefMut;
 
 use game3d::DebugManager;
+use rapier3d::na::{
+	Quaternion,
+	UnitQuaternion,
+};
 
 use {
 	ecs::{
@@ -74,6 +78,8 @@ impl PhysicsManager {
 			timer: 0.0,
 		}
 	}
+
+	pub fn move_transform(&mut self, delta: Vec3, rotation: Quat) {}
 }
 
 impl Component for PhysicsManager {}
@@ -293,6 +299,7 @@ impl System for PhysicsSystem {
 			.execute(world);
 
 		// Register all unknown colliders and rigid bodies
+		// FIXME: Update any transforms if they have changed
 		for e in entities.iter().copied() {
 			let transform = transforms.get(e).unwrap();
 			let mut collider = colliders.get_mut(e).unwrap();
@@ -337,6 +344,27 @@ impl System for PhysicsSystem {
 					collider.handle = Some(collider_handle);
 				} else {
 					collider.handle = Some(collider_set.insert(rapier_collider));
+				}
+			} else if transform.changed() {
+				if let Some(rigid_body) = rigid_bodies.get(e) {
+					if rigid_body.description.variant == RigidBodyVariant::Kinematic {
+						let handle = rigid_body.handle.unwrap();
+						let rigid_body = rigid_body_set.get_mut(handle).unwrap();
+
+						let location = transform.local_location();
+						let rotation = transform.local_rotation();
+						// FIXME: Do Scale
+
+						let mut next_position =
+							Isometry::translation(location.x, location.y, location.z);
+						next_position.rotation = UnitQuaternion::from_quaternion(Quaternion::new(
+							rotation.w, rotation.x, rotation.y, rotation.z,
+						));
+
+						rigid_body.set_next_kinematic_position(next_position);
+					} else {
+						// FIXME: Print out warning or crash?
+					}
 				}
 			}
 		}
@@ -386,6 +414,7 @@ impl System for PhysicsSystem {
 						z: rotation.k,
 						w: rotation.w,
 					});
+					transform.set_changed(false);
 
 					match collider.description.shape {
 						Shape::Cube { half_extents } => {
