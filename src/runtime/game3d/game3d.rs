@@ -177,6 +177,14 @@ impl Transform {
 		}
 	}
 
+	pub fn children(&self) -> &[Entity] {
+		&self.children
+	}
+
+	pub fn parent(&self) -> Option<Entity> {
+		self.parent
+	}
+
 	pub fn local_mat4(&self) -> Mat4 {
 		let mut result = Mat4::IDENTITY;
 		result.x_column = (self.rotation.rotate(Vec3::FORWARD) * self.scale.x, 0.0).into();
@@ -195,25 +203,38 @@ impl Transform {
 		}
 	}
 
+	fn update_children_local_to_world(&self, storage: &WriteStorage<Self>) {
+		let local_to_world = self.local_to_world * self.local_mat4();
+		let world_to_local = local_to_world.inverse().unwrap();
+		for child in self.children.iter().cloned() {
+			let mut child = storage.get_mut(child).unwrap();
+			child.local_to_world = local_to_world;
+			child.world_to_local = world_to_local;
+			child.update_children_local_to_world(storage);
+		}
+	}
+
+	pub fn set_local_location_and_rotation(
+		&mut self,
+		location: impl Into<Vec3>,
+		rotation: Quat,
+		storage: &WriteStorage<Self>,
+	) -> &mut Self {
+		self.location = location.into();
+		self.rotation = rotation;
+		self.changed = true;
+
+		self.update_children_local_to_world(storage);
+
+		self
+	}
+
 	pub fn local_location(&self) -> Vec3 {
 		self.location
 	}
 
-	// TODO: Figure out best api for local and world location. Also marking as changed
-	pub fn set_local_location(&mut self, location: impl Into<Vec3>) -> &mut Self {
-		self.location = location.into();
-		self.changed = true;
-		self
-	}
-
 	pub fn local_rotation(&self) -> Quat {
 		self.rotation
-	}
-
-	pub fn set_local_rotation(&mut self, rotation: Quat) -> &mut Self {
-		self.rotation = rotation;
-		self.changed = true;
-		self
 	}
 
 	pub fn changed(&self) -> bool {
@@ -231,7 +252,10 @@ impl Component for Transform {
 		let mut child = storage.get_mut(entity).unwrap();
 
 		if let Some(parent) = child.parent {
-			let parent = storage.get(parent).expect("Parent should have a transform");
+			let mut parent = storage
+				.get_mut(parent)
+				.expect("Parent should have a transform");
+			parent.children.push(entity);
 			child.local_to_world = parent.local_to_world * parent.local_mat4();
 			child.world_to_local = child.local_to_world.inverse().unwrap_or_default();
 		}

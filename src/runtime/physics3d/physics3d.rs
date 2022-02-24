@@ -78,8 +78,6 @@ impl PhysicsManager {
 			timer: 0.0,
 		}
 	}
-
-	pub fn move_transform(&mut self, delta: Vec3, rotation: Quat) {}
 }
 
 impl Component for PhysicsManager {}
@@ -346,6 +344,7 @@ impl System for PhysicsSystem {
 					collider.handle = Some(collider_set.insert(rapier_collider));
 				}
 			} else if transform.changed() {
+				// FIXME: Only do this when we're doing the physics step
 				if let Some(rigid_body) = rigid_bodies.get(e) {
 					if rigid_body.description.variant == RigidBodyVariant::Kinematic {
 						let handle = rigid_body.handle.unwrap();
@@ -392,53 +391,56 @@ impl System for PhysicsSystem {
 			);
 
 			// Grab the debug manager for later
-			let debug_managers = world.write::<DebugManager>();
-			let mut debug = debug_managers.get_mut(world.singleton).unwrap();
+			// let debug_managers = world.write::<DebugManager>();
+			// let mut debug = debug_managers.get_mut(world.singleton).unwrap();
 
 			// Iterate through every entity with a rigid body and update their locations and rotations.
 			// TODO: Only update the entities that actually changed
 			for e in entities.iter().copied() {
 				if let Some(rigid_body) = rigid_bodies.get_mut(e) {
 					let mut transform = transforms.get_mut(e).unwrap();
-					let collider = colliders.get(e).unwrap();
 					let rigid_body = rigid_body_set
 						.get(rigid_body.handle.unwrap())
 						.expect("Should be registered");
 
 					let location = rigid_body.translation();
 					let rotation = rigid_body.rotation();
-					transform.set_local_location([location[0], location[1], location[2]]);
-					transform.set_local_rotation(Quat {
-						x: rotation.i,
-						y: rotation.j,
-						z: rotation.k,
-						w: rotation.w,
-					});
+					transform.set_local_location_and_rotation(
+						[location[0], location[1], location[2]],
+						Quat {
+							x: rotation.i,
+							y: rotation.j,
+							z: rotation.k,
+							w: rotation.w,
+						},
+						&transforms,
+					);
 					transform.set_changed(false);
 
-					match collider.description.shape {
-						Shape::Cube { half_extents } => {
-							debug.draw_box(
-								transform.local_location(),
-								transform.local_rotation(),
-								half_extents,
-								1.0 / 60.0,
-							);
-						}
-						Shape::Capsule {
-							half_height,
-							radius,
-						} => {
-							// FIXME: Draw an actual capsule whent that implementation is complete
-							debug.draw_box(
-								transform.local_location(),
-								transform.local_rotation(),
-								Vec3::new(radius, radius, half_height),
-								1.0 / 60.0,
-							);
-						}
-						_ => unimplemented!(),
-					}
+					// let collider = colliders.get(e).unwrap();
+					// match collider.description.shape {
+					// 	Shape::Cube { half_extents } => {
+					// 		debug.draw_box(
+					// 			transform.local_location(),
+					// 			transform.local_rotation(),
+					// 			half_extents,
+					// 			1.0 / 60.0,
+					// 		);
+					// 	}
+					// 	Shape::Capsule {
+					// 		half_height,
+					// 		radius,
+					// 	} => {
+					// 		// FIXME: Draw an actual capsule whent that implementation is complete
+					// 		debug.draw_box(
+					// 			transform.local_location(),
+					// 			transform.local_rotation(),
+					// 			Vec3::new(radius, radius, half_height),
+					// 			1.0 / 60.0,
+					// 		);
+					// 	}
+					// 	_ => unimplemented!(),
+					// }
 				}
 			}
 		}

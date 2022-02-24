@@ -200,6 +200,7 @@ impl System for PlayerCharacterControllerSystem {
 		// Query for all controllers that could be functioning
 		let transforms = world.write::<Transform>();
 		let controllers = world.write::<PlayerCharacterController>();
+		let cameras = world.read::<Camera>();
 		let entities = Query::new()
 			.write(&transforms)
 			.write(&controllers)
@@ -214,7 +215,18 @@ impl System for PlayerCharacterControllerSystem {
 			const SENSITIVITY: f32 = 0.3;
 			controller.pitch -= input.current_axis1d(MOUSE_AXIS_Y) * SENSITIVITY;
 			controller.yaw += input.current_axis1d(MOUSE_AXIS_X) * SENSITIVITY;
-			transform.set_local_rotation(Quat::from_euler([0.0, controller.yaw, 0.0]));
+
+			for c in transform.children().iter().cloned() {
+				let mut transform = transforms.get_mut(c).unwrap();
+				if cameras.get(c).is_some() {
+					let location = transform.local_location();
+					let rotation = Quat::from_euler([controller.pitch, 0.0, 0.0]);
+					transform.set_local_location_and_rotation(location, rotation, &transforms);
+					break;
+				}
+			}
+
+			let new_rotation = Quat::from_euler([0.0, controller.yaw, 0.0]);
 
 			// TODO: Update the camera local pitch
 
@@ -242,7 +254,7 @@ impl System for PlayerCharacterControllerSystem {
 				delta -= right * dt * speed;
 			}
 			let new_location = transform.local_location() + delta;
-			transform.set_local_location(new_location);
+			transform.set_local_location_and_rotation(new_location, new_rotation, &transforms);
 		}
 	}
 }
