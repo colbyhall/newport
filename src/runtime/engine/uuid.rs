@@ -75,6 +75,18 @@ impl From<&str> for Uuid {
 	}
 }
 
+impl From<u128> for Uuid {
+	fn from(x: u128) -> Self {
+		unsafe { std::mem::transmute(x) }
+	}
+}
+
+impl Into<u128> for Uuid {
+	fn into(self) -> u128 {
+		unsafe { std::mem::transmute(self) }
+	}
+}
+
 impl Serialize for Uuid {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where

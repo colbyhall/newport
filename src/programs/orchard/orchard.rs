@@ -16,6 +16,7 @@ use {
 	game3d::*,
 	input::*,
 	math::{
+		Color,
 		Quat,
 		Vec3,
 	},
@@ -48,7 +49,6 @@ impl Module for Orchard {
 		let mut filters = world.write::<MeshFilter>();
 		let mut cameras = world.write::<Camera>();
 		let mut names = world.write::<Named>();
-		let mut camera_controllers = world.write::<EditorCameraController>();
 		let mut colliders = world.write::<Collider>();
 		let mut rigid_bodies = world.write::<RigidBody>();
 		let mut character_movements = world.write::<CharacterMovement>();
@@ -58,7 +58,7 @@ impl Module for Orchard {
 
 		// Character Body
 		let character = world
-			.spawn(world.persistent)
+			.spawn()
 			.with(Named::new("Character"), &mut names)
 			.with(
 				Transform::builder().location([0.0, -5.0, 1.0]).finish(),
@@ -80,7 +80,7 @@ impl Module for Orchard {
 			.finish();
 
 		world
-			.spawn(world.persistent)
+			.spawn()
 			.with(Named::new("Camera"), &mut names)
 			.with(
 				Transform::builder()
@@ -98,7 +98,7 @@ impl Module for Orchard {
 				let x = x as f32 / 2.0;
 				let y = y as f32 / 2.0;
 				world
-					.spawn(world.persistent)
+					.spawn()
 					.with(Named::new("Block"), &mut names)
 					.with(
 						Transform::builder()
@@ -128,7 +128,7 @@ impl Module for Orchard {
 
 		let floor_size = Vec3::new(10000.0, 10000.0, 0.1);
 		world
-			.spawn(world.persistent)
+			.spawn()
 			.with(Named::new("Floor"), &mut names)
 			.with(
 				Transform::builder().scale(floor_size).finish(),
@@ -194,8 +194,8 @@ impl System for PlayerCharacterControllerSystem {
 		let input = world.read::<InputManager>();
 		let input = input.get(world.singleton).unwrap();
 
-		// let physics = world.write::<PhysicsManager>();
-		// let physics = physics.get_mut(world.singleton).unwrap();
+		let mut physics = world.write::<PhysicsManager>();
+		let physics = physics.get_mut_or_default(world.singleton);
 
 		// Query for all controllers that could be functioning
 		let transforms = world.write::<Transform>();
@@ -205,6 +205,10 @@ impl System for PlayerCharacterControllerSystem {
 			.write(&transforms)
 			.write(&controllers)
 			.execute(world);
+
+		// Grab the debug manager for later
+		let debug_managers = world.write::<DebugManager>();
+		let mut debug = debug_managers.get_mut(world.singleton).unwrap();
 
 		// Essentially all we're doing is handling inputs and updating transforms
 		for e in entities.iter().copied() {
@@ -228,17 +232,14 @@ impl System for PlayerCharacterControllerSystem {
 
 			let new_rotation = Quat::from_euler([0.0, controller.yaw, 0.0]);
 
-			// TODO: Update the camera local pitch
-
 			// Determine the current movement speed
 			const WALK_SPEED: f32 = 6.0;
 			// const SPRINT_SPEED: f32 = 20.0;
 			let speed = WALK_SPEED;
 
 			// Move camera forward and right axis. Up and down on world UP
-			let rotation = transform.local_rotation();
-			let forward = rotation.forward();
-			let right = rotation.right();
+			let forward = new_rotation.forward();
+			let right = new_rotation.right();
 
 			let mut delta = Vec3::ZERO;
 			if input.is_button_down(KEY_W) {
@@ -255,6 +256,21 @@ impl System for PlayerCharacterControllerSystem {
 			}
 			let new_location = transform.local_location() + delta;
 			transform.set_local_location_and_rotation(new_location, new_rotation, &transforms);
+
+			let ray = Raycast::new(new_location + forward * 1.0, forward, 5.0);
+			let (a, b, color) = if let Some(result) = physics.single_cast(ray) {
+				let a = result.impact;
+				let b = a + result.normal * 1.0;
+				debug.draw_line(a, b, 0.0).color(Color::YELLOW);
+				(ray.origin, result.impact, Color::GREEN)
+			} else {
+				(
+					ray.origin,
+					ray.origin + ray.direction * ray.distance,
+					Color::RED,
+				)
+			};
+			debug.draw_line(a, b, 0.0).color(color);
 		}
 	}
 }

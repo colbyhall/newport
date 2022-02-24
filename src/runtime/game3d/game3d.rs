@@ -62,7 +62,7 @@ pub struct Game {
 impl Module for Game {
 	fn new() -> Self {
 		Self {
-			world: World::new(None),
+			world: World::new(),
 			schedule: Mutex::new(ScheduleBlock::new()),
 			renderer: Renderer::new(),
 

@@ -1,6 +1,8 @@
 use std::ops::DerefMut;
 
-use game3d::DebugManager;
+use ecs::Entity;
+// use game3d::DebugManager;
+use math::Point3;
 use rapier3d::na::{
 	Quaternion,
 	UnitQuaternion,
@@ -9,7 +11,7 @@ use rapier3d::na::{
 use {
 	ecs::{
 		Component,
-		Query,
+		Query as EcsQuery,
 		System,
 		World,
 	},
@@ -44,6 +46,71 @@ impl Module for Physics {
 	}
 }
 
+pub trait SingleQuery {
+	fn execute(self, manager: &PhysicsManager) -> Option<Query>;
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
+pub struct Raycast {
+	pub origin: Point3,
+	pub direction: Vec3,
+	pub distance: f32,
+	pub solid: bool, // If solid and is overlapping with collider at origin will hit
+}
+
+impl Raycast {
+	pub fn new(origin: impl Into<Point3>, direction: impl Into<Vec3>, distance: f32) -> Self {
+		Self {
+			origin: origin.into(),
+			direction: direction.into(),
+			distance,
+			solid: false,
+		}
+	}
+}
+
+impl SingleQuery for Raycast {
+	fn execute(self, manager: &PhysicsManager) -> Option<Query> {
+		let ray = Ray::new(
+			point![self.origin.x, self.origin.y, self.origin.z],
+			vector![self.direction.x, self.direction.y, self.direction.z],
+		);
+
+		let (collider, intersection) = manager.query_pipeline.cast_ray_and_get_normal(
+			&manager.collider_set,
+			&ray,
+			self.distance,
+			self.solid,
+			InteractionGroups::all(),
+			None,
+		)?;
+
+		let collider = manager.collider_set.get(collider).unwrap();
+		let entity = collider.user_data.into();
+
+		let impact = self.origin + self.direction * intersection.toi;
+		let normal = Vec3::new(
+			intersection.normal.x,
+			intersection.normal.y,
+			intersection.normal.z,
+		);
+
+		Some(Query {
+			entity,
+
+			impact,
+			normal,
+		})
+	}
+}
+
+pub struct Query {
+	pub entity: Entity,
+
+	pub impact: Point3,
+	pub normal: Vec3,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct PhysicsManager {
 	integration_parameters: IntegrationParameters,
@@ -56,6 +123,7 @@ pub struct PhysicsManager {
 	ccd_solver: CCDSolver,
 	rigid_body_set: RigidBodySet,
 	collider_set: ColliderSet,
+	query_pipeline: QueryPipeline,
 
 	gravity: Vec3,
 	timer: f32,
@@ -73,10 +141,15 @@ impl PhysicsManager {
 			ccd_solver: CCDSolver::new(),
 			rigid_body_set: RigidBodySet::new(),
 			collider_set: ColliderSet::new(),
+			query_pipeline: QueryPipeline::new(),
 
 			gravity: Vec3::new(0.0, 0.0, -9.8),
 			timer: 0.0,
 		}
+	}
+
+	pub fn single_cast(&self, cast: impl SingleQuery) -> Option<Query> {
+		cast.execute(self)
 	}
 }
 
@@ -100,6 +173,7 @@ impl Clone for PhysicsManager {
 			ccd_solver: self.ccd_solver.clone(),
 			rigid_body_set: self.rigid_body_set.clone(),
 			collider_set: self.collider_set.clone(),
+			query_pipeline: self.query_pipeline.clone(),
 
 			gravity: self.gravity,
 			timer: self.timer,
@@ -284,13 +358,14 @@ impl System for PhysicsSystem {
 			collider_set,
 			gravity,
 			timer,
+			query_pipeline,
 		} = physics_manager.deref_mut();
 
 		let transforms = world.write::<Transform>();
 		let colliders = world.write::<Collider>();
 		let rigid_bodies = world.write::<RigidBody>();
 
-		let entities = Query::new()
+		let entities = EcsQuery::new()
 			.write(&transforms)
 			.write(&colliders)
 			// .write(&rigid_bodies)
@@ -315,6 +390,7 @@ impl System for PhysicsSystem {
 					_ => unimplemented!(),
 				}
 				.sensor(collider.description.sensor)
+				.user_data(e.into())
 				.build();
 				if let Some(mut rigid_body) = rigid_bodies.get_mut(e) {
 					if rigid_body.handle.is_none() {
@@ -327,6 +403,7 @@ impl System for PhysicsSystem {
 						let location = transform.local_location();
 						let rapier_rigid_body = rapier3d::prelude::RigidBodyBuilder::new(body_type)
 							.translation(vector![location.x, location.y, location.z])
+							.user_data(e.into())
 							.build();
 						rigid_body.handle = Some(rigid_body_set.insert(rapier_rigid_body));
 					}
@@ -389,6 +466,8 @@ impl System for PhysicsSystem {
 				&physics_hooks,
 				&event_handler,
 			);
+
+			query_pipeline.update(island_manager, rigid_body_set, collider_set);
 
 			// Grab the debug manager for later
 			// let debug_managers = world.write::<DebugManager>();

@@ -73,7 +73,7 @@ pub struct Game {
 impl Module for Game {
 	fn new() -> Self {
 		let config: &GameConfig = ConfigManager::read();
-		let world = World::new(config.default_scene.as_ref());
+		let world = World::new();
 
 		Self {
 			world,
