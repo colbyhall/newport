@@ -3,7 +3,7 @@ use engine::{
 	Builder,
 	Module,
 };
-use game3d::Game;
+use game::Game;
 use physics3d::Physics;
 
 pub struct FirstPerson;

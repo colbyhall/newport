@@ -1,19 +1,24 @@
 [package]
-name = "game2d"
+name = "game"
 version = "0.0.0"
 edition = "2021"
 
 [lib]
-path = "game2d.rs"
+path = "game.rs"
 
 [dependencies]
 engine = { path = "../engine" }
 ecs = { path = "../ecs" }
 math = { path = "../math" }
+serde = { path = "../../third_party/serde" }
 gpu = { path = "../gpu" }
 draw2d = { path = "../draw2d" }
 resources = { path = "../resources" }
 input = { path = "../input" }
-config = { path = "../config" }
 
-serde = { path = "../../third_party/serde" }
+editor = { path = "../editor", optional = true }
+
+gltf = "1.0"
+
+[features]
+default = []

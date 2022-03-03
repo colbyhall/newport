@@ -17,6 +17,7 @@ use std::fmt::Debug;
 use std::intrinsics::copy_nonoverlapping;
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Hash)]
+#[repr(C)]
 pub struct Uuid {
 	a: u32,
 	b: u16,
@@ -81,9 +82,9 @@ impl From<u128> for Uuid {
 	}
 }
 
-impl Into<u128> for Uuid {
-	fn into(self) -> u128 {
-		unsafe { std::mem::transmute(self) }
+impl From<Uuid> for u128 {
+	fn from(uuid: Uuid) -> Self {
+		unsafe { std::mem::transmute(uuid) }
 	}
 }
 

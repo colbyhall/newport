@@ -9,5 +9,5 @@ name = "first_person"
 
 [dependencies]
 engine    	= { path = "../../runtime/engine" }
-game3d    	= { path = "../../runtime/game3d" }
+game    	= { path = "../../runtime/game" }
 physics3d    	= { path = "../../runtime/physics3d" }

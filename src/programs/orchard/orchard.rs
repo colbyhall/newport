@@ -13,7 +13,7 @@ use {
 		Engine,
 		Module,
 	},
-	game3d::*,
+	game::*,
 	input::*,
 	math::{
 		Color,

@@ -9,7 +9,7 @@ name = "orchard"
 
 [dependencies]
 engine = { path = "../../runtime/engine" }
-game3d = { path = "../../runtime/game3d" }
+game = { path = "../../runtime/game" }
 ecs = { path = "../../runtime/ecs" }
 math = { path = "../../runtime/math" }
 physics3d = { path = "../../runtime/physics3d" }

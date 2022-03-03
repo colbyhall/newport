@@ -19,7 +19,7 @@ use {
 		Builder,
 		Module,
 	},
-	game3d::Transform,
+	game::Transform,
 	math::{
 		Quat,
 		Vec3,
@@ -39,7 +39,7 @@ impl Module for Physics {
 
 	fn depends_on(builder: &mut Builder) -> &mut Builder {
 		builder
-			.module::<game3d::Game>()
+			.module::<game::Game>()
 			.register(PhysicsManager::variant())
 			.register(Collider::variant())
 			.register(RigidBody::variant())
@@ -445,9 +445,10 @@ impl System for PhysicsSystem {
 			}
 		}
 
+		const TIME_STEP: f32 = 1.0 / 60.0;
 		*timer += dt;
-		if *timer >= 1.0 / 60.0 {
-			*timer = 0.0;
+		if *timer >= TIME_STEP {
+			*timer -= TIME_STEP;
 			let physics_hooks = ();
 			let event_handler = ();
 
