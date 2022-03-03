@@ -47,7 +47,7 @@ impl Module for Physics {
 }
 
 pub trait SingleQuery {
-	fn execute(self, manager: &PhysicsManager) -> Option<Query>;
+	fn execute(self, manager: &PhysicsManager) -> Option<QueryResult>;
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
@@ -70,7 +70,7 @@ impl Raycast {
 }
 
 impl SingleQuery for Raycast {
-	fn execute(self, manager: &PhysicsManager) -> Option<Query> {
+	fn execute(self, manager: &PhysicsManager) -> Option<QueryResult> {
 		let ray = Ray::new(
 			point![self.origin.x, self.origin.y, self.origin.z],
 			vector![self.direction.x, self.direction.y, self.direction.z],
@@ -85,7 +85,10 @@ impl SingleQuery for Raycast {
 			None,
 		)?;
 
-		let collider = manager.collider_set.get(collider).unwrap();
+		let collider = manager
+			.collider_set
+			.get(collider)
+			.expect("Failed to find hit collider in collider set");
 		let entity = collider.user_data.into();
 
 		let impact = self.origin + self.direction * intersection.toi;
@@ -95,7 +98,7 @@ impl SingleQuery for Raycast {
 			intersection.normal.z,
 		);
 
-		Some(Query {
+		Some(QueryResult {
 			entity,
 
 			impact,
@@ -104,7 +107,7 @@ impl SingleQuery for Raycast {
 	}
 }
 
-pub struct Query {
+pub struct QueryResult {
 	pub entity: Entity,
 
 	pub impact: Point3,
@@ -148,7 +151,7 @@ impl PhysicsManager {
 		}
 	}
 
-	pub fn single_cast(&self, cast: impl SingleQuery) -> Option<Query> {
+	pub fn single_cast(&self, cast: impl SingleQuery) -> Option<QueryResult> {
 		cast.execute(self)
 	}
 }
@@ -470,12 +473,8 @@ impl System for PhysicsSystem {
 
 			query_pipeline.update(island_manager, rigid_body_set, collider_set);
 
-			// Grab the debug manager for later
-			// let debug_managers = world.write::<DebugManager>();
-			// let mut debug = debug_managers.get_mut(world.singleton).unwrap();
-
 			// Iterate through every entity with a rigid body and update their locations and rotations.
-			// TODO: Only update the entities that actually changed
+			// FIXME: Only update the entities that actually changed
 			for e in entities.iter().copied() {
 				if let Some(rigid_body) = rigid_bodies.get_mut(e) {
 					let mut transform = transforms.get_mut(e).unwrap();
@@ -496,31 +495,6 @@ impl System for PhysicsSystem {
 						&transforms,
 					);
 					transform.set_changed(false);
-
-					// let collider = colliders.get(e).unwrap();
-					// match collider.description.shape {
-					// 	Shape::Cube { half_extents } => {
-					// 		debug.draw_box(
-					// 			transform.local_location(),
-					// 			transform.local_rotation(),
-					// 			half_extents,
-					// 			1.0 / 60.0,
-					// 		);
-					// 	}
-					// 	Shape::Capsule {
-					// 		half_height,
-					// 		radius,
-					// 	} => {
-					// 		// FIXME: Draw an actual capsule whent that implementation is complete
-					// 		debug.draw_box(
-					// 			transform.local_location(),
-					// 			transform.local_rotation(),
-					// 			Vec3::new(radius, radius, half_height),
-					// 			1.0 / 60.0,
-					// 		);
-					// 	}
-					// 	_ => unimplemented!(),
-					// }
 				}
 			}
 		}

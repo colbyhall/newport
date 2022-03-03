@@ -18,7 +18,3 @@
 [Engine]
 * Config Diffing
 * Cleanup the gpu library
-
-[Other]
-* Create a system macro for ECS to auto gen all the Box async stuff. async trait has 
-   issues with parsing a proc macro and rust analyzer

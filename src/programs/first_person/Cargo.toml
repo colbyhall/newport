@@ -1,0 +1,13 @@
+[package]
+name = "first_person"
+version = "0.0.0"
+edition = "2021"
+
+[[bin]]
+path = "first_person.rs"
+name = "first_person"
+
+[dependencies]
+engine    	= { path = "../../runtime/engine" }
+game    	= { path = "../../runtime/game" }
+physics3d    	= { path = "../../runtime/physics3d" }
