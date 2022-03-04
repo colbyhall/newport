@@ -39,8 +39,7 @@ impl Module for Orchard {
 				.system(DebugSystem)
 				.system(PlayerSystem)
 				.system(CharacterMovementSystem)
-				.system(PhysicsSystem)
-				.system(EditorCameraSystem);
+				.system(PhysicsSystem);
 		}
 
 		let world = &game.world;
