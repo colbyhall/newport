@@ -740,6 +740,186 @@ impl Renderer {
 						shape.color,
 					);
 				}
+				DebugShapeVariant::Capsule {
+					half_height,
+					radius,
+				} => {
+					let forward = shape.rotation.forward();
+					let right = shape.rotation.right();
+					let up = shape.rotation.up();
+
+					let half_height = half_height - radius;
+					let radius = *radius;
+					let origin = shape.location;
+
+					// Forward body line
+					let a = origin + forward * radius + up * half_height;
+					let b = origin + forward * radius - up * half_height;
+					debug_batch_line(
+						&mut debug_vertices,
+						a,
+						b,
+						forward,
+						shape.line_width,
+						shape.color,
+					);
+
+					// Backward body line
+					let a = origin + forward * -radius + up * half_height;
+					let b = origin + forward * -radius - up * half_height;
+					debug_batch_line(
+						&mut debug_vertices,
+						a,
+						b,
+						forward,
+						shape.line_width,
+						shape.color,
+					);
+
+					// Right body line
+					let a = origin + right * radius + up * half_height;
+					let b = origin + right * radius - up * half_height;
+					debug_batch_line(
+						&mut debug_vertices,
+						a,
+						b,
+						right,
+						shape.line_width,
+						shape.color,
+					);
+
+					// Left body line
+					let a = origin + right * -radius + up * half_height;
+					let b = origin + right * -radius - up * half_height;
+					debug_batch_line(
+						&mut debug_vertices,
+						a,
+						b,
+						right,
+						shape.line_width,
+						shape.color,
+					);
+
+					const SEGMENTS: usize = 24;
+
+					// Top Half Sphere
+					let center = origin + up * half_height;
+					for i in 0..SEGMENTS {
+						let theta_a = (math::TAU / (SEGMENTS as f32)) * (i as f32);
+						let theta_b = (math::TAU / (SEGMENTS as f32)) * ((i + 1) as f32);
+
+						let a_dir = Vec2::from_rad(theta_a);
+						let b_dir = Vec2::from_rad(theta_b);
+
+						let a = center + forward * a_dir.x * radius + right * a_dir.y * radius;
+						let b = center + forward * b_dir.x * radius + right * b_dir.y * radius;
+						debug_batch_line(
+							&mut debug_vertices,
+							a,
+							b,
+							up,
+							shape.line_width,
+							shape.color,
+						);
+
+						for i in 0..SEGMENTS / 2 {
+							let theta_a = (math::TAU / (SEGMENTS as f32)) * (i as f32);
+							let theta_b = (math::TAU / (SEGMENTS as f32)) * ((i + 1) as f32);
+
+							let a_dir = Vec2::from_rad(theta_a);
+							let b_dir = Vec2::from_rad(theta_b);
+
+							let a = center + up * a_dir.x * radius + right * a_dir.y * radius;
+							let b = center + up * b_dir.x * radius + right * b_dir.y * radius;
+							debug_batch_line(
+								&mut debug_vertices,
+								a,
+								b,
+								forward,
+								shape.line_width,
+								shape.color,
+							);
+						}
+
+						for i in 0..SEGMENTS / 2 {
+							let theta_a = (math::TAU / (SEGMENTS as f32)) * (i as f32);
+							let theta_b = (math::TAU / (SEGMENTS as f32)) * ((i + 1) as f32);
+
+							let a_dir = Vec2::from_rad(theta_a);
+							let b_dir = Vec2::from_rad(theta_b);
+
+							let a = center + up * a_dir.x * radius + forward * a_dir.y * radius;
+							let b = center + up * b_dir.x * radius + forward * b_dir.y * radius;
+							debug_batch_line(
+								&mut debug_vertices,
+								a,
+								b,
+								right,
+								shape.line_width,
+								shape.color,
+							);
+						}
+					}
+
+					// Bottom Half Sphere
+					let center = origin - up * half_height;
+					for i in 0..SEGMENTS {
+						let theta_a = (math::TAU / (SEGMENTS as f32)) * (i as f32);
+						let theta_b = (math::TAU / (SEGMENTS as f32)) * ((i + 1) as f32);
+
+						let a_dir = Vec2::from_rad(theta_a);
+						let b_dir = Vec2::from_rad(theta_b);
+
+						let a = center + forward * a_dir.x * radius + right * a_dir.y * radius;
+						let b = center + forward * b_dir.x * radius + right * b_dir.y * radius;
+						debug_batch_line(
+							&mut debug_vertices,
+							a,
+							b,
+							up,
+							shape.line_width,
+							shape.color,
+						);
+
+						for i in 0..SEGMENTS / 2 {
+							let theta_a = (math::TAU / (SEGMENTS as f32)) * (i as f32);
+							let theta_b = (math::TAU / (SEGMENTS as f32)) * ((i + 1) as f32);
+
+							let a_dir = Vec2::from_rad(theta_a);
+							let b_dir = Vec2::from_rad(theta_b);
+
+							let a = center - up * a_dir.x * radius + right * a_dir.y * radius;
+							let b = center - up * b_dir.x * radius + right * b_dir.y * radius;
+							debug_batch_line(
+								&mut debug_vertices,
+								a,
+								b,
+								forward,
+								shape.line_width,
+								shape.color,
+							);
+						}
+
+						for i in 0..SEGMENTS / 2 {
+							let theta_a = (math::TAU / (SEGMENTS as f32)) * (i as f32);
+							let theta_b = (math::TAU / (SEGMENTS as f32)) * ((i + 1) as f32);
+
+							let a_dir = Vec2::from_rad(theta_a);
+							let b_dir = Vec2::from_rad(theta_b);
+
+							let a = center - up * a_dir.x * radius + forward * a_dir.y * radius;
+							let b = center - up * b_dir.x * radius + forward * b_dir.y * radius;
+							debug_batch_line(
+								&mut debug_vertices,
+								a,
+								b,
+								right,
+								shape.line_width,
+								shape.color,
+							);
+						}
+					}
+				}
 				_ => unimplemented!(),
 			}
 		}

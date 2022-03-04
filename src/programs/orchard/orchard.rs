@@ -92,8 +92,8 @@ impl Module for Orchard {
 			.with(Camera::default(), &mut cameras)
 			.finish();
 
-		for x in 0..10 {
-			for y in 0..10 {
+		for x in 0..1 {
+			for y in 0..1 {
 				let z = ((x + y) * 2) as f32;
 				let x = x as f32 / 2.0;
 				let y = y as f32 / 2.0;
@@ -271,7 +271,7 @@ impl System for PlayerCharacterControllerSystem {
 					match hit.status {
 						ShapeCastStatus::Penetrating => {
 							debug
-								.draw_box(start, rotation, [0.3, 0.3, 1.0], TIME)
+								.draw_capsule(start, rotation, 1.0, 0.3, TIME)
 								.color(Color::RED);
 						}
 						ShapeCastStatus::Success {
@@ -280,12 +280,16 @@ impl System for PlayerCharacterControllerSystem {
 						} => {
 							for w in witnesses.iter() {
 								debug
-									.draw_box(w.impact, Quat::IDENTITY, 0.01, TIME)
+									.draw_box(w.impact, Quat::IDENTITY, 0.05, TIME)
 									.color(Color::YELLOW);
 								debug
-									.draw_line(w.impact, w.impact + w.normal * 0.1, TIME)
+									.draw_line(w.impact, w.impact + w.normal * 0.5, TIME)
 									.color(Color::YELLOW);
 							}
+							debug
+								.draw_capsule(origin_at_impact, rotation, 1.0, 0.3, TIME)
+								.color(Color::GREEN);
+
 							debug
 								.draw_box(origin_at_impact, rotation, [0.3, 0.3, 1.0], TIME)
 								.color(Color::GREEN);
