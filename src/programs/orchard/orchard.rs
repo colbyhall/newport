@@ -37,7 +37,7 @@ impl Module for Orchard {
 			*schedule = ScheduleBlock::new()
 				.system(InputSystem)
 				.system(DebugSystem)
-				.system(PlayerCharacterControllerSystem)
+				.system(PlayerSystem)
 				.system(CharacterMovementSystem)
 				.system(PhysicsSystem)
 				.system(EditorCameraSystem);
@@ -61,7 +61,7 @@ impl Module for Orchard {
 			.spawn()
 			.with(Named::new("Character"), &mut names)
 			.with(
-				Transform::builder().location([0.0, -5.0, 1.0]).finish(),
+				Transform::builder().location([0.0, -5.0, 1.5]).finish(),
 				&mut transforms,
 			)
 			.with(
@@ -188,8 +188,8 @@ pub struct PlayerCharacterController {
 impl Component for PlayerCharacterController {}
 
 #[derive(Clone)]
-pub struct PlayerCharacterControllerSystem;
-impl System for PlayerCharacterControllerSystem {
+pub struct PlayerSystem;
+impl System for PlayerSystem {
 	fn run(&self, world: &World, dt: f32) {
 		let input = world.read::<InputManager>();
 		let input = input.get(world.singleton).unwrap();

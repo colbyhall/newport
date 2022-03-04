@@ -1,12 +1,6 @@
-use std::ops::DerefMut;
-
-use ecs::Entity;
-// use game3d::DebugManager;
-use math::Point3;
-use rapier3d::na::{
-	Quaternion,
-	UnitQuaternion,
-};
+mod collider;
+mod query;
+mod rigid_body;
 
 use {
 	ecs::{
@@ -24,10 +18,50 @@ use {
 		Quat,
 		Vec3,
 	},
-	rapier3d::prelude::*,
+	query::Query,
+	rapier3d::{
+		na::{
+			Isometry3,
+			Quaternion,
+			UnitQuaternion,
+		},
+		prelude::{
+			nalgebra,
+
+			vector,
+			BroadPhase,
+			CCDSolver,
+			ColliderSet,
+			IntegrationParameters,
+			IslandManager,
+			JointSet,
+			NarrowPhase,
+			PhysicsPipeline,
+			QueryPipeline,
+			RigidBodySet,
+			RigidBodyType,
+		},
+	},
 	serde::{
 		Deserialize,
 		Serialize,
+	},
+	std::ops::DerefMut,
+};
+
+pub use {
+	collider::{
+		Collider,
+		Shape,
+	},
+	query::{
+		RayCast,
+		ShapeCast,
+		ShapeCastStatus,
+	},
+	rigid_body::{
+		RigidBody,
+		RigidBodyVariant,
 	},
 };
 
@@ -44,220 +78,6 @@ impl Module for Physics {
 			.register(Collider::variant())
 			.register(RigidBody::variant())
 	}
-}
-
-pub trait Query {
-	type Hit;
-	fn single(self, manager: &PhysicsManager) -> Option<Self::Hit>;
-}
-
-#[derive(Default, Debug, Clone, Copy, PartialEq)]
-pub struct RayCast {
-	pub origin: Point3,
-	pub direction: Vec3,
-	pub distance: f32,
-}
-
-impl RayCast {
-	pub fn new(origin: impl Into<Point3>, direction: impl Into<Vec3>, distance: f32) -> Self {
-		Self {
-			origin: origin.into(),
-			direction: direction.into(),
-			distance,
-		}
-	}
-}
-
-impl Query for RayCast {
-	type Hit = RayCastHit;
-	fn single(self, manager: &PhysicsManager) -> Option<Self::Hit> {
-		let ray = Ray::new(
-			point![self.origin.x, self.origin.y, self.origin.z],
-			vector![self.direction.x, self.direction.y, self.direction.z],
-		);
-
-		let (collider, intersection) = manager.query_pipeline.cast_ray_and_get_normal(
-			&manager.collider_set,
-			&ray,
-			self.distance,
-			true,
-			InteractionGroups::all(),
-			None,
-		)?;
-
-		let collider = manager
-			.collider_set
-			.get(collider)
-			.expect("Failed to find hit collider in collider set");
-		let entity = collider.user_data.into();
-
-		let impact = self.origin + self.direction * intersection.toi;
-		let normal = Vec3::new(
-			intersection.normal.x,
-			intersection.normal.y,
-			intersection.normal.z,
-		);
-
-		Some(Self::Hit {
-			entity,
-
-			impact,
-			normal,
-		})
-	}
-}
-
-#[derive(Debug, Clone)]
-pub struct RayCastHit {
-	pub entity: Entity,
-
-	pub impact: Point3,
-	pub normal: Vec3,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct ShapeCast {
-	pub start: Point3,
-	pub end: Point3,
-
-	pub rotation: Quat,
-	pub shape: Shape,
-}
-
-impl ShapeCast {
-	pub fn new(
-		start: impl Into<Point3>,
-		end: impl Into<Point3>,
-		rotation: Quat,
-		shape: Shape,
-	) -> Self {
-		Self {
-			start: start.into(),
-			end: end.into(),
-			rotation,
-			shape,
-		}
-	}
-}
-
-impl Default for ShapeCast {
-	fn default() -> Self {
-		Self::new(0.0, 0.0, Quat::IDENTITY, Shape::cube(0.5))
-	}
-}
-
-impl Query for ShapeCast {
-	type Hit = ShapeCastHit;
-	fn single(self, manager: &PhysicsManager) -> Option<Self::Hit> {
-		let shape_pos = Isometry::from_parts(
-			rapier3d::na::Translation3::new(self.start.x, self.start.y, self.start.z),
-			UnitQuaternion::from_quaternion(Quaternion::new(
-				self.rotation.w,
-				self.rotation.x,
-				self.rotation.y,
-				self.rotation.z,
-			)),
-		);
-
-		let start_to_end = self.end - self.start;
-		let direction = start_to_end.norm().unwrap_or_default();
-
-		// FIXME: Should there be some centralized way of making rapier3d shapes
-		//        To do this we couldn't have just a `to_rapier3d` method as each
-		// 		  shape is their own unique type
-		let (collider, hit) = {
-			let direction = vector![direction.x, direction.y, direction.z];
-			let distance = start_to_end.len();
-			let groups = InteractionGroups::all();
-			let filter = None;
-			match self.shape {
-				Shape::Cube { half_extents } => {
-					let shape = rapier3d::geometry::Cuboid::new(vector![
-						half_extents.x,
-						half_extents.y,
-						half_extents.z
-					]);
-					manager.query_pipeline.cast_shape(
-						&manager.collider_set,
-						&shape_pos,
-						&direction,
-						&shape,
-						distance,
-						groups,
-						filter,
-					)
-				}
-				Shape::Capsule {
-					half_height,
-					radius,
-				} => {
-					let shape = rapier3d::geometry::Capsule::new_z(half_height, radius);
-					manager.query_pipeline.cast_shape(
-						&manager.collider_set,
-						&shape_pos,
-						&direction,
-						&shape,
-						distance,
-						groups,
-						filter,
-					)
-				}
-				_ => unimplemented!(),
-			}
-		}?;
-
-		let collider = manager
-			.collider_set
-			.get(collider)
-			.expect("Failed to find hit collider in collider set");
-		let entity: Entity = collider.user_data.into();
-
-		if hit.status == rapier3d::parry::query::TOIStatus::Penetrating {
-			Some(Self::Hit {
-				entity,
-				status: ShapeCastStatus::Penetrating,
-			})
-		} else {
-			Some(Self::Hit {
-				entity,
-				status: ShapeCastStatus::Success {
-					origin_at_impact: self.start + direction * hit.toi,
-					// FIXME: Convert all of this to world space as it is apparently local
-					witnesses: [
-						ShapeCastWitness {
-							impact: Vec3::new(hit.witness1[0], hit.witness1[1], hit.witness1[2]),
-							normal: Vec3::new(hit.normal1[0], hit.normal1[1], hit.normal1[2]),
-						},
-						ShapeCastWitness {
-							impact: Vec3::new(hit.witness2[0], hit.witness2[1], hit.witness2[2]),
-							normal: Vec3::new(hit.normal2[0], hit.normal2[1], hit.normal2[2]),
-						},
-					],
-				},
-			})
-		}
-	}
-}
-
-#[derive(Debug, Clone)]
-pub struct ShapeCastWitness {
-	pub impact: Point3,
-	pub normal: Point3,
-}
-
-#[derive(Debug, Clone)]
-pub enum ShapeCastStatus {
-	Penetrating,
-	Success {
-		origin_at_impact: Point3,
-		witnesses: [ShapeCastWitness; 2],
-	},
-}
-
-#[derive(Debug, Clone)]
-pub struct ShapeCastHit {
-	pub entity: Entity,
-	pub status: ShapeCastStatus,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -330,165 +150,6 @@ impl Clone for PhysicsManager {
 		}
 	}
 }
-
-#[derive(Serialize, Deserialize, Default, Clone)]
-pub struct Collider {
-	handle: Option<ColliderHandle>,
-
-	#[serde(flatten)]
-	description: ColliderDescription,
-}
-
-impl Collider {
-	pub fn builder(shape: Shape) -> ColliderBuilder {
-		ColliderBuilder {
-			shape,
-			..Default::default()
-		}
-	}
-}
-
-impl Component for Collider {}
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
-pub enum Shape {
-	Sphere { radius: f32 },
-	Cube { half_extents: Vec3 },
-	Capsule { half_height: f32, radius: f32 },
-}
-
-impl Shape {
-	pub const fn sphere(radius: f32) -> Self {
-		Self::Sphere { radius }
-	}
-
-	pub fn cube(half_extents: impl Into<Vec3>) -> Self {
-		Self::Cube {
-			half_extents: half_extents.into(),
-		}
-	}
-
-	pub const fn capsule(half_height: f32, radius: f32) -> Self {
-		Self::Capsule {
-			half_height,
-			radius,
-		}
-	}
-}
-
-pub type ColliderBuilder = ColliderDescription;
-#[derive(Serialize, Deserialize, Clone)]
-pub struct ColliderDescription {
-	enabled: bool,
-	sensor: bool,
-	shape: Shape,
-	offset: Vec3,
-}
-
-impl ColliderBuilder {
-	pub const fn enabled(mut self, enabled: bool) -> Self {
-		self.enabled = enabled;
-		self
-	}
-
-	pub const fn sensor(mut self, sensor: bool) -> Self {
-		self.sensor = sensor;
-		self
-	}
-
-	pub fn offset(mut self, offset: impl Into<Vec3>) -> Self {
-		self.offset = offset.into();
-		self
-	}
-
-	pub const fn build(self) -> Collider {
-		Collider {
-			handle: None,
-
-			description: self,
-		}
-	}
-}
-
-impl Default for ColliderDescription {
-	fn default() -> Self {
-		Self {
-			enabled: true,
-			sensor: false,
-			shape: Shape::cube(Vec3::ONE / 2.0),
-			offset: Vec3::ZERO,
-		}
-	}
-}
-
-#[derive(Serialize, Deserialize, Clone, Default)]
-pub struct RigidBody {
-	handle: Option<RigidBodyHandle>,
-
-	#[serde(flatten)]
-	description: RigidBodyDescription,
-}
-
-impl RigidBody {
-	pub fn builder(variant: RigidBodyVariant) -> RigidBodyBuilder {
-		RigidBodyBuilder {
-			variant,
-			..Default::default()
-		}
-	}
-}
-
-impl Component for RigidBody {}
-
-#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RigidBodyVariant {
-	Dynamic,
-	Static,
-	Kinematic,
-}
-
-pub type RigidBodyBuilder = RigidBodyDescription;
-#[derive(Serialize, Deserialize, Clone)]
-pub struct RigidBodyDescription {
-	variant: RigidBodyVariant,
-
-	linear_velocity: Vec3,
-	angular_velocity: Vec3,
-	gravity_scale: f32,
-	linear_damping: f32,
-	angular_damping: f32,
-	can_sleep: bool,
-	sleeping: bool,
-	ccd_enabled: bool,
-}
-
-impl RigidBodyDescription {
-	pub fn build(self) -> RigidBody {
-		RigidBody {
-			handle: None,
-
-			description: self,
-		}
-	}
-}
-
-impl Default for RigidBodyDescription {
-	fn default() -> Self {
-		Self {
-			variant: RigidBodyVariant::Static,
-
-			linear_velocity: Vec3::ZERO,
-			angular_velocity: Vec3::ZERO,
-			gravity_scale: 1.0,
-			linear_damping: 0.0,
-			angular_damping: 0.0,
-			can_sleep: true,
-			sleeping: false,
-			ccd_enabled: false,
-		}
-	}
-}
-
 #[derive(Clone)]
 pub struct PhysicsSystem;
 impl System for PhysicsSystem {
@@ -582,7 +243,7 @@ impl System for PhysicsSystem {
 						// FIXME: Do Scale
 
 						let mut next_position =
-							Isometry::translation(location.x, location.y, location.z);
+							Isometry3::translation(location.x, location.y, location.z);
 						next_position.rotation = UnitQuaternion::from_quaternion(Quaternion::new(
 							rotation.w, rotation.x, rotation.y, rotation.z,
 						));
