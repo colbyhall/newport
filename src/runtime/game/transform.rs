@@ -91,6 +91,14 @@ impl Transform {
 		self
 	}
 
+	pub fn set_local_rotation(
+		&mut self,
+		rotation: Quat,
+		storage: &WriteStorage<Self>,
+	) -> &mut Self {
+		self.set_local_location_and_rotation(self.local_location(), rotation, storage)
+	}
+
 	pub fn local_location(&self) -> Vec3 {
 		self.location
 	}

@@ -23,6 +23,10 @@ impl Collider {
 			..Default::default()
 		}
 	}
+
+	pub fn shape(&self) -> Shape {
+		self.description.shape
+	}
 }
 
 impl Component for Collider {}

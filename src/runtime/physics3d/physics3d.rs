@@ -1,13 +1,16 @@
 mod collider;
+mod movement;
 mod query;
 mod rigid_body;
 
 use {
 	ecs::{
 		Component,
+		Entity,
 		Query as EcsQuery,
 		System,
 		World,
+		WriteStorage,
 	},
 	engine::{
 		Builder,
@@ -23,6 +26,7 @@ use {
 		na::{
 			Isometry3,
 			Quaternion,
+			Translation3,
 			UnitQuaternion,
 		},
 		prelude::{
@@ -54,9 +58,17 @@ pub use {
 		Collider,
 		Shape,
 	},
+	movement::{
+		BipedMovement,
+		BipedMovementMode,
+		BipedMovementSystem,
+	},
 	query::{
+		Filter,
 		RayCast,
+		RayCastHit,
 		ShapeCast,
+		ShapeCastHit,
 		ShapeCastStatus,
 	},
 	rigid_body::{
@@ -77,6 +89,29 @@ impl Module for Physics {
 			.register(PhysicsManager::variant())
 			.register(Collider::variant())
 			.register(RigidBody::variant())
+			.register(BipedMovement::variant())
+	}
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Movement {
+	pub delta: Vec3,
+	pub rotation: Quat,
+	pub sweep: bool,
+}
+
+impl Movement {
+	pub fn new(delta: impl Into<Vec3>, rotation: Quat) -> Self {
+		Self {
+			delta: delta.into(),
+			rotation,
+			sweep: true,
+		}
+	}
+
+	pub fn sweep(mut self, sweep: bool) -> Self {
+		self.sweep = sweep;
+		self
 	}
 }
 
@@ -118,8 +153,76 @@ impl PhysicsManager {
 	}
 
 	#[must_use]
-	pub fn single_cast<T: Query>(&self, cast: T) -> Option<T::Hit> {
-		cast.single(self)
+	pub fn single_cast<T: Query>(&self, cast: T, filter: Filter) -> Option<T::Hit> {
+		cast.single(filter, self)
+	}
+
+	pub fn move_rigid_body(
+		&mut self,
+		movement: Movement,
+
+		entity: Entity,
+		rigid_body: &RigidBody,
+		collider: &Collider,
+		transform: &mut Transform,
+		transforms: &WriteStorage<Transform>,
+	) -> Option<ShapeCastHit> {
+		let location = transform.local_location();
+
+		let result = if movement.sweep {
+			let start = location;
+			let end = start + movement.delta;
+			let cast = ShapeCast::new(start, end, movement.rotation, collider.shape());
+			let filter = Filter {
+				ignore: vec![entity],
+			};
+			let hit = self.single_cast(cast, filter);
+			if let Some(hit) = &hit {
+				match hit.status {
+					ShapeCastStatus::Penetrating => {
+						transform.set_local_location_and_rotation(
+							start,
+							movement.rotation,
+							transforms,
+						);
+					}
+					ShapeCastStatus::Success {
+						origin_at_impact, ..
+					} => {
+						transform.set_local_location_and_rotation(
+							origin_at_impact,
+							movement.rotation,
+							transforms,
+						);
+					}
+				}
+			} else {
+				transform.set_local_location_and_rotation(end, movement.rotation, transforms);
+			}
+			hit
+		} else {
+			transform.set_local_location_and_rotation(
+				location + movement.delta,
+				movement.rotation,
+				transforms,
+			);
+			None
+		};
+		transform.set_changed(false);
+
+		if let Some(rigid_body_handle) = rigid_body.handle {
+			let rigid_body = self.rigid_body_set.get_mut(rigid_body_handle).unwrap();
+			let location = transform.local_location();
+			let rotation = transform.local_rotation();
+			rigid_body.set_next_kinematic_position(Isometry3::from_parts(
+				Translation3::new(location.x, location.y, location.z),
+				UnitQuaternion::from_quaternion(Quaternion::new(
+					rotation.w, rotation.x, rotation.y, rotation.z,
+				)),
+			));
+		}
+
+		result
 	}
 }
 

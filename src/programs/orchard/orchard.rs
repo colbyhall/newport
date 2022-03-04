@@ -37,9 +37,9 @@ impl Module for Orchard {
 			*schedule = ScheduleBlock::new()
 				.system(InputSystem)
 				.system(DebugSystem)
-				.system(PlayerSystem)
-				.system(CharacterMovementSystem)
-				.system(PhysicsSystem);
+				.system(PhysicsSystem)
+				.system(PlayerControllerSystem)
+				.system(BipedMovementSystem);
 		}
 
 		let world = &game.world;
@@ -50,8 +50,8 @@ impl Module for Orchard {
 		let mut names = world.write::<Named>();
 		let mut colliders = world.write::<Collider>();
 		let mut rigid_bodies = world.write::<RigidBody>();
-		let mut character_movements = world.write::<CharacterMovement>();
-		let mut player_character_controllers = world.write::<PlayerCharacterController>();
+		let mut character_movements = world.write::<BipedMovement>();
+		let mut player_character_controllers = world.write::<PlayerController>();
 
 		let pipeline = Handle::find_or_load("{D0FAF8AC-0650-48D1-AAC2-E1C01E1C93FC}").unwrap();
 
@@ -60,7 +60,7 @@ impl Module for Orchard {
 			.spawn()
 			.with(Named::new("Character"), &mut names)
 			.with(
-				Transform::builder().location([0.0, -5.0, 1.5]).finish(),
+				Transform::builder().location([0.0, -5.0, 20.0]).finish(),
 				&mut transforms,
 			)
 			.with(
@@ -71,9 +71,9 @@ impl Module for Orchard {
 				RigidBody::builder(RigidBodyVariant::Kinematic).build(),
 				&mut rigid_bodies,
 			)
-			.with(CharacterMovement::default(), &mut character_movements)
+			.with(BipedMovement::default(), &mut character_movements)
 			.with(
-				PlayerCharacterController::default(),
+				PlayerController::default(),
 				&mut player_character_controllers,
 			)
 			.finish();
@@ -157,52 +157,37 @@ impl Module for Orchard {
 		builder
 			.module::<Game>()
 			.module::<Physics>()
-			.register(CharacterMovement::variant())
-			.register(PlayerCharacterController::variant())
+			.register(PlayerController::variant())
 	}
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
-pub struct CharacterMovement {
-	pub input: Vec3,
-	pub jump_pressed: bool,
-
-	pub velocity: Vec3,
-}
-
-impl Component for CharacterMovement {}
-
-#[derive(Clone)]
-pub struct CharacterMovementSystem;
-impl System for CharacterMovementSystem {
-	fn run(&self, world: &World, dt: f32) {}
-}
-
-#[derive(Default, Serialize, Deserialize, Clone)]
-pub struct PlayerCharacterController {
+pub struct PlayerController {
 	pub yaw: f32,
 	pub pitch: f32,
 }
 
-impl Component for PlayerCharacterController {}
+impl Component for PlayerController {}
 
 #[derive(Clone)]
-pub struct PlayerSystem;
-impl System for PlayerSystem {
+pub struct PlayerControllerSystem;
+impl System for PlayerControllerSystem {
 	fn run(&self, world: &World, dt: f32) {
 		let input = world.read::<InputManager>();
-		let input = input.get(world.singleton).unwrap();
+		let input_manager = input.get(world.singleton).unwrap();
 
 		let mut physics = world.write::<PhysicsManager>();
 		let physics = physics.get_mut_or_default(world.singleton);
 
 		// Query for all controllers that could be functioning
 		let transforms = world.write::<Transform>();
-		let controllers = world.write::<PlayerCharacterController>();
+		let controllers = world.write::<PlayerController>();
+		let biped_movements = world.write::<BipedMovement>();
 		let cameras = world.read::<Camera>();
 		let entities = Query::new()
 			.write(&transforms)
 			.write(&controllers)
+			.write(&biped_movements)
 			.execute(world);
 
 		// Grab the debug manager for later
@@ -213,11 +198,12 @@ impl System for PlayerSystem {
 		for e in entities.iter().copied() {
 			let mut transform = transforms.get_mut(e).unwrap();
 			let mut controller = controllers.get_mut(e).unwrap();
+			let mut biped_movement = biped_movements.get_mut(e).unwrap();
 
 			// Update the camera controller rotation only when mouse input is being consumed
 			const SENSITIVITY: f32 = 0.3;
-			controller.pitch -= input.current_axis1d(MOUSE_AXIS_Y) * SENSITIVITY;
-			controller.yaw += input.current_axis1d(MOUSE_AXIS_X) * SENSITIVITY;
+			controller.pitch -= input_manager.current_axis1d(MOUSE_AXIS_Y) * SENSITIVITY;
+			controller.yaw += input_manager.current_axis1d(MOUSE_AXIS_X) * SENSITIVITY;
 
 			for c in transform.children().iter().cloned() {
 				let mut transform = transforms.get_mut(c).unwrap();
@@ -230,41 +216,38 @@ impl System for PlayerSystem {
 			}
 
 			let new_rotation = Quat::from_euler([0.0, controller.yaw, 0.0]);
-
-			// Determine the current movement speed
-			const WALK_SPEED: f32 = 6.0;
-			// const SPRINT_SPEED: f32 = 20.0;
-			let speed = WALK_SPEED;
+			transform.set_local_rotation(new_rotation, &transforms);
 
 			// Move camera forward and right axis. Up and down on world UP
 			let forward = new_rotation.forward();
 			let right = new_rotation.right();
 
-			let mut delta = Vec3::ZERO;
-			if input.is_button_down(KEY_W) {
-				delta += forward * dt * speed;
+			let mut input = Vec3::ZERO;
+			if input_manager.is_button_down(KEY_W) {
+				input += forward;
 			}
-			if input.is_button_down(KEY_S) {
-				delta -= forward * dt * speed;
+			if input_manager.is_button_down(KEY_S) {
+				input -= forward;
 			}
-			if input.is_button_down(KEY_D) {
-				delta += right * dt * speed;
+			if input_manager.is_button_down(KEY_D) {
+				input += right;
 			}
-			if input.is_button_down(KEY_A) {
-				delta -= right * dt * speed;
+			if input_manager.is_button_down(KEY_A) {
+				input -= right;
 			}
-			let new_location = transform.local_location() + delta;
-			transform.set_local_location_and_rotation(new_location, new_rotation, &transforms);
+			let input = input.norm().unwrap_or_default();
+			biped_movement.input = input;
 
-			if input.was_button_pressed(KEY_Q) {
+			let location = transform.local_location();
+			if input_manager.was_button_pressed(KEY_Q) {
 				let shape = Shape::capsule(1.0, 0.3);
-				let start = new_location + forward * 4.0 + Vec3::UP * 1.0;
+				let start = location + forward * 4.0 + Vec3::UP * 1.0;
 				let end = start + forward * 5.0;
 				let rotation = new_rotation;
 				let cast = ShapeCast::new(start, end, rotation, shape);
 
 				const TIME: f32 = 5.0;
-				if let Some(hit) = physics.single_cast(cast) {
+				if let Some(hit) = physics.single_cast(cast, Filter::default()) {
 					println!("{:#?}", hit);
 
 					match hit.status {
@@ -299,8 +282,8 @@ impl System for PlayerSystem {
 				debug.draw_line(start, end, TIME);
 			}
 
-			let ray = RayCast::new(new_location + forward * 1.0, forward, 5.0);
-			let (a, b, color) = if let Some(result) = physics.single_cast(ray) {
+			let ray = RayCast::new(location + forward * 1.0, forward, 5.0);
+			let (a, b, color) = if let Some(result) = physics.single_cast(ray, Filter::default()) {
 				let a = result.impact;
 				let b = a + result.normal * 1.0;
 				debug.draw_line(a, b, 0.0).color(Color::YELLOW);

@@ -20,7 +20,7 @@ use {
 
 pub trait Query {
 	type Hit;
-	fn single(self, manager: &PhysicsManager) -> Option<Self::Hit>;
+	fn single(self, filter: Filter, manager: &PhysicsManager) -> Option<Self::Hit>;
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
@@ -42,11 +42,20 @@ impl RayCast {
 
 impl Query for RayCast {
 	type Hit = RayCastHit;
-	fn single(self, manager: &PhysicsManager) -> Option<Self::Hit> {
+	fn single(self, filter: Filter, manager: &PhysicsManager) -> Option<Self::Hit> {
 		let ray = Ray::new(
 			point![self.origin.x, self.origin.y, self.origin.z],
 			vector![self.direction.x, self.direction.y, self.direction.z],
 		);
+
+		let filter = |collider_handle: ColliderHandle| {
+			let collider = manager.collider_set.get(collider_handle).unwrap();
+			let entity: Entity = collider.user_data.into();
+
+			let passes = !filter.ignore.iter().any(|e| *e == entity);
+			passes
+		};
+		let filter: Option<&dyn Fn(ColliderHandle) -> bool> = Some(&filter);
 
 		let (collider, intersection) = manager.query_pipeline.cast_ray_and_get_normal(
 			&manager.collider_set,
@@ -54,7 +63,7 @@ impl Query for RayCast {
 			self.distance,
 			true,
 			InteractionGroups::all(),
-			None,
+			filter,
 		)?;
 
 		let collider = manager
@@ -120,7 +129,7 @@ impl Default for ShapeCast {
 
 impl Query for ShapeCast {
 	type Hit = ShapeCastHit;
-	fn single(self, manager: &PhysicsManager) -> Option<Self::Hit> {
+	fn single(self, filter: Filter, manager: &PhysicsManager) -> Option<Self::Hit> {
 		let mut shape_pos = Isometry::translation(self.start.x, self.start.y, self.start.z);
 		shape_pos.rotation = UnitQuaternion::from_quaternion(Quaternion::new(
 			self.rotation.w,
@@ -132,6 +141,14 @@ impl Query for ShapeCast {
 		let start_to_end = self.end - self.start;
 		let direction = start_to_end.norm().unwrap_or_default();
 
+		let filter = |collider_handle: ColliderHandle| {
+			let collider = manager.collider_set.get(collider_handle).unwrap();
+			let entity: Entity = collider.user_data.into();
+
+			let passes = !filter.ignore.iter().any(|e| *e == entity);
+			passes
+		};
+
 		// FIXME: Should there be some centralized way of making rapier3d shapes
 		//        To do this we couldn't have just a `to_rapier3d` method as each
 		// 		  shape is their own unique type
@@ -139,7 +156,7 @@ impl Query for ShapeCast {
 			let direction = vector![direction.x, direction.y, direction.z];
 			let distance = start_to_end.len();
 			let groups = InteractionGroups::all();
-			let filter = None;
+			let filter: Option<&dyn Fn(ColliderHandle) -> bool> = Some(&filter);
 			match self.shape {
 				Shape::Cube { half_extents } => {
 					let shape = rapier3d::geometry::Cuboid::new(vector![
@@ -228,4 +245,9 @@ pub enum ShapeCastStatus {
 pub struct ShapeCastHit {
 	pub entity: Entity,
 	pub status: ShapeCastStatus,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct Filter {
+	pub ignore: Vec<Entity>,
 }
