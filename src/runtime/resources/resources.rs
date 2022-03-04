@@ -326,9 +326,10 @@ pub struct ImporterVariant {
 	#[allow(clippy::type_complexity)]
 	load_meta: fn(&[u8]) -> Result<(Uuid, Box<dyn Any>)>,
 
-	#[allow(clippy::type_complexity)]
+	// TODO: Save resources to file
+	#[allow(clippy::type_complexity, dead_code)]
 	save_resource: fn(&Box<dyn Any>, &Box<dyn Any>, &mut File) -> Result<()>,
-	#[allow(clippy::type_complexity)]
+	#[allow(clippy::type_complexity, dead_code)]
 	save_meta: fn(Uuid, &Box<dyn Any>, &mut File) -> Result<()>,
 }
 

@@ -315,6 +315,8 @@ impl<'a> AnyWriteStorage<'a> {
 			.insert(entity, t)
 	}
 
+	// FIXME: Use this for deserialization
+	#[allow(dead_code)]
 	pub(crate) fn insert_box(&mut self, entity: Entity, value: &Box<dyn Any>) {
 		self.write.insert_box(entity, value)
 	}

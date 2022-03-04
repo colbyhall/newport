@@ -322,7 +322,6 @@ impl DebugManager {
 		self.shapes.last_mut().unwrap()
 	}
 
-	// FIXME: Add batch implementation
 	pub fn draw_capsule(
 		&mut self,
 		location: Point3,
