@@ -26,7 +26,7 @@ pub use font::*;
 
 mod font;
 
-// TODO: Bring font into this file
+// FIXME: Bring font into this file
 pub use font::*;
 
 pub struct Draw2d;
@@ -261,7 +261,7 @@ impl Painter {
 		let b = b.into();
 
 		let width = line_width / 2.0;
-		let perp = (b - a).norm().perp() * width;
+		let perp = (b - a).norm().unwrap().perp() * width;
 
 		let color = color.into();
 

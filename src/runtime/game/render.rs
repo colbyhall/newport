@@ -281,25 +281,10 @@ impl DebugManager {
 		}
 	}
 
-	pub fn draw_line(&mut self, a: Point3, b: Point3, life_time: f32) -> &mut DebugShape {
-		self.shapes.push(DebugShape {
-			line_width: Self::DEFAULT_LINE_WIDTH,
-			color: Self::DEFAULT_COLOR,
-
-			time_left: life_time,
-
-			location: a,
-			rotation: Quat::IDENTITY,
-			variant: DebugShapeVariant::Line { end: b },
-		});
-		self.shapes.last_mut().unwrap()
-	}
-
-	pub fn draw_box(
+	pub fn draw_line(
 		&mut self,
-		location: Point3,
-		rotation: Quat,
-		half_extents: Vec3,
+		a: impl Into<Point3>,
+		b: impl Into<Point3>,
 		life_time: f32,
 	) -> &mut DebugShape {
 		self.shapes.push(DebugShape {
@@ -308,9 +293,31 @@ impl DebugManager {
 
 			time_left: life_time,
 
-			location,
+			location: a.into(),
+			rotation: Quat::IDENTITY,
+			variant: DebugShapeVariant::Line { end: b.into() },
+		});
+		self.shapes.last_mut().unwrap()
+	}
+
+	pub fn draw_box(
+		&mut self,
+		location: impl Into<Point3>,
+		rotation: Quat,
+		half_extents: impl Into<Vec3>,
+		life_time: f32,
+	) -> &mut DebugShape {
+		self.shapes.push(DebugShape {
+			line_width: Self::DEFAULT_LINE_WIDTH,
+			color: Self::DEFAULT_COLOR,
+
+			time_left: life_time,
+
+			location: location.into(),
 			rotation,
-			variant: DebugShapeVariant::Box { half_extents },
+			variant: DebugShapeVariant::Box {
+				half_extents: half_extents.into(),
+			},
 		});
 		self.shapes.last_mut().unwrap()
 	}
@@ -529,7 +536,7 @@ impl Renderer {
 			line_width: f32,
 			color: Color,
 		) {
-			let mut forward = (b - a).norm();
+			let mut forward = (b - a).norm().unwrap_or(Vec3::FORWARD);
 			let mut up = up;
 			let mut right = Vec3::cross(forward, up);
 			Vec3::orthonormal_basis(&mut forward, &mut right, &mut up);
@@ -602,7 +609,7 @@ impl Renderer {
 		for shape in scene.debug_shapes.iter() {
 			match &shape.variant {
 				DebugShapeVariant::Line { end } => {
-					let forward = (*end - shape.location).norm();
+					let forward = (*end - shape.location).norm().unwrap_or(Vec3::FORWARD);
 					let up = if forward.dot(Vec3::UP) >= 0.5 {
 						Vec3::FORWARD
 					} else {
@@ -633,8 +640,8 @@ impl Renderer {
 					let btl = shape.location + -forward + up - right;
 					let btr = shape.location + -forward + up + right;
 
-					let up = up.norm();
-					let forward = forward.norm();
+					let up = up.norm().unwrap();
+					let forward = forward.norm().unwrap();
 
 					debug_batch_line(
 						&mut debug_vertices,

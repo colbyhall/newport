@@ -90,11 +90,11 @@ impl Vec2 {
 		self.len() < crate::SMALL_NUMBER
 	}
 
-	pub fn norm(self) -> Self {
+	pub fn norm(self) -> Option<Self> {
 		if self.is_empty() {
-			Self::ZERO
+			None
 		} else {
-			self / self.len()
+			Some(self / self.len())
 		}
 	}
 

@@ -78,6 +78,7 @@ impl Vec3 {
 		self.dot(self)
 	}
 
+	#[must_use]
 	pub fn len(self) -> f32 {
 		self.len_sq().sqrt()
 	}
@@ -86,11 +87,12 @@ impl Vec3 {
 		self.len() < crate::SMALL_NUMBER
 	}
 
-	pub fn norm(self) -> Self {
+	#[must_use]
+	pub fn norm(self) -> Option<Self> {
 		if self.is_empty() {
-			Self::ZERO
+			None
 		} else {
-			self / self.len()
+			Some(self / self.len())
 		}
 	}
 
@@ -364,6 +366,12 @@ impl From<(Vec2, f32)> for Vec3 {
 impl From<[f32; 3]> for Vec3 {
 	fn from(xyz: [f32; 3]) -> Self {
 		Self::new(xyz[0], xyz[1], xyz[2])
+	}
+}
+
+impl From<f32> for Vec3 {
+	fn from(xyz: f32) -> Self {
+		Self::splat(xyz)
 	}
 }
 

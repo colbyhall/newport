@@ -257,7 +257,46 @@ impl System for PlayerCharacterControllerSystem {
 			let new_location = transform.local_location() + delta;
 			transform.set_local_location_and_rotation(new_location, new_rotation, &transforms);
 
-			let ray = Raycast::new(new_location + forward * 1.0, forward, 5.0);
+			if input.was_button_pressed(KEY_Q) {
+				let shape = Shape::capsule(1.0, 0.3);
+				let start = new_location + forward * 4.0 + Vec3::UP * 1.0;
+				let end = start + forward * 5.0;
+				let rotation = new_rotation;
+				let cast = ShapeCast::new(start, end, rotation, shape);
+
+				const TIME: f32 = 5.0;
+				if let Some(hit) = physics.single_cast(cast) {
+					println!("{:#?}", hit);
+
+					match hit.status {
+						ShapeCastStatus::Penetrating => {
+							debug
+								.draw_box(start, rotation, [0.3, 0.3, 1.0], TIME)
+								.color(Color::RED);
+						}
+						ShapeCastStatus::Success {
+							origin_at_impact,
+							witnesses,
+						} => {
+							for w in witnesses.iter() {
+								debug
+									.draw_box(w.impact, Quat::IDENTITY, 0.01, TIME)
+									.color(Color::YELLOW);
+								debug
+									.draw_line(w.impact, w.impact + w.normal * 0.1, TIME)
+									.color(Color::YELLOW);
+							}
+							debug
+								.draw_box(origin_at_impact, rotation, [0.3, 0.3, 1.0], TIME)
+								.color(Color::GREEN);
+						}
+					};
+				}
+
+				debug.draw_line(start, end, TIME);
+			}
+
+			let ray = RayCast::new(new_location + forward * 1.0, forward, 5.0);
 			let (a, b, color) = if let Some(result) = physics.single_cast(ray) {
 				let a = result.impact;
 				let b = a + result.normal * 1.0;
