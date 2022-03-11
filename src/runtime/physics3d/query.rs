@@ -208,13 +208,13 @@ impl Query for ShapeCast {
 			Some(Self::Hit {
 				entity,
 				status: ShapeCastStatus::Success {
-					origin_at_impact: self.start + direction * hit.toi,
-					// FIXME: Convert all of this to world space as it is apparently local
+					origin_at_impact: self.start + direction * (hit.toi - 0.001),
 					witnesses: [
 						ShapeCastWitness {
 							impact: Vec3::new(hit.witness1[0], hit.witness1[1], hit.witness1[2]),
 							normal: Vec3::new(hit.normal1[0], hit.normal1[1], hit.normal1[2]),
 						},
+						// FIXME: Convert all of this to world space as it is apparently local
 						ShapeCastWitness {
 							impact: Vec3::new(hit.witness2[0], hit.witness2[1], hit.witness2[2]),
 							normal: Vec3::new(hit.normal2[0], hit.normal2[1], hit.normal2[2]),

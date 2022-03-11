@@ -37,9 +37,9 @@ impl Module for Orchard {
 			*schedule = ScheduleBlock::new()
 				.system(InputSystem)
 				.system(DebugSystem)
-				.system(PhysicsSystem)
+				.system(BipedMovementSystem)
 				.system(PlayerControllerSystem)
-				.system(BipedMovementSystem);
+				.system(PhysicsSystem);
 		}
 
 		let world = &game.world;
@@ -60,7 +60,7 @@ impl Module for Orchard {
 			.spawn()
 			.with(Named::new("Character"), &mut names)
 			.with(
-				Transform::builder().location([0.0, -5.0, 20.0]).finish(),
+				Transform::builder().location([0.0, -5.0, 2.0]).finish(),
 				&mut transforms,
 			)
 			.with(
@@ -91,8 +91,8 @@ impl Module for Orchard {
 			.with(Camera::default(), &mut cameras)
 			.finish();
 
-		for x in 0..1 {
-			for y in 0..1 {
+		for x in 0..5 {
+			for y in 0..5 {
 				let z = ((x + y) * 2) as f32;
 				let x = x as f32 / 2.0;
 				let y = y as f32 / 2.0;
@@ -240,46 +240,23 @@ impl System for PlayerControllerSystem {
 
 			let location = transform.local_location();
 			if input_manager.was_button_pressed(KEY_Q) {
-				let shape = Shape::capsule(1.0, 0.3);
-				let start = location + forward * 4.0 + Vec3::UP * 1.0;
-				let end = start + forward * 5.0;
-				let rotation = new_rotation;
-				let cast = ShapeCast::new(start, end, rotation, shape);
+				let origin = location;
+				let dir = -Vec3::UP;
+				let distance = 500.0;
+				let cast = RayCast::new(origin, dir, distance);
 
 				const TIME: f32 = 5.0;
-				if let Some(hit) = physics.single_cast(cast, Filter::default()) {
+				let filter = Filter { ignore: vec![e] };
+				if let Some(hit) = physics.single_cast(cast, filter) {
 					println!("{:#?}", hit);
-
-					match hit.status {
-						ShapeCastStatus::Penetrating => {
-							debug
-								.draw_capsule(start, rotation, 1.0, 0.3, TIME)
-								.color(Color::RED);
-						}
-						ShapeCastStatus::Success {
-							origin_at_impact,
-							witnesses,
-						} => {
-							for w in witnesses.iter() {
-								debug
-									.draw_box(w.impact, Quat::IDENTITY, 0.05, TIME)
-									.color(Color::YELLOW);
-								debug
-									.draw_line(w.impact, w.impact + w.normal * 0.5, TIME)
-									.color(Color::YELLOW);
-							}
-							debug
-								.draw_capsule(origin_at_impact, rotation, 1.0, 0.3, TIME)
-								.color(Color::GREEN);
-
-							debug
-								.draw_box(origin_at_impact, rotation, [0.3, 0.3, 1.0], TIME)
-								.color(Color::GREEN);
-						}
-					};
+					debug
+						.draw_line(origin, hit.impact, TIME)
+						.color(Color::GREEN);
+				} else {
+					debug
+						.draw_line(origin, origin + dir * distance, TIME)
+						.color(Color::RED);
 				}
-
-				debug.draw_line(start, end, TIME);
 			}
 
 			let ray = RayCast::new(location + forward * 1.0, forward, 5.0);

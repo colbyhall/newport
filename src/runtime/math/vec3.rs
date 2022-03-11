@@ -83,13 +83,13 @@ impl Vec3 {
 		self.len_sq().sqrt()
 	}
 
-	pub fn is_empty(self) -> bool {
+	pub fn is_zero(self) -> bool {
 		self.len() < crate::SMALL_NUMBER
 	}
 
 	#[must_use]
 	pub fn norm(self) -> Option<Self> {
-		if self.is_empty() {
+		if self.is_zero() {
 			None
 		} else {
 			Some(self / self.len())
