@@ -17,6 +17,8 @@ use {
 	std::collections::HashMap,
 };
 
+use std::ops::DerefMut;
+
 pub use os::input::*;
 
 pub struct GameInput {
@@ -62,12 +64,16 @@ impl InputState {
 	}
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct InputManager {
 	#[serde(skip)]
 	current: HashMap<Input, InputState>,
 	#[serde(skip)]
 	last: HashMap<Input, InputState>,
+	#[serde(skip)]
+	last_focus: bool,
+	#[serde(skip)]
+	focus: bool,
 }
 
 impl InputManager {
@@ -121,6 +127,29 @@ impl InputManager {
 	pub fn delta_axis1d(&self, axis: Input) -> f32 {
 		self.current_axis1d(axis) - self.last_axis1d(axis)
 	}
+
+	pub fn has_focus(&self) -> bool {
+		self.focus
+	}
+
+	pub fn lost_focus(&self) -> bool {
+		!self.focus && self.last_focus
+	}
+
+	pub fn gained_focus(&self) -> bool {
+		self.focus && !self.last_focus
+	}
+}
+
+impl Default for InputManager {
+	fn default() -> Self {
+		Self {
+			current: HashMap::with_capacity(256),
+			last: HashMap::with_capacity(256),
+			last_focus: true,
+			focus: true,
+		}
+	}
 }
 
 impl Component for InputManager {}
@@ -134,8 +163,9 @@ impl System for InputSystem {
 
 		// Swap current state to last for new current state
 		input_manager.last = input_manager.current.clone();
+		input_manager.last_focus = input_manager.focus;
 
-		let current = &mut input_manager.current;
+		let InputManager { current, focus, .. } = input_manager.deref_mut();
 
 		// Reset all current axis input to 0
 		for (_, value) in current.iter_mut() {
@@ -195,6 +225,8 @@ impl System for InputSystem {
 						set_motion(os::MOUSE_AXIS_Y, y);
 					}
 				}
+				Event::FocusLost => *focus = false,
+				Event::FocusGained => *focus = true,
 				_ => {}
 			}
 		}
